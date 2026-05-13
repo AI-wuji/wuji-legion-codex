@@ -1,4 +1,4 @@
-﻿# 🦞 无极军团 Codex 版 / Wuji Legion for Codex CLI v1.0
+﻿# ☯️ 无极军团 Codex 版 / Wuji Legion for Codex CLI v1.0
 
 **真并发多Agent作战系统 — 专为 OpenAI Codex CLI 打造**
 
@@ -13,9 +13,9 @@
 
 ## 🎯 这是什么？ / What is this?
 
-🦞 **无极军团 Codex 版** 是基于龙虾军团架构 + wuji-dev 方法论 + 社区精华融合而成的 **Codex CLI 专属多Agent作战系统**。
+☯️ **无极军团 Codex 版** 是基于龙虾军团架构 + wuji-dev 方法论 + 社区精华融合而成的 **Codex CLI 专属多Agent作战系统**。
 
-🦞 **Wuji Legion for Codex** is a fusion of the Lobster Legion architecture, wuji-dev methodology, and community best practices — purpose-built for **Codex CLI**.
+☯️ **Wuji Legion for Codex** is a fusion of the Lobster Legion architecture, wuji-dev methodology, and community best practices — purpose-built for **Codex CLI**.
 
 ### 核心能力 / Core Capabilities
 
@@ -127,7 +127,7 @@ wuji-legion-codex/
 
 | # | 来源 / Source | 融合内容 / What's Fused |
 |---|------|---------|
-| 1 | 🦞 龙虾军团 v7.1 | 指挥链、动态流水线、打靶场、爆炸半径权限 |
+| 1 | ☯️ 龙虾军团 v7.1 | 指挥链、动态流水线、打靶场、爆炸半径权限 |
 | 2 | ⚡ 无极开发 v3.0 | 12模块方法论、工作流、安全体系、UI设计 |
 | 3 | 🪨 caveman (59K⭐) | 精准输出，-75% Token |
 | 4 | 💰 token_saver | 5层优化体系，-85% Token |
@@ -148,7 +148,7 @@ wuji-legion-codex/
 
 ---
 
-**🦞 阿极在此，全军待命。请下达指令！**
-**🦞 A-Ji here, all units standing by. Awaiting your orders!**
+**☯️ 阿极在此，全军待命。请下达指令！**
+**☯️ A-Ji here, all units standing by. Awaiting your orders!**
 
 **License**: MIT

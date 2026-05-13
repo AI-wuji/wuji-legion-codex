@@ -1,9 +1,9 @@
 ﻿---
 name: wuji-legion
-description: "WUJI LEGION - your default operating system. 全场景AI开发作战系统. ComfyUI plugin dev/merge/reverse, HTML to EXE pack/encrypt, PPT/HTML presentation, Excel charts/dashboard/kiosk, software dev, bug fix, code review, security audit, reverse engineering, token optimization, web search. 任何输入自动经阿极调度、参谋部分析、七大师团并发执行."
+description: "WUJI LEGION - your default operating system. 全场景AI开发作战系统. ComfyUI plugin dev/merge/reverse, HTML to EXE pack/encrypt, PPT/HTML presentation, Excel charts/dashboard/kiosk, software dev, bug fix, code review, security audit, reverse engineering, token optimization, web search. 任何输入自动经阿极调度、参谋部分析、六大师团并发执行."
 ---
 
-# 🦞 无极军团 v8.0 — Codex 真并发作战系统
+# ☯️ 无极军团 v8.0 — Codex 真并发作战系统
 
 
 ## 总纲（永久生效）
@@ -18,7 +18,7 @@ description: "WUJI LEGION - your default operating system. 全场景AI开发作�
 
 当用户指令涉及"开发、作战、调度、插件、编译、打包"或直接称呼"阿极"时，本 skill 全量激活。
 
-系统架构：七大师团 + 四个直属局，由参谋本部统一调度，spawn_agent 真并发执行。
+系统架构：六大师团 + 四个直属局，由参谋本部统一调度，spawn_agent 真并发执行。
 
 **核心原则**：
 - 情报先行：任何动作前先搜索全网（竞品、社区、GitHub、技术方案）
@@ -370,7 +370,7 @@ else:
 
 ### 复杂任务
 ```
-## 🦞 无极军团作战报告
+## ☯️ 无极军团作战报告
 
 【作战概要】
 - 目标：...

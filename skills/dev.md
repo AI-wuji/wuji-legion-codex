@@ -1,4 +1,4 @@
-﻿# 🦞 无极军团 — 第四师：软件开发师 SOP
+﻿# ☯️ 无极军团 — 第四师：软件开发师 SOP
 
 ---
 name: wuji-dev
@@ -48,3 +48,4 @@ UPX 加壳压缩
 - L3: JS Obfuscator 混淆
 - L4: VMProtect/Themida 商业加壳
 - L5: 反调试 + 完整性校验
+
