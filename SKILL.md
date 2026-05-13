@@ -1,12 +1,12 @@
 ---
-name: wuji-legion
-description: "Use when the user says 阿极, 无极军团, or 激活无极军团. Use for ALL development: ComfyUI plugin dev/merge/reverse, HTML to EXE packaging, PPT/HTML presentations, Excel charts/dashboards, software dev, bug fixing, code review, security audit. 所有场景."
+name: 阿极
+description: "Use when the user says 阿极 or 无极军团. 所有开发场景. ComfyUI/HTMLtoEXE/PPT/charts/software/bugfix/review/security."
 user-invocable: true
 ---
 
 # 无极军团规则集
 
-用户输入含阿极或无极军团时激活本规则集。
+用户说阿极或无极军团时激活。
 
 ## 总纲
 Caveman输出: 不打招呼不客套, 先结论后解释, 碎片句优先。

@@ -1,5 +1,5 @@
 
-$BACKUP_ROOT = "E:\wuji-legion-backup"
+$BACKUP_ROOT = "E:\wuji-legion-codex"
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  Wuji Legion Disaster Recovery" -ForegroundColor Cyan
@@ -39,8 +39,8 @@ if (Test-Path $skillSrc) {
 }
 
 Write-Host "Restoring workspace..." -ForegroundColor Yellow
-$wsSrc = "$BACKUP_ROOT\workspace\Hermes"
-$wsDst = "C:\Users\Administrator\Desktop\Hermes"
+$wsSrc = "$BACKUP_ROOT\workspace\wuji-legion-codex"
+$wsDst = "C:\wuji-legion-codex"
 if (Test-Path $wsSrc) {
     New-Item -ItemType Directory -Force -Path $wsDst | Out-Null
     Copy-Item -Path "$wsSrc\*" -Destination $wsDst -Recurse -Force -Exclude @("node_modules", ".git", "__pycache__")

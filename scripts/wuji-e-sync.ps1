@@ -1,7 +1,7 @@
 ﻿# wuji-e-sync.ps1
 param([switch]$Quiet)
 
-$BackupRoot = "E:\wuji-legion-backup"
+$BackupRoot = "E:\wuji-legion-codex"
 $LogFile = Join-Path $BackupRoot "logs\sync_$(Get-Date -Format yyyyMMdd).log"
 $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
@@ -22,7 +22,7 @@ if (Test-Path $skillSrc) {
     Write-Log "[SKILL] Synced"
 }
 
-$wsSrc = "C:\Users\Administrator\Desktop\Hermes"
+$wsSrc = "C:\wuji-legion-codex"
 $wsDst = "$BackupRoot\workspace\Hermes"
 if (Test-Path $wsSrc) {
     robocopy $wsSrc $wsDst /MIR /NP /NJH /NJS /NDL /XD node_modules .git __pycache__ > $null 2>&1
