@@ -626,3 +626,122 @@ Prompt Caching 机制：
 - 每个渠道只返回摘要（Top 3-5 条）
 - 原始数据写入临时文件，不进主上下文
 - 只有用户明确要求时才展开详情
+---
+
+## 十六、灾难恢复与备份体系
+
+### 16.1 备份架构
+
+```
+三层备份体系：
+
+L1 — 本地技能目录（实时）
+  C:\Users\Administrator\.agents\skills\wuji-legion\
+  → 修改即刻生效，无需备份
+
+L2 — E盘同步备份（每5分钟）
+  E:\wuji-legion-backup\
+  ├── skills\          ← 技能文件完整镜像
+  ├── workspace\       ← 桌面工作区镜像
+  ├── logs\            ← 同步日志（保留30天）
+  └── README.txt       ← 恢复说明
+
+L3 — GitHub 远端（手动推送）
+  https://github.com/AI-wuji/wuji-legion-codex
+  → 跨设备、跨环境恢复
+```
+
+### 16.2 灾难场景应对
+
+| 场景 | 恢复方法 | 命令 |
+|------|---------|------|
+| C盘中毒/格式化 | 从E盘一键恢复 | `powershell E:\wuji-legion-backup\skills\wuji-legion\scripts\wuji-restore.ps1` |
+| 技能目录被误删 | 从E盘手动复制 | `Copy-Item "E:\wuji-legion-backup\skills\*" "C:\Users\Administrator\.agents\skills\" -Recurse -Force` |
+| 换电脑/重装系统 | 从GitHub克隆 | `git clone https://github.com/AI-wuji/wuji-legion-codex.git` 然后复制到 skills 目录 |
+| 文件改崩了 | 从备份恢复单个文件 | `python wuji-backup.py restore <文件路径> [版本号]` |
+| 只是不小心删了一段代码 | 从本地备份恢复 | 查看 `.wuji-backups/` 目录下的 `<文件名>_MMDDHHMMSS_毫秒.bak` |
+
+### 16.3 自动同步机制
+
+系统使用 `robocopy /MIR`（镜像模式）同步，保证 E 盘和本机完全一致。
+
+```powershell
+# 手动触发同步
+powershell wuji-e-sync.ps1
+
+# 启动后台守护（自动监控变更，每5分钟全量同步）
+powershell wuji-e-backup.ps1
+```
+
+建议将 `wuji-e-backup.ps1` 设置为开机启动：
+1. 按 `Win + R`，输入 `shell:startup`
+2. 创建 `wuji-backup.bat` 快捷方式，内容：
+   ```batch
+   powershell -WindowStyle Hidden -File "C:\Users\Administrator\.agents\skills\wuji-legion\scripts\wuji-e-backup.ps1"
+   ```
+
+### 16.4 备份保留策略
+
+| 数据类型 | 保留策略 | 存储位置 |
+|---------|---------|---------|
+| 技能文件 | 每次修改自动同步，保留最新版 | E:\wuji-legion-backup\skills\ |
+| 工作区文件 | 每次修改自动同步，保留最新版 | E:\wuji-legion-backup\workspace\ |
+| 文件历史版本 | 每个文件保留最近10个版本 | 原目录下 .wuji-backups\ |
+| 错误DNA数据库 | 永久保留 | 项目根目录下 .wuji-errors\ERRORS.md |
+| 同步日志 | 保留30天 | E:\wuji-legion-backup\logs\ |
+| GitHub远端 | 每次手动推送 | github.com/AI-wuji/wuji-legion-codex |
+
+
+## 十七、新机安装与一键恢复
+
+### 17.1 新机安装流程
+
+重装了系统，装上 Codex CLI 后：
+
+**方式一：一句话安装（推荐）**
+
+打开 Codex CLI，直接说：
+> 安装 github 的无极军团
+
+Codex 会自动执行：
+- git clone https://github.com/AI-wuji/wuji-legion-codex.git
+- 复制技能文件到 .agents/skills/wuji-legion/
+- 检查 E 盘备份
+- 提示执行恢复
+
+**方式二：手动运行引导脚本**
+
+`powershell
+git clone https://github.com/AI-wuji/wuji-legion-codex.git %TEMP%\wuji
+powershell %TEMP%\wuji\scripts\wuji-install.ps1
+`
+
+### 17.2 一键恢复命令
+
+SKILL.md 加载后，对 Codex 说：恢复
+
+自动执行：
+1. 检查 E 盘备份 E:\wuji-legion-backup\skills\wuji-legion/
+2. 存在则从 E 盘恢复（最快，包含最近的任务状态）
+3. 不存在则从 GitHub 克隆（仅基础技能，无历史状态）
+4. 恢复技能文件、工作区文件
+5. 恢复错误DNA数据库
+6. 恢复备份历史
+
+### 17.3 任务进度恢复
+
+| 数据 | 存储位置 | 恢复后效果 |
+|------|---------|-----------|
+| 已修复的 bug 记录 | .wuji-errors/ERRORS.md | 改代码前自动检查，不重复踩坑 |
+| 文件历史版本 | 各项目下的 .wuji-backups/ | 可以回退到任意历史版本 |
+| 备份时间线 | E:\wuji-legion-backup\logs/ | 查看什么时候做过什么修改 |
+
+### 17.4 确保下次重装能恢复
+
+每次完成任务后：
+- wuji-e-sync.ps1 是否运行？（E盘备份已更新）
+- 是否有新的 bug 修复未记录到 ERRORS.md？
+- 是否有重要文件修改需要手动备份？
+- 是否要在 GitHub 上发布新版本？
+
+一句话：只要 E 盘在，换一百次系统也能一键恢复。
