@@ -22,7 +22,7 @@
 | 特性 Feature | 中文 | English |
 |-------------|------|---------|
 | 🎖️ | spawn_agent 真并发执行 | True Parallel Execution via spawn_agent |
-| ⚔️ | 七大师团协同作战 | 7-division coordinated combat |
+| ⚔️ | 六大师团协同作战 | 7-division coordinated combat |
 | 🛡️ | 打靶场沙盒安全测试 | Range (Sandbox) Security Testing |
 | 🔒 | 爆炸半径权限管控 | Blast Radius Permission Control |
 | 🧬 | 错误DNA防重复bug | Error DNA — Never repeat a bug |
