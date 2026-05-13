@@ -1,5 +1,4 @@
-﻿# wuji-e-sync.ps1 - Wuji Legion E-Drive Backup Sync
-# Usage: powershell wuji-e-sync.ps1
+﻿# wuji-e-sync.ps1
 param([switch]$Quiet)
 
 $BackupRoot = "E:\wuji-legion-backup"
@@ -13,29 +12,24 @@ function Write-Log {
     if (-not $Quiet) { Write-Host $line }
 }
 
-Write-Log "=== Wuji Legion Backup Sync ==="
+Write-Log "=== Wuji Backup Sync ==="
 
-# 1. Sync skill directory
+# Use robocopy for reliable directory mirroring
 $skillSrc = "C:\Users\Administrator\.agents\skills\wuji-legion"
-$skillDst = Join-Path $BackupRoot "skills\wuji-legion"
+$skillDst = "$BackupRoot\skills\wuji-legion"
 if (Test-Path $skillSrc) {
-    New-Item -ItemType Directory -Force -Path $skillDst | Out-Null
-    Copy-Item -Path "$skillSrc\*" -Destination $skillDst -Recurse -Force
+    robocopy $skillSrc $skillDst /MIR /NP /NJH /NJS /NDL > $null 2>&1
     Write-Log "[SKILL] Synced"
 }
 
-# 2. Sync workspace
 $wsSrc = "C:\Users\Administrator\Desktop\Hermes"
-$wsDst = Join-Path $BackupRoot "workspace\Hermes"
+$wsDst = "$BackupRoot\workspace\Hermes"
 if (Test-Path $wsSrc) {
-    New-Item -ItemType Directory -Force -Path $wsDst | Out-Null
-    Copy-Item -Path "$wsSrc\*" -Destination $wsDst -Recurse -Force -Exclude @("node_modules", ".git", "__pycache__")
+    robocopy $wsSrc $wsDst /MIR /NP /NJH /NJS /NDL /XD node_modules .git __pycache__ > $null 2>&1
     Write-Log "[WORKSPACE] Synced"
 }
 
-# 3. Clean logs older than 30 days
 $cutoff = (Get-Date).AddDays(-30)
 Get-ChildItem "$BackupRoot\logs\*.log" | Where-Object { $_.LastWriteTime -lt $cutoff } | Remove-Item -Force
 Write-Log "[CLEAN] Done"
-
-Write-Log "=== Backup Complete ==="
+Write-Log "=== Complete ==="
