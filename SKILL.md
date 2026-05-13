@@ -1,5 +1,5 @@
 ﻿---
-name: wuji-legion
+name: "阿极"
 description: "Use when the user says 阿极, 无极军团, or anything about 激活无极军团. Use for ALL development tasks: ComfyUI plugin dev/merge/reverse engineering, HTML to EXE packaging with encryption, PPT/HTML presentations, Excel charts/dashboards/kiosk displays, software development, bug fixing, code review, security audit, reverse engineering, token optimization, web search. 所有开发场景. 任何用户输入包含阿极或无极军团时强制激活."
 user-invocable: true
 ---
