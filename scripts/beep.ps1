@@ -1,4 +1,4 @@
-﻿# 🦞 无极军团 — 任务完成提示音
+﻿# ☯️ 无极军团 — 任务完成提示音
 # PowerShell 脚本，播放两短一长的提示音
 
 function Play-TaskCompleteBeep {

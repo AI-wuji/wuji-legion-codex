@@ -1,7 +1,4 @@
 ﻿# target-range.py - 无极军团打靶场系统
-# 模拟沙盒测试环境，在真正执行前先验证安全性
-# 用法: python target-range.py <target_type> <target_path>
-# target_type: skill | code | dependency | config | permission | plugin
 
 import os, sys, json, re, glob
 
@@ -37,18 +34,15 @@ class TargetRange:
         with open(filepath, "r", encoding="utf-8", errors="replace") as f:
             content = f.read()
 
-        # 1. 系统命令执行
         self.check("无命令注入",
             not any(kw in content for kw in ["os.system(", "subprocess.call(", "subprocess.Popen(",
                                               "eval(", "exec(", "__import__(", "compile("]),
             "包含动态代码执行")
 
-        # 2. 文件操作安全
         self.check("文件操作安全",
             "shutil.rmtree" not in content and "os.remove(" not in content,
             "包含删除文件操作（需确认）")
 
-        # 3. 硬编码密钥
         key_patterns = [
             r'(?:api[_-]?key|apikey|secret|token|password)[\'"]\s*[:=]\s*[\'"](?!\s*$|os\.environ|os\.getenv)',
             r'(?:AKIA[0-9A-Z]{16}|sk-[a-zA-Z0-9]{32,}|ghp_[a-zA-Z0-9]{36})'
@@ -60,15 +54,12 @@ class TargetRange:
                 break
         self.check("无硬编码密钥", not has_hardcoded_key, "发现可能的硬编码密钥")
 
-        # 4. 文件大小检查
         size = os.path.getsize(filepath)
         self.check("文件大小合理", size < 5 * 1024 * 1024, "文件超过5MB（%.1fMB）" % (size / 1024 / 1024))
 
-        # 5. 许可证扫描（如果存在 LICENSE/README 头）
         if content.startswith("#") or content.startswith("/*"):
             self.check("代码头部检查", True)
 
-        # 6. 危险模块导入
         dangerous_imports = ["requests", "urllib", "ftplib", "telnetlib", "smtplib"]
         found_dangerous = [m for m in dangerous_imports if "import %s" % m in content or "from %s" % m in content]
         self.check("网络模块审查", len(found_dangerous) == 0,
@@ -83,17 +74,14 @@ class TargetRange:
         files = os.listdir(plugin_dir)
         self.check("插件目录非空", len(files) > 0)
 
-        # 检查必要的插件文件
         has_init = "__init__.py" in files
         has_main = any(f.endswith(".py") for f in files)
         self.check("插件入口文件", has_init or has_main, "缺少 __init__.py 或 .py 文件")
 
-        # 扫描所有 .py 文件
         py_files = glob.glob(os.path.join(plugin_dir, "**", "*.py"), recursive=True)
         for pyf in py_files[:5]:  # 最多扫 5 个文件
             self.scan_code(pyf)
 
-        # 检查依赖
         req_file = os.path.join(plugin_dir, "requirements.txt")
         if os.path.exists(req_file):
             with open(req_file, "r") as f:
@@ -172,7 +160,6 @@ class TargetRange:
             "verdict": verdict,
             "details": self.report_lines
         }
-
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:

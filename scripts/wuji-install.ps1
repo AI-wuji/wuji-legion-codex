@@ -1,6 +1,4 @@
 ﻿# wuji-install.ps1 — 无极军团一键安装引导
-# 重装系统后运行：powershell wuji-install.ps1
-# 或者直接在 Codex 中说：安装github的无极军团
 
 $REPO = "AI-wuji/wuji-legion-codex"
 $SKILL_DIR = "$env:USERPROFILE\.agents\skills\wuji-legion"
@@ -10,11 +8,9 @@ Write-Host "   Wuji Legion Installer v1.0" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Step 1: Create skill directory
 Write-Host "[1/4] Creating skill directory..." -ForegroundColor Yellow
 New-Item -ItemType Directory -Force -Path $SKILL_DIR | Out-Null
 
-# Step 2: Download from GitHub
 Write-Host "[2/4] Downloading from github.com/$REPO ..." -ForegroundColor Yellow
 $temp = "$env:TEMP\wuji-legion-codex"
 Remove-Item -Recurse -Force $temp -ErrorAction SilentlyContinue
@@ -30,7 +26,6 @@ if (Test-Path "$temp\SKILL.md") {
     exit 1
 }
 
-# Step 3: Check for E drive backup
 Write-Host "[3/4] Checking E drive backup..." -ForegroundColor Yellow
 $eBackup = "E:\wuji-legion-backup\skills\wuji-legion"
 if (Test-Path $eBackup) {
@@ -44,7 +39,6 @@ if (Test-Path $eBackup) {
     Write-Host "  [SKIP] No E drive backup found" -ForegroundColor Yellow
 }
 
-# Step 4: Verify
 Write-Host "[4/4] Verifying installation..." -ForegroundColor Yellow
 $files = (Get-ChildItem $SKILL_DIR -Recurse -File).Count
 if ($files -gt 5) {

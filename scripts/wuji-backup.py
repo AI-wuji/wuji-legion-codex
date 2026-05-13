@@ -1,16 +1,8 @@
 ﻿# wuji-backup.py — 无极军团智能备份系统
-# 用法: python wuji-backup.py <文件路径>
-# 功能: 创建带时间戳的备份，自动轮换，最多保留 MAX_BACKUPS 份
-#
-# 备份命名: <原文件名>_MMDDHHMMSS.bak
-# 例: main.py → main_0513190801.bak
-#
-# 轮换规则: 超过 MAX_BACKUPS 份时，删除最旧的
 
 import os, sys, shutil, glob
 from datetime import datetime
 
-# === 配置 ===
 MAX_BACKUPS = 10  # 最多保留 10 份备份
 
 def get_backup_dir(filepath):
@@ -36,7 +28,6 @@ def create_backup(filepath):
     shutil.copy2(filepath, backup_path)
     print("[OK] Backup created: %s" % backup_path)
 
-    # 轮换：清理超出数量的旧备份
     rotate_backups(filepath)
 
     return backup_path
@@ -91,7 +82,6 @@ def restore_backup(filepath, version=None):
         print("[ERROR] Version %d not found (available: 1-%d)" % (version, len(backups)))
         return False
 
-    # 恢复前先备份当前文件（防止误操作）
     if os.path.exists(filepath):
         create_backup(filepath)
 
@@ -120,5 +110,4 @@ if __name__ == "__main__":
     elif cmd == "clean" and len(sys.argv) > 2:
         rotate_backups(sys.argv[2])
     else:
-        # Default: create backup
         create_backup(sys.argv[1])
