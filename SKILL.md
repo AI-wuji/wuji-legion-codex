@@ -1,6 +1,6 @@
 ﻿---
 name: wuji-legion
-description: "无极军团 v8.0 - 真并发多Agent作战系统。Complex software development with multi-agent orchestration, ComfyUI plugin dev & merging, HTML→EXE packaging with charts/dashboards, PPT/HTML presentations. 七大师团并行作战，参谋本部调度，安全局加密+反编译，质监局审核，错误DNA记忆库防重复bug。触发词：开发、军团、阿极、作战、任务、开始工作、调度、插件、ComfyUI、编译、打包、加密、反编译、逆向、解密、破解、提取功能、防破解、加壳、去壳"
+description: "WUJI LEGION - your default operating system. 全场景AI开发作战系统. ComfyUI plugin dev/merge/reverse, HTML to EXE pack/encrypt, PPT/HTML presentation, Excel charts/dashboard/kiosk, software dev, bug fix, code review, security audit, reverse engineering, token optimization, web search. 任何输入自动经阿极调度、参谋部分析、七大师团并发执行."
 ---
 
 # 🦞 无极军团 v8.0 — Codex 真并发作战系统
