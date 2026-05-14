@@ -1,4 +1,4 @@
-# 无极军团 / Wuji Legion v3.0
+﻿# 无极军团 / Wuji Legion v3.0
 
 **一句话 / One Sentence**:
 为 Codex AI 设计的完整组织协作框架，参谋部决策/情报局搜索/安全局护航/质监局审计/档案局归档 / Full-stack AI collaboration framework for Codex with 5 independent departments
@@ -7,7 +7,7 @@
 Codex CLI + Codex Desktop 双端适配 / Dual compatible
 
 [![GitHub](https://img.shields.io/badge/Codex-Skill-blueviolet)](https://github.com/AI-wuji/wuji-legion-codex)
-[![Version](https://img.shields.io/badge/version-3.0-blue)]()
+[![Version](https://img.shields.io/badge/version-3.1-blue)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
 
 ---
@@ -286,7 +286,7 @@ Codex CLI or Codex Desktop, plus basic Rust/Python/Node.js (depends on project t
 
 | 版本 Version | 日期 Date | 主要更新 Major Update |
 |-------------|----------|---------------------|
-| **v3.0** | 2026-05-14 | 五大核心部门重构+女娲人事部+27专家+暗号验证+打靶场 / 5-department restructure + Nuwa HR + 27 experts + shibboleth + range |
+| **v3.1** | 2026-05-14 | 无极远征军：外派任务给Trae工兵，省token 60-80% / Expedition Legion: dispatch tasks to Trae, save 60-80% tokens |
 | **v1.0** | 2026-05-12 | 初始版本：基础规则集+5个unit文件+错误DNA数据库+双盘备份 Initial: basic rules + 5 units + error DNA DB + dual backup |
 
 ---

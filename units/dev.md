@@ -37,3 +37,18 @@ description: "Rust核心+TS前端+Python ComfyUI. 多平台封装(win/mac/linux)
 ## 口令
 skill(linus)+sop(dev.md)+mcp(codebadger)
 
+
+## 外派远征标记
+
+以下任务可外派给 **工兵L（本地35B）**（需配合读取 units/expedition.md）：
+
+| 可外派场景 | 示例 |
+|-----------|------|
+| 样板代码 | CRUD、路由、模型定义、配置文件 |
+| 明确spec的功能 | 接口实现、模块开发、组件撰写 |
+| 代码重构 | 重命名、提取函数、文件拆分 |
+| 文档生成 | README、注释、API文档 |
+| 单元测试 | 按spec撰写测试用例 |
+| 批量修改 | 多文件格式统一、升级迁移 |
+
+不可外派：架构设计、核心算法、安全关键代码 —— 留在 Codex 本地。

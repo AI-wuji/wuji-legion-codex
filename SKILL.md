@@ -1,4 +1,4 @@
----
+﻿---
 name: 无极军团
 description: "Use when user says 阿极 or 无极军团."
 user-invocable: true
@@ -39,4 +39,5 @@ user-invocable: true
 | 质量验收相关 | units/qa.md |
 | 备份/归档相关 | units/archive.md |
 | 需要专家匹配 | units/nuwa.md |
-| 新工具测试 | units/proving_ground.md |
+| 新工具测试 | units/proving_ground.md
+| 外派任务给Trae | units/expedition.md |
