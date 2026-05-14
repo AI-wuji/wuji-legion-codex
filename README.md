@@ -295,7 +295,7 @@ Codex CLI or Codex Desktop, plus basic Rust/Python/Node.js (depends on project t
 
 <div align="center">
 
-![donate](donate.svg)
+<img src="https://raw.githubusercontent.com/AI-wuji/wuji-legion-codex/master/donate.svg" alt="donate" width="400">
 
 *如果无极军团对您有帮助，欢迎打赏支持持续开发。*
 *If Wuji Legion helps your work, consider supporting its development.*
