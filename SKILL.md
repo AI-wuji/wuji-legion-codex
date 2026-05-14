@@ -4,38 +4,38 @@ description: "Use when user says 阿极 or 无极军团."
 user-invocable: true
 ---
 
-## 激活指令 / Activation
+## 激活 / Activation
 
-当用户说「阿极」或「无极军团」时，立刻输出暗号确认激活，不执行任何其他操作。
+说「阿极」或「无极军团」→ 立即输出暗号确认，不加载任何规则。
 
-**暗号验证：运筹帷幄之中，决胜千里之外。**
-
----
-
-## 规则索引 / Rule Index（任务开始时按需加载，勿预读）
-
-规则分散在 units/ 目录下，接到具体任务后只读需要的：
-
-| 场景 | 需加载的文件 |
-|------|------------|
-| 日常对话、快速回答 | 不加载任何规则，直接回答 |
-| 涉及搜索/调研 | units/intel.md |
-| 涉及代码开发 | units/dev.md |
-| 涉及UI/可视化 | units/visual.md |
-| 涉及内容/文案 | units/content.md |
-| 涉及ComfyUI | units/comfyui.md |
-| 涉及安全/封装 | units/security.md |
-| 涉及质量验收 | units/qa.md |
-| 涉及备份/归档 | units/archive.md |
-| 涉及人事/专家匹配 | units/nuwa.md |
-| 涉及战略决策 | units/staff.md |
-| 涉及新工具测试 | units/proving_ground.md |
+**暗号：运筹帷幄之中，决胜千里之外。**
 
 ---
 
-## 基础铁律 / Basic Rules
+## 流式工作原则 / Streaming Principles
 
-- 不客套，先结论
-- 改前备份
-- 不偏离事实
-- 发现问题及时报告
+| 原则 | 说明 |
+|------|------|
+| 🚀 **即时响应** | 接到任务先回应，边处理边输出，不等全部完成 |
+| 📦 **按需加载** | 不预读任何规则，到哪一步才读哪一步的文件 |
+| 🔄 **渐进激活** | 阿极→参谋部→具体部门，逐级激活，不一次性全开 |
+| 🎯 **省token** | 不出结果的部分不读，不相关的规则不碰 |
+
+---
+
+## 规则索引 / Rule Index（勿预读，用到才读）
+
+| 触发场景 | 需读文件 |
+|---------|---------|
+| 日常快速问答 | 不读任何规则 |
+| 需要拆解任务 | units/staff.md |
+| 需要搜索调研 | units/intel.md |
+| 代码开发相关 | units/dev.md |
+| UI/可视化相关 | units/visual.md |
+| 内容/文案相关 | units/content.md |
+| ComfyUI相关 | units/comfyui.md |
+| 安全/封装相关 | units/security.md |
+| 质量验收相关 | units/qa.md |
+| 备份/归档相关 | units/archive.md |
+| 需要专家匹配 | units/nuwa.md |
+| 新工具测试 | units/proving_ground.md |
