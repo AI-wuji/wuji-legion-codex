@@ -1,39 +1,32 @@
-﻿# push-to-github.ps1 - One-click push Wuji Legion to GitHub
-# Usage: 
-#   1. Get a GitHub token from https://github.com/settings/tokens (repo scope)
-#   2. Run: .\scripts\push-to-github.ps1
-#   3. Paste token when prompted
+﻿# push-to-github.ps1
+# 网络正常时运行此脚本推送更新
 
-$token = Read-Host "Enter GitHub Personal Access Token" -AsSecureString
-$bstr = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($token)
-$tokenPlain = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+$repo = "C:\wuji-projects\wuji-legion-codex"
 
-# Create repo via API
-$body = @{
-    name = "wuji-legion-codex"
-    description = "Wuji Legion for Codex CLI - True Parallel Multi-Agent Combat System"
-    homepage = "https://ai-wuji.github.io/wuji-legion-codex/"
-} | ConvertTo-Json
-
-$result = curl.exe -s --ssl-no-revoke -X POST "https://api.github.com/user/repos" `
-    -H "Authorization: token $tokenPlain" `
-    -H "Content-Type: application/json" `
-    -d $body
-Write-Host "Repo created: $result" -ForegroundColor Cyan
-
-# Configure git credentials for this push only
-git remote remove origin 2>$null
-git remote add origin "https://github.com/AI-wuji/wuji-legion-codex.git"
-
-# Use git credential helper for the push
-$cred = @"
-protocol=https
-host=github.com
-username=AI-wuji
-password=$tokenPlain
-"@
-$cred | git credential approve 2>$null
-
-# Push
-git push -u origin master
-Write-Host "Done! https://github.com/AI-wuji/wuji-legion-codex" -ForegroundColor Green
+if (-not (Test-Path "$repo\.git")) {
+    Write-Host "首次推送: 克隆并覆盖..." -ForegroundColor Yellow
+    git clone https://github.com/AI-wuji/wuji-legion-codex.git "$repo\_temp" 2>&1
+    if (Test-Path "$repo\_temp\.git") {
+        Remove-Item "$repo\_temp\*" -Recurse -Force -ErrorAction SilentlyContinue
+        Copy-Item "$repo\SKILL.md","$repo\README.md","$repo\CHANGELOG.md" "$repo\_temp\"
+        Copy-Item "$repo\units" "$repo\_temp\" -Recurse
+        Copy-Item "$repo\scripts" "$repo\_temp\" -Recurse
+        Remove-Item "$repo\_temp\scripts\push-to-github.ps1" -ErrorAction SilentlyContinue
+        Set-Location "$repo\_temp"
+        git add -A
+        git commit -m "V3.0 架构重构: 五大核心部门+省token优化+14新建模"
+        git push
+        Remove-Item "$repo" -Recurse -Force
+        Move-Item "$repo\_temp" "$repo"
+        Write-Host "推送完成!" -ForegroundColor Green
+    }
+} else {
+    Set-Location $repo
+    Copy-Item "C:\Users\Administrator\.agents\skills\wuji-legion\SKILL.md" ".\" -Force
+    Copy-Item "C:\Users\Administrator\.agents\skills\wuji-legion\units\*" ".\units\" -Force
+    Copy-Item "C:\Users\Administrator\.agents\skills\wuji-legion\scripts\*" ".\scripts\" -Force
+    git add -A
+    git commit -m "更新 $(Get-Date -Format yyyy-MM-dd HH:mm)"
+    git push
+    Write-Host "推送完成!" -ForegroundColor Green
+}
