@@ -1,4 +1,4 @@
-﻿import json, os, re, sys, datetime
+import json, os, re, sys, datetime
 
 ERRORS_DIR = ".wuji-errors"
 ERRORS_FILE = os.path.join(ERRORS_DIR, "ERRORS.md")

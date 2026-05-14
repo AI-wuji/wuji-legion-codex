@@ -1,4 +1,4 @@
-﻿# target-range.py - 无极军团打靶场系统
+# target-range.py - 无极军团打靶场系统
 
 import os, sys, json, re, glob
 

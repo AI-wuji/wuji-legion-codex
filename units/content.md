@@ -1,4 +1,4 @@
-﻿---
+---
 name: 第一师(内容)
 description: "内容创作师:文案/PPT/演示/产品叙事.联动paul-graham-perspective"
 ---

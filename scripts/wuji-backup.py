@@ -1,4 +1,4 @@
-﻿# wuji-backup.py — 无极军团智能备份系统
+# wuji-backup.py — 无极军团智能备份系统
 
 import os, sys, shutil, glob
 from datetime import datetime

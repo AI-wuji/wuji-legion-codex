@@ -1,4 +1,4 @@
-﻿# wuji-e-backup.ps1 — 无极军团 E 盘自动备份守护
+# wuji-e-backup.ps1 — 无极军团 E 盘自动备份守护
 # 安装在系统启动时自动运行，实时监测变更
 
 $watcher = New-Object System.IO.FileSystemWatcher

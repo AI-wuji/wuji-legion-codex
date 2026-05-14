@@ -1,4 +1,4 @@
-﻿---
+---
 name: 第四师-开发
 description: "Rust核心+TS前端+Python ComfyUI. 多平台封装(win/mac/linux)"
 ---

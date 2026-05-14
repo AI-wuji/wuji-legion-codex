@@ -1,4 +1,4 @@
-﻿---
+---
 name: 第三师-ComfyUI
 description: "ComfyUI插件:Python入口+Rust(PyO3)核心. 联动ilya"
 ---

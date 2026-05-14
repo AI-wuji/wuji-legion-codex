@@ -1,4 +1,4 @@
-﻿---
+---
 name: 第二师(视觉)
 description: "UI设计/可视化/多风格体系/全图表库.联动steve-jobs-perspective+impeccable"
 ---

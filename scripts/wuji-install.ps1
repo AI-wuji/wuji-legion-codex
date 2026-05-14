@@ -1,4 +1,4 @@
-﻿# wuji-install.ps1 — 无极军团一键安装引导
+# wuji-install.ps1 — 无极军团一键安装引导
 
 $REPO = "AI-wuji/wuji-legion-codex"
 $SKILL_DIR = "$env:USERPROFILE\.agents\skills\wuji-legion"
