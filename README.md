@@ -1,4 +1,4 @@
-# 无极军团 / Wuji Legion v3.0
+# 无极军团 / Wuji Legion v3.1
 
 **一句话 / One Sentence**:
 为 Codex AI 设计的完整组织协作框架，参谋部决策/情报局搜索/安全局护航/质监局审计/档案局归档 / Full-stack AI collaboration framework for Codex with 5 independent departments
@@ -7,7 +7,7 @@
 Codex CLI + Codex Desktop 双端适配 / Dual compatible
 
 [![GitHub](https://img.shields.io/badge/Codex-Skill-blueviolet)](https://github.com/AI-wuji/wuji-legion-codex)
-[![Version](https://img.shields.io/badge/version-3.0-blue)]()
+[![Version](https://img.shields.io/badge/version-3.1-purple)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
 
 ---
@@ -32,6 +32,7 @@ A multi-department AI collaboration framework for Codex with checks-and-balances
 | 🎯 | 省Token运行策略 | Token-efficient runtime |
 | 🧬 | 自我进化能力 | Self-evolution capability |
 | 🔧 | Rust核心+多平台封装 | Rust core + cross-platform packaging |
+| 🎨 | **新** baoyu漫画/PPT/信息图 | baoyu comic/slide-deck/infographic |
 
 ---
 
@@ -286,6 +287,7 @@ Codex CLI or Codex Desktop, plus basic Rust/Python/Node.js (depends on project t
 
 | 版本 Version | 日期 Date | 主要更新 Major Update |
 |-------------|----------|---------------------|
+| **v3.1** | **2026-05-19** | **参谋部预加载 + baoyu漫画/PPT/信息图融合 / Staff pre-load + baoyu comic/slide-deck/infographic** |
 | **v3.0** | 2026-05-14 | 五大核心部门重构+女娲人事部+27专家+暗号验证+打靶场 / 5-department restructure + Nuwa HR + 27 experts + shibboleth + range |
 | **v1.0** | 2026-05-12 | 初始版本：基础规则集+5个unit文件+错误DNA数据库+双盘备份 Initial: basic rules + 5 units + error DNA DB + dual backup |
 
