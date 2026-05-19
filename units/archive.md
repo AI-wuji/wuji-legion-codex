@@ -1,30 +1,46 @@
 ---
 name: 档案局
-description: "备份/同步/回滚/灾难恢复.双盘互备,原址删不删备份.调用scripts/"
+description: "备份/同步/回滚/灾难恢复.新项目→E盘,开发C盘,改动前必备份.双盘互备."
 ---
 
-# 档案局(已加载至工作记忆)
+# 档案局（已加载至工作记忆）
+
+## 项目目录规范（全局规则，始终生效）
+
+| 阶段 | 路径 | 说明 |
+|------|------|------|
+| **新项目立项** | `E:\wuji-projects\{项目名}\` | **所有新项目默认放E盘** |
+| **日常开发** | `E:\wuji-projects\{项目名}\` | E盘是主工作区 |
+| **镜像同步** | `C:\wuji-projects\{项目名}\` | 如有需要，同步到C盘 |
+| **改动前备份** | `{项目}\.wuji-backups\{日期}_{时间}_{描述}\` | 每次修改前先备份 |
+| **备份原则** | 原文件删除 → 备份不动（除非用户要求） | 不删备份 |
 
 ## 备份铁律
 
-### 1. 新项目立项
-C:\wuji-projects\{项目名}\ <- 日常开发+每次改动的.wuji-backups/
-E:\wuji-projects\{项目名}\ <- robocopy /MIR镜像(调用wuji-e-sync.ps1)
-原地址文件被删->备份文件夹不动(除非用户要求)
+### 1. 每次改动前
+1. 调用 `wuji-backup.py` → 备份原文件到 `.wuji-backups/{日期}_{时间}_{变更描述}/`
+2. 更新 CHANGELOG.md（描述/文件/原因/回滚指令）
 
-### 2. 每次改动前(调用wuji-backup.py)
-备份原文件到.wuji-backups/{日期}_{时间}_{变更描述}/
-更新CHANGELOG.md(描述/文件/原因/回滚指令)
+### 2. 新文件命名规范
+- 所有新生成/修改的文件名必须包含时间戳：`{name}-{YYYYMMDD-HHMM}.ext`
+- 例：`guixu-app-20260519-1752.exe`
+- 完成后告知用户完整路径 + 文件名
 
-### 3. 灾难恢复(调用wuji-restore.ps1)
-系统重做->GitHub拉无极军团skill->从E:\wuji-projects\恢复所有项目
+### 3. 灾难恢复
+系统重做 → GitHub拉无极军团skill → 从 `E:\wuji-projects\` 恢复所有项目
 
 ## 目录结构
-C:\wuji-projects\{项目}\ <- .wuji-backups/{日期}_{描述}/ + CHANGELOG.md
-E:\wuji-projects\{项目}\ <- 镜像, robocopy /MIR
+```
+E:\wuji-projects\{项目}\
+├── .wuji-backups/
+│   ├── {日期}_{时间}_{描述}/
+│   └── ...
+├── CHANGELOG.md
+└── ...
+```
 
-## 回滚
-档案局查CHANGELOG->找到目标版本->恢复->标记完成
+## 回滚流程
+档案局查 CHANGELOG → 找到目标版本 → 恢复 → 标记完成
 
 ## 自动激活口令
 sop(archive.md) + 脚本参考

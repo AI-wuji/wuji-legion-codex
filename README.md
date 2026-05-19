@@ -1,4 +1,4 @@
-﻿# 无极军团 / Wuji Legion v3.1
+# 无极军团 / Wuji Legion v3.0
 
 **一句话 / One Sentence**:
 为 Codex AI 设计的完整组织协作框架，参谋部决策/情报局搜索/安全局护航/质监局审计/档案局归档 / Full-stack AI collaboration framework for Codex with 5 independent departments
@@ -7,7 +7,7 @@
 Codex CLI + Codex Desktop 双端适配 / Dual compatible
 
 [![GitHub](https://img.shields.io/badge/Codex-Skill-blueviolet)](https://github.com/AI-wuji/wuji-legion-codex)
-[![Version](https://img.shields.io/badge/version-3.1-blue)]()
+[![Version](https://img.shields.io/badge/version-3.0-blue)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
 
 ---
@@ -260,54 +260,6 @@ Say **"A-Ji"** or **"Wuji Legion"** to activate.
 
 ---
 
-
----
-
-## 🚀 无极远征军 / Expedition Legion
-
-**通过 Trae CLI 外派任务到外部 AI IDE 执行，节省 60-80% token 消耗。**
-
-### 为什么需要远征军？/ Why Expedition?
-
-复杂代码生成任务消耗大量 token。通过外派给本地 35B 模型或云端自动模型，Codex 只做分析/规划/验收，体力活让工兵干。
-
-### 架构 / Architecture
-
-```
-Codex（总指挥）
-   ├─ 需求分析 → spec写作 → 任务分派
-   ├─ 工兵L（Local 35B MoE）→ 代码重体力活
-   ├─ 工兵C（Cloud Auto）   → 搜索/安装/网络
-   └─ Codex（我）→ 代码Review → 验收汇报
-```
-
-### 工兵档案 / Engineer Profiles
-
-| 工兵 | 模型 | 用途 | 成本 |
-|------|------|------|------|
-| 工兵L | 本地 Qwen 35B MoE | 样板代码、CRUD、组件实现、文档 | 免费零排队 |
-| 工兵C | Trae 云端自动 | 搜索、下载安装、加解密、网络请求 | 免费额度内 |
-
-### 安装 / Setup
-
-需要 [Trae CN](https://trae.com.cn) 客户端。配置文档见 `trae/` 目录。
-
-| 步骤 | 说明 |
-|------|------|
-| 1. 启动本地模型 | llama-server + Qwen 35B gguf |
-| 2. 开两个 Trae 实例 | 一个挂本地模型，一个挂云端自动 |
-| 3. 激活远征军 | 说「阿极」后，自动触发 units/expedition.md |
-
-### 省 token 效果 / Token Savings
-
-| 环节 | 原先谁干 | 现在谁干 | token变化 |
-|------|---------|---------|----------|
-| 需求分析 | Codex | Codex | 不变 |
-| 代码实现 | Codex | 工兵L（免费） | 省 80% |
-| 搜索调研 | Codex | 工兵C（免费） | 省 60% |
-| 安装部署 | Codex | 工兵C（免费） | 省 90% |
-| 代码Review | Codex | Codex | 不变 |
-| 结果汇报 | Codex | Codex | 不变 |
 ## ❓ FAQ / 常见问题
 
 **问：和直接使用Codex有什么区别？/ What's the difference from plain Codex?**
@@ -334,7 +286,6 @@ Codex CLI or Codex Desktop, plus basic Rust/Python/Node.js (depends on project t
 
 | 版本 Version | 日期 Date | 主要更新 Major Update |
 |-------------|----------|---------------------|
-| **v3.1** | 2026-05-14 | 无极远征军：外派任务给Trae工兵，省token 60-80% / Expedition Legion: dispatch tasks to Trae, save 60-80% tokens |
 | **v3.0** | 2026-05-14 | 五大核心部门重构+女娲人事部+27专家+暗号验证+打靶场 / 5-department restructure + Nuwa HR + 27 experts + shibboleth + range |
 | **v1.0** | 2026-05-12 | 初始版本：基础规则集+5个unit文件+错误DNA数据库+双盘备份 Initial: basic rules + 5 units + error DNA DB + dual backup |
 
