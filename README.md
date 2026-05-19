@@ -219,14 +219,11 @@ Say **"A-Ji"** or **"Wuji Legion"** to activate.
 
 | 原则 / Policy | 中文 | English |
 |--------------|------|---------|
-| 🖥️ **C盘 C: drive** | `C:\wuji-projects\{项目名}\` 日常开发+改动前备份 Daily dev + pre-change backup |
-| 💾 **E盘 E: drive** | `E:\wuji-projects\{项目名}\` robocopy /MIR 镜像同步 Mirror sync |
-| 📝 **改动前 Before change** | 备份到 `.wuji-backups/{日期}_{描述}/` Backup with date + description |
-| 🗑️ **原文件删除 Src deleted** | 备份不动（除非用户要求）Backup stays (unless user requests) |
-| ⚡ **系统重做 OS reinstall** | GitHub拉军团→E盘恢复所有项目 Pull legion from GitHub → restore from E: |
-
----
-
+| 💾 **唯一工作区 Single workspace** | `E:\wuji-projects\{项目名}` 所有项目全放E盘 All projects on E drive |
+| 🗑️ **C盘已弃用 C drive retired** | 不同步、不创建任何项目文件 No sync, no project files on C |
+| 📦 **独立备份 Independent backup** | `E:\wuji-backups\{项目名}\{日期}_{描述}/` 独立目录，不混在项目里 Separate from working dir |
+| 📝 **改动前备份 Pre-change backup** | 每次修改代码前自动备份到独立备份目录 Auto backup before every change |
+| 🔄 **崩溃恢复 Crash recovery** | 不重新创建 → 找备份回滚 Don't recreate → find backup and rollback |
 ## 🔧 默认技术栈 / Default Tech Stack
 
 | 层级 / Layer | 语言/框架 / Language/Framework |
