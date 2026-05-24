@@ -22,7 +22,7 @@
 |------|------|---------|
 | 🧠 **MoE 并行中枢** | 参谋本部自动拆解指令，并行评估后路由，多部门可同时执行 | ✅ 全局永久 |
 | ⛑️ **白帽纠察** | 全局常驻，每次需求必须先质疑前提、指出盲区、提反对意见 | ✅ 全局永久 |
-| 👥 **71位专家** | 36位人物视角(臧老师/Karpathy/Linus等) + 35位领域专精专家，按需动态组队 | 按需 |
+| 👥 **71位专家** | 71位专家统一管理（按部门归并，按需动态组队） | 按需 |
 | 🔄 **多Agent并行** | Promise.allSettled 调度，独立任务并行，依赖任务自动编排 | ✅ MoE路由 |
 | ⚡ **Reasonix缓存** | ImmutablePrefix + AppendOnlyLog + VolatileScratch + Auto-Compact | ✅ 全局永久 |
 | 🎯 **七大融合方向** | PPT/UI/Rust/ComfyUI/文案/短视频/漫剧 — 优化融合不是简单叠加 | 按需 |
@@ -90,20 +90,24 @@
 
 ## 👥 71位专家体系
 
-**36位人物视角** — 每个角度都是一个经典思维方式：
 
-| 领域 | 专家 |
-|------|------|
-| 🎬 内容创作 | PGraham / MrBeast / 臧老师 / Naval / 张雪峰 |
-| 🧪 技术 | Karpathy / Ilya / Linus / Bellard / Carmack |
-| 🎨 设计 | Steve Jobs / Tufte / Da Vinci / 宫崎骏 |
-| 🧠 思维 | 芒格 / 费曼 / 孙子 / 塔勒布 / 马斯克 |
-| 🏢 商业 | 张一鸣 / 孙宇晨 / Bezos / Musk / Drucker |
-| ⚔️ 战略 | 特朗普 / Sun Tzu / Miyamoto / 毛泽东 |
+**71位专家（按部门归并）** — 不再区分人物视角与领域专精，统一调度：
 
-**35位领域专精专家** — 覆盖安全/法务/分析/教育/运营等领域
+| 部门 | 专家数 | 代表 |
+|------|--------|------|
+| 🧠 参谋本部 | 7位 | 费曼/芒格/孙子/Taleb/Naval/Ilya/张一鸣 |
+| 🕵️ 情报局 | 9位 | Mitnick/Snowden/Elon + UX/Trend/Cultural |
+| 🔒 安全局 | 9位 | Schneier/Moore/Geohot + Security/Compliance/Threat |
+| 📝 第一师(内容) | 12位 | PGraham/MrBeast/臧老师/张雪峰 + Narratologist/Coach |
+| 🎨 第二师(视觉) | 12位 | Tufte/impeccable + Brand/UI/UX/Prompt |
+| 🤖 第三师(ComfyUI) | 4位 | Carmack/Karpathy + Technical Artist/Image Prompt |
+| 💻 第四师(开发) | 9位 | Linus/Bellard + Prototyper/Reviewer/Architect |
+| 🎯 质监局 | 4位 | Reality Checker/Risk Assessor/Performance/Accessibility |
+| 🚀 远征军 | 5位 | Project Shepherd/Workflow/Producer |
+| 其他 | 7位 | 提示词局/进化部/试验场/档案局 |
 
-> 女娲(Human Resources)根据任务需求动态组队，确保每个项目都有最佳团队配置
+> 女娲(Human Resources)根据71位专家统一匹配，按部门+领域双维度检索，确保最佳团队配置
+
 
 ---
 
@@ -233,3 +237,6 @@ MIT — 自由使用，欢迎 Star ⭐
 ---
 
 **Made with 🧠 by AI-Wuji · [GitHub](https://github.com/AI-wuji/wuji-legion-codex)**
+
+
+
