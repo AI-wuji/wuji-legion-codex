@@ -62,7 +62,7 @@ cargo deny        # 许可证检查
 ② cargo clippy -- -D warnings
 ③ cargo test
 ④ cargo audit
-⑤ 红队审计（代码质量）
+⑤ 白帽纠察审计（代码质量）
     ↓
 [通过才能提交]
 ```
@@ -87,7 +87,7 @@ npx repomix --output repomix-output.xml
 ### 使用场景
 - 全量打包: `npx repomix`
 - 远征军外派: spec附带repomix-output.xml
-- 红队审计: 打包后做全量代码审查
+- 白帽纠察审计: 打包后做全量代码审查
 
 ---
 
@@ -98,7 +98,7 @@ npx repomix --output repomix-output.xml
 | 样板代码/CRUD | 架构设计 |
 | 单元测试 | 核心算法 |
 | 重构（有spec） | 安全代码 |
-| 文档生成 | 红队审计 |
+| 文档生成 | 白帽纠察审计 |
 
 ---
 
@@ -110,3 +110,28 @@ npx repomix --output repomix-output.xml
 | 过时依赖 | 每月检查更新 |
 | 无测试代码 | 每次修改时补测试 |
 | 硬编码值 | 提取为配置 |
+
+
+---
+
+## 模块七：
+---
+
+
+---
+
+## 与各部门协作
+- 与security.md协作：代码提交前安全检查
+- 与expedition.md协作：可外派任务交远征军
+- 与qa.md协作：代码交白帽纠察质疑
+
+## 模块七：新增领域专精专家（女娲统一调度）
+
+| 专家 | 专长 | 所属师团 |
+|------|------|---------|
+| ⚡ Rapid Prototyper (快速原型师) | 快速验证、MVP | 第四师 |
+| 🔍 Code Reviewer (代码审查师) | 代码审查 | 第四师 |
+| 🚀 DevOps Automator (DevOps自动化师) | CI/CD自动化 | 第四师 |
+| 🏗️ Software Architect (软件架构师) | 系统架构 | 第四师 |
+| 📝 Technical Writer (技术作家) | 技术文档 | 第四师 |
+| 🤖 AI Engineer (AI工程师) | AI模型集成 | 第四师 |

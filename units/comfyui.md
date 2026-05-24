@@ -67,7 +67,7 @@ class WujiCustomNode:
 ② 写Python壳（nodes.py）
 ③ 性能敏感部分 → Rust实现（rust_core/）
 ④ 写工作流JSON测试
-⑤ 红队审计（安全检查：路径遍历/注入/资源泄露）
+⑤ 白帽纠察审计（安全检查：路径遍历/注入/资源泄露）
 ⑥ 注册到工作流库
 ```
 
@@ -154,3 +154,25 @@ ComfyUI工作流执行：
 | ComfyUI | 🐢慢 | ⭐⭐⭐⭐⭐ | 高质量出片 |
 | 即梦CLI | ⚡快 | ⭐⭐⭐⭐ | 片段补全 |
 | ComfyUI+AnimateDiff | 🐢慢 | ⭐⭐⭐⭐⭐ | 动画/动效 |
+
+
+---
+
+## 模块六：
+---
+
+
+---
+
+## 与各部门协作
+- 与visual.md协作：接收PPT图片做动效渲染
+- 与content.md协作：接收视频脚本需求
+- 与prompt_engine.md协作：图像生成prompt输入
+- 与qa.md协作：输出交白帽纠察质疑
+
+## 模块六：新增领域专精专家（女娲统一调度）
+
+| 专家 | 专长 | 所属师团 |
+|------|------|---------|
+| 🎨 Image Prompt Engineer (图像提示词工程师) | 图像prompt+ComfyUI工作流 | 第二师+第三师 |
+| 🎭 Technical Artist (技术美术) | 技术美术+渲染 | 第三师 |

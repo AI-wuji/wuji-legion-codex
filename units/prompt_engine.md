@@ -107,7 +107,16 @@
 
 ---
 
-## 模块五：Prompt质量检查清单（红队审计用）
+
+---
+
+## 与各部门协作
+- 与content.md协作：提供文案的prompt优化
+- 与visual.md协作：提供图像设计prompt
+- 与comfyui.md协作：提供ComfyUI工作流prompt
+- 与qa.md协作：prompt策略交白帽纠察质疑
+
+## 模块五：Prompt质量检查清单（白帽纠察审计用）
 
 | 检查项 | 说明 |
 |--------|------|

@@ -95,6 +95,14 @@ Copy-Item -Path "E:\wuji-backups\{项目名}\{目标备份}\*" -Destination "{�
 
 ---
 
+
+---
+
+## 与各部门协作
+- 与auto_evolve.md协作：崩溃报告+错误DNA记录
+- 与qa.md协作：审计报告归档
+- 与proving_ground.md协作：测试报告存档
+
 ## 七、备份保留策略
 
 | 类型 | 保留期限 |

@@ -87,3 +87,26 @@ Invoke-RestMethod -Uri "https://api.github.com/search/code?q=<关键词>"
 
 ### 网页搜索
 通过 DeepSeek 免费通道的网页搜索能力获取实时信息。
+
+
+---
+
+## 四、
+---
+
+
+---
+
+## 与各部门协作
+- 与security.md协作：搜索结果的许可证安全一审
+- 与proving_ground.md协作：提供技术调研给试验场
+- 与nuwa.md协作：推荐领域专家
+- 与qa.md协作：情报可信度交白帽纠察质疑
+
+## 四、新增领域专精专家（女娲统一调度）
+
+| 专家 | 专长 | 所属部门 |
+|------|------|---------|
+| 🔬 UX Researcher (用户研究员) | 用户研究、可用性测试 | 情报局 |
+| 📈 Trend Researcher (趋势研究员) | 技术趋势、前沿追踪 | 情报局 |
+| 🏛️ Cultural Intelligence Strategist (文化情报策略师) | 跨文化分析 | 情报局 |

@@ -124,3 +124,29 @@ HTML/UI制作 = impeccable(美化引擎) × typeui(设计系统) × 视觉部风
 - ❌ 禁止颜色超过3种主色
 - ❌ 禁止字体超过2种
 - ❌ 禁止无留白的密集排版
+
+
+---
+
+## 模块七：
+---
+
+
+---
+
+## 与各部门协作
+- 与content.md协作：接收slide-spec.json作为PPT输入
+- 与comfyui.md协作：PPT图片传入comfyui做动效
+- 与prompt_engine.md协作：图像prompt需要时调用
+- 与qa.md协作：设计稿交白帽纠察质疑
+
+## 模块七：新增领域专精专家（女娲统一调度）
+
+| 专家 | 专长 | 所属师团 |
+|------|------|---------|
+| 🛡️ Brand Guardian (品牌守护者) | 品牌视觉一致性 | 第二师 |
+| 🎭 Visual Storyteller (视觉叙事师) | 视觉叙事、信息图 | 第二师 |
+| ✨ Whimsy Injector (趣味注入师) | 创意趣味、记忆点 | 第二师 |
+| 🖥️ UI Designer (UI设计师) | 界面设计、组件系统 | 第二师 |
+| 🧭 UX Architect (UX架构师) | 用户体验、信息架构 | 第二师 |
+| 🎨 Image Prompt Engineer (图像提示词工程师) | 图像prompt | 第二师+第三师 |

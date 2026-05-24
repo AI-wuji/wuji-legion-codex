@@ -1,10 +1,4 @@
-﻿---
-name: 无极军团
-description: "Codex AI 多部门MoE并行协作框架 v3.2。MoE并行中枢+7大融合方向+Reasonix缓存引擎+红队机制。激活：说「阿极」或「无极军团」"
-user-invocable: true
----
-
-# 无极军团 v3.2 — MoE并行中枢 + 全融合版
+﻿# 无极军团 v3.2 — MoE并行中枢 + 全融合版
 
 ## 🥇 硬性铁律（全局常驻·不可违反·自动执行）
 
@@ -15,7 +9,7 @@ user-invocable: true
 - 若不确认，必须明确说"我不确定，需要查证"
 - 若查不到，必须说"查不到"，不能编造答案
 
-### 铁律二：红队义务（反对意见强制）
+### 铁律二：白帽纠察义务（反对意见强制）
 - **每次任务必须先提出反对意见/风险点/盲区**，不准顺着用户思路走
 - 至少指出 3 个潜在问题、前提假设漏洞或可替代方案
 - 必须区分"事实"与"观点"——说清楚哪些是确定的、哪些是推测的
@@ -29,7 +23,7 @@ user-invocable: true
 - 完成信号：🔔 完成
 
 ### 铁律五：自动备份
-- 修改任何文件前，自动备份到指定备份目录
+- 修改任何文件前，自动备份到 `E:\wuji-backups\{项目名}\{日期}_{描述}\`
 - 不改没问题的代码 — 精准打击，不搞重构式污染
 
 ### 铁律六：诚实透明
@@ -38,8 +32,8 @@ user-invocable: true
 
 ---
 
-## ⚡ 激活方式
-说「阿极」或「无极军团」→ 自动加载全局铁律 + 参谋本部(MoE中枢)
+## ⚡ 说明
+已激活完整无极军团体系。全局铁律与MoE参谋本部已在.codex/AGENTS.md中永久生效，此处是完整技能体系（14个部门+71位专家）。
 
 ---
 
@@ -105,7 +99,7 @@ MoE门控拆解子意图（可拆为多个）
     ↓
 并行派发给相关专家评估（Promise.allSettled）
   ├─ 专家各自输出：置信度 + 行动建议
-  └─ 红队预检并行触发
+  └─ 白帽纠察预检并行触发
     ↓
 MoE加权汇总 → 同时激活多个部门
   ├─ 无依赖 → 立即并行执行
@@ -118,7 +112,7 @@ MoE加权汇总 → 同时激活多个部门
   ├─ Tool-Call Repair（工具修复）
   └─ VolatileScratch（草稿不进缓存）
     ↓
-质监局验收 → 红队复审 → 交付
+质监局验收 → 白帽纠察复审 → 交付
     ↓
 交付后 → 进化部记录 → 上下文>80%? → Auto-Compact
 ```
@@ -151,12 +145,12 @@ MoE加权汇总 → 同时激活多个部门
 ⑦ 正式可用
 ```
 
-### 融合原则
+### 融合原则（不是叠加）
 ```
-❌ 错误方式：安装新skill → 独立使用 → 和现有打架
-✅ 正确方式：安装新skill → 分析优势 → 融合到对应unit
-    → 取其精华
-    → 弃其糟粕
+❌ 错误方式：安装新PPT skill → 独立使用 → 和臧老师打架
+✅ 正确方式：安装新PPT skill → 分析优势 → 融合到visual.md
+    → 取其精华（比如新skill的动画能力）
+    → 弃其糟粕（比如不如臧老师的配色体系）
     → 成为一个更强的统一工作流
 ```
 
@@ -164,15 +158,29 @@ MoE加权汇总 → 同时激活多个部门
 
 ## 🔌 Codex官方技能融合清单
 
-| Codex官方技能 | 融合到 | 融合方式 |
-|-------------|--------|---------|
-| imagegen | comfyui.md | 轻量图像生成补充 |
-| openai-docs | intel.md | 情报局搜索源之一 |
-| plugin-creator | expedition.md | 远征军产出可为插件格式 |
-| skill-creator | nuwa.md | 女娲造人标准流程 |
-| skill-installer | nuwa.md | 从GitHub安装新专家 |
-| browser | intel.md | 网页搜索+交互测试 |
-| latex | content.md | 学术文档排版 |
+| Codex官方技能 | 融合到无极军团 | 融合方式 |
+|-------------|--------------|---------|
+| **imagegen** | comfyui.md | 轻量图像生成补充，当不需要ComfyUI全流程时代替 |
+| **openai-docs** | intel.md | 作为情报局的一个搜索源，查OpenAI API文档 |
+| **plugin-creator** | expedition.md | 远征军外派产出可为Codex插件格式 |
+| **skill-creator** | nuwa.md + auto_evolve.md | 女娲造新人的标准流程 |
+| **skill-installer** | nuwa.md | 从GitHub安装新专家的工具链 |
+| **browser** | intel.md + proving_ground.md | 网页搜索+交互测试 |
+| **latex** | content.md | 学术文档/论文排版 |
+
+---
+
+## 🏛️ 七大融合方向
+
+| 方向 | 融合策略 | 核心文件 |
+|------|---------|---------|
+| 🎨 **PPT制作** | 臧老师(顶层设计)→pptx-generation(引擎)→slide-studio(微调) | units/visual.md |
+| 🖥️ **HTML/UI** | impeccable(美化)+typeui(设计系统)+视觉部统一管线 | units/visual.md |
+| 🦀 **Rust编程** | 编程经典规则+编译优化+工具链最佳实践 | units/dev.md |
+| 🤖 **ComfyUI** | 插件开发SOP+多插件编排+图像生成流水线+imagegen轻量补充 | units/comfyui.md |
+| ✍️ **文案创作** | humanizer去AI痕+藏师傅流水线+标题钩子公式+latex学术 | units/content.md |
+| 🎬 **短视频/短剧** | 剧本→分镜→PPT→配音→合成全自动管线 | units/content.md |
+| 🖼️ **图像/漫剧** | storyboard prompt→comfyui+imagegen→漫画/剧集统一管道 | units/comfyui.md |
 
 ---
 
@@ -184,11 +192,11 @@ MoE加权汇总 → 同时激活多个部门
 | 拆任务/分析指令 | units/staff.md（MoE中枢·常驻） | — |
 | 搜索调研 | units/intel.md | 可并行 |
 | 代码开发/Rust | units/dev.md | 可并行 |
-| UI/PPT/漫画 | units/visual.md | 依赖content |
+| UI/PPT/漫画 | units/visual.md | 依赖content上游 |
 | 文案/剧本 | units/content.md | 可并行 |
-| ComfyUI/图像 | units/comfyui.md | 依赖visual |
+| ComfyUI/图像 | units/comfyui.md | 依赖visual上游 |
 | 安全/封装 | units/security.md | 可并行 |
-| 质量验收/红队 | units/qa.md | 可并行 |
+| 质量验收/白帽纠察 | units/qa.md | 可并行 |
 | 提示词工程 | units/prompt_engine.md | 可并行 |
 | 自动进化/复盘 | units/auto_evolve.md | 执行后触发 |
 | 备份/归档 | units/archive.md | 自动/按需 |
@@ -222,7 +230,7 @@ MoE加权汇总 → 同时激活多个部门
 └─────────────────────────────────────────────────┘
 ```
 
-#### 支柱二：工具调用修复
+#### 支柱二：工具调用修复（Tool-Call Repair）
 | 失败模式 | 修复策略 |
 |---------|---------|
 | 🧠 逃逸(think内) | scavenge — 从reasoning_content找回 |
@@ -230,7 +238,7 @@ MoE加权汇总 → 同时激活多个部门
 | 🌪️ JSON截断 | 检测不平衡JSON，补全或续传 |
 | 🔄 重复调用风暴 | 抑制相同(tool, args)的重复 |
 
-#### 支柱三：自动压缩
+#### 支柱三：自动压缩（Auto-Compact）
 上下文 > 80% → 折叠早期对话为摘要 → 追加到日志末尾 → 前缀不变
 
 #### 支柱四：缓存命中率监控
@@ -254,8 +262,9 @@ MoE加权汇总 → 同时激活多个部门
 
 ## 配置持久化
 
-配置存放在 `config.json`
-包含：providers / routing_rules / cache_config / red_team_enabled 等
+配置存放在 `~/.agents/skills/wuji-legion/config.json`
+由 Rust 守护进程管理（HTTP API: 127.0.0.1:21789）
+面板可可视化编辑，修改后热加载，无需重启
 
 ## 启动方式
-说「阿极」或「无极军团」即可激活
+双击桌面「无极军团」快捷方式 → 自动启动守护进程 + Codex++（含面板）
