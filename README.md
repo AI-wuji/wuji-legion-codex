@@ -219,6 +219,30 @@ cp -Recurse .\wuji-legion-codex $env:USERPROFILE\.agents\skills\wuji-legion
 
 ---
 
+
+## 💾 灾备恢复
+
+**系统重装或 Codex 重装后，三步恢复：**
+
+### 一键恢复
+```bash
+cd E:\wuji-projects\
+git clone https://github.com/AI-wuji/wuji-legion-codex.git
+cd wuji-legion-codex
+.\scripts\wuji-restore.ps1
+```
+
+### 手动恢复
+| 步骤 | 操作 | 说明 |
+|------|------|------|
+| 1 | `git clone https://github.com/AI-wuji/wuji-legion-codex.git` | 拉取最新版本 |
+| 2 | 复制 `GLOBAL_AGENTS.md` → `.codex/AGENTS.md` | 恢复铁律+白帽纠察+MoE+Cache |
+| 3 | 复制整个仓库 → `.agents/skills/wuji-legion/` | 恢复14个部门+71位专家+所有配置 |
+| 4 | Codex Desktop → 设置 → 插件 → 搜名称安装 | 恢复17个市场插件 |
+| 5 | 新建对话，说"阿极" | 验证激活 |
+
+**备份策略：** 仓库本身就是备份。所有配置都在 GitHub 上，重装后 git clone 即可。插件需要重新从市场安装（因为有 OAuth 认证），但 `units/plugins.md` 记录了完整清单。
+
 ## 📜 版本历史
 
 | 版本 | 日期 | 关键更新 |
@@ -238,6 +262,7 @@ MIT — 自由使用，欢迎 Star ⭐
 ---
 
 **Made with 🧠 by AI-Wuji · [GitHub](https://github.com/AI-wuji/wuji-legion-codex)**
+
 
 
 
