@@ -1,0 +1,146 @@
+﻿{
+  "providers": [
+    {
+      "id": "deepseek-web",
+      "name": "DeepSeek (免费网页)",
+      "provider_type": "deepseek_web",
+      "api_key": null,
+      "base_url": null,
+      "currency": "CNY",
+      "enabled": true,
+      "priority": 0,
+      "model": "deepseek-chat"
+    },
+    {
+      "id": "deepseek-api",
+      "name": "DeepSeek API",
+      "provider_type": "deepseek_api",
+      "api_key": null,
+      "base_url": "https://api.deepseek.com",
+      "currency": "CNY",
+      "enabled": false,
+      "priority": 1,
+      "model": "deepseek-chat"
+    },
+    {
+      "id": "openai-api",
+      "name": "OpenAI",
+      "provider_type": "openai",
+      "api_key": null,
+      "base_url": "https://api.openai.com",
+      "currency": "USD",
+      "enabled": false,
+      "priority": 5,
+      "model": "gpt-4o"
+    },
+    {
+      "id": "local-ollama",
+      "name": "本地 Ollama",
+      "provider_type": "local_ollama",
+      "api_key": null,
+      "base_url": "http://localhost:11434",
+      "currency": "CNY",
+      "enabled": false,
+      "priority": 3,
+      "model": "qwen2.5:7b"
+    }
+  ],
+  "projects_root": "E:\\wuji-projects",
+  "backups_root": "E:\\wuji-backups",
+  "routing_mode": "smart",
+  "active_project": "wuji-legion-v4",
+  "red_team_enabled": true,
+  "iron_rules_version": "3.1",
+  "cache_config": {
+    "target_hit_rate": 0.95,
+    "auto_compact_threshold": 0.8,
+    "tool_repair_enabled": true,
+    "parallel_dispatch_max": 3,
+    "storm_window_size": 5,
+    "flatten_threshold": 10
+  },
+  "routing_rules": [
+    {
+      "id": "search",
+      "name": "🔍 搜索/信息检索",
+      "keywords": ["搜索", "查", "调研", "研究", "搜一下", "find", "search"],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 100
+    },
+    {
+      "id": "code",
+      "name": "💻 代码生成/开发",
+      "keywords": ["写", "开发", "实现", "函数", "生成", "创建", "bug", "修复", "重构", "Rust", "编程", "compile"],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 80
+    },
+    {
+      "id": "content",
+      "name": "✍️ 文案/内容创作",
+      "keywords": ["文章", "文案", "脚本", "剧本", "博客", "故事", "内容"],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 70
+    },
+    {
+      "id": "visual",
+      "name": "🎨 视觉/PPT/UI",
+      "keywords": ["PPT", "设计", "画", "UI", "界面", "页面", "前端", "html", "css"],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 60
+    },
+    {
+      "id": "video",
+      "name": "🎬 视频/短视频/短剧",
+      "keywords": ["视频", "短视频", "短剧", "短片", "动画", "reel"],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 55
+    },
+    {
+      "id": "prompt",
+      "name": "🎯 提示词工程",
+      "keywords": ["prompt", "提示词", "分镜", "故事板", "storyboard"],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 50
+    },
+    {
+      "id": "comfyui",
+      "name": "🤖 ComfyUI/图像生成",
+      "keywords": ["ComfyUI", "工作流", "生图", "图像", "图片", "插件", "节点"],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 45
+    },
+    {
+      "id": "qa",
+      "name": "✅ 审计/红队",
+      "keywords": ["审计", "审核", "检查", "验收", "审查", "质量", "反对", "批评"],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 40
+    },
+    {
+      "id": "evolve",
+      "name": "🔄 进化/复盘",
+      "keywords": ["复盘", "进化", "优化", "自动", "学习", "改进", "分析失败"],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 30
+    },
+    {
+      "id": "chat",
+      "name": "💬 日常对话",
+      "keywords": [],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 0
+    }
+  ],
+  "deepseek_session_path": null,
+  "python_path": "python"
+}
