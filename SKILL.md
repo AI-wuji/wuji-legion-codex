@@ -268,3 +268,18 @@ MoE加权汇总 → 同时激活多个部门
 
 ## 启动方式
 双击桌面「无极军团」快捷方式 → 自动启动守护进程 + Codex++（含面板）
+
+---
+
+## 八、插件注册（v5.4 + 融合17个Codex插件）
+
+已缓存并注册到各部门：
+- **visual.md**: Figma, Canva, Remotion, Cloudinary
+- **comfyui.md**: HeyGen, Cloudinary, Remotion, Hugging Face
+- **dev.md**: GitHub, Supabase, Vercel, CircleCI, Sentry, CodeRabbit, Hugging Face, Game Studio
+- **content.md**: Notion, Readwise, Remotion, HeyGen
+- **expedition.md**: Linear, Notion, GitHub
+- **qa.md**: CodeRabbit, Sentry
+- **intel.md**: Readwise, Hugging Face
+
+调用规则：参谋本部路由 → 对应部门执行 → 部门调用插件技能

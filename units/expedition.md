@@ -168,3 +168,13 @@ npx repomix --output repomix-output.xml
 阻塞项: visual.md风格选择 — 等待参谋部
 ```
 
+
+---
+
+## 七、Codex插件融合
+
+| 插件 | 用途 | 调用场景 |
+|------|------|---------|
+| **Linear** | Issue跟踪/项目管理 | 需要任务分解/进度跟踪时 |
+| **Notion** | 文档协作/Spec | 需要项目文档/需求文档时 |
+| **GitHub** | PR/Issue管理 | 开发项目进度跟踪 |

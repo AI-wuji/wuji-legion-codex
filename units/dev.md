@@ -135,3 +135,20 @@ npx repomix --output repomix-output.xml
 | 🏗️ Software Architect (软件架构师) | 系统架构 | 第四师 |
 | 📝 Technical Writer (技术作家) | 技术文档 | 第四师 |
 | 🤖 AI Engineer (AI工程师) | AI模型集成 | 第四师 |
+
+---
+
+## 七、Codex插件融合
+
+| 插件 | 用途 | 比什么好 | 融合方式 |
+|------|------|---------|---------|
+| **GitHub** | PR/Issue/CI管理 | 原生git | 项目协作入口 |
+| **Supabase** | 数据库/Auth/Storage | Neon/Convex | 后端基础设施 |
+| **Vercel** | 前端部署 | Netlify/Render | 发布通道 |
+| **CircleCI** | CI/CD | — | 自动化流水线 |
+| **Sentry** | 错误追踪 | — | QA质量反馈 |
+| **CodeRabbit** | AI代码审查 | — | PR自动审查 |
+| **Hugging Face** | 模型/数据集 | — | AI资源查询 |
+| **Game Studio** | 浏览器游戏 | — | 创意输出通道 |
+
+**调用链路：** dev.md收到任务 → 判断需要哪个插件 → 调用对应Codex技能 → 交付

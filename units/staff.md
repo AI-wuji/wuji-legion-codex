@@ -262,3 +262,34 @@ MoE门控拆解任务后，不是直接激活部门，而是先生成一个**执
 - 各部门只加载自己的规则，不加载其他部门的
 - 并行执行时共享上下文，不重复传递
 - 白帽纠察输出精简版（仅反对点，不重复全量）
+
+---
+
+## 七、插件调度规则（v5.4 +）
+
+当需要调用外部Codex插件时，按以下规则路由：
+
+| 插件 | 路由到 | 触发条件 |
+|------|--------|---------|
+| Figma | visual.md | 需要UI设计/设计稿转代码 |
+| Canva | visual.md | 需要快速设计/素材 |
+| Remotion | visual.md → comfyui.md | 需要程序化视频 |
+| HeyGen | comfyui.md | 需要数字人/头像视频 |
+| Cloudinary | comfyui.md + archive.md | 需要媒体资产管理 |
+| GitHub | dev.md | 任何GitHub操作 |
+| Supabase | dev.md | 需要后端/数据库 |
+| Vercel | dev.md | 需要部署上线 |
+| CircleCI | dev.md | 需要CI/CD |
+| Sentry | dev.md + qa.md | 需要错误追踪 |
+| Hugging Face | comfyui.md + dev.md | 需要AI模型/数据集 |
+| CodeRabbit | dev.md + qa.md | 需要代码审查 |
+| Game Studio | dev.md | 需要游戏/交互式内容 |
+| Notion | content.md + expedition.md | 需要文档协作 |
+| Readwise | intel.md + content.md | 需要知识管理 |
+| Linear | expedition.md | 需要任务跟踪 |
+
+### 调用原则
+1. 插件不直接响应指令，通过对应部门调用
+2. 调用前检查插件是否已安装（查看`units/plugins.md`）
+3. 未安装的插件提示用户安装
+4. 插件技能文件在Codex安装目录，自动可用

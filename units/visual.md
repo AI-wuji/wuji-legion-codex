@@ -150,3 +150,16 @@ HTML/UI制作 = impeccable(美化引擎) × typeui(设计系统) × 视觉部风
 | 🖥️ UI Designer (UI设计师) | 界面设计、组件系统 | 第二师 |
 | 🧭 UX Architect (UX架构师) | 用户体验、信息架构 | 第二师 |
 | 🎨 Image Prompt Engineer (图像提示词工程师) | 图像prompt | 第二师+第三师 |
+
+---
+
+## 七、Codex插件融合
+
+| 插件 | 用途 | 调用方式 |
+|------|------|---------|
+| **Figma** | 设计稿→代码、UI组件库 | 需要UI实现时优先用Figma plugin |
+| **Canva** | 轻量设计、PPT素材 | 需要快速出图时用Canva |
+| **Remotion** | React视频、动态图形 | 需要程序化动画时用Remotion |
+| **Cloudinary** | 媒体资产CDN管理 | 大量图片管理时调用 |
+
+**融合原则：** Figma做专业UI→Canva做素材→Remotion做视频→Cloudinary管资产

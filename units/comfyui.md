@@ -176,3 +176,14 @@ ComfyUI工作流执行：
 |------|------|---------|
 | 🎨 Image Prompt Engineer (图像提示词工程师) | 图像prompt+ComfyUI工作流 | 第二师+第三师 |
 | 🎭 Technical Artist (技术美术) | 技术美术+渲染 | 第三师 |
+
+---
+
+## 七、Codex插件融合
+
+| 插件 | 用途 | 融合方式 |
+|------|------|---------|
+| **HeyGen** | AI数字人视频 | 短视频流水线的数字人出镜环节 |
+| **Cloudinary** | 媒体资产管理 | 生成图片/视频的CDN分发 |
+| **Remotion** | React视频生成 | 程序化动画+ComfyUI出图组合 |
+| **Hugging Face** | 模型/数据集查询 | ComfyUI工作流模型选型参考 |
