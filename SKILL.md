@@ -273,7 +273,7 @@ MoE加权汇总 → 同时激活多个部门
 
 ## 八、插件注册（v5.4 + 融合17个Codex插件）
 
-已缓存并注册到各部门：
+✅ 已安装并注册到各部门：
 - **visual.md**: Figma, Canva, Remotion, Cloudinary
 - **comfyui.md**: HeyGen, Cloudinary, Remotion, Hugging Face
 - **dev.md**: GitHub, Supabase, Vercel, CircleCI, Sentry, CodeRabbit, Hugging Face, Game Studio
@@ -283,3 +283,4 @@ MoE加权汇总 → 同时激活多个部门
 - **intel.md**: Readwise, Hugging Face
 
 调用规则：参谋本部路由 → 对应部门执行 → 部门调用插件技能
+
