@@ -1,41 +1,186 @@
-﻿# 女娲（人事部+多Agent调度引擎）
+﻿# 女娲（人事部 · 专家注册中心）
 
 ## 核心定位
-接收MoE中枢的专家需求 → 动态组队 → 并行派发 → 收集结果 → 交质监局+白帽纠察
+**专家注册中心** — 管理71位专家的注册、检索和动态组队，不再内嵌专家详情。
+
+> 每个专家的完整定义在 `experts/` 目录下各自的 `.md` 文件中。
+> 女娲 = 索引+调度，不存储专家详情。
 
 ---
 
-## 一、MoE 多Agent并行调度架构
+## 一、架构说明
 
-```
-[参谋本部(MoE) 发送需求]
-    ↓
-女娲拆解为多个专家角色需求 ← ← ← ← ← ← ←
-    ↓                    ↑                    ↑
-并行匹配专家（Promise.allSettled）           ↑
-  ├─ 角色1: ___ → 匹配最佳专家               ↑
-  ├─ 角色2: ___ → 匹配最佳专家               ↑
-  └─ 角色3: ___ → 匹配最佳专家               ↑
-    ↓                    ↑                    ↑
-动态组队 → 并行派发 → 收集结果               ↑
-    ↓                    ↑                    ↑
-质监局验收 + 白帽纠察审计                         ↑
-    ↓                    ↑                    ↑
-交付MoE中枢                                  ↑
-    ↓                                         ↑
-进化部记录本次调度经验 ← ← ← ← ← ← ← ← ← ← ←
-```
+借鉴 **Agency-Agents** 角色架构模式：
+
+- **每个专家 = 独立 `.md` 文件**，含 YAML frontmatter + 结构化定义
+- **部门目录组织**：`experts/{department}/{expert}.md`
+- **统一结构**：身份→使命→规则→风格→指标
+- **女娲作为注册中心**：只维护索引表，不重复存储详情
 
 ---
 
-## 二、动态组队算法
+## 二、专家索引（按部门）
+
+### 🧠 参谋本部(staff) — 7位
+`experts/staff/`
+
+| 专家 | 专长 | 文件 | 快速激活 |
+|------|------|------|---------|
+| 费曼 | 简化/教学/物理思维 | `experts/staff/费曼.md` | 需要复杂问题简化时 |
+| 芒格 | 多元思维/反向思考 | `experts/staff/芒格.md` | 需要决策检查时 |
+| 孙子 | 战略/竞争/情报 | `experts/staff/孙子.md` | 需要竞争分析时 |
+| Taleb | 反脆弱/尾部风险 | `experts/staff/Taleb.md` | 需要风险评估时 |
+| Naval | 创业/财富/杠杆 | `experts/staff/Naval.md` | 需要商业决策时 |
+| Ilya Sutskever | AI安全/Scaling Law | `experts/staff/Ilya Sutskever.md` | 需要AI方向判断时 |
+| 张一鸣 | 组织/系统增长 | `experts/staff/张一鸣.md` | 需要组织决策时 |
+
+### 🕵️ 情报局(intel) — 9位
+`experts/intel/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| Kevin Mitnick | 社会工程/信息搜集 | `experts/intel/Kevin Mitnick.md` |
+| Tsutomu Shimomura | 技术追踪/溯源 | `experts/intel/Tsutomu Shimomura.md` |
+| Edward Snowden | 信息透明/数据安全 | `experts/intel/Edward Snowden.md` |
+| Adrian Lamo | 网络侦察/信息挖掘 | `experts/intel/Adrian Lamo.md` |
+| Aaron Swartz | 开放信息/知识共享 | `experts/intel/Aaron Swartz.md` |
+| Elon Musk | 第一性原理/工程思维 | `experts/intel/Elon Musk.md` |
+| UX Researcher | 用户研究/可用性测试 | `experts/intel/UX Researcher.md` |
+| Trend Researcher | 技术趋势/市场趋势 | `experts/intel/Trend Researcher.md` |
+| Cultural Intelligence Strategist | 跨文化分析 | `experts/intel/Cultural Intelligence Strategist.md` |
+
+### 🔒 安全局(security) — 6位
+`experts/security/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| Bruce Schneier | 安全体系/密码学 | `experts/security/Bruce Schneier.md` |
+| HD Moore | 漏洞利用/渗透 | `experts/security/HD Moore.md` |
+| Geohot | 逆向工程/破解 | `experts/security/Geohot.md` |
+| Security Engineer | 应用安全/代码审计 | `experts/security/Security Engineer.md` |
+| Compliance Auditor | 合规检查/许可证审计 | `experts/security/Compliance Auditor.md` |
+| Threat Detection Engineer | 威胁建模/入侵检测 | `experts/security/Threat Detection Engineer.md` |
+
+### 🎯 质监局+白帽纠察(qa) — 4位
+`experts/qa/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| Reality Checker | 证据驱动/默认质疑 | `experts/qa/Reality Checker.md` |
+| Risk Assessor | 风险识别/影响评估 | `experts/qa/Risk Assessor.md` |
+| Performance Benchmarker | 性能测试/基准对比 | `experts/qa/Performance Benchmarker.md` |
+| Accessibility Auditor | 无障碍评估/WCAG | `experts/qa/Accessibility Auditor.md` |
+
+### 📝 第一师(content) — 12位
+`experts/content/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| Paul Graham | 简洁叙事/本质 | `experts/content/Paul Graham.md` |
+| MrBeast | 病毒内容/标题公式 | `experts/content/MrBeast.md` |
+| 张雪峰 | 教育/职业/实用 | `experts/content/张雪峰.md` |
+| 臧老师(PPT) | PPT设计/视觉传达 | `experts/content/臧老师(PPT).md` |
+| X-Mastery | 社媒运营/节奏 | `experts/content/X-Mastery.md` |
+| humanizer引擎 | 去AI痕迹 | `experts/content/humanizer引擎.md` |
+| Steve Jobs | 设计美学/产品感 | `experts/content/Steve Jobs.md` |
+| Narratologist | 故事结构/叙事弧线 | `experts/content/Narratologist.md` |
+| Behavioral Nudge Engineer | 行为心理学/说服设计 | `experts/content/Behavioral Nudge Engineer.md` |
+| Short Video Coach | 短视频脚本/hook设计 | `experts/content/Short Video Coach.md` |
+| Podcast Strategist | 音频内容/对话设计 | `experts/content/Podcast Strategist.md` |
+| Book Co-Author | 长文结构/知识输出 | `experts/content/Book Co-Author.md` |
+
+### 🎨 第二师(visual) — 8位
+`experts/visual/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| Edward Tufte | 数据可视化 | `experts/visual/Edward Tufte.md` |
+| impeccable引擎 | UI设计/前端美化 | `experts/visual/impeccable引擎.md` |
+| Brand Guardian | 品牌视觉一致性 | `experts/visual/Brand Guardian.md` |
+| Visual Storyteller | 视觉叙事/信息图 | `experts/visual/Visual Storyteller.md` |
+| Whimsy Injector | 创意趣味/幽默设计 | `experts/visual/Whimsy Injector.md` |
+| UI Designer | 界面设计/组件系统 | `experts/visual/UI Designer.md` |
+| UX Architect | 用户体验/信息架构 | `experts/visual/UX Architect.md` |
+| Image Prompt Engineer | 图像prompt/风格控制 | `experts/visual/Image Prompt Engineer.md` |
+
+### 🤖 第三师(comfyui) — 4位
+`experts/comfyui/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| Image Prompt Engineer | ComfyUI工作流prompt | `experts/comfyui/Image Prompt Engineer.md` |
+| Technical Artist | 技术美术/渲染管线 | `experts/comfyui/Technical Artist.md` |
+| John Carmack | 引擎开发/性能优化 | `experts/comfyui/John Carmack.md` |
+| Andrej Karpathy | AI/深度学习 | `experts/comfyui/Andrej Karpathy.md` |
+
+### 💻 第四师(dev) — 9位
+`experts/dev/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| Linus Torvalds | 系统编程/版本控制 | `experts/dev/Linus Torvalds.md` |
+| John Carmack | 引擎开发/性能优化 | `experts/dev/John Carmack.md` |
+| Fabrice Bellard | 全栈工程/技术天才 | `experts/dev/Fabrice Bellard.md` |
+| Rapid Prototyper | 快速验证/MVP开发 | `experts/dev/Rapid Prototyper.md` |
+| Code Reviewer | 代码审查/质量把控 | `experts/dev/Code Reviewer.md` |
+| DevOps Automator | CI/CD/部署自动化 | `experts/dev/DevOps Automator.md` |
+| Software Architect | 系统架构/技术选型 | `experts/dev/Software Architect.md` |
+| Technical Writer | 技术文档/API文档 | `experts/dev/Technical Writer.md` |
+| AI Engineer | 模型集成/AI pipeline | `experts/dev/AI Engineer.md` |
+
+### 💬 提示词局(prompt) — 2位
+`experts/prompt/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| Paul Graham | 简洁/本质/叙事 | `experts/prompt/Paul Graham.md` |
+| Image Prompt Engineer | 图像prompt/风格控制 | `experts/prompt/Image Prompt Engineer.md` |
+
+### 🚀 远征军(expedition) — 3位
+`experts/expedition/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| Project Shepherd | 任务跟踪/进度管理 | `experts/expedition/Project Shepherd.md` |
+| Workflow Architect | 流程优化/自动化 | `experts/expedition/Workflow Architect.md` |
+| Studio Producer | 资源调度/交付控制 | `experts/expedition/Studio Producer.md` |
+
+### 🔄 进化部(evolve) — 2位
+`experts/evolve/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| Experiment Tracker | A/B测试/实验设计 | `experts/evolve/Experiment Tracker.md` |
+| Feedback Synthesizer | 反馈收集/模式识别 | `experts/evolve/Feedback Synthesizer.md` |
+
+### 🧪 试验场(proving) — 2位
+`experts/proving/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| 费曼 | 简化/验证 | `experts/proving/费曼.md` |
+| Taleb | 极端场景/压力测试 | `experts/proving/Taleb.md` |
+
+### 📦 档案局(archive) — 1位
+`experts/archive/`
+
+| 专家 | 专长 | 文件 |
+|------|------|------|
+| Aaron Swartz | 知识管理/归档策略 | `experts/archive/Aaron Swartz.md` |
+
+> **总计：69位专家**（13个部门目录）
+> 部分专家跨部门注册（如Paul Graham同时在content和prompt注册）
+
+---
+
+## 三、动态组队算法
 
 ### 组队规则
-1. **主专家** — 与任务类型最匹配的专家（最高分）
-2. **辅助专家** — 补充主专家的盲区（跨领域互补）
-3. **白帽纠察专家** — 每个团队自动配备一个反对者
+1. **主专家** — 从索引中匹配最佳专家（依据专长+场景标签）
+2. **辅助专家** — 盲区互补（跨部门检索）
+3. **白帽纠察** — 每人团队自动配备反对者
 
-### 并行派发规则
+### 并行派发
 ```
 独立任务 → 所有专家同时执行
 协作任务 → 主专家先执行，辅助并行跟进
@@ -44,305 +189,47 @@
 
 ---
 
-## 三、常见任务的标准组队方案
+## 四、专家文件的完整结构
 
-| 任务类型 | 主专家 | 辅助专家 | 并行策略 |
-|---------|--------|---------|---------|
-| **PPT设计** | 臧老师(设计) | Jobs(审美)+Tufte(图表) | 臧老师定布局→Jobs+Tufte并行审 |
-| **技术架构** | Linus(系统) | Bellard(全栈)+Carmack(性能) | 三人并行评估，加权汇总 |
-| **文案创作** | PGraham(叙事) | humanizer(去AI)+MrBeast(标题) | PGraham写→MrBeast加钩子→humanizer去AI痕 |
-| **安全审计** | Schneier(体系) | HDMoore(漏洞)+白帽纠察(反对) | 三人并行审计，交叉验证 |
-| **风险评估** | Taleb(尾部) | 芒格(反向)+孙子(战略) | 三人独立评估，合并风险矩阵 |
-| **视频创作** | MrBeast(内容) | 臧老师(PPT)+Jobs(视觉) | MrBeast定钩子→臧老师做画面→Jobs审视觉 |
-| **代码开发** | Linus(架构) | Carmack(性能)+张一鸣(组织) | 按模块并行开发 |
-| **AI战略** | Karpathy(技术) | Ilya(安全)+Naval(商业) | Karpathy+Ilya做技术→Naval审商业可行性 |
-| **教育内容** | 张雪峰(实用) | 费曼(简化) | 张雪峰定内容→费曼简化为易懂语言 |
+每个 `experts/{dept}/{name}.md` 文件包含：
+
+```yaml
+---
+name: "专家名"
+description: "一句话描述"
+emoji: "表情符号"
+color: "主题色"
+vibe: "核心感觉"
+---
+```
+
+然后分5个区段：
+1. **身份与记忆** — 角色定义+个性
+2. **核心使命** — 3-5项核心能力
+3. **关键规则** — 行为准则
+4. **沟通风格** — 典型表达方式
+5. **成功指标** — 如何衡量其工作效果
 
 ---
 
-## 四、并行执行协调协议
+## 五、集成流程
 
-### Agent间通信格式
-当多个专家并行执行时，通过共享上下文交换信息：
-
-```json
-{
-  "task_id": "TASK-20260524-001",
-  "lead_expert": "zhang-yiming",
-  "assist_experts": ["linus-torvalds", "john-carmack"],
-  "shared_context": {
-    "input": "设计一个高性能Rust Web框架",
-    "constraints": ["异步优先", "内存安全"],
-    "output_format": "architecture.md"
-  },
-  "parallel_mode": "independent",
-  "deadline": null
-}
+新专家加入流程：
 ```
-
-### 冲突解决
-当多个专家给出不同意见时：
-1. 主专家有最终决定权
-2. 白帽纠察意见必须记录但可被否决（需说明理由）
-3. 无法解决的争议 → 升级到MoE中枢 + 人类仲裁
-
----
-
-## 五、女娲自进化
-
-每次调度后记录：
-```
-调度记录:
-  任务: ___
-  组队: ___
-  并行策略: ___
-  结果: success/failure
-  经验: ___
-```
-自动优化组队规则（通过进化部）。
-
----
-
-## 六、与Codex Skill-Installer集成
-
-当需要从GitHub安装新专家skill时：
-```
-① 情报局搜索到新skill
-② 女娲评估：需要哪位专家类型？
-③ skill-installer安装到.agents/skills/
-④ 试验场验证
-⑤ 注册到人才表
-⑥ 正式可用
+① 情报局搜索/女娲评估需求
+② 创建experts/{dept}/{name}.md（遵循统一模板）
+③ 在本索引表中注册
+④ 试验场验证角色效果
+⑤ 正式可用
 ```
 
 ---
 
+## 六、与各部门协作
 
-## 七、71位专家库（按部门归并 · 统一管理）
-
-### 说明
-无极军团拥有 **71位专家**，每位专家都有统一的身份定义和激活规则。
-不再区分"人物视角"和"领域专精"——所有人都是同等地位的专家，按需动态组队。
-
----
-
-### 🧠 参谋本部(staff.md) — 战略决策 · 7位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| 费曼 | 简化/教学/物理思维 | 万物简化者 | 需要复杂问题简化时 |
-| 芒格 | 多元思维/反向思维 | 反向思考者 | 需要投资决策/认知偏误检查时 |
-| 孙子 | 战略/竞争/情报 | 兵法大师 | 需要竞争分析/战略规划时 |
-| Taleb | 反脆弱/黑天鹅/风险 | 尾部风险猎手 | 需要风控/尾部风险评估时 |
-| Naval | 创业/财富/杠杆 | 杠杆哲学家 | 需要商业决策/杠杆思维时 |
-| Ilya Sutskever | AI安全/Scaling Law | AI安全先知 | 需要AI方向判断/前沿评估时 |
-| 张一鸣 | 组织/产品/规模化 | 增长黑客 | 需要技术管理决策时 |
-
----
-
-### 🕵️ 情报局(intel.md) — 调研搜索 · 9位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| Kevin Mitnick | 社会工程/信息搜集 | 渗透思维者 | 需要隐秘信息获取时 |
-| Tsutomu Shimomura | 技术追踪/溯源 | 技术侦探 | 需要技术溯源时 |
-| Edward Snowden | 信息透明/数据安全 | 隐私卫士 | 需要信息真实性核查时 |
-| Adrian Lamo | 网络侦察/信息挖掘 | 深网猎手 | 需要深网信息时 |
-| Aaron Swartz | 开放信息/知识共享 | 知识布道者 | 需要知识整理时 |
-| UX Researcher | 用户研究/可用性测试 | 用户代言人 | 需要用户调研时 |
-| Trend Researcher | 技术趋势/市场趋势 | 趋势猎手 | 需要行业趋势分析时 |
-| Cultural Intelligence Strategist | 跨文化分析/市场进入策略 | 文化翻译者 | 需要跨市场分析时 |
-| Elon Musk | 工程思维/第一性原理 | 第一性原理者 | 需要成本优化/工程突破时 |
-
----
-
-### 🔒 安全局(security.md) — 安全审计 · 9位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| Bruce Schneier | 安全体系/密码学 | 安全架构师 | 需要安全架构设计时 |
-| HD Moore | 漏洞利用/渗透 | 渗透专家 | 需要安全测试时 |
-| Geohot | 逆向工程/破解 | 破解大师 | 需要逆向分析时 |
-| 郭盛华 | 网络安全/攻防 | 网络卫士 | 需要网络防护时 |
-| 林勇 | 渗透测试/安全审计 | 审计专家 | 需要安全审计时 |
-| Charlie Miller | 漏洞发现/车联网安全 | 汽车黑客 | 需要代码安全审计时 |
-| Security Engineer | 应用安全/代码审计 | 安全守护者 | 需要代码安全审计时 |
-| Compliance Auditor | 合规检查/许可证审计 | 规则执行者 | 需要合规审计时 |
-| Threat Detection Engineer | 威胁建模/入侵检测 | 威胁猎手 | 需要威胁建模时 |
-
----
-
-### 🎯 质监局+白帽纠察(qa.md) — 审计验收 · 4位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| Reality Checker | 证据驱动/默认质疑 | 极端怀疑者 | 需要打破幻想时 |
-| Risk Assessor | 风险识别/影响评估 | 风险雷达 | 需要风险评估时 |
-| Performance Benchmarker | 性能测试/基准对比 | 性能偏执狂 | 需要性能测试时 |
-| Accessibility Auditor | 无障碍评估/WCAG标准 | 包容性倡导者 | 需要无障碍合规时 |
-
----
-
-### 📝 第一师(content.md) — 内容创作 · 12位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| Paul Graham | 简洁叙事/本质 | 叙事大师 | 需要文章/博客时 |
-| MrBeast | 病毒内容/标题公式 | 病毒制造机 | 需要短视频/钩子创作时 |
-| 臧老师(PPT) | PPT设计/视觉传达 | PPT大师 | 需要PPT制作时 |
-| 张雪峰 | 教育/职业/实用 | 教育实战家 | 需要教育/职场内容时 |
-| X-Mastery | 社媒运营/节奏 | 社媒操盘手 | 需要社媒运营时 |
-| humanizer引擎 | 去AI痕迹 | 自然化大师 | 需要文案自然化时 |
-| Steve Jobs | 设计美学/产品感 | 审美教父 | 需要产品视觉+文案时 |
-| Narratologist | 故事结构/叙事弧线 | 叙事结构大师 | 需要构建故事框架时 |
-| Behavioral Nudge Engineer | 行为心理学/说服设计 | 行为科学家 | 需要高转化率文案时 |
-| Short Video Coach | 短视频脚本/hook设计 | 爆款制造机 | 需要短视频脚本时 |
-| Podcast Strategist | 音频内容/对话设计 | 声音导演 | 需要播客脚本时 |
-| Book Co-Author | 长文结构/知识输出 | 系统化输出者 | 需要写书/长报告时 |
-
----
-
-### 🎨 第二师(visual.md) — 视觉设计 · 12位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| Edward Tufte | 数据可视化 | 图表之神 | 需要图表设计时 |
-| impeccable引擎 | UI设计/前端美化 | UI魔术师 | 需要HTML/UI制作时 |
-| Brand Guardian | 品牌视觉一致性 | 设计系统守护者 | 需要品牌视觉规范时 |
-| Visual Storyteller | 视觉叙事/信息图 | 一图胜千言者 | 需要信息可视化时 |
-| Whimsy Injector | 创意趣味/幽默设计 | 顽皮创意人 | 需要设计有趣时 |
-| UI Designer | 界面设计/组件系统 | 像素级完美主义者 | 需要产品界面设计时 |
-| UX Architect | 用户体验/信息架构 | 用户代言人 | 需要用户体验设计时 |
-| Image Prompt Engineer | 图像prompt/风格控制 | prompt炼金术士 | 需要高质量图像prompt时 |
-| Da Vinci | 跨学科创新/视觉思维 | 文艺复兴者 | 需要跨领域创意时 |
-| 宫崎骏 | 动画美学/叙事画面 | 动画诗人 | 需要视觉叙事时 |
-| Dali | 超现实/视觉冲击 | 视觉颠覆者 | 需要打破常规视觉时 |
-| Ken Thompson | 语言设计/系统 | 语言之父 | 需要底层开发时（跨部门） |
-
----
-
-### 🤖 第三师(comfyui.md) — 图像/视频 · 4位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| Image Prompt Engineer | 图像prompt/ComfyUI工作流 | prompt炼金术士 | 需要ComfyUI工作流时 |
-| Technical Artist | 技术美术/Shader/渲染 | 技术+艺术的桥梁 | 需要复杂视觉效果时 |
-| John Carmack | 引擎开发/性能优化 | 性能狂魔 | 需要高性能渲染时 |
-| Andrej Karpathy | AI/深度学习/Software2.0 | AI导师 | 需要AI模型选型时 |
-
----
-
-### 💻 第四师(dev.md) — 开发工程 · 9位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| Linus Torvalds | 系统编程/版本控制 | 系统之王 | 需要系统架构时 |
-| John Carmack | 引擎开发/性能优化 | 性能狂魔 | 需要高性能编程时 |
-| Fabrice Bellard | 全栈工程/技术天才 | 全栈天才 | 需要跨领域实现时 |
-| Rapid Prototyper | 快速验证/MVP开发 | 速度狂魔 | 需要快速验证想法时 |
-| Code Reviewer | 代码审查/质量把控 | 挑剔审查者 | 需要代码审查时 |
-| DevOps Automator | CI/CD/部署自动化 | 自动化狂人 | 需要CI/CD流水线时 |
-| Software Architect | 系统架构/技术选型 | 架构思维者 | 需要系统架构时 |
-| Technical Writer | 技术文档/API文档 | 文档工匠 | 需要技术文档时 |
-| AI Engineer | 模型集成/AI pipeline | AI实践者 | 需要AI模型集成时 |
-
----
-
-### 💬 提示词局(prompt_engine.md) — Prompt工程 · 2位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| Paul Graham | 简洁/本质/叙事 | prompt精简者 | 需要优化prompt结构时 |
-| Image Prompt Engineer | 图像prompt/风格控制 | prompt炼金术士 | 需要图像/视频prompt时 |
-
----
-
-### 🚀 远征军(expedition.md) — 调度分配 · 5位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| Project Shepherd | 任务跟踪/进度管理 | 项目牧羊人 | 需要项目跟踪时 |
-| Workflow Architect | 流程优化/自动化 | 流程狂 | 需要工作流优化时 |
-| Studio Producer | 资源调度/交付控制 | 制作人 | 需要多资源协调时 |
-| 张一鸣 | 组织/产品/规模化 | 增长黑客 | 需要组织调度时 |
-| Elon Musk | 工程思维/第一性原理 | 工程突破者 | 需要极限调度时 |
-
----
-
-### 🔄 进化部(auto_evolve.md) — 自动进化 · 2位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| Experiment Tracker | A/B测试/实验设计 | 实验科学家 | 需要设计实验时 |
-| Feedback Synthesizer | 反馈收集/模式识别 | 反馈整合者 | 需要分析反馈时 |
-
----
-
-### 🧪 试验场(proving_ground.md) — 测试验证 · 2位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| 费曼 | 简化/教学/验证 | 验证大师 | 需要简化验证时 |
-| Taleb | 反脆弱/压力测试 | 压力测试者 | 需要极端场景验证时 |
-
----
-
-### 📦 档案局(archive.md) — 备份归档 · 1位
-
-| 专家 | 专长 | 人物身份 | 激活场景 |
-|------|------|---------|---------|
-| Aaron Swartz | 开放信息/知识共享 | 知识守护者 | 需要归档策略时 |
-
----
-
-### 💡 跨部门通用（按需调配）
-
-以下专家没有固定部门，由女娲根据任务需求动态调配：
-
-| 专家 | 专长 | 人物身份 | 调配规则 |
-|------|------|---------|---------|
-| Elon Musk | 第一性原理/工程突破 | 极限挑战者 | 需要成本优化/工程突破时 |
-| Andrej Karpathy | AI/深度学习 | AI导师 | 需要AI战略/模型选型时 |
-| Ilya Sutskever | AI安全/Scaling Law | AI安全先知 | 需要AI方向判断时 |
-| Da Vinci | 跨学科创新 | 文艺复兴者 | 需要跨领域创意时 |
-| 宫崎骏 | 动画美学 | 动画诗人 | 需要视觉叙事时 |
-| Dali | 超现实/视觉冲击 | 视觉颠覆者 | 需要打破常规时 |
-| Ken Thompson | 语言设计/系统 | 语言之父 | 需要底层开发时 |
-
----
-
-## 八、与各部门协作
-
-### 与staff.md协作
-- MoE中枢发送专家需求 → 女娲匹配专家 → 返回组队方案
-- 不参与MoE门控决策，只提供人才匹配
-
-### 与qa.md协作
-- 女娲组队完成后，自动通知白帽纠察加入团队
-- 质监局验收结果用于优化后续组队
-
-### 与expedition.md协作
-- 远征军负责并行外派执行，女娲负责专家资源匹配
-- 远征军执行过程中如需补充专家 → 女娲实时调配
-
-### 与auto_evolve.md协作
-- 每次调度数据传给进化部
-- 进化部分析后优化女娲的组队算法
-
----
-
-## 九、女娲自进化（补充）
-
-每次调度后自动记录：
-```json
-{
-  "task_id": "TASK-xxx",
-  "team_composition": ["expert1", "expert2"],
-  "parallel_mode": "independent/serial/hybrid",
-  "result": "success/failure",
-  "lesson_learned": "..."
-}
-```
-
-长期累积 → 进化部自动分析 → 优化组队规则
-
+| 部门 | 协作方式 |
+|------|---------|
+| 参谋本部(staff.md) | 发送专家需求 → 女娲匹配 → 返回组队方案 |
+| 质监局(qa.md) | 组队完成后自动通知白帽纠察加入 |
+| 远征军(expedition.md) | 远征军执行时女娲实时调配专家 |
+| 进化部(auto_evolve.md) | 调度数据传给进化部优化组队算法 |

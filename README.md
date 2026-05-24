@@ -26,7 +26,8 @@
 | 🔄 **多Agent并行** | Promise.allSettled 调度，独立任务并行，依赖任务自动编排 | ✅ MoE路由 |
 | ⚡ **Reasonix缓存** | ImmutablePrefix + AppendOnlyLog + VolatileScratch + Auto-Compact | ✅ 全局永久 |
 | 🎯 **七大融合方向** | PPT/UI/Rust/ComfyUI/文案/短视频/漫剧 — 优化融合不是简单叠加 | 按需 |
-| 🎛️ **统一管理调度** | 所有 skill/MCP 统一纳管，新增需过五关(评估→融合→测试→验收→归档) | 自动 |
+| 🎛️ **统一管理调度** | 所有 skill/MCP 统一纳管，新增需过五关 | 自动 |
+| 🏗️ **Agency-Agents架构** | 每位专家独立`.md`文件，YAML frontmatter+结构化定义，13个部门目录 | 已融入 |
 
 ---
 
@@ -106,7 +107,7 @@
 | 🚀 远征军 | 5位 | Project Shepherd/Workflow/Producer |
 | 其他 | 7位 | 提示词局/进化部/试验场/档案局 |
 
-> 女娲(Human Resources)根据71位专家统一匹配，按部门+领域双维度检索，确保最佳团队配置
+> 女娲(Human Resources)根据experts/目录下69个独立.md文件统一匹配，按部门+领域双维度检索，确保最佳团队配置。每个专家有完整的身份→使命→规则→风格→指标定义
 
 
 ---
@@ -237,6 +238,7 @@ MIT — 自由使用，欢迎 Star ⭐
 ---
 
 **Made with 🧠 by AI-Wuji · [GitHub](https://github.com/AI-wuji/wuji-legion-codex)**
+
 
 
 
