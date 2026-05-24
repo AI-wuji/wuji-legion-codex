@@ -1,12 +1,32 @@
-﻿# 无极军团 / Wuji Legion v4.0
+﻿# 无极军团 / Wuji Legion v4.2
 
-**一句话**: 为 Codex AI 设计的 MoE 并行多部门协作框架。参谋本部(MoE中枢) + 14个部门 + 31位专家 + Reasonix缓存引擎。
-
-**适配平台**: Codex CLI + Codex Desktop
+> **全球首款为 Codex AI 设计的 MoE 并行多部门协作框架 · 全局自动激活 · 白帽纠察全程监督 · 71位专家协同 · Reasonix 缓存引擎**
 
 [![GitHub](https://img.shields.io/badge/Codex-Skill-blueviolet)](https://github.com/AI-wuji/wuji-legion-codex)
-[![Version](https://img.shields.io/badge/version-4.0-purple)]()
+[![Version](https://img.shields.io/badge/version-4.2-purple)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
+[![Agents](https://img.shields.io/badge/Experts-71-green)]()
+[![MoE](https://img.shields.io/badge/Architecture-MoE-blue)]()
+
+---
+
+## 📋 一句话
+
+为 Codex AI 设计的 MoE 并行多部门协作框架。**参谋本部(MoE中枢)** 自动拆解指令 → 并行激活14个部门 + **71位专家** → **白帽纠察全程监督** → **Reasonix缓存引擎** 保Token。**全局自动生效，无需口令。**
+
+---
+
+## 🧩 核心亮点
+
+| 亮点 | 说明 | 自动激活 |
+|------|------|---------|
+| 🧠 **MoE 并行中枢** | 参谋本部自动拆解指令，并行评估后路由，多部门可同时执行 | ✅ 全局永久 |
+| ⛑️ **白帽纠察** | 全局常驻，每次需求必须先质疑前提、指出盲区、提反对意见 | ✅ 全局永久 |
+| 👥 **71位专家** | 36位人物视角(臧老师/Karpathy/Linus等) + 35位领域专精专家，按需动态组队 | 按需 |
+| 🔄 **多Agent并行** | Promise.allSettled 调度，独立任务并行，依赖任务自动编排 | ✅ MoE路由 |
+| ⚡ **Reasonix缓存** | ImmutablePrefix + AppendOnlyLog + VolatileScratch + Auto-Compact | ✅ 全局永久 |
+| 🎯 **七大融合方向** | PPT/UI/Rust/ComfyUI/文案/短视频/漫剧 — 优化融合不是简单叠加 | 按需 |
+| 🎛️ **统一管理调度** | 所有 skill/MCP 统一纳管，新增需过五关(评估→融合→测试→验收→归档) | 自动 |
 
 ---
 
@@ -16,140 +36,181 @@
                     [用户指令]
                         │
                         ▼
-              ┌─────────────────────┐
-              │   MoE Gating (门控)  │ ← 拆解为N个子意图，并行评估
-              └────────┬────────────┘
+              ┌─────────────────────────┐
+              │  ⚙️ 白帽纠察预检 ⚙️      │ ← 全局常驻，先质疑前提
+              └────────┬────────────────┘
                        │
-          ┌────────────┼────────────┐
-          ▼            ▼            ▼
-   ┌──────────┐ ┌──────────┐ ┌──────────┐
-   │ 情报局    │ │ 内容师    │ │ 开发师    │  ← 14个部门并行评估
-   │ 安全局    │ │ 视觉师    │ │ ComfyUI   │
-   │ 质监局    │ │ 提示词局  │ │ 远征军    │
-   └─────┬────┘ └─────┬────┘ └─────┬────┘
-         │            │            │
-         └────────────┼────────────┘
+                       ▼
+              ┌─────────────────────────┐
+              │   MoE Gating (门控)      │ ← 参谋本部拆解为N个子意图
+              └────────┬────────────────┘
+                       │
+          ┌────────────┼────────────────┐
+          ▼            ▼                ▼
+   ┌──────────┐ ┌──────────┐   ┌──────────┐
+   │ 情报局    │ │ 内容师    │   │ 开发师    │  ← 14个部门并行评估
+   │ 安全局    │ │ 视觉师    │   │ ComfyUI   │
+   │ 质监局    │ │ 提示词局  │   │ 远征军    │
+   └─────┬────┘ └─────┬────┘   └─────┬────┘
+         │            │              │
+         └────────────┼──────────────┘
                       ▼
-              ┌─────────────────────┐
-              │   MoE加权汇总+路由   │ ← 同时激活多个部门并行执行
-              └─────────────────────┘
+              ┌─────────────────────────┐
+              │  MoE加权汇总+路由        │ ← 女娲动态组队，并行执行
+              └────────┬────────────────┘
+                       │
+                       ▼
+              ┌─────────────────────────┐
+              │  白帽纠察复审+质监局验收 │ ← 全程监督到交付
+              └─────────────────────────┘
 ```
-
-### 核心特性
-
-| 特性 | 说明 |
-|------|------|
-| 🧠 **MoE并行中枢** | 参谋本部作为Mixture of Experts，并行评估后路由 |
-| 🔄 **多Agent协同** | 14个部门可并行执行，依赖关系自动编排 |
-| ⚡ **Reasonix缓存引擎** | ImmutablePrefix + AppendOnlyLog + Auto-Compact，命中率>95% |
-| 🔴 **红队审计** | 每次任务强制反对意见，不准顺着用户思路走 |
-| 🎯 **七大融合方向** | PPT/UI/Rust/ComfyUI/文案/短视频/漫剧 — 优化融合非叠加 |
-| 🎛️ **统一管理调度** | 所有skill/MCP统一纳管，新增需过五关 |
-| 👥 **31位专家库** | 6组36位人格视角，按需动态组队 |
 
 ---
 
-## 📥 安装
+## 🏛️ 14个部门一览
 
-### 方法一：GitHub克隆（推荐）
-```bash
-git clone https://github.com/AI-wuji/wuji-legion-codex.git ~/.agents/skills/wuji-legion
+| 部门 | 文件 | 职责 | 并行 |
+|------|------|------|------|
+| 🧠 **参谋本部** | `units/staff.md` | MoE门控+加权路由+白帽纠察预检 | 中枢常驻 |
+| 🕵️ **情报局** | `units/intel.md` | 多引擎搜索+可信度评估 | ✅ |
+| 🛡️ **安全局** | `units/security.md` | L1-L5安全审计+许可检查 | ✅ |
+| 🎯 **质监局** | `units/qa.md` | 质量验收+白帽纠察 | ✅ |
+| 📝 **第一师(内容)** | `units/content.md` | 文案融合+短视频流水线 | ✅ |
+| 🎨 **第二师(视觉)** | `units/visual.md` | PPT三件套+HTML/UI美化 | 依赖内容 |
+| 🤖 **第三师(ComfyUI)** | `units/comfyui.md` | ComfyUI+插件+图像生成 | 依赖视觉 |
+| 💻 **第四师(开发)** | `units/dev.md` | Rust编程+CI/CD自动化 | ✅ |
+| 💬 **提示词局** | `units/prompt_engine.md` | 通用/图像/故事板/视频prompt | ✅ |
+| 🔄 **进化部** | `units/auto_evolve.md` | OODA自动进化循环 | 执行后 |
+| 👩 **女娲(人事部)** | `units/nuwa.md` | 71位专家动态组队+并行派发 | 按需 |
+| 🚀 **远征军** | `units/expedition.md` | 并行外派+Handoff+状态协议 | ✅ |
+| 🧪 **试验场** | `units/proving_ground.md` | 沙箱测试+AB对比+评估 | 按需 |
+| 📦 **档案局** | `units/archive.md` | 备份回滚+崩溃恢复 | 自动 |
+
+---
+
+## 👥 71位专家体系
+
+**36位人物视角** — 每个角度都是一个经典思维方式：
+
+| 领域 | 专家 |
+|------|------|
+| 🎬 内容创作 | PGraham / MrBeast / 臧老师 / Naval / 张雪峰 |
+| 🧪 技术 | Karpathy / Ilya / Linus / Bellard / Carmack |
+| 🎨 设计 | Steve Jobs / Tufte / Da Vinci / 宫崎骏 |
+| 🧠 思维 | 芒格 / 费曼 / 孙子 / 塔勒布 / 马斯克 |
+| 🏢 商业 | 张一鸣 / 孙宇晨 / Bezos / Musk / Drucker |
+| ⚔️ 战略 | 特朗普 / Sun Tzu / Miyamoto / 毛泽东 |
+
+**35位领域专精专家** — 覆盖安全/法务/分析/教育/运营等领域
+
+> 女娲(Human Resources)根据任务需求动态组队，确保每个项目都有最佳团队配置
+
+---
+
+## ⛑️ 白帽纠察（全局常驻·永久生效）
+
+**不是审计，是永久存在的反对意见者。** 写入全局 `AGENTS.md`，所有对话自动生效：
+
+1. **前提质疑** — 你的需求前提是否成立？
+2. **风险识别** — 哪里可能出问题？
+3. **盲区检查** — 有没有不知道但该知道的信息？
+4. **替代方案** — 有没有更好的做法？
+5. **一票否决权** — 核心前提不成立时直接否决
+
+> 🎯 目标：不在错误的路上越走越远
+
+---
+
+## ⚡ Reasonix 缓存引擎（全局常驻）
+
+融合 Reasonix 开源项目四大支柱，省Token + 高命中：
+
+| 支柱 | 原理 | 效果 |
+|------|------|------|
+| 🧊 ImmutablePrefix | 前缀全会话固定，不修改 | 缓存命中候选 |
+| 📜 AppendOnlyLog | 只追加，不重排不重写 | 保持前缀连续性 |
+| 📝 VolatileScratch | 思考草稿用完即丢 | 不进缓存前缀 |
+| 🔄 Auto-Compact | 上下文>80%自动折叠为摘要追加 | 缓存持续存活 |
+
+### 省Token行为准则
+- 不重复已说内容，不输出废话
+- 能用一句话说完不用两句
+- 上一步结果直接传下一步，不重复描述
+- 不提未激活的部门/技能
+
+---
+
+## 🗂️ 文件结构
+
 ```
-
-### 方法二：全局规则（可选，推荐）
-将 `GLOBAL_AGENTS.md` 复制为 `~/.codex/AGENTS.md`，铁律和缓存优化对所有对话生效：
-```bash
-cp ~/.agents/skills/wuji-legion/GLOBAL_AGENTS.md ~/.codex/AGENTS.md
+wuji-legion-codex/
+├── SKILL.md               # 完整体系总纲（271行）
+├── GLOBAL_AGENTS.md       # 全局规则（复制到 .codex/AGENTS.md）
+├── CHANGELOG.md           # 版本历史
+├── README.md              # 本文件
+├── config.json            # 全局配置
+├── commander/
+│   └── SKILL.md           # Commander 技能
+├── units/                 # 14个部门
+│   ├── staff.md           # 参谋本部(MoE中枢·常驻)
+│   ├── nuwa.md            # 女娲(HR+71位专家)
+│   ├── intel.md           # 情报局
+│   ├── security.md        # 安全局
+│   ├── qa.md              # 质监局+白帽纠察
+│   ├── archive.md         # 档案局
+│   ├── content.md         # 第一师(文案)
+│   ├── visual.md          # 第二师(视觉/PPT/UI)
+│   ├── comfyui.md         # 第三师(ComfyUI)
+│   ├── dev.md             # 第四师(Rust/CI-CD)
+│   ├── prompt_engine.md   # 提示词局
+│   ├── auto_evolve.md     # 进化部
+│   ├── expedition.md      # 远征军
+│   └── proving_ground.md  # 试验场
+└── scripts/               # 工具脚本
 ```
 
 ---
 
 ## 🚀 快速开始
 
-说「**阿极**」或「**无极军团**」即激活。
+### 安装
 
-### 使用示例
+```bash
+# 1. 克隆仓库到 E 盘
+cd E:\wuji-projects\
+git clone https://github.com/AI-wuji/wuji-legion-codex.git
 
-| 你说 | 军团做什么 |
-|------|-----------|
-| "帮我做个Rust的PPT" | MoE拆解→visual.md(PPT)+dev.md(Rust)并行执行 |
-| "搜一下最新的AI框架" | intel.md多引擎并行搜索→安全局审核→报告 |
-| "审查这段代码" | qa.md红队模式→至少3个反对意见+风险评估 |
-| "写个短视频脚本" | content.md文案融合+mvbeast钩子+humanizer去AI痕 |
+# 2. 复制全局规则到 Codex 配置
+cp .\wuji-legion-codex\GLOBAL_AGENTS.md $env:USERPROFILE\.codex\AGENTS.md
 
----
+# 3. 复制 skill 到 Agents 目录
+cp -Recurse .\wuji-legion-codex $env:USERPROFILE\.agents\skills\wuji-legion
 
-## 📂 目录结构
-
-```
-~/.agents/skills/wuji-legion/
-├── SKILL.md              # 主文件（硬性铁律+MoE架构+缓存引擎）
-├── config.json           # 配置（providers/routing/cache/red_team）
-├── GLOBAL_AGENTS.md      # 全局规则（复制到.codex/AGENTS.md）
-├── CHANGELOG.md          # 更新日志
-├── README.md             # 本文件
-├── units/                # 14个部门文件
-│   ├── staff.md          # 参谋本部(MoE中枢·常驻)
-│   ├── nuwa.md           # 女娲(多Agent调度引擎)
-│   ├── intel.md          # 情报局(多引擎并行搜索)
-│   ├── security.md       # 安全局(L1-L5审计)
-│   ├── qa.md             # 质监局+红队(双重审计)
-│   ├── archive.md        # 档案局(备份回滚)
-│   ├── content.md        # 第一师(文案融合)
-│   ├── visual.md         # 第二师(PPT三件套+UI)
-│   ├── comfyui.md        # 第三师(ComfyUI+插件)
-│   ├── dev.md            # 第四师(Rust+CI/CD)
-│   ├── prompt_engine.md  # 提示词局(新增)
-│   ├── auto_evolve.md    # 进化部(新增·OODA循环)
-│   ├── expedition.md     # 远征军(并行外派)
-│   └── proving_ground.md # 试验场(沙箱测试)
-└── scripts/              # 工具脚本
+# 4. 运行安装脚本
+.\scripts\wuji-install.ps1
 ```
 
----
+### 使用
 
-## 🏛️ 14个部门职责
+```
+方式一：全局自动激活（推荐）
+  铁律+白帽纠察+MoE中枢+Cache已写入 .codex/AGENTS.md，所有对话自动生效
+  
+方式二：手动激活（备用）
+  说「阿极」或「无极军团」
+```
 
-| 部门 | 职责 | MoE并行 |
-|------|------|---------|
-| 参谋本部(staff.md) | MoE门控+加权路由+红队预检 | 中枢常驻 |
-| 情报局(intel.md) | 多引擎搜索+可信度评估 | ✅ 可并行 |
-| 安全局(security.md) | L1-L5安全审计+许可证检查 | ✅ 可并行 |
-| 质监局+红队(qa.md) | 质量验收+强制反对意见 | ✅ 可并行 |
-| 第一师-content.md | 文案融合+短视频流水线 | ✅ 可并行 |
-| 第二师-visual.md | PPT三件套+HTML/UI美化 | 依赖content |
-| 第三师-comfyui.md | ComfyUI+插件+图像生成 | 依赖visual |
-| 第四师-dev.md | Rust编程+CI/CD自动化 | ✅ 可并行 |
-| 提示词局-prompt_engine.md | 通用/图像/故事板/视频prompt | ✅ 可并行 |
-| 进化部-auto_evolve.md | OODA自动进化循环 | 执行后触发 |
-| 女娲-nuwa.md | 多Agent调度+31位专家库 | 按需 |
-| 远征军-expedition.md | 并行外派+Handoff | ✅ 可并行 |
-| 试验场-proving_ground.md | 沙箱化测试+对比评估 | 按需 |
-| 档案局-archive.md | 备份回滚+崩溃恢复 | 自动 |
+### 工作示例
 
----
+**"帮我做一个 Rust CLI 工具的 PPT + 写短视频脚本"**
 
-## ⚡ Prefix-Cache 引擎
-
-融合 Reasonix(⭐6k) 四大支柱，实测 99.82% 缓存命中率：
-
-| 支柱 | 原理 | 效果 |
-|------|------|------|
-| 🧊 ImmutablePrefix | 前缀全会话固定，不修改 | 缓存命中候选 |
-| 📜 AppendOnlyLog | 只追加，不重排不重写 | 保持前缀连续性 |
-| 📝 VolatileScratch | 草稿用完即丢 | 不进缓存前缀 |
-| 🔄 Auto-Compact | 上下文>80%自动折叠 | 缓存存活 |
-
----
-
-## 🔴 红队审计
-
-每次任务强制执行：
-1. **前提质疑** — 需求的前提是否成立？
-2. **风险识别** — 哪里可能出问题？
-3. **盲区检查** — 有没有不知道但该知道的信息？
-4. **替代方案** — 有没有更好的做法？
-5. **一票否决权** — 核心前提不成立时直接否决
+1. ⛑️ **白帽纠察**：质疑前提 — 目标受众是谁？PPT用途是演示还是培训？
+2. 🧠 **MoE参谋部**：拆解为2个子任务 → 并行路由
+3. 📝 **内容师(第一师)** → 写PPT文案 + 短视频脚本
+4. 🎨 **视觉师(第二师)** → 根据文案做PPT设计
+5. 💻 **开发师(第四师)** → 并行写Rust CLI代码
+6. ⛑️ **白帽纠察复审** + 质监局验收
+7. 📦 **档案局**自动备份
 
 ---
 
@@ -157,11 +218,18 @@ cp ~/.agents/skills/wuji-legion/GLOBAL_AGENTS.md ~/.codex/AGENTS.md
 
 | 版本 | 日期 | 关键更新 |
 |------|------|---------|
-| **v4.0** | **2026-05-24** | **MoE并行中枢+14部门+Reasonix缓存+红队审计+统一管理+5个虚文件补实** |
-| v3.1 | 2026-05-19 | 参谋本部预加载+baoyu视觉融合 |
-| v3.0 | 2026-05-14 | 5部门重构+女娲27专家+打靶场 |
+| **v4.2** | **2026-05-25** | **白帽纠察全局化 + 71位专家 + MoE执行计划器 + 冲突解决协议 + 并行状态协议** |
+| v4.0 | 2026-05-24 | MoE并行中枢 + 14部门 + Reasonix缓存 + 统一管理 |
+| v3.1 | 2026-05-19 | 参谋本部预加载 + baoyu视觉融合 |
+| v3.0 | 2026-05-14 | 5部门重构 + 女娲27专家 + 打靶场 |
 | v1.0 | 2026-05-12 | 初始版本 |
 
 ---
 
-**License**: MIT
+## 📄 License
+
+MIT — 自由使用，欢迎 Star ⭐
+
+---
+
+**Made with 🧠 by AI-Wuji · [GitHub](https://github.com/AI-wuji/wuji-legion-codex)**
