@@ -48,9 +48,9 @@
   "projects_root": "E:\\wuji-projects",
   "backups_root": "E:\\wuji-backups",
   "routing_mode": "smart",
-  "active_project": "wuji-legion-v4",
+  "active_project": "wuji-legion-codex",
   "red_team_enabled": true,
-  "iron_rules_version": "3.1",
+  "iron_rules_version": "5.7",
   "cache_config": {
     "target_hit_rate": 0.95,
     "auto_compact_threshold": 0.8,
@@ -71,7 +71,7 @@
     {
       "id": "code",
       "name": "💻 代码生成/开发",
-      "keywords": ["写", "开发", "实现", "函数", "生成", "创建", "bug", "修复", "重构", "Rust", "编程", "compile"],
+      "keywords": ["写", "开发", "实现", "函数", "生成", "创建", "bug", "修复", "重构", "Rust", "Tauri", "ComfyUI插件", "插件", "Python", "PowerShell", "编程", "compile"],
       "provider_id": "deepseek-web",
       "model": null,
       "priority": 80
@@ -79,7 +79,7 @@
     {
       "id": "content",
       "name": "✍️ 文案/内容创作",
-      "keywords": ["文章", "文案", "脚本", "剧本", "博客", "故事", "内容"],
+      "keywords": ["文章", "文案", "脚本", "剧本", "博客", "故事", "内容", "文档", "报告", "Word", "docx", "markdown"],
       "provider_id": "deepseek-web",
       "model": null,
       "priority": 70
@@ -87,7 +87,7 @@
     {
       "id": "visual",
       "name": "🎨 视觉/PPT/UI",
-      "keywords": ["PPT", "设计", "画", "UI", "界面", "页面", "前端", "html", "css"],
+      "keywords": ["PPT", "presentation", "演示文稿", "幻灯片", "slide", "deck", "设计", "美化", "画", "UI", "界面", "页面", "落地页", "官网", "前端", "html", "css", "预览图", "页面图"],
       "provider_id": "deepseek-web",
       "model": null,
       "priority": 60
@@ -103,23 +103,31 @@
     {
       "id": "prompt",
       "name": "🎯 提示词工程",
-      "keywords": ["prompt", "提示词", "分镜", "故事板", "storyboard"],
+      "keywords": ["prompt", "提示词", "提示词扩写", "扩写", "分镜", "故事板", "storyboard", "image-spec", "图片提示词"],
       "provider_id": "deepseek-web",
       "model": null,
       "priority": 50
     },
     {
-      "id": "comfyui",
-      "name": "🤖 ComfyUI/图像生成",
-      "keywords": ["ComfyUI", "工作流", "生图", "图像", "图片", "插件", "节点"],
+      "id": "spreadsheet",
+      "name": "📊 表格/结构化数据",
+      "keywords": ["表格", "Excel", "xlsx", "spreadsheet", "数据表", "清单", "台账"],
       "provider_id": "deepseek-web",
       "model": null,
-      "priority": 45
+      "priority": 58
+    },
+    {
+      "id": "comfyui",
+      "name": "🤖 ComfyUI/图像生成",
+      "keywords": ["ComfyUI", "工作流", "生图", "生成图片", "图片生成", "图像生成", "截图", "主界面", "App截图", "海报", "封面", "图像", "图片", "渲染"],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 95
     },
     {
       "id": "qa",
       "name": "✅ 审计/红队",
-      "keywords": ["审计", "审核", "检查", "验收", "审查", "质量", "反对", "批评"],
+      "keywords": ["审计", "审核", "检查", "验收", "审查", "质量", "反对", "批评", "bug一堆", "不好用", "丑", "崩", "报错"],
       "provider_id": "deepseek-web",
       "model": null,
       "priority": 40

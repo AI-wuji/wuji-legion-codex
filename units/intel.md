@@ -88,13 +88,6 @@ Invoke-RestMethod -Uri "https://api.github.com/search/code?q=<关键词>"
 ### 网页搜索
 通过 DeepSeek 免费通道的网页搜索能力获取实时信息。
 
-
----
-
-## 四、
----
-
-
 ---
 
 ## 与各部门协作

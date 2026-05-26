@@ -104,12 +104,6 @@ npx repomix --output repomix-output.xml
 # 将output.xml附在spec中一起派发
 ```
 
-
----
-
-## 五、
----
-
 ## 五、新增领域专精专家（女娲统一调度）
 
 | 专家 | 专长 | 所属部门 |

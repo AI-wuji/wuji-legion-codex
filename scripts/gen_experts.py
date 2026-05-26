@@ -35,7 +35,7 @@ vibe: "{vibe}"
 {metrics}
 """
 
-# All 71 experts organized by department
+# All 69 experts organized by department.
 # Format: [name, emoji, color, vibe, desc, identity, role, personality, mission, rules, style, metrics]
 experts = {
     "staff": [

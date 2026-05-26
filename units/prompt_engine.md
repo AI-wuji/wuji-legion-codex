@@ -28,6 +28,18 @@
 
 ## 模块二：图像生成Prompt（新增融合）
 
+### GPT提示词理解与扩写分级
+
+图像生成默认需要GPT做需求理解，但扩写强度按任务风险分级，避免普通生图变慢。
+
+| 场景 | 扩写等级 | 处理方式 |
+|------|----------|----------|
+| 普通单图 | 轻扩写 | 补主体、风格、构图、尺寸、负面约束 |
+| PPT封面/章节图 | 中扩写 | 结合PPT风格、留白、色调、文字承载区 |
+| 品牌/产品图 | 深扩写 | 加品牌调性、材质、镜头、场景一致性 |
+| 含文字图 | 深扩写+拆层 | 图片不直接承载关键文字，文字回到PPT/HTML层 |
+| 多页PPT配图 | 批量一致性扩写 | 生成统一 `image-spec.json`，保证风格一致 |
+
 ### 通用结构
 ```
 [主体] + [动作/姿态] + [环境/背景] + [风格] + [光线] + [构图] + [质量词]
@@ -52,6 +64,47 @@
 ### ComfyUI Prompt工作流
 ```
 用户需求 → 结构填充 → 中英双语 → style alignment → 输入ComfyUI
+```
+
+### image2 / imagegen Prompt工作流
+```
+用户需求/slide-spec.json
+    ↓
+GPT理解页面意图：这张图服务哪一句结论？
+    ↓
+生成 image-spec.json：
+  - use_case
+  - asset_type
+  - slide_id/page_id
+  - subject
+  - scene
+  - style
+  - composition
+  - lighting
+  - palette
+  - negative_constraints
+  - text_policy
+    ↓
+交给 image2 / imagegen 生成
+    ↓
+视觉部检查是否匹配整套PPT/HTML风格
+```
+
+### image-spec.json 最小格式
+
+```json
+{
+  "slide_id": "S03",
+  "use_case": "ppt-section-visual",
+  "asset_type": "16:9 slide background",
+  "page_message": "这一页要让用户理解AI可以统一调度多工具",
+  "subject": "抽象的多agent协同网络",
+  "style": "premium technical keynote, clean, not sci-fi cliché",
+  "composition": "wide 16:9, center-left focal point, right side negative space for title",
+  "palette": "match deck palette, dark graphite with muted cyan accent",
+  "text_policy": "no embedded text, no letters, no logos",
+  "avoid": "plastic gradients, random UI text, watermark, clutter"
+}
 ```
 
 ---

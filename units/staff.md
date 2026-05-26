@@ -4,6 +4,13 @@
 MoE (Mixture of Experts) 架构。输入指令后，**并行派发给多个专家部门评估**，加权汇总后做路由决策。
 不再是串行"如果→那么"的决策树，而是多专家并行投票+加权路由。
 
+## 轻量门控原则
+
+- 参谋本部常驻的是“拆解、路由、纠察”，不是全量加载14个部门
+- 每轮只激活命中的主部门、必要辅助部门和最少专家组
+- 女娲只在需要专家匹配、跨部门组队、冲突消解或新增能力融合时介入
+- 图像、PPT页面图、文档预览等成品输出走快路径，不先生成长篇计划
+
 ---
 
 ## 一、MoE 并行评估架构
@@ -137,13 +144,21 @@ qa.md → 不依赖其他部门（独立，最后执行）
   │   └─ 含视频/短视频 → 并行激活 short_video 模块
   │
   ├─ 🎨 PPT/设计/UI/页面 → visual.md
-  │   ├─ 含PPT → 融合臧老师+pptx-gen+slide-studio
-  │   └─ 含UI/HTML → 融合impeccable+typeui
+  │   ├─ 含PPT → GPT内容+臧老师+pptx-gen+slide-studio+image2
+  │   └─ 含UI/HTML → GPT信息架构+impeccable+Browser验证
   │
-  ├─ 🤖 ComfyUI/生图 → comfyui.md
+  ├─ 📄 文档/PPT/表格成品 → content.md / visual.md / archive.md
+  │   ├─ documents → content.md主导，archive.md归档
+  │   ├─ presentations → visual.md主导，content.md供稿
+  │   └─ spreadsheets → intel.md/content.md结构化数据
+  │
+  ├─ 🤖 ComfyUI/生图 → comfyui.md（直达，不走长计划）
   │   └─ 含开发 → 并行激活 dev.md
   │
   ├─ 💻 代码/开发/Rust → dev.md
+  │   ├─ 含Rust/Tauri → dev.md硬门禁 + security.md
+  │   ├─ 含HTML/前端 → dev.md门禁 + visual.md + Browser验证
+  │   ├─ 含ComfyUI插件 → dev.md + comfyui.md + security.md + qa.md
   │   └─ 含部署/打包 → 并行激活 security.md
   │
   ├─ 🔍 搜索/调研 → intel.md
@@ -152,7 +167,7 @@ qa.md → 不依赖其他部门（独立，最后执行）
   ├─ ✅ 审计/检查 → qa.md（白帽纠察模式）
   │
   ├─ 🧠 提示词/prompt → prompt_engine.md
-  │   └─ 含生图 → 并行激活 comfyui.md
+  │   └─ 含生图 → 优先直达 comfyui.md / imagegen
   │
   ├─ 🔄 复盘/学习 → auto_evolve.md
   │
@@ -263,9 +278,39 @@ MoE门控拆解任务后，不是直接激活部门，而是先生成一个**执
 - 并行执行时共享上下文，不重复传递
 - 白帽纠察输出精简版（仅反对点，不重复全量）
 
+## 八、图像产出快路径
+
+- 图像产出任务不先写长执行计划，参谋本部先路由，女娲再编排，直接进入 `comfyui.md` / `imagegen` / `visual.md` 出图链路
+- 生图、PPT页面图、文档预览图完成后立即展示预览，不要只返回文件路径
+- 交付默认只保留两个入口：预览 + “文件在……”
+- 对于“美团主界面图片”“海报”“封面”“截图”“PPT封面”“PPT页面渲染”这类请求，优先按图像产出处理，不先转成纯文本设计讨论
+- PPT/HTML内嵌配图不走长计划：`页面意图 → image-spec.json → image2/imagegen → 插入页面 → 渲染预览`
+
+## 九、PPT/HTML高质路由
+
+| 任务 | 默认路由 | 关键原则 |
+|------|----------|----------|
+| 从零做PPT | content.md → visual.md → prompt_engine.md → imagegen/comfyui.md | 先结构后设计，图片服务页面结论 |
+| PPT美化 | visual.md + qa.md | 臧老师定风格，slide-studio微调 |
+| PPT配图 | prompt_engine.md + imagegen/comfyui.md | GPT先扩写提示词，禁止图片承载关键文字 |
+| HTML制作 | content.md → visual.md → dev.md | 信息架构先行，impeccable反AI味 |
+| HTML美化 | visual.md + Browser + qa.md | 必须验证桌面/移动端显示 |
+
+## 十、软件质量硬门禁
+
+| 项目类型 | 必须激活 | 交付前最低要求 |
+|----------|----------|----------------|
+| Rust/Tauri | dev.md + security.md + qa.md | fmt/check/clippy/test，能跑则跑audit/deny |
+| HTML/前端 | dev.md + visual.md + Browser + qa.md | typecheck/lint/build，页面预览，响应式检查 |
+| ComfyUI插件 | comfyui.md + dev.md + security.md + qa.md | compileall/import smoke/节点注册/路径安全 |
+| Python脚本 | dev.md + security.md + qa.md | compileall/test或最小无害运行 |
+| PowerShell脚本 | dev.md + security.md + qa.md | 语法解析，删除/移动前路径安全检查 |
+
+质量原则：没有验证就不说通过；验证失败就继续修，除非环境缺工具或用户明确要求跳过。
+
 ---
 
-## 七、插件调度规则（v5.4 +）
+## 十一、插件调度规则（v5.4 +）
 
 当需要调用外部Codex插件时，按以下规则路由：
 

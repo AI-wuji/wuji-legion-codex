@@ -29,6 +29,50 @@
 ⑦ 交付
 ```
 
+### PPT/HTML内容结构输出
+
+当任务是 PPT、HTML页面、官网、落地页、可视化报告时，内容师不只写文案，必须输出结构化规格给视觉部。
+
+#### slide-spec.json
+
+```json
+{
+  "deck_goal": "这份PPT要达成什么",
+  "audience": "谁会看",
+  "tone": "专业/锋利/温暖/发布会",
+  "slides": [
+    {
+      "id": "S01",
+      "type": "cover",
+      "one_sentence_message": "本页唯一核心信息",
+      "title": "页面标题",
+      "body": "正文要点",
+      "speaker_notes": "讲稿提示",
+      "visual_need": "none/chart/image2/icon/photo",
+      "image_brief": "如需生图，这张图服务什么信息"
+    }
+  ]
+}
+```
+
+#### html-design-spec.json
+
+```json
+{
+  "page_goal": "页面目标",
+  "primary_user": "核心用户",
+  "first_screen_message": "首屏要说清楚什么",
+  "sections": [
+    {
+      "id": "hero",
+      "job": "吸引/解释/转化/比较",
+      "copy": "本区文案",
+      "visual_need": "none/image2/component/chart"
+    }
+  ]
+}
+```
+
 ---
 
 ## 模块二：藏师傅文案流水线（保留升级）
@@ -125,13 +169,6 @@
 | 冲突 | 每集至少有1个冲突点 |
 | 结尾 | 悬念/反转（追剧动力） |
 | 剧本格式 | screenwriter规范 |
-
-
----
-
-## 六、
----
-
 
 ---
 

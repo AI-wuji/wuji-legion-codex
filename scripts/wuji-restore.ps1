@@ -62,8 +62,10 @@ if (-not (Test-Path $eDir)) {
     Write-Host "  [SKIP] E 盘目录已存在" -ForegroundColor Yellow
 }
 
-# === STEP 5: 列出需要手动重装的插件 ===
-Write-Host "[5/5] 需要手动安装的插件（Codex Desktop → 设置 → 插件）:" -ForegroundColor Yellow
+# === STEP 5: 列出插件恢复状态 ===
+Write-Host "[5/5] 插件恢复说明:" -ForegroundColor Yellow
+Write-Host "  [BUILT-IN] browser / documents / spreadsheets / presentations 以 config.toml 启用状态为准" -ForegroundColor Green
+Write-Host "  [MARKET] 以下市场插件如未授权，需要在 Codex Desktop → 设置 → 插件 中手动安装/登录:" -ForegroundColor Yellow
 $plugins = @(
     @{Name="GitHub"; Pri="⭐"; Desc="PR/Issue/CI管理"},
     @{Name="Supabase"; Pri="⭐"; Desc="数据库+后端"},
@@ -80,8 +82,7 @@ $plugins = @(
     @{Name="CircleCI"; Pri="低"; Desc="CI/CD"},
     @{Name="Hugging Face"; Pri="低"; Desc="AI模型/数据集"},
     @{Name="Readwise"; Pri="低"; Desc="知识管理"},
-    @{Name="Game Studio"; Pri="低"; Desc="浏览器游戏"},
-    @{Name="Superpowers"; Pri="低"; Desc="TDD/调试工作流"}
+    @{Name="Game Studio"; Pri="低"; Desc="浏览器游戏"}
 )
 $plugins | ForEach-Object { Write-Host "  $($_.Pri) $($_.Name) — $($_.Desc)" }
 
@@ -89,5 +90,5 @@ Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  恢复完成！" -ForegroundColor Green
 Write-Host "  全局规则 + 无极军团 Skill 已就绪" -ForegroundColor Green
-Write-Host "  插件需手动安装（详见 units/plugins.md）" -ForegroundColor Yellow
+Write-Host "  市场插件需按需安装/授权（详见 units/plugins.md）" -ForegroundColor Yellow
 Write-Host "========================================" -ForegroundColor Cyan

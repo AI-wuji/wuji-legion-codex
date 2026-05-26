@@ -1,18 +1,18 @@
-﻿# 无极军团 / Wuji Legion v4.2
+﻿# 无极军团 / Wuji Legion v5.7
 
-> **全球首款为 Codex AI 设计的 MoE 并行多部门协作框架 · 全局自动激活 · 白帽纠察全程监督 · 71位专家协同 · Reasonix 缓存引擎**
+> **全球首款为 Codex AI 设计的 MoE 并行多部门协作框架 · 全局自动激活 · 白帽纠察全程监督 · 69位专家协同 · Reasonix 缓存引擎**
 
 [![GitHub](https://img.shields.io/badge/Codex-Skill-blueviolet)](https://github.com/AI-wuji/wuji-legion-codex)
-[![Version](https://img.shields.io/badge/version-4.2-purple)]()
+[![Version](https://img.shields.io/badge/version-5.7-purple)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
-[![Agents](https://img.shields.io/badge/Experts-71-green)]()
+[![Agents](https://img.shields.io/badge/Experts-69-green)]()
 [![MoE](https://img.shields.io/badge/Architecture-MoE-blue)]()
 
 ---
 
 ## 📋 一句话
 
-为 Codex AI 设计的 MoE 并行多部门协作框架。**参谋本部(MoE中枢)** 自动拆解指令 → 并行激活14个部门 + **71位专家** → **白帽纠察全程监督** → **Reasonix缓存引擎** 保Token。**全局自动生效，无需口令。**
+为 Codex AI 设计的 MoE 并行多部门协作框架。**参谋本部(MoE中枢)** 自动拆解指令 → 按需激活14个部门 + **69位专家** → 白帽纠察分级监督 → PPT/HTML/Image2/Rust/UI/ComfyUI 质量门禁 → **Reasonix缓存引擎** 保Token。**全局自动生效，无需口令，但不会每次项目启动都跑完整军团。**
 
 ---
 
@@ -21,13 +21,14 @@
 | 亮点 | 说明 | 自动激活 |
 |------|------|---------|
 | 🧠 **MoE 并行中枢** | 参谋本部自动拆解指令，并行评估后路由，多部门可同时执行 | ✅ 全局永久 |
-| ⛑️ **白帽纠察** | 全局常驻，每次需求必须先质疑前提、指出盲区、提反对意见 | ✅ 全局永久 |
-| 👥 **71位专家** | 71位专家统一管理（按部门归并，按需动态组队） | 按需 |
+| ⛑️ **白帽纠察** | 全局常驻、分级触发；复杂/高风险任务完整质疑，简单任务不拖慢交付 | ✅ 全局永久 |
+| 👥 **69位专家** | 69位专家统一管理（按部门归并，按需动态组队） | 按需 |
 | 🔄 **多Agent并行** | Promise.allSettled 调度，独立任务并行，依赖任务自动编排 | ✅ MoE路由 |
 | ⚡ **Reasonix缓存** | ImmutablePrefix + AppendOnlyLog + VolatileScratch + Auto-Compact | ✅ 全局永久 |
 | 🎯 **七大融合方向** | PPT/UI/Rust/ComfyUI/文案/短视频/漫剧 — 优化融合不是简单叠加 | 按需 |
 | 🎛️ **统一管理调度** | 所有 skill/MCP 统一纳管，新增需过五关 | 自动 |
-| 🏗️ **Agency-Agents架构** | 每位专家独立`.md`文件，YAML frontmatter+结构化定义，13个部门目录 | 已融入 |
+| 🏗️ **Agency-Agents架构** | 每位专家独立`.md`文件，YAML frontmatter+结构化定义，13个专家目录 | 已融入 |
+| 🧪 **质量门禁** | Rust/Tauri、HTML/UI、Python、PowerShell、ComfyUI 插件按栈验收 | 按需 |
 
 ---
 
@@ -82,17 +83,17 @@
 | 💻 **第四师(开发)** | `units/dev.md` | Rust编程+CI/CD自动化 | ✅ |
 | 💬 **提示词局** | `units/prompt_engine.md` | 通用/图像/故事板/视频prompt | ✅ |
 | 🔄 **进化部** | `units/auto_evolve.md` | OODA自动进化循环 | 执行后 |
-| 👩 **女娲(人事部)** | `units/nuwa.md` | 71位专家动态组队+并行派发 | 按需 |
+| 👩 **女娲(人事部)** | `units/nuwa.md` | 69位专家动态组队+并行派发 | 按需 |
 | 🚀 **远征军** | `units/expedition.md` | 并行外派+Handoff+状态协议 | ✅ |
 | 🧪 **试验场** | `units/proving_ground.md` | 沙箱测试+AB对比+评估 | 按需 |
 | 📦 **档案局** | `units/archive.md` | 备份回滚+崩溃恢复 | 自动 |
 
 ---
 
-## 👥 71位专家体系
+## 👥 69位专家体系
 
 
-**71位专家（按部门归并）** — 不再区分人物视角与领域专精，统一调度：
+**69位专家（按部门归并）** — 不再区分人物视角与领域专精，统一调度：
 
 | 部门 | 专家数 | 代表 |
 |------|--------|------|
@@ -114,7 +115,7 @@
 
 ## ⛑️ 白帽纠察（全局常驻·永久生效）
 
-**不是审计，是永久存在的反对意见者。** 写入全局 `AGENTS.md`，所有对话自动生效：
+**不是审计，是按风险分级触发的反对意见者。** 写入全局 `AGENTS.md`，所有对话自动生效：
 
 1. **前提质疑** — 你的需求前提是否成立？
 2. **风险识别** — 哪里可能出问题？
@@ -149,7 +150,7 @@
 
 ```
 wuji-legion-codex/
-├── SKILL.md               # 完整体系总纲（271行）
+├── SKILL.md               # 完整体系总纲
 ├── GLOBAL_AGENTS.md       # 全局规则（复制到 .codex/AGENTS.md）
 ├── CHANGELOG.md           # 版本历史
 ├── README.md              # 本文件
@@ -158,7 +159,7 @@ wuji-legion-codex/
 │   └── SKILL.md           # Commander 技能
 ├── units/                 # 14个部门
 │   ├── staff.md           # 参谋本部(MoE中枢·常驻)
-│   ├── nuwa.md            # 女娲(HR+71位专家)
+│   ├── nuwa.md            # 女娲(HR+69位专家，按需组队)
 │   ├── intel.md           # 情报局
 │   ├── security.md        # 安全局
 │   ├── qa.md              # 质监局+白帽纠察
@@ -237,17 +238,18 @@ cd wuji-legion-codex
 |------|------|------|
 | 1 | `git clone https://github.com/AI-wuji/wuji-legion-codex.git` | 拉取最新版本 |
 | 2 | 复制 `GLOBAL_AGENTS.md` → `.codex/AGENTS.md` | 恢复铁律+白帽纠察+MoE+Cache |
-| 3 | 复制整个仓库 → `.agents/skills/wuji-legion/` | 恢复14个部门+71位专家+所有配置 |
-| 4 | Codex Desktop → 设置 → 插件 → 搜名称安装 | 恢复17个市场插件 |
+| 3 | 复制整个仓库 → `.agents/skills/wuji-legion/` | 恢复14个部门+69位专家+所有配置 |
+| 4 | Codex Desktop → 设置 → 插件 → 搜名称安装 | 恢复市场插件；内置 browser/documents/spreadsheets/presentations 以 `config.toml` 为准 |
 | 5 | 新建对话，说"阿极" | 验证激活 |
 
-**备份策略：** 仓库本身就是备份。所有配置都在 GitHub 上，重装后 git clone 即可。插件需要重新从市场安装（因为有 OAuth 认证），但 `units/plugins.md` 记录了完整清单。
+**备份策略：** 仓库本身就是备份。所有配置都在 GitHub 上，重装后 git clone 即可。市场插件可能需要重新安装或授权，但 `units/plugins.md` 记录了纳管清单；Codex 内置插件以本地 `config.toml` 启用状态为准。
 
 ## 📜 版本历史
 
 | 版本 | 日期 | 关键更新 |
 |------|------|---------|
-| **v4.2** | **2026-05-25** | **白帽纠察全局化 + 71位专家 + MoE执行计划器 + 冲突解决协议 + 并行状态协议** |
+| **v5.7** | **2026-05-27** | **MoE按需门控 + PPT/HTML/Image2生产线 + Rust/UI/ComfyUI质量门禁 + 插件/专家一致性修正** |
+| **v4.2** | **2026-05-25** | **白帽纠察全局化 + 69位专家 + MoE执行计划器 + 冲突解决协议 + 并行状态协议** |
 | v4.0 | 2026-05-24 | MoE并行中枢 + 14部门 + Reasonix缓存 + 统一管理 |
 | v3.1 | 2026-05-19 | 参谋本部预加载 + baoyu视觉融合 |
 | v3.0 | 2026-05-14 | 5部门重构 + 女娲27专家 + 打靶场 |

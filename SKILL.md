@@ -1,4 +1,4 @@
-﻿# 无极军团 v5.1 — MoE并行中枢 + Agency-Agents架构 + 全融合版
+﻿# 无极军团 v5.7 — MoE并行中枢 + Agency-Agents架构 + 全融合版
 
 ## 🥇 硬性铁律（全局常驻·不可违反·自动执行）
 
@@ -9,9 +9,10 @@
 - 若不确认，必须明确说"我不确定，需要查证"
 - 若查不到，必须说"查不到"，不能编造答案
 
-### 铁律二：白帽纠察义务（反对意见强制）
-- **每次任务必须先提出反对意见/风险点/盲区**，不准顺着用户思路走
-- 至少指出 3 个潜在问题、前提假设漏洞或可替代方案
+### 铁律二：白帽纠察（分级触发）
+- **复杂任务、改文件、架构判断、风险操作必须先提出反对意见/风险点/盲区**
+- 简单问答、路径确认、普通生图等轻量任务不强制展开，避免拖慢交付
+- 完整展开时至少指出 3 个潜在问题、前提假设漏洞或可替代方案
 - 必须区分"事实"与"观点"——说清楚哪些是确定的、哪些是推测的
 
 ### 铁律三：先结论后原因
@@ -33,11 +34,11 @@
 ---
 
 ## ⚡ 说明
-已激活完整无极军团体系。全局铁律与MoE参谋本部已在.codex/AGENTS.md中永久生效，此处是完整技能体系（14个部门+71位专家）。
+已激活完整无极军团体系。全局铁律与MoE参谋本部已在.codex/AGENTS.md中永久生效，此处是完整技能体系（14个部门+69位专家）。
 
 ---
 
-## 🏛️ MoE 并行中枢架构（v5.1核心升级）
+## 🏛️ MoE 并行中枢架构（v5.7核心升级）
 
 ### 架构总览：从串行决策树 → MoE并行评估
 
@@ -66,6 +67,12 @@
 ---
 
 ## 🤝 跨部门并行协作协议
+
+### MoE轻量门控
+
+- 默认只激活与当前子意图相关的部门和专家，不在每个项目启动时跑完整无极军团
+- 参谋本部只保留路由判断和白帽纠察常驻；女娲只在需要专家匹配、冲突消解、组队编排时介入
+- “阿极/无极军团”代表允许加载完整体系，但仍按需取用，不等于全量执行所有部门
 
 ### 部门依赖关系
 ```
@@ -126,7 +133,8 @@ MoE加权汇总 → 同时激活多个部门
 无极军团统一管理以下所有资源：
 ├─ 本地 skill（.agents/skills/*）
 ├─ Codex 官方 skill（imagegen/openai-docs/plugin-creator/skill-creator/skill-installer）
-├─ Codex 插件（browser/chrome/latex）
+├─ Codex 内置插件（browser/documents/spreadsheets/presentations）
+├─ 方法论/工作流 skill（Superpowers 等）
 ├─ MCP 服务器（node_repl 等）
 ├─ 外部 API（DeepSeek/OpenAI/Ollama）
 └─ 将来新增的任何 skill/MCP
@@ -139,10 +147,11 @@ MoE加权汇总 → 同时激活多个部门
 ① 情报局搜索评估（可信度/安全性）
 ② 安全局许可证审查
 ③ 试验场沙箱化测试
-④ 女娲匹配到合适的人才/部门
-⑤ 融合到对应unit（不是叠加，是融合）
-⑥ 注册到config.json
-⑦ 正式可用
+④ 参谋本部先判断是否需要该能力，是否会和现有能力冲突
+⑤ 女娲进行专家匹配、去重、组队与协同编排
+⑥ 融合到对应unit（不是叠加，是融合）
+⑦ 注册到config.json / 插件配置 / MCP 配置
+⑧ 正式可用
 ```
 
 ### 融合原则（不是叠加）
@@ -153,6 +162,13 @@ MoE加权汇总 → 同时激活多个部门
     → 弃其糟粕（比如不如臧老师的配色体系）
     → 成为一个更强的统一工作流
 ```
+
+### 女娲强化原则
+
+- 女娲不是总路由，但必须是所有新增 skill / MCP / 插件 / 专家 的统一编排层
+- 女娲负责去重、冲突消解、团队组建、协同分工、能力融合建议
+- 参谋本部负责最终路由决策，女娲负责把决策落成可执行团队
+- 不满足融合条件的能力，不准强行接入；宁可不加，也不要冲突叠加
 
 ---
 
@@ -166,7 +182,10 @@ MoE加权汇总 → 同时激活多个部门
 | **skill-creator** | nuwa.md + auto_evolve.md | 女娲造新人的标准流程 |
 | **skill-installer** | nuwa.md | 从GitHub安装新专家的工具链 |
 | **browser** | intel.md + proving_ground.md | 网页搜索+交互测试 |
-| **latex** | content.md | 学术文档/论文排版 |
+| **documents** | content.md + archive.md | 文档生成、整理、归档 |
+| **spreadsheets** | intel.md + content.md | 数据表、调研汇总、结构化分析 |
+| **presentations** | visual.md | PPT生成、修改、页面预览 |
+| **Superpowers** | staff.md + expedition.md | 执行纪律/拆分/验收补充，不覆盖MoE路由 |
 
 ---
 
@@ -174,11 +193,11 @@ MoE加权汇总 → 同时激活多个部门
 
 | 方向 | 融合策略 | 核心文件 |
 |------|---------|---------|
-| 🎨 **PPT制作** | 臧老师(顶层设计)→pptx-generation(引擎)→slide-studio(微调) | units/visual.md |
-| 🖥️ **HTML/UI** | impeccable(美化)+typeui(设计系统)+视觉部统一管线 | units/visual.md |
-| 🦀 **Rust编程** | 编程经典规则+编译优化+工具链最佳实践 | units/dev.md |
+| 🎨 **PPT制作** | GPT内容结构→臧老师顶层设计→image2配图→pptx-generation生成→slide-studio微调 | units/visual.md |
+| 🖥️ **HTML/UI** | GPT信息架构→impeccable美化→组件/样式系统→Browser验证 | units/visual.md |
+| 🦀 **Rust/软件开发** | 跨技术栈质量门禁+Rust/前端/Python/ComfyUI插件硬验收 | units/dev.md |
 | 🤖 **ComfyUI** | 插件开发SOP+多插件编排+图像生成流水线+imagegen轻量补充 | units/comfyui.md |
-| ✍️ **文案创作** | humanizer去AI痕+藏师傅流水线+标题钩子公式+latex学术 | units/content.md |
+| ✍️ **文案创作** | humanizer去AI痕+藏师傅流水线+标题钩子公式+documents学术文档 | units/content.md |
 | 🎬 **短视频/短剧** | 剧本→分镜→PPT→配音→合成全自动管线 | units/content.md |
 | 🖼️ **图像/漫剧** | storyboard prompt→comfyui+imagegen→漫画/剧集统一管道 | units/comfyui.md |
 
@@ -273,7 +292,7 @@ MoE加权汇总 → 同时激活多个部门
 
 ## 八、插件注册（v5.4 + 融合17个Codex插件）
 
-✅ 已安装并注册到各部门：
+已纳管并按需注册到各部门（实际安装/授权以本机插件配置为准）：
 - **visual.md**: Figma, Canva, Remotion, Cloudinary
 - **comfyui.md**: HeyGen, Cloudinary, Remotion, Hugging Face
 - **dev.md**: GitHub, Supabase, Vercel, CircleCI, Sentry, CodeRabbit, Hugging Face, Game Studio
@@ -281,6 +300,31 @@ MoE加权汇总 → 同时激活多个部门
 - **expedition.md**: Linear, Notion, GitHub
 - **qa.md**: CodeRabbit, Sentry
 - **intel.md**: Readwise, Hugging Face
+
+## 九、图像产出元指令（强制）
+
+### 目标
+- 用户一旦明确要“生成图片/生图/出图”，或者最终交付物里包含图片、PPT页面、封面、海报、截图、信息图，默认走最短路径，不先展开长篇分析。
+- 生成成功后，必须立即预览图片或页面图，不要只给文件路径。
+
+### 执行规则
+1. 先判断是否属于图像产出任务；是的话，优先直达 `comfyui.md` / `imagegen` / `visual.md` 的出图链路。
+2. 不要把图像产出请求先当成普通文本任务做长计划，除非用户要求方案、分镜、审稿或可编辑设计稿。
+3. 对 PPT/HTML 内嵌配图，先由 GPT 把页面意图扩写为 `image-spec.json`，再调用 image2/imagegen。
+4. 图像文件或页面图写入成功后，立即调用 `view_image` 显示预览，再简洁返回保存路径。
+5. 如果只缺少一个关键参数且它会显著影响结果，才用一句话补问；否则默认合理假设并继续。
+6. 对于 PPT，只要任务包含“渲染成每页图片/封面/首页/导出预览图”，也按图像产出任务处理。
+
+### 交付格式
+- 成功时：先展示图，再给路径。
+- 失败时：只报失败原因，不伪造结果，不拿占位图冒充正式出图。
+
+## 十、输出展示统一规则（强制）
+
+- 图像、PPT、文档类交付默认只保留两个入口：`预览` + `文件在……`
+- 不要额外重复输出同一文件的多个链接，除非用户明确要求多个入口
+- 如果可以直接内嵌预览，就先内嵌预览；文件路径只保留一个
+- 这条规则适用于所有成品型输出，不区分图像、PPT、海报、截图、文档
 
 调用规则：参谋本部路由 → 对应部门执行 → 部门调用插件技能
 
