@@ -1,13 +1,14 @@
 # 第二师（视觉） - PPT/HTML高质生产线 + image2视觉补给 + 漫画流水线
 
-## 核心理念：视觉生产线，不是工具拼盘
+## 核心理念：主帅负责，不是工具拼盘
 
 ```
-PPT制作 = GPT文案/结构 × 臧老师顶层设计 × OpenDesign按需增强 × image2视觉补给 × pptx-generation生成 × slide-studio微调
-HTML/UI = GPT信息架构 × OpenDesign/设计系统按需增强 × impeccable审美规则 × 组件/样式系统 × Browser验证
+模板PPT = Presentations template-following 主帅负责到底，其他能力只做工具
+从零/重度美化PPT = 臧老师/elite-powerpoint-designer 主帅负责到底
+HTML/UI = 选定一个主执行者负责到底，OpenDesign/impeccable/Browser按需辅助
 ```
 
-每个工具只负责自己最强的一段：参谋本部路由，女娲在需要时组队，不另起重复入口。
+参谋本部只选主帅，不把同一个成品拆给多个部门轮流接管。女娲只在主帅明确缺能力时补位。
 
 ### 输出原则
 
@@ -38,58 +39,32 @@ HTML/UI = GPT信息架构 × OpenDesign/设计系统按需增强 × impeccable�
 
 ---
 
-## 模块三：PPT五段融合工作流
+## 模块三：PPT单主帅工作流
 
-### 融合策略
+### 主帅路由
 
-| 层次 | 工具 | 职责 | 调用时机 |
-|------|------|------|---------|
-| 内容结构 | GPT + content.md | 受众、叙事、页纲、讲稿、slide-spec.json | 立项阶段 |
-| 顶层设计 | 臧老师(elite-powerpoint-designer) | 产出 `design-brief.md`：风格继承、版式策略、信息减载、视觉层级 | 设计阶段 |
-| 设计增强 | OpenDesign(按需) | 产出设计增强方案：多方向探索、Deck/原型/HTML预览 | 需要更强视觉探索或交互预览时 |
-| 视觉补给 | image2/imagegen + prompt_engine.md | 封面、章节图、图标风格图、场景图、产品视觉 | 素材阶段 |
-| 技术引擎 | pptx-generation | 底层PPTX生成、XML操作、批量渲染 | 生成阶段 |
-| 精细调控 | slide-studio | 模板应用、元素微调、动画、导出优化 | 微调阶段 |
-| 审美验收 | qa.md + impeccable规则 | 可读性、信息密度、反AI味、品牌一致性 | 交付前 |
+| 场景 | 主帅 | 辅助 |
+|------|------|------|
+| 模板续写/套模板 | Presentations template-following | imagegen/OpenDesign/QA按需 |
+| 从零做PPT | 臧老师 / elite-powerpoint-designer | Presentations/imagegen按需 |
+| 重度美化 | 臧老师 / elite-powerpoint-designer | slide-studio/QA按需 |
+| HTML/Deck原型演示 | OpenDesign 或 DOM/HTML 主线 | Browser/Presentations按需 |
+| Markdown/文档转草稿 | Marp 或 content结构化主帅 | 臧老师二次美化按需 |
 
-### 完整流水线
+### 主帅执行原则
 
-```
-① GPT/content.md 重构逐字稿/资料并生成 slide-spec.json
-   - 目标受众、演讲场景、核心信息
-   - 每页一句话结论、证明/案例/练习、讲稿要点、是否需要配图
-    ↓
-② 臧老师(顶层设计) 定风格、配色、字体、版式、页型
-   - 模板只作为视觉系统和版式库，不决定内容顺序
-   - 按每页内容意图选择模板页型，禁止按模板页序硬塞逐字稿
-   - 必须输出 `design-brief.md` 和 `layout-plan.json`
-    ↓
-②.5 OpenDesign 按需做设计系统抽取、Deck视觉探索或HTML预览验证
-   - 不替代PPTX主线，只增强设计判断和可视化预览
-   - 动态/交互只在表达需要或用户要求时启用
-    ↓
-③ prompt_engine.md 为每页所需图片生成 image-spec.json
-    ↓
-④ image2 / imagegen 生成所需图像，保存到项目素材目录
-    ↓
-⑤ pptx-generation 生成PPTX文件
-    ↓
-⑥ slide-studio 微调模板、动画、插图、导出高清
-    ↓
-⑦ 每页独立渲染为高清图片并预览
-    ↓
-⑧ 需要视频时传入ComfyUI/Remotion做动效
-```
+- 主帅自己完成内容、设计、生成和预览闭环。
+- 其他工具只由主帅调用，不由无极军团分段派工。
+- 模板任务以源PPT的真实母版、版式、节奏为约束，不把模板当背景图填字。
+- 从零设计任务以审美和表达为主，不套固定模板。
+- 如果主帅产物连续失败，参谋本部更换主帅，而不是继续叠加辅助角色。
 
 ### PPT交付底线
 
-- 逐字稿先重构成页纲；每页必须有一个结论句
-- 第一可核验产物是 `slide-spec.json` 或等价逐页结构，先证明内容逻辑成立，再套模板和写脚本
-- `slide-spec.json` 产出前不做工具链预检、skill路径查找或模板检查脚本；这些只能作为后续约束输入
-- PPTX生成前必须有 `design-brief.md` 和 `layout-plan.json`；没有设计产物就不算调用过臧老师/OpenDesign
-- 模板只按功能选用，不按原顺序填文字；像 Word 投影就退回
+- 逐字稿是素材，不是页面正文；主帅必须重构为可展示内容
+- 模板只提供视觉系统和布局语法；像 Word 投影就退回
 - 文字容量超过当前页承载能力时，必须压缩、拆页、图表化或换页型，不得靠缩小字号和硬塞解决
-- OpenDesign 只做设计增强和预览验证，不作为每次必跑环节；动态效果按需启用
+- OpenDesign/imagegen/slide-studio 只做主帅按需调用的工具，不自动进场
 - 中文内容走 UTF-8 文件链路，导出后抽检 XML 或预览
 - 不在每次 PPT 开头重复检查 unzip、运行时或模板检测工具；先生成，失败后再做针对性诊断并切备用链路
 
@@ -97,12 +72,12 @@ HTML/UI = GPT信息架构 × OpenDesign/设计系统按需增强 × impeccable�
 
 | 场景 | 主用 | 辅助 |
 |------|------|------|
-| 从零做PPT | GPT内容+臧老师设计+pptx-gen生成 | image2补图+slide-studio微调 |
-| 改模板PPT | slide-studio | pptx-gen批量改 |
-| 批量生成 | pptx-generation | slide-studio样式 |
+| 从零做PPT | 臧老师/elite-powerpoint-designer | Presentations/imagegen按需 |
+| 改模板PPT | Presentations template-following | slide-studio按需 |
+| 批量生成 | Presentations/pptx-generation主帅 | slide-studio样式 |
 | Markdown/文档转PPT | content.md结构化 | Marp仅作快速草稿链路 |
 | HTML转PPT | 默认不启用html2pptx | 用户明确要求时临时评估 |
-| PPT转视频 | 全流水线 | Remotion/ComfyUI |
+| PPT转视频 | Remotion/ComfyUI主帅 | Presentations导出素材 |
 | Deck/原型预览增强 | OpenDesign | Browser/Presentations |
 
 ### PPT图片自动生成规则

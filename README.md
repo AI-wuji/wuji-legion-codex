@@ -1,9 +1,9 @@
-﻿# 无极军团 / Wuji Legion v5.23
+﻿# 无极军团 / Wuji Legion v5.24
 
 > **阿极秘书层 + MoE参谋本部 + 女娲组队调度的 Codex 多部门协作框架 · 快答优先 · 按需执行 · 白帽可进群纠察 · 69位专家协同**
 
 [![GitHub](https://img.shields.io/badge/Codex-Skill-blueviolet)](https://github.com/AI-wuji/wuji-legion-codex)
-[![Version](https://img.shields.io/badge/version-5.23-purple)]()
+[![Version](https://img.shields.io/badge/version-5.24-purple)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
 [![Agents](https://img.shields.io/badge/Experts-69-green)]()
 [![MoE](https://img.shields.io/badge/Architecture-MoE-blue)]()
@@ -21,8 +21,8 @@
 | 亮点 | 说明 | 自动激活 |
 |------|------|---------|
 | 🧑‍💼 **阿极秘书层** | 日常快聊、问答、澄清、整理任务规划书，不默认启动MoE | ✅ 默认 |
-| 🧠 **MoE 并行中枢** | 任务成型后由参谋本部拆解路由，多部门可同时执行 | 按需 |
-| 👩 **女娲组队** | 根据MoE结果匹配专家/skill/MCP/插件，去重融合 | 按需 |
+| 🧠 **MoE 路由中枢** | 任务成型后优先选择一个主执行者，避免过度编排 | 按需 |
+| 👩 **女娲辅助组队** | 只在主执行者需要时补专家/skill/MCP/插件 | 按需 |
 | ⛑️ **白帽纠察** | 可被用户点名进群；复杂/高风险/执行节点内部纠察，外部短报 | 按需/点名 |
 | 👥 **69位专家** | 69位专家统一管理（按部门归并，按需动态组队） | 按需 |
 | 🔄 **多Agent并行** | Promise.allSettled 调度，独立任务并行，依赖任务自动编排 | ✅ MoE路由 |
@@ -268,6 +268,7 @@ cd wuji-legion-codex
 
 | 版本 | 日期 | 关键更新 |
 |------|------|---------|
+| **v5.24** | **2026-05-28** | **单主帅制 + 反过度编排** |
 | **v5.23** | **2026-05-28** | **PPT设计先行门禁：臧老师/OpenDesign产物必须可见** |
 | **v5.22** | **2026-05-28** | **PPT审美硬验收：禁止文字硬塞和模板滥用** |
 | **v5.21** | **2026-05-27** | **PPT预检禁行 + 主链路前置** |
