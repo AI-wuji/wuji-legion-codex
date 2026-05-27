@@ -1,9 +1,9 @@
-﻿# 无极军团 / Wuji Legion v5.9
+﻿# 无极军团 / Wuji Legion v5.10
 
 > **阿极秘书层 + MoE参谋本部 + 女娲组队调度的 Codex 多部门协作框架 · 快答优先 · 按需执行 · 白帽可进群纠察 · 69位专家协同**
 
 [![GitHub](https://img.shields.io/badge/Codex-Skill-blueviolet)](https://github.com/AI-wuji/wuji-legion-codex)
-[![Version](https://img.shields.io/badge/version-5.9-purple)]()
+[![Version](https://img.shields.io/badge/version-5.10-purple)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
 [![Agents](https://img.shields.io/badge/Experts-69-green)]()
 [![MoE](https://img.shields.io/badge/Architecture-MoE-blue)]()
@@ -97,7 +97,7 @@
 | 💬 **提示词局** | `units/prompt_engine.md` | 通用/图像/故事板/视频prompt | ✅ |
 | 🔄 **进化部** | `units/auto_evolve.md` | OODA自动进化循环 | 执行后 |
 | 👩 **女娲(人事部)** | `units/nuwa.md` | 69位专家动态组队+并行派发 | 按需 |
-| 🚀 **远征军** | `units/expedition.md` | 并行外派+Handoff+状态协议 | ✅ |
+| 🚀 **远征军** | `units/expedition.md` | Trae/免费模型等低成本外派算力，当前为备选 | 按需 |
 | 🧪 **试验场** | `units/proving_ground.md` | 沙箱测试+AB对比+评估 | 按需 |
 | 📦 **档案局** | `units/archive.md` | 备份回滚+崩溃恢复 | 自动 |
 
@@ -261,6 +261,7 @@ cd wuji-legion-codex
 
 | 版本 | 日期 | 关键更新 |
 |------|------|---------|
+| **v5.10** | **2026-05-27** | **并行分路归属纠偏 + 远征军低成本外派定位 + Trae CLI实测备选** |
 | **v5.9** | **2026-05-27** | **阿极秘书层 + MoE任务交接 + 女娲组队 + 白帽群聊短报** |
 | **v5.7** | **2026-05-27** | **MoE按需门控 + PPT/HTML/Image2生产线 + Rust/UI/ComfyUI质量门禁 + 插件/专家一致性修正** |
 | **v4.2** | **2026-05-25** | **白帽纠察全局化 + 69位专家 + MoE执行计划器 + 冲突解决协议 + 并行状态协议** |
