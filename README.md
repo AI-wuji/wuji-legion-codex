@@ -1,9 +1,9 @@
-﻿# 无极军团 / Wuji Legion v5.10
+﻿# 无极军团 / Wuji Legion v5.11
 
 > **阿极秘书层 + MoE参谋本部 + 女娲组队调度的 Codex 多部门协作框架 · 快答优先 · 按需执行 · 白帽可进群纠察 · 69位专家协同**
 
 [![GitHub](https://img.shields.io/badge/Codex-Skill-blueviolet)](https://github.com/AI-wuji/wuji-legion-codex)
-[![Version](https://img.shields.io/badge/version-5.10-purple)]()
+[![Version](https://img.shields.io/badge/version-5.11-purple)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
 [![Agents](https://img.shields.io/badge/Experts-69-green)]()
 [![MoE](https://img.shields.io/badge/Architecture-MoE-blue)]()
@@ -12,7 +12,7 @@
 
 ## 📋 一句话
 
-为 Codex AI 设计的分层协作框架。日常默认是 **阿极秘书层**：快聊、问答、澄清需求、省Token；任务成型后，阿极把任务规划书交给 **参谋本部(MoE中枢)** 拆解路由，再由 **女娲** 组建最小可用团队，按需激活14个部门和69位专家。白帽可被用户点名加入讨论，也可在执行关键节点内部纠察，但对用户默认短报。
+为 Codex AI 设计的分层协作框架。所有项目和新会话中，用户默认只和 **阿极秘书层** 交流：快聊、问答、澄清需求、省Token；任务成型后，阿极把任务规划书交给 **参谋本部(MoE中枢)** 拆解路由，再由 **女娲** 组建最小可用团队，按需激活14个部门和69位专家。白帽、女娲等成员可被用户点名加入群聊，但阿极始终是默认对话入口和短报出口。
 
 ---
 
@@ -78,6 +78,13 @@
 ```
 你 ↔ 阿极
     ↘ 白帽（1-3条短反对意见，不自动启动MoE）
+```
+
+女娲也可被用户点名加入讨论：
+
+```
+你 ↔ 阿极
+    ↘ 女娲（组队/能力融合/专家选择，不自动启动MoE）
 ```
 
 ---
@@ -261,6 +268,7 @@ cd wuji-legion-codex
 
 | 版本 | 日期 | 关键更新 |
 |------|------|---------|
+| **v5.11** | **2026-05-27** | **阿极全局身份层 + 身份问答规则 + 群聊成员接入** |
 | **v5.10** | **2026-05-27** | **并行分路归属纠偏 + 远征军低成本外派定位 + Trae CLI实测备选** |
 | **v5.9** | **2026-05-27** | **阿极秘书层 + MoE任务交接 + 女娲组队 + 白帽群聊短报** |
 | **v5.7** | **2026-05-27** | **MoE按需门控 + PPT/HTML/Image2生产线 + Rust/UI/ComfyUI质量门禁 + 插件/专家一致性修正** |
