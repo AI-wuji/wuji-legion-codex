@@ -386,6 +386,7 @@ MoE门控拆解任务后，不是直接激活部门，而是先生成一个**执
 ```
 阿极任务规划书
   → 参谋本部MoE确认PPT任务成型
+  → 禁止预检抢跑：此时不得先查工具链、skill路径、Documents/Presentations或写检查脚本
   → 第一执行产物：content.md 把逐字稿/资料重构为 slide-spec.json
   → 并行辅助：模板页型/占位符/已有前几页风格只做约束输入，不抢主线
   → 女娲组最小团队：content.md + 臧老师/OpenDesign(按需) + Presentations/pptx-generation + slide-studio + qa.md
@@ -400,6 +401,7 @@ MoE门控拆解任务后，不是直接激活部门，而是先生成一个**执
 PPT底线：
 - 逐字稿先重构，模板只作版式库；硬塞文字或 Word 投影必须退回
 - 没有 `slide-spec.json` 或等价逐页结构，不得进入填充/脚本生成阶段
+- `slide-spec.json` 之前不得调用 Documents/Presentations、查 skill 路径、检查工具链或写模板检查脚本；用户明确只要诊断时除外
 - 用户指出没按PPT链路时，旧脚本和旧路线作废，从内容重构重新开始
 - OpenDesign 是设计增强链，不是另起一套PPT流程；能提升设计系统、预览或原型时才接入
 - 动态效果按需，不为动而动；PPTX可编辑性和正式交付优先
