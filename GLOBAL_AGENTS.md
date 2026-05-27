@@ -118,6 +118,8 @@
 ### 成品文件强制路由（PPT/HTML/文档/表格/图像）
 - 用户明确要求生成、修改或美化 PPT、HTML、Word、Excel、图片、海报、截图、页面预览等成品文件时，视为任务已成型，必须进入“阿极任务规划书 → 参谋本部 MoE → 女娲组队 → 专家/插件执行”链路
 - PPT 默认路由：content.md 供稿 → visual.md 主导 → 臧老师/elite-powerpoint-designer 定设计 → Presentations/pptx-generation 生成 → slide-studio 微调 → image2/imagegen 补图 → qa.md/白帽验收
+- PPT 禁止把逐字稿按模板页序硬塞；必须先重构逐字稿为主题、受众、目标、逻辑页纲、每页结论和讲稿要点，再把模板当作视觉系统/版式库按需选用
+- 模板不能决定内容顺序；内容逻辑决定页序，模板只提供风格、母版、版式和视觉资产
 - 模板检测、unzip、中文路径、渲染器等环境问题只能触发降级方案，不能直接停止交付；必须尝试复制到英文工作区、使用 bundled runtime、切换 Presentations/slide-studio/pptx-generation/PptxGenJS/Marp 等备用链路
 - 若最终仍无法导出成品，必须短报：已尝试链路、确切阻塞、保留的中间文件路径、下一步可执行修复；不能只交“页结构/文案”冒充 PPT 交付
 - 成品交付默认只给：可直接显示的预览 + “文件在……”

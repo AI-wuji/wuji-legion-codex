@@ -354,7 +354,7 @@ MoE门控拆解任务后，不是直接激活部门，而是先生成一个**执
 
 | 任务 | 默认路由 | 关键原则 |
 |------|----------|----------|
-| 从零做PPT | content.md → visual.md → prompt_engine.md → imagegen/comfyui.md | 先结构后设计，图片服务页面结论 |
+| 从零做PPT | content.md → visual.md → prompt_engine.md → imagegen/comfyui.md | 先重构逐字稿/素材为页纲，再设计；图片服务页面结论 |
 | PPT美化 | visual.md + qa.md | 臧老师定风格，slide-studio微调 |
 | PPT配图 | prompt_engine.md + imagegen/comfyui.md | GPT先扩写提示词，禁止图片承载关键文字 |
 | HTML制作 | content.md → visual.md → dev.md | 信息架构先行，impeccable反AI味 |
@@ -365,7 +365,9 @@ MoE门控拆解任务后，不是直接激活部门，而是先生成一个**执
 ```
 阿极任务规划书
   → 参谋本部MoE确认PPT任务成型
+  → content.md 先把逐字稿/资料重构为 slide-spec.json
   → 女娲组最小团队：content.md + visual.md + 臧老师 + Presentations/pptx-generation + slide-studio + qa.md
+  → visual.md/臧老师按每页结论选择模板版式，不按模板页序硬塞
   → prompt_engine.md/imagegen 仅在页面确实需要配图时介入
   → 导出PPTX + 渲染预览 + 白帽/质监验收
   → 阿极短报：预览 + 文件在……
@@ -377,6 +379,7 @@ MoE门控拆解任务后，不是直接激活部门，而是先生成一个**执
 - unzip/渲染器缺失时优先使用 bundled runtime、PowerShell/.NET ZipArchive、Presentations备用脚本或 PptxGenJS/Marp
 - 三条链路都失败后，才短报确切阻塞和中间文件；不能只交页稿冒充成品
 - 中文逐字稿、页稿和脚本必须走 UTF-8 文件链路，禁止用易乱码的一行命令直接写入 PPT
+- 如果检测到只是把逐字稿按模板页顺序填入，白帽必须退回重做；这不是合格 PPT
 
 ## 十、软件质量硬门禁
 
