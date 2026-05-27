@@ -3,8 +3,8 @@
 ## 核心理念：视觉生产线，不是工具拼盘
 
 ```
-PPT制作 = GPT文案/结构 × 臧老师顶层设计 × image2视觉补给 × pptx-generation生成 × slide-studio微调
-HTML/UI = GPT信息架构 × impeccable审美规则 × 组件/样式系统 × Browser验证
+PPT制作 = GPT文案/结构 × 臧老师顶层设计 × OpenDesign按需增强 × image2视觉补给 × pptx-generation生成 × slide-studio微调
+HTML/UI = GPT信息架构 × OpenDesign/设计系统按需增强 × impeccable审美规则 × 组件/样式系统 × Browser验证
 ```
 
 每个工具只负责自己最强的一段：参谋本部路由，女娲在需要时组队，不另起重复入口。
@@ -46,6 +46,7 @@ HTML/UI = GPT信息架构 × impeccable审美规则 × 组件/样式系统 × Br
 |------|------|------|---------|
 | 内容结构 | GPT + content.md | 受众、叙事、页纲、讲稿、slide-spec.json | 立项阶段 |
 | 顶层设计 | 臧老师(elite-powerpoint-designer) | 视觉风格、布局理念、色彩体系、排版规则 | 设计阶段 |
+| 设计增强 | OpenDesign(按需) | 设计系统抽取、多方向探索、Deck/原型/HTML预览 | 需要更强视觉探索或交互预览时 |
 | 视觉补给 | image2/imagegen + prompt_engine.md | 封面、章节图、图标风格图、场景图、产品视觉 | 素材阶段 |
 | 技术引擎 | pptx-generation | 底层PPTX生成、XML操作、批量渲染 | 生成阶段 |
 | 精细调控 | slide-studio | 模板应用、元素微调、动画、导出优化 | 微调阶段 |
@@ -61,6 +62,10 @@ HTML/UI = GPT信息架构 × impeccable审美规则 × 组件/样式系统 × Br
 ② 臧老师(顶层设计) 定风格、配色、字体、版式、页型
    - 模板只作为视觉系统和版式库，不决定内容顺序
    - 按每页内容意图选择模板页型，禁止按模板页序硬塞逐字稿
+    ↓
+②.5 OpenDesign 按需做设计系统抽取、Deck视觉探索或HTML预览验证
+   - 不替代PPTX主线，只增强设计判断和可视化预览
+   - 动态/交互只在表达需要或用户要求时启用
     ↓
 ③ prompt_engine.md 为每页所需图片生成 image-spec.json
     ↓
@@ -79,6 +84,7 @@ HTML/UI = GPT信息架构 × impeccable审美规则 × 组件/样式系统 × Br
 
 - 逐字稿先重构成页纲；每页必须有一个结论句
 - 模板只按功能选用，不按原顺序填文字；像 Word 投影就退回
+- OpenDesign 只做设计增强和预览验证，不作为每次必跑环节；动态效果按需启用
 - 中文内容走 UTF-8 文件链路，导出后抽检 XML 或预览
 - 不在每次 PPT 开头重复检查 unzip、运行时或模板检测工具；先生成，失败后再做针对性诊断并切备用链路
 
@@ -92,6 +98,7 @@ HTML/UI = GPT信息架构 × impeccable审美规则 × 组件/样式系统 × Br
 | Markdown/文档转PPT | content.md结构化 | Marp仅作快速草稿链路 |
 | HTML转PPT | 默认不启用html2pptx | 用户明确要求时临时评估 |
 | PPT转视频 | 全流水线 | Remotion/ComfyUI |
+| Deck/原型预览增强 | OpenDesign | Browser/Presentations |
 
 ### PPT图片自动生成规则
 

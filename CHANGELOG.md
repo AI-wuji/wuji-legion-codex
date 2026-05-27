@@ -1,5 +1,19 @@
 # 更新日志 / Changelog
 
+## 2026-05-27 v5.19 — OpenDesign 按需融合 + 设计增强链
+
+### 架构纠偏
+- **OpenDesign 纳管**: 将 OpenDesign 作为视觉/Deck/原型/设计系统增强能力接入第二师，不替代现有 PPTX 主线。
+- **按需动态**: PPT 不默认视频化或动画化；只有用户要动态演示、视频化、交互预览或现有 PPTX 难以表达时，才接 Remotion/OpenDesign 增强链。
+- **联合制作**: PPT/HTML/UI 任务由 content.md、visual.md、臧老师、OpenDesign、Presentations/pptx-generation、slide-studio、imagegen 按需协同，而不是工具叠加。
+
+## 2026-05-27 v5.18 — 女娲角色分工 + 默认并行
+
+### 架构纠偏
+- **角色分工表**: 女娲进场后必须明确专家/角色、负责子任务、使用能力/工具、并行/依赖关系和交付物。
+- **默认多Agent并行**: 独立任务默认并行派发；串行必须说明依赖、冲突风险或安全边界。
+- **禁止空泛组队**: 不允许只说“女娲已组队”，必须能看到哪个角色做什么。
+
 ## 2026-05-27 v5.17 — Staff First + Lazy Env
 
 ### 架构纠偏

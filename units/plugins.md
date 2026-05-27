@@ -31,6 +31,7 @@
 | PptxGenJS | 保留，按需试验接入 | 程序化PPT能力强，但与现有 `pptx-generation` 重叠 | 现有PPT引擎无法满足复杂图表/JS项目批量生成时启用试验 |
 | Marp | 保留，轻量草稿链路 | Markdown转演示快，但设计上限不如主PPT链路 | 用户要快速从Markdown出草稿PPT/PDF时使用 |
 | reveal.js | 保留，Web演示专用 | 适合HTML演示和动效，不适合替代PPTX交付 | 用户明确要网页演示、演讲页面或在线deck时使用 |
+| OpenDesign | 保留，设计增强链 | 擅长设计系统、Deck/原型/HTML预览和多方向探索，但不替代PPTX主交付 | PPT/HTML/UI需要更强视觉探索、设计系统抽取、交互预览或Deck预览时接入 |
 | shadcn/ui | 保留，组件参考 | 组件质量高，但不强行引入依赖 | React/Tailwind项目需要高质量组件参考时使用 |
 | html2pptx | 丢弃默认接入 | HTML转PPT布局稳定性不可控，容易和PPTX主线冲突 | 不进入默认链路；只有用户明确要求HTML转PPT时临时评估 |
 | daisyUI | 丢弃默认接入 | 快速但模板味重，容易降低无极视觉质量 | 不进入默认链路；只允许低保真原型临时参考 |
@@ -47,6 +48,7 @@
 |------|------|---------|
 | Figma | 设计稿转代码、UI组件库、设计系统 | 专业UI优先入口 |
 | Canva | 轻量设计、社媒图、PPT素材 | 臧老师PPT素材补充 |
+| OpenDesign | 设计系统、Deck、原型、HTML预览 | 第二师设计增强；由参谋本部判定，女娲按需接入 |
 | Remotion | React视频、动态图形 | 文字/页面视频化 |
 
 ### 第三师 comfyui.md
