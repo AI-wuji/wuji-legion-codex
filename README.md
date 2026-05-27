@@ -1,9 +1,9 @@
-﻿# 无极军团 / Wuji Legion v5.12
+﻿# 无极军团 / Wuji Legion v5.13
 
 > **阿极秘书层 + MoE参谋本部 + 女娲组队调度的 Codex 多部门协作框架 · 快答优先 · 按需执行 · 白帽可进群纠察 · 69位专家协同**
 
 [![GitHub](https://img.shields.io/badge/Codex-Skill-blueviolet)](https://github.com/AI-wuji/wuji-legion-codex)
-[![Version](https://img.shields.io/badge/version-5.12-purple)]()
+[![Version](https://img.shields.io/badge/version-5.13-purple)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
 [![Agents](https://img.shields.io/badge/Experts-69-green)]()
 [![MoE](https://img.shields.io/badge/Architecture-MoE-blue)]()
@@ -260,7 +260,7 @@ cd wuji-legion-codex
 | 2 | 复制 `GLOBAL_AGENTS.md` → `.codex/AGENTS.md` | 恢复铁律+白帽纠察+MoE+Cache |
 | 3 | 复制整个仓库 → `.agents/skills/wuji-legion/` | 恢复14个部门+69位专家+所有配置 |
 | 4 | Codex Desktop → 设置 → 插件 → 搜名称安装 | 恢复市场插件；内置 browser/documents/spreadsheets/presentations 以 `config.toml` 为准 |
-| 5 | 新建对话，说"阿极" | 验证MoE参谋本部门控 |
+| 5 | 新建对话，普通沟通直接问；执行任务时说“启动无极军团” | 验证阿极默认入口与MoE参谋本部门控 |
 
 **备份策略：** 仓库本身就是备份。所有配置都在 GitHub 上，重装后 git clone 即可。市场插件可能需要重新安装或授权，但 `units/plugins.md` 记录了纳管清单；Codex 内置插件以本地 `config.toml` 启用状态为准。
 
@@ -268,6 +268,7 @@ cd wuji-legion-codex
 
 | 版本 | 日期 | 关键更新 |
 |------|------|---------|
+| **v5.13** | **2026-05-27** | **启动/激活无极军团显式触发 MoE + 中文PPT编码铁律** |
 | **v5.12** | **2026-05-27** | **PPT/HTML/文档成品强制路由 + PPT环境降级协议** |
 | **v5.11** | **2026-05-27** | **阿极全局身份层 + 身份问答规则 + 群聊成员接入** |
 | **v5.10** | **2026-05-27** | **并行分路归属纠偏 + 远征军低成本外派定位 + Trae CLI实测备选** |
