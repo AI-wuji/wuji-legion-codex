@@ -388,10 +388,10 @@ MoE门控拆解任务后，不是直接激活部门，而是先生成一个**执
   → 参谋本部MoE确认PPT任务成型
   → 禁止预检抢跑：此时不得先查工具链、skill路径、Documents/Presentations或写检查脚本
   → 第一执行产物：content.md 把逐字稿/资料重构为 slide-spec.json
-  → 并行辅助：模板页型/占位符/已有前几页风格只做约束输入，不抢主线
   → 女娲组最小团队：content.md + 臧老师/OpenDesign(按需) + Presentations/pptx-generation + slide-studio + qa.md
-  → visual.md/臧老师按每页结论选择模板版式，不按模板页序硬塞
-  → OpenDesign 按需参与：设计系统抽取、Deck视觉探索、HTML预览或原型验证
+  → 设计阶段门禁：臧老师/visual.md 产出 design-brief.md，逐页产出 layout-plan.json
+  → OpenDesign 按需参与：当模板页型不匹配或需要探索时，先补设计增强方案
+  → 并行辅助：模板页型/占位符/已有前几页风格只做设计约束输入，不抢主线
   → prompt_engine.md/imagegen 仅在页面确实需要配图时介入
   → Remotion 仅在用户要求动态演示/视频化，或静态PPT难以表达时介入
   → 导出PPTX + 渲染预览 + 白帽/质监验收
@@ -402,7 +402,10 @@ PPT底线：
 - 逐字稿先重构，模板只作版式库；硬塞文字或 Word 投影必须退回
 - 没有 `slide-spec.json` 或等价逐页结构，不得进入填充/脚本生成阶段
 - `slide-spec.json` 之前不得调用 Documents/Presentations、查 skill 路径、检查工具链或写模板检查脚本；用户明确只要诊断时除外
+- 没有 `design-brief.md` 和 `layout-plan.json`，不得进入PPTX生成；提到臧老师/OpenDesign但没有设计产物，视为未调用
 - 用户指出没按PPT链路时，旧脚本和旧路线作废，从内容重构重新开始
+- 每页必须做文字容量判断：内容过多就压缩、拆页、改图表或换页型，禁止缩小字号硬塞
+- 交付前必须导出缩略总览/关键页预览；发现遮挡、残留、重复模板感、Word投影感或明显丑乱，必须退回重做
 - OpenDesign 是设计增强链，不是另起一套PPT流程；能提升设计系统、预览或原型时才接入
 - 动态效果按需，不为动而动；PPTX可编辑性和正式交付优先
 - 中文内容走 UTF-8 文件链路并抽检；环境问题走备用链路，不能冒充交付

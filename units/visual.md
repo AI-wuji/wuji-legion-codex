@@ -45,8 +45,8 @@ HTML/UI = GPT信息架构 × OpenDesign/设计系统按需增强 × impeccable�
 | 层次 | 工具 | 职责 | 调用时机 |
 |------|------|------|---------|
 | 内容结构 | GPT + content.md | 受众、叙事、页纲、讲稿、slide-spec.json | 立项阶段 |
-| 顶层设计 | 臧老师(elite-powerpoint-designer) | 视觉风格、布局理念、色彩体系、排版规则 | 设计阶段 |
-| 设计增强 | OpenDesign(按需) | 设计系统抽取、多方向探索、Deck/原型/HTML预览 | 需要更强视觉探索或交互预览时 |
+| 顶层设计 | 臧老师(elite-powerpoint-designer) | 产出 `design-brief.md`：风格继承、版式策略、信息减载、视觉层级 | 设计阶段 |
+| 设计增强 | OpenDesign(按需) | 产出设计增强方案：多方向探索、Deck/原型/HTML预览 | 需要更强视觉探索或交互预览时 |
 | 视觉补给 | image2/imagegen + prompt_engine.md | 封面、章节图、图标风格图、场景图、产品视觉 | 素材阶段 |
 | 技术引擎 | pptx-generation | 底层PPTX生成、XML操作、批量渲染 | 生成阶段 |
 | 精细调控 | slide-studio | 模板应用、元素微调、动画、导出优化 | 微调阶段 |
@@ -62,6 +62,7 @@ HTML/UI = GPT信息架构 × OpenDesign/设计系统按需增强 × impeccable�
 ② 臧老师(顶层设计) 定风格、配色、字体、版式、页型
    - 模板只作为视觉系统和版式库，不决定内容顺序
    - 按每页内容意图选择模板页型，禁止按模板页序硬塞逐字稿
+   - 必须输出 `design-brief.md` 和 `layout-plan.json`
     ↓
 ②.5 OpenDesign 按需做设计系统抽取、Deck视觉探索或HTML预览验证
    - 不替代PPTX主线，只增强设计判断和可视化预览
@@ -85,7 +86,9 @@ HTML/UI = GPT信息架构 × OpenDesign/设计系统按需增强 × impeccable�
 - 逐字稿先重构成页纲；每页必须有一个结论句
 - 第一可核验产物是 `slide-spec.json` 或等价逐页结构，先证明内容逻辑成立，再套模板和写脚本
 - `slide-spec.json` 产出前不做工具链预检、skill路径查找或模板检查脚本；这些只能作为后续约束输入
+- PPTX生成前必须有 `design-brief.md` 和 `layout-plan.json`；没有设计产物就不算调用过臧老师/OpenDesign
 - 模板只按功能选用，不按原顺序填文字；像 Word 投影就退回
+- 文字容量超过当前页承载能力时，必须压缩、拆页、图表化或换页型，不得靠缩小字号和硬塞解决
 - OpenDesign 只做设计增强和预览验证，不作为每次必跑环节；动态效果按需启用
 - 中文内容走 UTF-8 文件链路，导出后抽检 XML 或预览
 - 不在每次 PPT 开头重复检查 unzip、运行时或模板检测工具；先生成，失败后再做针对性诊断并切备用链路
@@ -189,6 +192,9 @@ comicmaster(整体流程) × flexicomic(灵活布局) × baoyu(风格体系) × 
 - 禁止字体超过2种
 - 禁止无留白的密集排版
 - 禁止所有页面都长得像同一个模板
+- 禁止把逐字稿当正文整段投到页面
+- 禁止模板圆环、图标、装饰元素遮挡正文
+- 禁止交付缩略总览里一眼看出“复制模板再填字”
 
 ---
 

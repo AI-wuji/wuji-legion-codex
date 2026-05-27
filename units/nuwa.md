@@ -198,7 +198,7 @@ PPT任务最低角色表：
 | 专家/角色 | 负责子任务 | 交付物 |
 |-----------|------------|--------|
 | content.md | 逐字稿/资料重构 | `slide-spec.json` 或等价逐页结构 |
-| 臧老师 / OpenDesign(按需) | 视觉系统、页型选择、设计增强 | 版式策略/设计约束 |
+| 臧老师 / OpenDesign(按需) | 视觉系统、页型选择、设计增强 | `design-brief.md` / `layout-plan.json` / 设计增强方案 |
 | Presentations / pptx-generation | 生成 PPTX 主文件 | 可打开的 `.pptx` |
 | slide-studio | 模板贴合、微调、导出预览 | 预览图/修正版 |
 | qa.md / 白帽 | 内容、版式、中文、预览验收 | 验收结论和问题清单 |

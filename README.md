@@ -1,9 +1,9 @@
-﻿# 无极军团 / Wuji Legion v5.21
+﻿# 无极军团 / Wuji Legion v5.23
 
 > **阿极秘书层 + MoE参谋本部 + 女娲组队调度的 Codex 多部门协作框架 · 快答优先 · 按需执行 · 白帽可进群纠察 · 69位专家协同**
 
 [![GitHub](https://img.shields.io/badge/Codex-Skill-blueviolet)](https://github.com/AI-wuji/wuji-legion-codex)
-[![Version](https://img.shields.io/badge/version-5.21-purple)]()
+[![Version](https://img.shields.io/badge/version-5.23-purple)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
 [![Agents](https://img.shields.io/badge/Experts-69-green)]()
 [![MoE](https://img.shields.io/badge/Architecture-MoE-blue)]()
@@ -268,6 +268,8 @@ cd wuji-legion-codex
 
 | 版本 | 日期 | 关键更新 |
 |------|------|---------|
+| **v5.23** | **2026-05-28** | **PPT设计先行门禁：臧老师/OpenDesign产物必须可见** |
+| **v5.22** | **2026-05-28** | **PPT审美硬验收：禁止文字硬塞和模板滥用** |
 | **v5.21** | **2026-05-27** | **PPT预检禁行 + 主链路前置** |
 | **v5.20** | **2026-05-27** | **PPT执行门禁 + 可观察链路** |
 | **v5.19** | **2026-05-27** | **OpenDesign 按需融合 + PPT/HTML/UI 设计增强链** |
