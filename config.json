@@ -50,7 +50,7 @@
   "routing_mode": "smart",
   "active_project": "wuji-legion-codex",
   "red_team_enabled": true,
-  "iron_rules_version": "5.14",
+  "iron_rules_version": "5.15",
   "cache_config": {
     "target_hit_rate": 0.95,
     "auto_compact_threshold": 0.8,
