@@ -1,9 +1,9 @@
-﻿# 无极军团 / Wuji Legion v5.11
+﻿# 无极军团 / Wuji Legion v5.12
 
 > **阿极秘书层 + MoE参谋本部 + 女娲组队调度的 Codex 多部门协作框架 · 快答优先 · 按需执行 · 白帽可进群纠察 · 69位专家协同**
 
 [![GitHub](https://img.shields.io/badge/Codex-Skill-blueviolet)](https://github.com/AI-wuji/wuji-legion-codex)
-[![Version](https://img.shields.io/badge/version-5.11-purple)]()
+[![Version](https://img.shields.io/badge/version-5.12-purple)]()
 [![License](https://img.shields.io/badge/License-MIT-yellow)]()
 [![Agents](https://img.shields.io/badge/Experts-69-green)]()
 [![MoE](https://img.shields.io/badge/Architecture-MoE-blue)]()
@@ -268,6 +268,7 @@ cd wuji-legion-codex
 
 | 版本 | 日期 | 关键更新 |
 |------|------|---------|
+| **v5.12** | **2026-05-27** | **PPT/HTML/文档成品强制路由 + PPT环境降级协议** |
 | **v5.11** | **2026-05-27** | **阿极全局身份层 + 身份问答规则 + 群聊成员接入** |
 | **v5.10** | **2026-05-27** | **并行分路归属纠偏 + 远征军低成本外派定位 + Trae CLI实测备选** |
 | **v5.9** | **2026-05-27** | **阿极秘书层 + MoE任务交接 + 女娲组队 + 白帽群聊短报** |

@@ -1,5 +1,12 @@
 # 更新日志 / Changelog
 
+## 2026-05-27 v5.12 — 成品文件强制路由 + PPT环境降级
+
+### 架构纠偏
+- **PPT强制进参谋本部**: PPT/HTML/文档/表格/图像等成品任务一旦成型，必须走阿极任务规划书 → 参谋本部 MoE → 女娲组队。
+- **PPT专家最小团队**: 默认纳入 content.md、visual.md、臧老师、Presentations/pptx-generation、slide-studio、image2/imagegen、qa.md。
+- **环境降级协议**: unzip、中文路径、模板检测或渲染问题只能触发备用链路，不能直接停止交付或只给页稿。
+
 ## 2026-05-27 v5.11 — 阿极全局身份层
 
 ### 架构纠偏

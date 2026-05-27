@@ -25,6 +25,7 @@ MoE (Mixture of Experts) 架构。参谋本部不负责日常聊天；只有阿�
 | 详细请求 | 用户说“详细/展开” | 增加解释，不自动全量军团 |
 | 任务成型 | 有目标、约束、交付物或执行意图 | 阿极交任务规划书给参谋本部 |
 | 白帽群聊 | 用户点名白帽/反对意见 | 白帽加入讨论，不自动启动MoE |
+| 成品文件 | PPT/HTML/文档/表格/图像等需要生成或修改文件 | 视为任务成型，必须进入参谋本部MoE |
 | 彻查模式 | 用户说“彻查/全量审计/完整复查” | 分批扫描全体系 |
 
 ### 短答裁剪器
@@ -350,6 +351,23 @@ MoE门控拆解任务后，不是直接激活部门，而是先生成一个**执
 | PPT配图 | prompt_engine.md + imagegen/comfyui.md | GPT先扩写提示词，禁止图片承载关键文字 |
 | HTML制作 | content.md → visual.md → dev.md | 信息架构先行，impeccable反AI味 |
 | HTML美化 | visual.md + Browser + qa.md | 必须验证桌面/移动端显示 |
+
+### PPT强制执行链
+
+```
+阿极任务规划书
+  → 参谋本部MoE确认PPT任务成型
+  → 女娲组最小团队：content.md + visual.md + 臧老师 + Presentations/pptx-generation + slide-studio + qa.md
+  → prompt_engine.md/imagegen 仅在页面确实需要配图时介入
+  → 导出PPTX + 渲染预览 + 白帽/质监验收
+  → 阿极短报：预览 + 文件在……
+```
+
+环境降级规则：
+- 模板检测失败不等于PPT生成失败；先切到可编辑PPTX主线或备用引擎
+- 中文路径失败时复制到英文工作区，不改原文件
+- unzip/渲染器缺失时优先使用 bundled runtime、PowerShell/.NET ZipArchive、Presentations备用脚本或 PptxGenJS/Marp
+- 三条链路都失败后，才短报确切阻塞和中间文件；不能只交页稿冒充成品
 
 ## 十、软件质量硬门禁
 

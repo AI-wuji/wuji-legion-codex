@@ -73,6 +73,14 @@ HTML/UI = GPT信息架构 × impeccable审美规则 × 组件/样式系统 × Br
 ⑧ 需要视频时传入ComfyUI/Remotion做动效
 ```
 
+### PPT环境降级协议
+
+- Presentations 是默认主线；模板跟随失败时，先判断是“模板检测失败”还是“PPTX生成失败”，不能混为一谈
+- 中文路径失败时，复制模板/素材到英文工作区继续，不修改用户原文件
+- unzip 缺失时，优先用 bundled runtime 或 PowerShell/.NET ZipArchive 兼容层；仍失败则切换 pptx-generation、slide-studio、PptxGenJS 或 Marp 快速成稿
+- 任何 PPT 任务至少要尝试导出可编辑 PPTX；只有所有导出链路都失败，才允许交付页稿作为临时中间产物
+- 失败短报必须包含：失败在哪个工具、错误类型、已尝试备用链路、保留文件路径、下一步修复动作
+
 ### 何时用哪个
 
 | 场景 | 主用 | 辅助 |
