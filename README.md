@@ -203,7 +203,7 @@ cp -Recurse .\wuji-legion-codex $env:USERPROFILE\.agents\skills\wuji-legion
   铁律+白帽纠察+MoE中枢+Cache已写入 .codex/AGENTS.md，所有对话自动生效
   
 方式二：手动激活（备用）
-  说「阿极」或「无极军团」
+  说「阿极」或「启动无极军团」= 启动MoE参谋本部，仍然按需门控，不全量启动14部门+69专家
 ```
 
 ### 工作示例
@@ -240,7 +240,7 @@ cd wuji-legion-codex
 | 2 | 复制 `GLOBAL_AGENTS.md` → `.codex/AGENTS.md` | 恢复铁律+白帽纠察+MoE+Cache |
 | 3 | 复制整个仓库 → `.agents/skills/wuji-legion/` | 恢复14个部门+69位专家+所有配置 |
 | 4 | Codex Desktop → 设置 → 插件 → 搜名称安装 | 恢复市场插件；内置 browser/documents/spreadsheets/presentations 以 `config.toml` 为准 |
-| 5 | 新建对话，说"阿极" | 验证激活 |
+| 5 | 新建对话，说"阿极" | 验证MoE参谋本部门控 |
 
 **备份策略：** 仓库本身就是备份。所有配置都在 GitHub 上，重装后 git clone 即可。市场插件可能需要重新安装或授权，但 `units/plugins.md` 记录了纳管清单；Codex 内置插件以本地 `config.toml` 启用状态为准。
 
