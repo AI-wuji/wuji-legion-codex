@@ -1,82 +1,126 @@
-# 无极军团 / Wuji Legion v6.0
+# 无极军团 / Wuji Legion
 
-> 阿极极速秘书层 + 参谋本部轻量状态机 + 单主帅执行 + 女娲按需补位 + 白帽封驳
+> 阿极统一入口 + 无极军团总框架 + 其中一部分是 presentation 模块
 
-## 一句话
+## 简介
 
-无极军团是给 Codex 使用的轻量调度框架。默认由阿极快速沟通；任务成型后，参谋本部只做分拣和路由，优先选择一个主帅负责到底。女娲只在主帅缺能力时补位，白帽负责提前封驳错误路线。
+无极军团是给 Codex 使用的轻量调度框架。
 
-核心原则：
+它不追求“多角色越多越强”，而是追求两件事：
 
-- 省 token 高命中。
-- 高质高效。
-- 保留无极军团命名，不改成三省六部、内阁或其他外部编制。
+- 少走弯路
+- 直接出最终结果
 
-## 状态机
+核心思路：
 
-| 状态 | 触发 | 动作 |
-|---|---|---|
-| `FAST_REPLY` | 普通沟通、轻量问题 | 阿极 1-3 句短答，零工具 |
-| `CLARIFY` | 目标或交付物不清 | 阿极问最少关键问题 |
-| `SINGLE_COMMANDER` | 一个主帅可完成 | 参谋本部选主帅，主帅负责到底 |
-| `LEGION_TASK` | 明确激活无极军团或复杂多能力任务 | 参谋本部路由，女娲按需补位 |
-| `BLOCKED` | 缺文件、权限、API、环境或关键信息 | 短报阻塞和 1-3 个选项 |
-| `DONE` | 成品通过最低验收 | 阿极短报结果和路径 |
+- 普通问题：阿极极速短答
+- 明确任务：参谋本部只选一个主帅负责到底
+- 主帅缺能力：女娲补位
+- 路线明显错误：白帽提前否决
 
-## 架构
+## 核心原则
 
-```text
-用户
-  ↓
-阿极秘书层：快答 / 澄清 / 任务规划
-  ↓
-参谋本部：分拣 / 路由 / 封驳标准
-  ↓
-单主帅：一个 skill、插件或部门负责到底
-  ↓
-女娲：仅在主帅缺能力时补专家、skill、MCP、插件
-  ↓
-白帽/质监：提前封驳 + 交付抽检
-  ↓
-阿极短报：结果 + 路径
-```
+- 省 token，高命中
+- 高质高效
+- 先分析透，再动手
+- 只交最终结果，不交半成品
 
-## 单主帅路由
+## 当前最终形态
 
-| 任务 | 主帅 |
+PPT / HTML 这部分现在不再冒充整个无极军团。
+
+正确层级是：
+
+- **无极军团**：总框架
+- **presentation 模块**：军团内部负责演示与视觉产出的子体系
+
+presentation 模块内部再自动分：
+
+- 真 PPTX
+- HTML 演示稿
+- 图片/配图
+
+## 内部蒸馏结构
+
+### 1. 真 PPTX 内核
+
+文件：
+- [pptx_master.md](E:\wuji-projects\wuji-legion-codex\units\pptx_master.md)
+
+适用：
+- 续写现有 `.ppt` / `.pptx`
+- 套模板补页
+- 从零做可编辑真 PPTX
+
+吸收来源：
+- `ppt-master`
+- `elite-powerpoint-designer`
+- `presentation-skill`
+- `academic-pptx-skill`
+- `guizang-ppt-skill`
+
+明确拒绝：
+- 逐字稿硬塞
+- HTML 冒充 PPTX
+- 缩字号救场
+- “Word 投影感”
+
+### 2. HTML 演示稿内核
+
+文件：
+- [html_slides_master.md](E:\wuji-projects\wuji-legion-codex\units\html_slides_master.md)
+
+适用：
+- 从零做浏览器演示稿
+- 强风格、高观感、可讲可演示的 deck
+
+吸收来源：
+- `frontend-slides`
+- `frontend-slides-editable`
+- `html-ppt-skill`
+- `guizang-ppt-skill`
+- `huashu-design`
+- `open-design`
+
+明确拒绝：
+- 伪装真 PPTX
+- 泛 AI slop
+- 抽象问风格不出预览
+- 演讲稿进观众层
+
+### 3. 图片内核
+
+来源：
+
+- `imagegen`
+- 本地快速生图脚本
+
+目标：
+
+- 普通出图最短路径
+- 成功直接交付图片
+- 失败再短报阻塞
+
+## 对外表现
+
+用户只看到：
+
+- 阿极
+- 无极军团
+- 一个最终成品
+
+如果任务属于演示与视觉产出，再由内部的 presentation 模块自动分流。
+
+## presentation 模块执行原则
+
+| 任务 | 主执行链 |
 |---|---|
-| 普通生图、插图、海报、封面 | imagegen |
-| 模板续写、套模板 PPT | Presentations template-following |
-| 从零 PPT、重度美化 | 臧老师 / elite-powerpoint-designer |
-| HTML/UI | 项目原生前端主线 |
+| 普通生图 | `imagegen` 快速链 |
+| 真 PPTX 续写 | `Presentations template-following` + `pptx_master` |
+| 从零真 PPTX | `elite-powerpoint-designer` + `pptx_master` |
+| 从零 HTML slides | `html_slides_master` |
 | 搜索调研 | 情报局 |
-| 代码开发 | 对应技术栈主线 |
-
-## PPT 硬门
-
-PPT 必须按顺序交付：
-
-```text
-slide-spec.json 或等价逐页结构
-→ design-brief.md 或等价视觉策略
-→ layout-plan.json 或等价版式计划
-→ PPTX
-→ 预览/抽检
-```
-
-禁止：
-
-- 把逐字稿硬塞进模板。
-- 在 `slide-spec` 前先查 unzip、工具链、skill 路径或模板脚本。
-- 用 OpenDesign、imagegen、slide-studio 抢主线。
-- 用解释、页稿或半成品冒充 PPT 成品。
-
-## 图像硬门
-
-- 普通生图直接 imagegen。
-- 失败前不查环境、不读 skill、不写长计划。
-- 成功：预览 + `文件在...`
-- 失败：短报错误 + `重试 / 换通道 / 排查`
+| 代码开发 | 项目原生主线 |
 
 ## 安装
 
@@ -88,10 +132,10 @@ Copy-Item .\units C:\Users\Administrator\.agents\skills\wuji-legion\units -Recur
 Copy-Item .\experts C:\Users\Administrator\.agents\skills\wuji-legion\experts -Recurse -Force
 ```
 
-## 版本
+## 关键文件
 
-- `v6.0`：轻量状态机 + 单主帅内核。
-- `v5.27`：触发词收窄。
-- `v5.26`：普通生图直连。
-- `v5.25`：极速秘书硬门。
-- `v5.24`：单主帅制初版。
+- [GLOBAL_AGENTS.md](E:\wuji-projects\wuji-legion-codex\GLOBAL_AGENTS.md)
+- [SKILL.md](E:\wuji-projects\wuji-legion-codex\SKILL.md)
+- [pptx_master.md](E:\wuji-projects\wuji-legion-codex\units\pptx_master.md)
+- [html_slides_master.md](E:\wuji-projects\wuji-legion-codex\units\html_slides_master.md)
+- [quick-imagegen.ps1](E:\wuji-projects\wuji-legion-codex\scripts\quick-imagegen.ps1)

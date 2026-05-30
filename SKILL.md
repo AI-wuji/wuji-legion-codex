@@ -1,119 +1,199 @@
-# 无极军团 v6.0 — 轻量状态机 + 单主帅制
+# 无极军团 / Wuji Legion v9.1
 
-## 目标
+> 阿极统一入口 + 无极军团总框架 + 内部 presentation 模块
 
-无极军团只做两件事：
+## 一句话
 
-1. 省 token 高命中。
-2. 高质高效。
+无极军团不是 PPT skill，也不是 HTML skill。
 
-保留无极军团命名体系：阿极、参谋本部、女娲、白帽、各部门专家。外部多 Agent 案例只借机制，不借编制名。
+它是总框架。
 
-## 默认入口：阿极
+PPT / HTML 只是无极军团里的一个专业模块，负责演示与视觉产出。
 
-- 阿极永远是用户看到的默认入口。
-- 普通问答、确认、闲聊、身份问答、轻量建议：1-3 句话直接答。
-- 不读文件、不读 skill、不查工具、不启动参谋本部，除非用户明确要求执行、生成、修改、搜索、安装、同步、上传、激活无极军团，或给出文件路径并要求处理。
-- “阿极”不是口令，只是默认称呼。
+## 模块划分
 
-## 无极状态机
+无极军团总层：
 
-| 状态 | 触发 | 执行 |
-|---|---|---|
-| `FAST_REPLY` | 普通沟通/轻量问题 | 阿极短答，零工具 |
-| `CLARIFY` | 目标或交付物不清 | 阿极问最少关键问题 |
-| `SINGLE_COMMANDER` | 一个主帅能完成 | 参谋本部选主帅，主帅负责到底 |
-| `LEGION_TASK` | 明确激活无极军团或复杂多能力任务 | 参谋本部路由，女娲按需补位 |
-| `BLOCKED` | 缺文件/权限/API/环境/关键信息 | 短报阻塞和 1-3 个选项 |
-| `DONE` | 成品通过最低验收 | 阿极短报路径和结果 |
+- 阿极入口
+- 参谋本部路由
+- 女娲补位
+- 白帽封驳
 
-禁止用“参谋本部已接管”等口号代替产物顺序。
+其中一个子模块：
 
-## 参谋本部
+- `presentation`
 
-- 只做分拣、路由、封驳标准，不亲自执行。
-- 默认单主帅，不默认多部门会议。
-- 只有明确复杂、可并行且收益高于 token 成本时，才拆多路。
-- 激活无极军团后的第一条回复：
+这个 presentation 模块内部再分三条产线：
+
+- 真 PPTX
+- HTML 演示稿
+- 图片/配图
+
+## presentation 模块定位
+
+presentation 模块只负责：
+
+- 真 PPTX
+- HTML 演示稿
+- 配图与封面等演示配套视觉
+
+它不等于整个无极军团。
+
+## presentation 模块蒸馏来源
+
+### 真 PPTX 线蒸馏来源
+
+- `ppt-master`
+- `elite-powerpoint-designer`
+- `presentation-skill`
+- `academic-pptx-skill`
+- `guizang-ppt-skill`
+- `huashu-design`
+- `open-design`
+
+### HTML 演示线蒸馏来源
+
+- `frontend-slides`
+- `frontend-slides-editable`
+- `html-ppt-skill`
+- `guizang-ppt-skill`
+- `huashu-design`
+- `open-design`
+
+### 图片线来源
+
+- `imagegen`
+- 已实测的本地快速通道
+
+## presentation 模块统一入口
+
+- 用户只需要描述演示任务，不需要自己判断该走哪条子线。
+- presentation 模块内部自动判断：
+  - 有现成 `.ppt/.pptx`、模板页、前几页成品：走真 PPTX 续写
+  - 目标是浏览器展示、动画演示、网页 slides：走 HTML 演示线
+  - 只是配图、封面、插图：走图片线
+
+## 真 PPTX 内核
+
+保留的优点：
+
+- 来自 `ppt-master` 的分阶段执行、真 PPTX 导出、规范锁定
+- 来自 `elite-powerpoint-designer` 的高等级视觉层级与品牌感
+- 来自 `presentation-skill` 的工作区、QA、证据化工作流
+- 来自 `academic-pptx-skill` 的行动标题、证据优先、一页一结论
+- 来自 `guizang-ppt-skill` 的风格收束
+- 来自 `huashu-design` / `open-design` 的方向先行、brief 先锁、反 AI slop
+
+统一后主线：
 
 ```text
-参谋本部已接管。
-拆解：...
-主帅：...
-女娲补位：无/...
-当前动作：...
+input
+-> artifact detect
+-> slide-spec
+-> design-brief
+-> layout-plan
+-> key-page preview
+-> full PPTX
+-> QA
 ```
 
-- 用户第一次指出跑偏，旧路线立即作废，回到任务规划书重走。
+统一后硬门：
 
-## 女娲
+- 逐字稿不是页面正文
+- 模板不是填字容器
+- 不允许 HTML 冒充 PPTX
+- 不允许缩字号救场
+- 不允许占位符残留
+- 不允许 Word 投影感
 
-- 女娲是补位和能力融合层，不是默认总执行。
-- 参谋本部先判断任务和主帅，女娲再按缺口匹配专家、skill、MCP、插件。
-- 女娲进场必须输出最小分工表：
+## HTML 演示内核
+
+保留的优点：
+
+- 来自 `frontend-slides` 的 16:9 固定舞台、3 版预览、show don’t tell
+- 来自 `frontend-slides-editable` 的生成后继续编辑
+- 来自 `html-ppt-skill` 的主题库、布局库、presenter 模式
+- 来自 `guizang-ppt-skill` 的有限主题和风格纪律
+- 来自 `huashu-design` 的品牌资产优先与反模板味
+- 来自 `open-design` 的 brief 锁定、方向选择、design system 视角
+
+统一后主线：
 
 ```text
-角色：
-负责子任务：
-使用能力：
-并行/依赖：
-交付物：
+input
+-> artifact detect
+-> audience + purpose + density
+-> 3 style previews
+-> style lock
+-> section outline
+-> full HTML deck
+-> browser QA
 ```
 
-## 白帽
+统一后硬门：
 
-- 白帽是封驳者，负责提前拦错路线。
-- 简单任务不展开白帽。
-- 改文件、生成文件、架构判断、复杂执行、风险操作：先给 1-3 条关键风险。
-- 发现低质硬塞、乱码、空成品、路径不明、路线不符时，可以否决并要求重走。
+- 不伪装成真 PPTX
+- 不移动端重排 slide 内容
+- 预览必须像真实页面
+- 讲稿只进 notes
+- 不允许泛 AI slop
 
-## 单主帅路由
+## 图片内核
 
-| 任务 | 主帅 | 说明 |
-|---|---|---|
-| 普通生图/插图/海报/封面 | imagegen | 直连，失败前不排查环境 |
-| 模板续写/套模板 PPT | Presentations template-following | 继承模板系统，不硬塞文字 |
-| 从零 PPT/重度美化 | 臧老师 / elite-powerpoint-designer | 审美和表达优先 |
-| HTML/UI | 项目原生前端主线 | Browser 验证按需 |
-| 搜索调研 | 情报局 | 可按来源并行，但要去重和标注可信度 |
-| 代码开发 | 对应技术栈主线 | 测试/安全/QA按需补位 |
+保留的优点：
 
-## PPT 任务硬门
+- 直接执行
+- 最短链路
+- 不先空转分析
 
-PPT 必须按这个顺序：
+统一后主线：
 
 ```text
-slide-spec.json 或等价逐页结构
-→ design-brief.md 或等价视觉策略
-→ layout-plan.json 或等价版式计划
-→ PPTX
-→ 预览/抽检
+prompt
+-> quick imagegen
+-> preview
+-> file path
 ```
 
-规则：
+统一后硬门：
 
-- 逐字稿是原料，不是页面正文。
-- 模板是版式库，不是填字容器。
-- 在 `slide-spec` 前，不先查 unzip、工具链、skill 路径或模板脚本，除非用户明确要求诊断。
-- OpenDesign、imagegen、slide-studio 都是主帅按需调用的工具，不自动进场。
-- 文字硬塞、字号过小、遮挡、占位符残留、重复模板感、Word 投影感、乱码、空模板，任一出现都不算完成。
+- 不先给长解释
+- 不先只给提示词
+- 不失败前乱切通道
 
-## 图像任务硬门
+## presentation 模块对外表现
 
-- 用户明确要生成图片/插图/海报/封面/配图时，直接 imagegen。
-- 不先读 imagegen skill、不查环境、不写长计划、不展开白帽。
-- 成功：展示预览 + `文件在...`
-- 失败：短报错误 + `重试 / 换通道 / 排查`
+虽然内部仍然区分真 PPTX、HTML、图片三条执行线，但这些分流对用户不可见。
 
-## 按需加载
+用户看到的永远只是：
 
-- 详细部门文件只在命中任务时读取：`units/*.md`。
-- 专家文件只在女娲明确补位时读取：`experts/**/*.md`。
-- 不为普通沟通加载完整 14 部门或 69 专家。
+- 阿极
+- 无极军团
+- presentation 模块产出的最终成品
 
-## 输出规范
+## 统一白帽规则
 
-- 先结论后原因。
-- 默认短报，除非用户要求详细。
-- 成品交付必须给路径。
-- GitHub 只在用户明确说同步/上传/推送时执行。
+- 简单任务不展开白帽
+- 复杂任务开工前只报 1-3 个关键风险
+- 白帽可直接否决：
+  - 分析未透就开干
+  - 半成品冒充成品
+  - 模板硬塞
+  - 错用 HTML / PPTX 线路
+  - 编码乱码
+  - 路径不明
+
+## 安装
+
+```powershell
+Copy-Item .\GLOBAL_AGENTS.md C:\Users\Administrator\.codex\AGENTS.md -Force
+Copy-Item .\SKILL.md C:\Users\Administrator\.agents\skills\wuji-legion\SKILL.md -Force
+Copy-Item .\config.json C:\Users\Administrator\.agents\skills\wuji-legion\config.json -Force
+Copy-Item .\units C:\Users\Administrator\.agents\skills\wuji-legion\units -Recurse -Force
+Copy-Item .\experts C:\Users\Administrator\.agents\skills\wuji-legion\experts -Recurse -Force
+```
+
+## 当前版本定位
+
+- `v9.1`：纠正层级，presentation 退回为无极军团内部模块
+- `v9.0`：曾错误把 presentation 提升成总 skill，现已作废
