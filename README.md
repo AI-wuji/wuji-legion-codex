@@ -1,22 +1,40 @@
-# 无极军团 / Wuji Legion
+# 无极军团 Codex 版 / Wuji Legion for Codex
 
-> 阿极统一入口 + 无极军团总框架 + 其中一部分是 presentation 模块
+> 阿极统一入口 + 参谋本部路由 + 女娲按需补位 + 白帽前置封驳
+
+## 最近更新
+
+- `2026-05-31 v9.1`
+  - 层级纠偏完成
+  - 明确：`presentation` 只是无极军团内部模块
+  - 首页、规则、skill、日志统一回到“先军团、后模块”的口径
+- `2026-05-30 v9.0`
+  - 完成军团主干整流
+  - 收紧状态机、单主帅路由、成品交付规则
+- 详细记录见：[CHANGELOG.md](E:\wuji-projects\wuji-legion-codex\CHANGELOG.md)
 
 ## 简介
 
-无极军团是给 Codex 使用的轻量调度框架。
+无极军团 Codex 版是给 Codex 使用的轻量执行框架。
 
-它不追求“多角色越多越强”，而是追求两件事：
+它不追求“角色越多越强”，只追求两件事：
 
 - 少走弯路
 - 直接出最终结果
 
-核心思路：
+## 军团结构
+
+- **阿极**：统一对外入口，负责快答、短报、结果回执
+- **参谋本部**：只负责分拣、路由、封驳、验收标准
+- **女娲**：只在主帅缺能力时补位，不默认进场
+- **白帽**：前置否决低质路线、乱码、硬塞模板、空成品
+
+## 运行方式
 
 - 普通问题：阿极极速短答
 - 明确任务：参谋本部只选一个主帅负责到底
-- 主帅缺能力：女娲补位
-- 路线明显错误：白帽提前否决
+- 复杂任务：按需补位，但不为“显得厉害”而开会
+- 路线错了：立即作废旧路线，按新规划重走
 
 ## 核心原则
 
@@ -24,94 +42,36 @@
 - 高质高效
 - 先分析透，再动手
 - 只交最终结果，不交半成品
+- 知道就说知道，不知道就查，不确定就明说
 
-## 当前最终形态
+## 当前内核
 
-PPT / HTML 这部分现在不再冒充整个无极军团。
+- 轻量状态机
+- 单主帅执行
+- 白帽前置封驳
+- 工具懒加载
+- 成品优先交付
 
-正确层级是：
+## 内部模块
 
-- **无极军团**：总框架
-- **presentation 模块**：军团内部负责演示与视觉产出的子体系
+无极军团 Codex 版下面可以挂多种专项模块，`presentation` 只是其中一个。
 
-presentation 模块内部再自动分：
+当前已整流完成、并单独定型的模块有：
 
-- 真 PPTX
-- HTML 演示稿
-- 图片/配图
+- `presentation`：负责 PPT / HTML / 配图类产出
+- 其他模块：继续保留军团总框架接入，不被 presentation 覆盖
 
-## 内部蒸馏结构
+## Presentation 模块
 
-### 1. 真 PPTX 内核
+这个模块只负责演示与视觉产出，不代表整个无极军团 Codex 版。
 
-文件：
+当前只保留三个入口：
+
 - [pptx_master.md](E:\wuji-projects\wuji-legion-codex\units\pptx_master.md)
-
-适用：
-- 续写现有 `.ppt` / `.pptx`
-- 套模板补页
-- 从零做可编辑真 PPTX
-
-吸收来源：
-- `ppt-master`
-- `elite-powerpoint-designer`
-- `presentation-skill`
-- `academic-pptx-skill`
-- `guizang-ppt-skill`
-
-明确拒绝：
-- 逐字稿硬塞
-- HTML 冒充 PPTX
-- 缩字号救场
-- “Word 投影感”
-
-### 2. HTML 演示稿内核
-
-文件：
 - [html_slides_master.md](E:\wuji-projects\wuji-legion-codex\units\html_slides_master.md)
+- [quick-imagegen.ps1](E:\wuji-projects\wuji-legion-codex\scripts\quick-imagegen.ps1)
 
-适用：
-- 从零做浏览器演示稿
-- 强风格、高观感、可讲可演示的 deck
-
-吸收来源：
-- `frontend-slides`
-- `frontend-slides-editable`
-- `html-ppt-skill`
-- `guizang-ppt-skill`
-- `huashu-design`
-- `open-design`
-
-明确拒绝：
-- 伪装真 PPTX
-- 泛 AI slop
-- 抽象问风格不出预览
-- 演讲稿进观众层
-
-### 3. 图片内核
-
-来源：
-
-- `imagegen`
-- 本地快速生图脚本
-
-目标：
-
-- 普通出图最短路径
-- 成功直接交付图片
-- 失败再短报阻塞
-
-## 对外表现
-
-用户只看到：
-
-- 阿极
-- 无极军团
-- 一个最终成品
-
-如果任务属于演示与视觉产出，再由内部的 presentation 模块自动分流。
-
-## presentation 模块执行原则
+## 模块路由示例
 
 | 任务 | 主执行链 |
 |---|---|
