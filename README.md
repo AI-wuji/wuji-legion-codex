@@ -26,6 +26,115 @@ It is a lightweight execution framework for Codex that coordinates quick replies
 
 ---
 
+## 它到底是干什么的 / What It Actually Does
+
+无极军团 Codex 版，核心上是在做三件事：
+
+1. 把零散能力整合成一套统一执行系统  
+   把快答、搜索、代码、内容、PPT、HTML、配图、QA、安全、复盘，放进同一个可调度框架里。
+2. 把“会做”变成“能稳定交付”  
+   不只是给思路，而是尽量把任务推进到最终成品、最终文件、最终路径。
+3. 把“角色感”收束成“生产力”  
+   保留阿极、参谋本部、女娲、白帽和各师局的体系，但不让角色表演压过执行效率。
+
+At its core, Wuji Legion for Codex does three things:
+
+1. Unifies scattered capabilities into one execution system  
+2. Converts “can answer” into “can reliably deliver”  
+3. Keeps the legion identity while forcing it to produce real output instead of role-play theater
+
+---
+
+## 借鉴了哪些优点 / What It Distills From Other Skills
+
+无极军团不是简单拼装，而是把不同 skill 擅长的部分拆出来，重新整流进自己的体系。
+
+It is not a naive bundle. It distills the strongest parts of different skills and rebuilds them into the Wuji Legion system.
+
+### 借鉴重点 / Distilled strengths
+
+| 来源 Source | 借鉴的优点 What We Borrowed |
+|---|---|
+| `ppt-master` | 真 PPTX 导出、分阶段执行、结构先行 |
+| `elite-powerpoint-designer` | 高质量审美、商业级视觉层级、重度美化能力 |
+| `presentation-skill` | 工作区化、QA 化、证据化工作流 |
+| `academic-pptx-skill` | 一页一结论、行动标题、信息压缩 |
+| `guizang-ppt-skill` | 风格收束、避免模板味失控 |
+| `huashu-design` | 先定 brief，再做设计，减少跑偏 |
+| `open-design` | design system 视角、方向探索、反 AI slop |
+| `frontend-slides` | HTML deck 的固定舞台与预览优先 |
+| `frontend-slides-editable` | 生成后继续编辑的可维护性 |
+| `html-ppt-skill` | 主题库、布局库、展示态组织方式 |
+| `imagegen` | 最短生图链路、直接交付图片、不先空转分析 |
+
+### 无极军团自己的整流动作 / What Wuji Legion Adds
+
+- 把这些来源统一纳入阿极入口
+- 用参谋本部做单主帅路由
+- 用女娲做按需补位，而不是默认群聊
+- 用白帽在前面拦路线，而不是后面补锅
+- 用状态机控制 token 消耗和执行节奏
+
+---
+
+## 现在实现了什么功能 / What It Enables
+
+当前无极军团 Codex 版，已经落成的核心能力有：
+
+### 1. 日常快答层
+
+- 轻问题直接由阿极短答
+- 避免一上来就读环境、查 skill、查工具
+
+### 2. 搜索调研层
+
+- 多来源搜索与情报汇总
+- GitHub / 社区 / 文档类调研
+- 输出更偏“结论 + 可信度 + 可融合性”
+
+### 3. 代码执行层
+
+- 代码修改、质量门禁、自动化脚本
+- Rust / TS / Python 等开发链路
+- 安全、QA、工程规范可按需接入
+
+### 4. 内容生产层
+
+- 文案结构化
+- 标题、钩子、节奏、人味优化
+- 为 PPT / HTML / 页面提供结构化内容原料
+
+### 5. Presentation 层
+
+- 续写现有真 PPTX
+- 从零做 PPT / 重度美化
+- 从零做 HTML slides
+- 生成插图、封面、配图
+
+### 6. 质量与安全层
+
+- 白帽前置质疑
+- 质监局验收
+- 安全局审计
+
+### 7. 进化层
+
+- 失败模式沉淀
+- 经验回收
+- 持续整流规则和 skill
+
+In practical terms, Wuji Legion for Codex already enables:
+
+- quick-reply mode
+- research and intelligence synthesis
+- coding and automation workflows
+- structured content production
+- PPT / HTML / image delivery
+- QA and security gates
+- iterative improvement and system evolution
+
+---
+
 ## 核心优势 / Core Advantages
 
 | 特性 Feature | 中文 | English |
