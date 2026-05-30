@@ -1,8 +1,8 @@
 # 无极军团 Codex 版 / Wuji Legion for Codex
 
 **一句话 / One Sentence**  
-把 Codex 从“会回答”推进到“能交付”的无极军团执行框架，统一接管调研、代码、内容、PPT、HTML 与配图任务。  
-An execution framework that pushes Codex from “can answer” to “can deliver”, unifying research, coding, content, PPT, HTML, and visual work.
+通过 MoE 总调度统一编排多方向 skill 与多 agent 协同工作的无极军团执行框架，把 Codex 从“会回答”推进到“能交付”。  
+A Wuji Legion execution framework that uses MoE-style orchestration to coordinate multi-domain skills and multi-agent collaboration, pushing Codex from “can answer” to “can deliver”.
 
 ---
 
@@ -12,13 +12,13 @@ An execution framework that pushes Codex from “can answer” to “can deliver
 
 它真正做的是三件事：
 
-1. 接管任务，不让 Codex 在查环境、讲流程、空转分析里打转  
-2. 整合能力，把调研、代码、内容、PPT、HTML、配图放进一套统一框架  
+1. 总调度，把不同方向的 skill、agent、插件和专家统一编排进同一套执行链  
+2. 协同工作，让调研、代码、内容、PPT、HTML、配图这些能力不再各自为战  
 3. 逼近交付，把“给建议”推进成“给成品、给文件、给路径”
 
 所以它解决的核心问题，不是“会不会答”，而是“能不能稳定交付”。
 
-Wuji Legion for Codex is not about stacking more skills. It is about stopping drift, unifying capabilities, and pushing Codex toward reliable delivery instead of endless explanation.
+Wuji Legion for Codex is not about stacking more skills. It is about orchestrating many skills and agents under one command system, making them collaborate instead of fragment, and pushing Codex toward reliable delivery instead of endless explanation.
 
 ---
 
