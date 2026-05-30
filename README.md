@@ -170,6 +170,46 @@ The `presentation` module handles presentation and visual delivery, but it does 
 
 ---
 
+## 融合来源 / Open-source Inspirations
+
+无极军团 Codex 版不是“凭空写出来”的。部分能力来自对开源 skill、开源工作流和现有社区方案的参考、蒸馏与整流。  
+Wuji Legion for Codex was not created in a vacuum. Parts of it are distilled and reorganized from open-source skills, public workflows, and community approaches.
+
+### PPTX 线参考来源 / PPTX-line inspirations
+
+- `ppt-master`
+- `elite-powerpoint-designer`
+- `presentation-skill`
+- `academic-pptx-skill`
+- `guizang-ppt-skill`
+- `huashu-design`
+- `open-design`
+
+### HTML 演示线参考来源 / HTML-slide inspirations
+
+- `frontend-slides`
+- `frontend-slides-editable`
+- `html-ppt-skill`
+- `guizang-ppt-skill`
+- `huashu-design`
+- `open-design`
+
+### 图像链参考来源 / Image-line inspirations
+
+- `imagegen`
+- 本仓库内的 `quick-imagegen.ps1` 快速链，基于现有 imagegen 思路做了无极军团化收口
+
+### 说明 / Notes
+
+- 这里写的是“参考来源、蒸馏来源、整流来源”，不是宣称这些上游项目被完整复制进来。  
+- This list documents inspirations, distilled sources, and reorganized inputs. It does not claim that upstream projects were copied wholesale.
+- 无极军团 Codex 版保留了自己的命名、调度规则、状态机和组织体系。  
+- Wuji Legion for Codex keeps its own naming system, routing rules, state machine, and organizational design.
+- 如果后续补充更多已验证来源，也会继续在仓库说明中明确致谢。  
+- Additional verified sources will also be explicitly acknowledged here over time.
+
+---
+
 ## 专家库 / Expert Pool
 
 当前专家域 / Current Expert Domains:
