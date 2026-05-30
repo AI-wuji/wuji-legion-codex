@@ -1,8 +1,8 @@
 # 无极军团 Codex 版 / Wuji Legion for Codex
 
 **一句话 / One Sentence**  
-面向 Codex 的军团式执行框架：阿极统一入口，参谋本部路由主帅，女娲按需补位，白帽前置封驳，把复杂任务收束成稳定交付。  
-A legion-style execution framework for Codex: A-Ji as the unified interface, General Staff routing a single commander, Nuwa augmenting on demand, and White Hat vetoing bad paths early to turn complex work into reliable delivery.
+让 Codex 能稳定处理调研、代码、内容、PPT、HTML 与配图任务的一体化无极军团执行框架。  
+An integrated Wuji Legion execution framework that enables Codex to reliably handle research, coding, content, PPT, HTML, and visual tasks.
 
 **适配架构 / Architecture**  
 Codex Desktop + AGENTS.md + Skills + Plugins + GitHub workflow
