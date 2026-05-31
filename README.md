@@ -36,6 +36,7 @@ Wuji Legion for Codex is not about stacking more skills. It is about orchestrati
 - `huashu-design` / `open-design`：先定 brief、后做设计，减少 AI slop
 - `frontend-slides` / `frontend-slides-editable` / `html-ppt-skill`：HTML deck 的预览、编辑和布局组织
 - `imagegen`：最短出图链路
+- `addyosmani/agent-skills`：工程生命周期、meta-skill 路由、薄切片实现、TDD、五轴 review、安全门禁
 
 无极军团自己的增量，是把这些能力重新装进自己的执行体系：
 
@@ -58,6 +59,7 @@ Wuji Legion borrows strengths, not identities. It pulls out what actually works,
 - 代码层：代码修改、自动化、质量门禁
 - 内容层：文案结构化、标题钩子、人味优化
 - Presentation 层：真 PPTX、HTML slides、插图、封面、配图
+- 工程层：DEFINE / PLAN / BUILD / VERIFY / REVIEW / SHIP 阶段判断、薄切片实现、TDD、五轴审查
 - 质量层：白帽质疑、质监验收、安全审计
 - 进化层：失败模式沉淀、规则持续整流
 
@@ -110,6 +112,7 @@ Key inspirations include:
 - `frontend-slides-editable`
 - `html-ppt-skill`
 - `imagegen`
+- `addyosmani/agent-skills`
 
 ---
 

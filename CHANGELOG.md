@@ -1,5 +1,20 @@
 # 更新日志 / Changelog
 
+## 2026-05-31 v9.2
+
+### 第四师工程流程线
+
+- 源码级查看并蒸馏 `addyosmani/agent-skills`
+- 参考源码提交：`6ce0298`
+- 吸收进无极军团：
+  - meta-skill 阶段路由
+  - DEFINE / PLAN / BUILD / VERIFY / REVIEW / SHIP 生命周期
+  - 薄切片实现
+  - TDD / Prove-It bug 修复模式
+  - 五轴 code review
+  - 安全与发布门禁
+- 保留无极军团命名与编制，不照搬上游命令体系
+
 ## 2026-05-31 v9.1
 
 ### 层级纠偏
