@@ -1,5 +1,32 @@
 # 更新日志 / Changelog
 
+## 2026-05-31 v9.3
+
+### 进化部蒸馏师团
+
+- 新增 [distillation.md](E:\wuji-projects\wuji-legion-codex\units\distillation.md)
+- 新增 [Distillation Auditor.md](E:\wuji-projects\wuji-legion-codex\experts\evolve\Distillation Auditor.md)
+- 进化部从“复盘学习”升级为“复盘 -> 查源 -> 蒸馏 -> 验证 -> 入库”
+- 女娲补位前必须检查蒸馏台账，未核验外部能力不得进默认主链路
+- 白帽新增 skill 蒸馏退回红线：没看官方源、没看源码、没记录版本、没验证，都不能说已融合
+- 试验场新增蒸馏候选验证表，防止 skill 叠加污染主流程
+
+### 已核验官方源
+
+- `openai/skills`：commit `a8924c2`
+- `anthropics/skills`：commit `da20c92`
+- `addyosmani/agent-skills`：commit `6ce0298`
+- `AMAP-ML/SkillClaw`：commit `1f96ec8`
+- `cft0808/edict`：commit `14a2075`
+- `vercel-labs/agent-skills`：commit `1801156`
+
+### 蒸馏裁决
+
+- 吸收官方 skill 规范里的按需加载、metadata、许可证登记和 progressive disclosure
+- 吸收 SkillClaw 的任务后进化、候选验证、去重、版本轨迹
+- 吸收 Edict 的强制封驳、状态审计和可视化追踪思路
+- 不吸收外部组织命名，不新增重复入口，不让简单任务变慢
+
 ## 2026-05-31 v9.2
 
 ### 第四师工程流程线

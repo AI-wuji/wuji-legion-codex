@@ -50,7 +50,7 @@
   "routing_mode": "smart",
   "active_project": "wuji-legion-codex",
   "red_team_enabled": true,
-  "iron_rules_version": "6.0",
+  "iron_rules_version": "9.3",
   "cache_config": {
     "target_hit_rate": 0.95,
     "auto_compact_threshold": 0.8,
@@ -135,7 +135,7 @@
     {
       "id": "evolve",
       "name": "🔄 进化/复盘",
-      "keywords": ["复盘", "进化", "优化", "自动", "学习", "改进", "分析失败"],
+      "keywords": ["复盘", "进化", "优化", "自动", "学习", "改进", "分析失败", "蒸馏", "融合skill", "融合 skill", "升级skill", "升级 skill", "官方源", "源码核验", "能力融合"],
       "provider_id": "deepseek-web",
       "model": null,
       "priority": 30

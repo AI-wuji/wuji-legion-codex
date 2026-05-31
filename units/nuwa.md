@@ -39,6 +39,25 @@
 - 串行不需要解释；只有并行才需要说明为什么值得。
 - 不读取专家全文，除非该专家被明确选中。
 
+## 外部能力补位闸门
+
+女娲可以推荐专家、skill、MCP、插件，但不能直接把外部能力塞进主链路。
+
+```text
+候选能力
+-> 查 units/distillation.md 是否已有 verified 台账
+-> 已验证：按主责落点补位
+-> 未验证：交给进化部 / 蒸馏师团
+-> 待验证或拒绝：不得进入默认执行链
+```
+
+女娲输出补位建议时必须说明：
+
+- 它补的是哪个缺口。
+- 是否已有来源核验。
+- 是否会增加 token 或误触发。
+- 主帅是否仍然唯一。
+
 ## 常用补位
 
 | 缺口 | 可补位 |
@@ -50,6 +69,7 @@
 | 搜索调研 | 情报局、Trend Researcher、UX Researcher |
 | 风险审查 | 白帽、Reality Checker、Risk Assessor |
 | 代码质量 | Code Reviewer、Software Architect |
+| skill 蒸馏/升级 | 进化部、Distillation Auditor、试验场 |
 
 ## PPT 补位底线
 

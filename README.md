@@ -44,6 +44,7 @@ Wuji Legion for Codex is not about stacking more skills. It is about orchestrati
 - 参谋本部单主帅路由
 - 女娲按需补位
 - 白帽前置封驳
+- 进化部蒸馏师团负责官方源核验、必要性判断和版本登记
 - 状态机控制 token 和执行节奏，不让系统失控
 
 Wuji Legion borrows strengths, not identities. It pulls out what actually works, then rebuilds those strengths inside its own execution system.
@@ -61,7 +62,7 @@ Wuji Legion borrows strengths, not identities. It pulls out what actually works,
 - Presentation 层：真 PPTX、HTML slides、插图、封面、配图
 - 工程层：DEFINE / PLAN / BUILD / VERIFY / REVIEW / SHIP 阶段判断、薄切片实现、TDD、五轴审查
 - 质量层：白帽质疑、质监验收、安全审计
-- 进化层：失败模式沉淀、规则持续整流
+- 进化层：失败模式沉淀、官方源核验、蒸馏裁决、规则持续整流
 
 换句话说，它已经不是“概念军团”，而是一套能直接干活的执行框架。
 
@@ -90,6 +91,7 @@ In practice, it already delivers quick replies, research synthesis, coding workf
 - `dev`
 - `intel`
 - `security`
+- `distillation`
 
 ---
 
@@ -113,6 +115,18 @@ Key inspirations include:
 - `html-ppt-skill`
 - `imagegen`
 - `addyosmani/agent-skills`
+- `openai/skills`
+- `anthropics/skills`
+- `AMAP-ML/SkillClaw`
+- `cft0808/edict`
+- `vercel-labs/agent-skills`
+
+来源使用原则：
+
+- 官方源优先，社区文章只作为线索。
+- 记录 checked commit / version / license。
+- 只吸收机制，不复制上游组织编制。
+- 未完成核验的来源只进入待核验台账，不进入默认执行链。
 
 ---
 
@@ -132,12 +146,17 @@ Copy-Item .\experts C:\Users\Administrator\.agents\skills\wuji-legion\experts -R
 - [SKILL.md](E:\wuji-projects\wuji-legion-codex\SKILL.md)
 - [pptx_master.md](E:\wuji-projects\wuji-legion-codex\units\pptx_master.md)
 - [html_slides_master.md](E:\wuji-projects\wuji-legion-codex\units\html_slides_master.md)
+- [distillation.md](E:\wuji-projects\wuji-legion-codex\units\distillation.md)
 - [quick-imagegen.ps1](E:\wuji-projects\wuji-legion-codex\scripts\quick-imagegen.ps1)
 
 ---
 
 ## 更新日志 / Changelog
 
+- `2026-05-31 v9.3`
+  - 新增进化部蒸馏师团
+  - 增加官方源核验、必要性裁决、试验场验证和白帽退回红线
+  - 已核验 OpenAI skills、Anthropic skills、Addy agent-skills、SkillClaw、Edict、Vercel agent-skills 当前源码/规则
 - `2026-05-31 v9.1`
   - README 收缩为核心价值优先版
   - 重点讲清：它是干什么的、借鉴了什么、实现了什么
