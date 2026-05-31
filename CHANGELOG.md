@@ -1,5 +1,23 @@
 # 更新日志 / Changelog
 
+## 2026-05-31 v9.4
+
+### 专家库瘦身蒸馏
+
+- 将专家库从 70 张卡压缩为 44 张主责专家卡。
+- 新增 [experts/INDEX.md](E:\wuji-projects\wuji-legion-codex\experts\INDEX.md)，作为女娲补位和人工查找的唯一专家索引。
+- 重写 [gen_experts.py](E:\wuji-projects\wuji-legion-codex\scripts\gen_experts.py)，默认删除旧重复专家卡并重新生成“短操作合约”。
+- 合并重复人物和重复能力：
+  - `Image Prompt Engineer` 合并进 `Prompt Architect` 与 `ComfyUI Pipeline Engineer`
+  - `Risk Assessor` 合并进 `Reality Checker`
+  - `Book Co-Author` / `Podcast Strategist` / `Narratologist` 合并进 `Narrative Architect`
+  - `Short Video Coach` 合并进 `MrBeast`
+  - `Brand Guardian` / `UI Designer` / `UX Architect` 合并进 `impeccable引擎`
+  - `Whimsy Injector` 合并进 `Visual Storyteller`
+- 全局规则新增铁律：专家不以量取胜；蒸馏不是叠加，新增入口前必须先判断能否合并进现有主责位。
+- 同步更新 `nuwa`、`content`、`visual`、`comfyui`、`dev`、`intel`、`security`、`qa` 的专家索引，避免旧专家名继续制造误触发。
+- 清理 ignored `output/` 生成产物，减少工作区占用。
+
 ## 2026-05-31 v9.3
 
 ### 进化部蒸馏师团

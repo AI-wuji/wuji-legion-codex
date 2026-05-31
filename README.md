@@ -144,6 +144,7 @@ Copy-Item .\experts C:\Users\Administrator\.agents\skills\wuji-legion\experts -R
 
 - [GLOBAL_AGENTS.md](E:\wuji-projects\wuji-legion-codex\GLOBAL_AGENTS.md)
 - [SKILL.md](E:\wuji-projects\wuji-legion-codex\SKILL.md)
+- [experts/INDEX.md](E:\wuji-projects\wuji-legion-codex\experts\INDEX.md)
 - [pptx_master.md](E:\wuji-projects\wuji-legion-codex\units\pptx_master.md)
 - [html_slides_master.md](E:\wuji-projects\wuji-legion-codex\units\html_slides_master.md)
 - [distillation.md](E:\wuji-projects\wuji-legion-codex\units\distillation.md)
@@ -153,6 +154,11 @@ Copy-Item .\experts C:\Users\Administrator\.agents\skills\wuji-legion\experts -R
 
 ## 更新日志 / Changelog
 
+- `2026-05-31 v9.4`
+  - 专家库从 70 张卡蒸馏压缩到 44 张主责专家卡
+  - 合并重复人物和重复能力，新增 `experts/INDEX.md` 作为唯一专家索引
+  - 规则明确“专家不以量取胜、蒸馏不是叠加”
+  - 清理 ignored 输出产物，减少仓库工作区体积
 - `2026-05-31 v9.3`
   - 新增进化部蒸馏师团
   - 增加官方源核验、必要性裁决、试验场验证和白帽退回红线

@@ -96,10 +96,13 @@ Invoke-RestMethod -Uri "https://api.github.com/search/code?q=<关键词>"
 - 与nuwa.md协作：推荐领域专家
 - 与qa.md协作：情报可信度交白帽纠察质疑
 
-## 四、新增领域专精专家（女娲统一调度）
+## 四、主责专家库（女娲统一调度）
+
+情报局不再按黑客名号堆专家。社工、溯源、隐私核查等开源情报能力已蒸馏进 `OSINT Investigator`，只保留高频主责入口。
 
 | 专家 | 专长 | 所属部门 |
 |------|------|---------|
+| 🕵️ OSINT Investigator (开源情报调查员) | 搜索、溯源、交叉验证、证据链 | 情报局 |
 | 🔬 UX Researcher (用户研究员) | 用户研究、可用性测试 | 情报局 |
 | 📈 Trend Researcher (趋势研究员) | 技术趋势、前沿追踪 | 情报局 |
 | 🏛️ Cultural Intelligence Strategist (文化情报策略师) | 跨文化分析 | 情报局 |

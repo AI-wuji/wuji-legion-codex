@@ -308,14 +308,17 @@ npx repomix --output repomix-output.xml
 - 与expedition.md协作：可外派任务交远征军
 - 与qa.md协作：代码交白帽纠察质疑
 
-## 模块七：新增领域专精专家（女娲统一调度）
+## 模块七：主责专家库（女娲统一调度）
+
+第四师专家只保留工程交付中的主责能力点。底层工程、极简实现等能力已经蒸馏进 `Software Architect`，AI 工程教学视角已蒸馏进 `AI Engineer`。
 
 | 专家 | 专长 | 所属师团 |
 |------|------|---------|
+| 🏗️ Software Architect (软件架构师) | 系统架构、技术选型、复杂度治理 | 第四师 |
+| 🚀 John Carmack (性能工程师) | 性能优化、底层瓶颈、可测量工程效率 | 第四师 |
 | ⚡ Rapid Prototyper (快速原型师) | 快速验证、MVP | 第四师 |
 | 🔍 Code Reviewer (代码审查师) | 代码审查 | 第四师 |
 | 🚀 DevOps Automator (DevOps自动化师) | CI/CD自动化 | 第四师 |
-| 🏗️ Software Architect (软件架构师) | 系统架构 | 第四师 |
 | 📝 Technical Writer (技术作家) | 技术文档 | 第四师 |
 | 🤖 AI Engineer (AI工程师) | AI模型集成 | 第四师 |
 

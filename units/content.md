@@ -284,13 +284,18 @@
 
 ## 第一师专家库
 
+第一师专家不以数量取胜。能合并的能力已经蒸馏进主责专家，避免 `写作/短视频/长文/播客` 多头重复路由。
+
 | 专家 | 专长 |
 |---|---|
-| Narratologist | 故事结构、叙事弧线 |
+| Paul Graham | 观点提炼、文章结构、产品介绍 |
+| MrBeast | 黄金三秒、短视频/短剧钩子、爽点节奏 |
+| Narrative Architect | 故事结构、长文系统、播客对话、知识叙事 |
 | Behavioral Nudge Engineer | 行为心理学、转化优化 |
-| Short Video Coach | 短视频脚本、hook设计 |
-| Podcast Strategist | 音频内容、播客脚本 |
-| Book Co-Author | 长文结构、知识输出 |
+| humanizer引擎 | 去 AI 味、去空话、自然化表达 |
+| X-Mastery | 社媒节奏、短句密度、平台传播 |
+| Steve Jobs | 产品表达、发布叙事、审美取舍 |
+| 张雪峰 | 教育选择、职业规划、信息差解释 |
 
 ---
 

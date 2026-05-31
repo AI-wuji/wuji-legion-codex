@@ -64,10 +64,10 @@
 |---|---|
 | PPT 审美/表达 | 臧老师(PPT)、elite-powerpoint-designer |
 | PPT 模板执行 | Presentations、slide-studio |
-| 图像素材 | imagegen、Image Prompt Engineer |
-| UI 审美 | impeccable、UI Designer、UX Architect |
+| 图像素材 | imagegen、Prompt Architect |
+| UI 审美 | impeccable、impeccable引擎 |
 | 搜索调研 | 情报局、Trend Researcher、UX Researcher |
-| 风险审查 | 白帽、Reality Checker、Risk Assessor |
+| 风险审查 | 白帽、Reality Checker |
 | 代码质量 | Code Reviewer、Software Architect |
 | skill 蒸馏/升级 | 进化部、Distillation Auditor、试验场 |
 
@@ -88,7 +88,7 @@ PPT 任务中，女娲只能补位，不能把主线拆成多人接管。
 
 ## 专家索引
 
-专家文件位于 `experts/`。只有需要某个专家时才读取对应文件。
+专家文件位于 `experts/`。只有需要某个专家时才读取对应文件；优先查看 `experts/INDEX.md`，不要按旧专家名盲目召唤。
 
 主要目录：
 
@@ -103,5 +103,4 @@ PPT 任务中，女娲只能补位，不能把主线拆成多人接管。
 - `experts/prompt/`
 - `experts/expedition/`
 - `experts/evolve/`
-- `experts/proving/`
 - `experts/archive/`

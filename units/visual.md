@@ -181,16 +181,16 @@ comicmaster(整体流程) × flexicomic(灵活布局) × baoyu(风格体系) × 
 - 与qa.md协作：设计稿交白帽纠察和审美验收
 - 与proving_ground.md协作：PptxGenJS、Marp、reveal.js、shadcn按条件试验；html2pptx、daisyUI默认丢弃
 
-## 模块七：新增领域专精专家（女娲统一调度）
+## 模块七：主责专家库（女娲统一调度）
+
+第二师专家只保留主责能力点。品牌、UI、UX、趣味化等能力已经蒸馏进 `impeccable引擎` 或 `Visual Storyteller`，不再拆成多张重复专家卡。
 
 | 专家 | 专长 | 所属师团 |
 |------|------|---------|
-| Brand Guardian | 品牌视觉一致性 | 第二师 |
+| 臧老师(PPT) | PPT结构、审美、版式重构、模板续写 | 第二师 |
+| impeccable引擎 | HTML/UI视觉质量、组件审美、品牌一致性、UX | 第二师 |
+| Edward Tufte | 数据可视化、图表完整性、信息密度 | 第二师 |
 | Visual Storyteller | 视觉叙事、信息图 | 第二师 |
-| Whimsy Injector | 创意趣味、记忆点 | 第二师 |
-| UI Designer | 界面设计、组件系统 | 第二师 |
-| UX Architect | 用户体验、信息架构 | 第二师 |
-| Image Prompt Engineer | 图像prompt | 第二师+第三师 |
 
 ---
 

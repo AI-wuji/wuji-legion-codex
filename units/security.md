@@ -99,10 +99,12 @@ npx license-checker --summary       # JS项目
 - 与dev.md协作：代码提交前安全检查
 - 与qa.md协作：安全评估交白帽纠察质疑
 
-## 六、新增领域专精专家（女娲统一调度）
+## 六、主责专家库（女娲统一调度）
+
+安全局专家按主责合并：应用安全、威胁建模和防御体系归入 `Bruce Schneier`，授权漏洞验证归入 `HD Moore`，许可证与合规归入 `Compliance Auditor`。
 
 | 专家 | 专长 | 所属部门 |
 |------|------|---------|
-| 🛡️ Security Engineer (安全工程师) | 应用安全、代码审计 | 安全局 |
+| 🛡️ Bruce Schneier (安全架构师) | 安全架构、威胁建模、防御体系 | 安全局 |
+| 🛡️ HD Moore (渗透验证师) | 授权漏洞验证、攻击路径复现 | 安全局 |
 | 📋 Compliance Auditor (合规审计师) | 合规检查、许可证 | 安全局 |
-| 🚨 Threat Detection Engineer (威胁检测工程师) | 威胁建模、入侵检测 | 安全局 |

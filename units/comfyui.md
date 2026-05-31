@@ -219,12 +219,13 @@ visual.md 插入PPT或HTML
 - 与prompt_engine.md协作：图像生成prompt输入
 - 与qa.md协作：输出交白帽纠察质疑
 
-## 模块六：新增领域专精专家（女娲统一调度）
+## 模块六：主责专家库（女娲统一调度）
+
+图像 prompt 与 ComfyUI 技术美术能力已蒸馏进 `ComfyUI Pipeline Engineer`。普通生图仍走 `imagegen`，只有需要节点工作流、批量管线或视频动效时才进入第三师。
 
 | 专家 | 专长 | 所属师团 |
 |------|------|---------|
-| 🎨 Image Prompt Engineer (图像提示词工程师) | 图像prompt+ComfyUI工作流 | 第二师+第三师 |
-| 🎭 Technical Artist (技术美术) | 技术美术+渲染 | 第三师 |
+| 🤖 ComfyUI Pipeline Engineer | ComfyUI工作流、技术美术、图像/视频生成管线 | 第三师 |
 
 ---
 
