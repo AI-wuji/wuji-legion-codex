@@ -1,32 +1,36 @@
-﻿# push-to-github.ps1
-# 网络正常时运行此脚本推送更新
+param(
+    [string]$Message = "Update Wuji Legion Codex $(Get-Date -Format 'yyyy-MM-dd HH:mm')",
+    [switch]$NoPush
+)
 
-$repo = "C:\wuji-projects\wuji-legion-codex"
+$ErrorActionPreference = "Stop"
 
-if (-not (Test-Path "$repo\.git")) {
-    Write-Host "首次推送: 克隆并覆盖..." -ForegroundColor Yellow
-    git clone https://github.com/AI-wuji/wuji-legion-codex.git "$repo\_temp" 2>&1
-    if (Test-Path "$repo\_temp\.git") {
-        Remove-Item "$repo\_temp\*" -Recurse -Force -ErrorAction SilentlyContinue
-        Copy-Item "$repo\SKILL.md","$repo\README.md","$repo\CHANGELOG.md" "$repo\_temp\"
-        Copy-Item "$repo\units" "$repo\_temp\" -Recurse
-        Copy-Item "$repo\scripts" "$repo\_temp\" -Recurse
-        Remove-Item "$repo\_temp\scripts\push-to-github.ps1" -ErrorAction SilentlyContinue
-        Set-Location "$repo\_temp"
-        git add -A
-        git commit -m "V3.0 架构重构: 五大核心部门+省token优化+14新建模"
-        git push
-        Remove-Item "$repo" -Recurse -Force
-        Move-Item "$repo\_temp" "$repo"
-        Write-Host "推送完成!" -ForegroundColor Green
-    }
-} else {
-    Set-Location $repo
-    Copy-Item "C:\Users\Administrator\.agents\skills\wuji-legion\SKILL.md" ".\" -Force
-    Copy-Item "C:\Users\Administrator\.agents\skills\wuji-legion\units\*" ".\units\" -Force
-    Copy-Item "C:\Users\Administrator\.agents\skills\wuji-legion\scripts\*" ".\scripts\" -Force
-    git add -A
-    git commit -m "更新 $(Get-Date -Format yyyy-MM-dd HH:mm)"
-    git push
-    Write-Host "推送完成!" -ForegroundColor Green
+$repo = Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")
+Set-Location $repo
+
+if (-not (Test-Path -LiteralPath ".git")) {
+    throw "Current directory is not a Git repository: $repo"
 }
+
+$status = git status --short
+if (-not $status) {
+    Write-Host "SKIP: no changes to commit." -ForegroundColor Yellow
+    exit 0
+}
+
+git add -A
+git diff --cached --quiet
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "SKIP: no staged changes." -ForegroundColor Yellow
+    exit 0
+}
+
+git commit -m $Message
+
+if ($NoPush) {
+    Write-Host "OK: committed without push: $Message" -ForegroundColor Green
+    exit 0
+}
+
+git push
+Write-Host "OK: committed and pushed: $Message" -ForegroundColor Green

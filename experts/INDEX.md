@@ -1,92 +1,69 @@
 # 专家索引
 
-本目录由 `scripts/gen_experts.py` 生成。专家库遵循“少而强”：能蒸馏在一起的能力合并到一个主责专家，不用数量制造路由噪音。
+本目录由 `scripts/gen_experts.py` 生成。专家库采用“师团万能主帅 + 内置模式 + 独立质检”结构：同类执行能力合并进师团主帅，审查/安全/合规/质检保持独立第三方。
 
 ## 生成原则
 
-- 同一人物或同一能力不跨师团重复建卡。
-- 通用流程沉到 `units/*.md`，专家卡只保留执行合约。
-- 未核验官方源的外部能力不得写成已融合结论。
-- 新增专家必须减少失败模式或提升交付指标，否则拒绝新增。
+- 压缩的是师团内部入口，不是把整个无极军团压成一个超级大脑。
+- 每个师团主帅只能管本师团范围，不能跨师团抢权。
+- 小说、剧本、教程、商业方案等能力进入内容主帅内置模式，不再拆成重复专家卡。
+- 白帽、质检、安全、合规审计保持独立，不并入执行主帅。
+- Rust师只做无极执行底座，不替代开发主帅或判断层。
+- 外部 skill 只吸收源码验证后的机制，不照搬名称、组织编制或大段文本。
 
 ## 当前专家
 
 ### archive
 
-- [Aaron Swartz](archive/Aaron Swartz.md): 知识归档、备份、来源保存和可恢复性专家
+- [归档主帅](archive/归档主帅.md): 知识归档、备份、来源保存、版本回滚和可恢复性入口
 
 ### comfyui
 
-- [ComfyUI Pipeline Engineer](comfyui/ComfyUI Pipeline Engineer.md): ComfyUI工作流、技术美术和图像/视频生成管线专家
+- [ComfyUI主帅](comfyui/ComfyUI主帅.md): ComfyUI工作流、图像视频管线、插件节点和批量生成的专门入口
 
 ### content
 
-- [Behavioral Nudge Engineer](content/Behavioral Nudge Engineer.md): 行为心理、转化路径和行动设计专家
-- [MrBeast](content/MrBeast.md): 黄金三秒、爽点节奏、短视频和短剧钩子专家
-- [Narrative Architect](content/Narrative Architect.md): 故事结构、长文系统、播客对话和知识叙事整合专家
-- [Paul Graham](content/Paul Graham.md): 把复杂想法写成清楚、有洞察、有传播力文章的内容专家
-- [Steve Jobs](content/Steve Jobs.md): 产品表达、发布叙事和审美取舍专家
-- [X-Mastery](content/X-Mastery.md): 社媒节奏、短句密度和平台传播专家
-- [humanizer引擎](content/humanizer引擎.md): 去 AI 味、去空话、恢复自然人类表达的文案专家
-- [张雪峰](content/张雪峰.md): 教育选择、职业规划和信息差解释专家
+- [内容主帅](content/内容主帅.md): 小说、剧本、分镜、教程、计划书、营销方案和卖点提炼的全能写作入口
 
 ### dev
 
-- [AI Engineer](dev/AI Engineer.md): 模型、评估、RAG、AI工程化和上线落地专家
-- [Code Reviewer](dev/Code Reviewer.md): 代码审查、质量风险和可维护性专家
-- [DevOps Automator](dev/DevOps Automator.md): CI/CD、自动化、部署和环境可靠性专家
-- [John Carmack](dev/John Carmack.md): 性能优化、底层瓶颈和可测量工程效率专家
-- [Rapid Prototyper](dev/Rapid Prototyper.md): MVP、POC和快速验证专家
-- [Software Architect](dev/Software Architect.md): 系统架构、技术选型、复杂度治理和长期维护专家
-- [Technical Writer](dev/Technical Writer.md): 技术文档、README、API说明和开发者体验专家
+- [开发主帅](dev/开发主帅.md): 软件、Rust/Tauri、前端、小程序、ComfyUI插件、AI工程和自动化的开发入口
 
 ### evolve
 
-- [Distillation Auditor](evolve/Distillation Auditor.md): 官方源核验、必要性裁决、许可证和能力蒸馏专家
-- [Experiment Tracker](evolve/Experiment Tracker.md): 实验设计、A/B测试和效果验证专家
-- [Feedback Synthesizer](evolve/Feedback Synthesizer.md): 用户反馈、失败模式和规则改进信号提炼专家
+- [进化主帅](evolve/进化主帅.md): 官方源核验、能力蒸馏、失败复盘、实验验证和规则整流入口
 
 ### expedition
 
-- [Delivery Producer](expedition/Delivery Producer.md): 项目交付、流程优化、外派任务和进度控制专家
+- [交付主帅](expedition/交付主帅.md): 复杂项目节奏、外派边界、进度控制和最终收口入口
 
 ### intel
 
-- [Cultural Intelligence Strategist](intel/Cultural Intelligence Strategist.md): 跨文化、本地化和市场进入策略专家
-- [OSINT Investigator](intel/OSINT Investigator.md): 开源情报搜索、溯源、交叉验证和证据整理专家
-- [Trend Researcher](intel/Trend Researcher.md): 技术、市场和社区趋势研判专家
-- [UX Researcher](intel/UX Researcher.md): 用户研究、访谈、可用性测试和需求证据专家
+- [情报主帅](intel/情报主帅.md): 全网搜索、开源情报、趋势研判、用户研究和本地化证据链入口
 
 ### prompt
 
-- [Prompt Architect](prompt/Prompt Architect.md): 通用、图像、视频、分镜和工具调用提示词总工程师
+- [提示词主帅](prompt/提示词主帅.md): 图像、视频、分镜、工具调用和结构化prompt的统一入口
 
 ### qa
 
-- [Accessibility Auditor](qa/Accessibility Auditor.md): 无障碍、可读性和包容性体验审计专家
-- [Performance Benchmarker](qa/Performance Benchmarker.md): 速度、成本、token和性能基准测试专家
-- [Reality Checker](qa/Reality Checker.md): 事实核查、证据要求和白帽前置封驳专家
+- [性能基准官](qa/性能基准官.md): 速度、成本、token、接口耗时和系统性能基准测试入口
+- [白帽纠察官](qa/白帽纠察官.md): 前置反对意见、事实核查、路线否决和半成品拦截入口
+- [质检主帅](qa/质检主帅.md): 最终验收、可用性、可访问性、视觉/文档/代码交付质量的独立入口
+
+### rust
+
+- [Rust主帅](rust/Rust主帅.md): 无极军团通用执行底座、wuji-cli、guard、sync、audit、workflow、beep、bench、preview调度、pptx-preflight 和 pptx-audit 入口
 
 ### security
 
-- [Bruce Schneier](security/Bruce Schneier.md): 安全架构、威胁建模和防御体系专家
-- [Compliance Auditor](security/Compliance Auditor.md): 许可证、合规、开源来源和发布边界审计专家
-- [HD Moore](security/HD Moore.md): 渗透测试、漏洞验证和攻击路径复现实战专家
+- [合规审计官](security/合规审计官.md): 许可证、开源来源、隐私、发布边界和引用归属的独立审计入口
+- [安全主帅](security/安全主帅.md): 威胁建模、漏洞验证、攻击面收敛和防御设计的独立安全入口
 
 ### staff
 
-- [Elon Musk](staff/Elon Musk.md): 第一性原理、成本拆解和工程极限参谋
-- [Ilya Sutskever](staff/Ilya Sutskever.md): AI 能力跃迁、对齐风险和技术路线判断专家
-- [Naval](staff/Naval.md): 财富、杠杆、长期主义和人生策略参谋
-- [Taleb](staff/Taleb.md): 尾部风险、黑天鹅和反脆弱压力测试专家
-- [孙子](staff/孙子.md): 竞争态势、资源取舍和不战路径的战略参谋
-- [张一鸣](staff/张一鸣.md): 组织、产品增长、系统指标和延迟满足参谋
-- [芒格](staff/芒格.md): 用多元模型和反向思考审视决策的参谋专家
-- [费曼](staff/费曼.md): 用最简单语言验证理解、拆解复杂问题的参谋专家
+- [参谋主帅](staff/参谋主帅.md): 复杂判断、战略取舍、第一性拆解和多模型审视的参谋入口
 
 ### visual
 
-- [Edward Tufte](visual/Edward Tufte.md): 数据可视化、图表完整性和信息密度专家
-- [Visual Storyteller](visual/Visual Storyteller.md): 视觉叙事、信息图、记忆点和趣味化表达专家
-- [impeccable引擎](visual/impeccable引擎.md): HTML/UI/页面视觉质量、组件审美和反 AI slop 专家
-- [臧老师(PPT)](visual/臧老师(PPT).md): PPT结构、审美、版式重构和模板续写主责专家
+- [视觉主帅](visual/视觉主帅.md): PPT、HTML演示、UI页面、信息图、图表和配图的视觉生产入口

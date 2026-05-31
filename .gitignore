@@ -1,4 +1,6 @@
 output/
+outputs/
+.wuji-tools/
 *.tmp
 *.log
 __pycache__/

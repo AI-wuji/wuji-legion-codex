@@ -50,7 +50,7 @@
   "routing_mode": "smart",
   "active_project": "wuji-legion-codex",
   "red_team_enabled": true,
-  "iron_rules_version": "9.4",
+  "iron_rules_version": "10.6",
   "cache_config": {
     "target_hit_rate": 0.95,
     "auto_compact_threshold": 0.8,
@@ -71,15 +71,23 @@
     {
       "id": "code",
       "name": "💻 代码生成/开发",
-      "keywords": ["写", "开发", "实现", "函数", "生成", "创建", "bug", "修复", "重构", "Rust", "Tauri", "ComfyUI插件", "插件", "Python", "PowerShell", "编程", "compile"],
+      "keywords": ["写", "开发", "实现", "函数", "生成", "创建", "bug", "修复", "重构", "Rust", "Tauri", "小程序", "ComfyUI插件", "插件", "Python", "PowerShell", "自动化", "AI工程", "RAG", "编程", "compile"],
       "provider_id": "deepseek-web",
       "model": null,
       "priority": 80
     },
     {
+      "id": "rust",
+      "name": "🦀 Rust师/执行底座",
+      "keywords": ["Rust师", "Rust主帅", "wuji-cli", "执行底座", "执行引擎", "guard", "task", "sync", "audit", "workflow", "beep", "bench", "preview调度", "pptx-preflight", "pptx-batch-gate", "pptx-audit", "asset-map", "time-guard", "reference-frame-map", "reusable-asset-map", "illustration-plan", "pilot-page", "pilot-preview", "pilot-score"],
+      "provider_id": "deepseek-web",
+      "model": null,
+      "priority": 82
+    },
+    {
       "id": "content",
       "name": "✍️ 文案/内容创作",
-      "keywords": ["文章", "文案", "脚本", "剧本", "博客", "故事", "内容", "文档", "报告", "Word", "docx", "markdown"],
+      "keywords": ["文章", "文案", "脚本", "剧本", "分镜", "小说", "短篇", "长篇", "爽文", "教程", "教案", "课程", "计划书", "营销方案", "卖点", "博客", "故事", "内容", "文档", "报告", "Word", "docx", "markdown"],
       "provider_id": "deepseek-web",
       "model": null,
       "priority": 70
@@ -127,7 +135,7 @@
     {
       "id": "qa",
       "name": "✅ 审计/红队",
-      "keywords": ["审计", "审核", "检查", "验收", "审查", "质量", "反对", "批评", "bug一堆", "不好用", "丑", "崩", "报错"],
+      "keywords": ["审计", "审核", "检查", "验收", "审查", "质量", "反对", "批评", "白帽", "质检", "合规", "许可证", "安全", "性能", "token", "bug一堆", "不好用", "丑", "崩", "报错"],
       "provider_id": "deepseek-web",
       "model": null,
       "priority": 40
@@ -135,7 +143,7 @@
     {
       "id": "evolve",
       "name": "🔄 进化/复盘",
-      "keywords": ["复盘", "进化", "优化", "自动", "学习", "改进", "分析失败", "蒸馏", "融合skill", "融合 skill", "升级skill", "升级 skill", "官方源", "源码核验", "能力融合"],
+      "keywords": ["复盘", "进化", "优化", "自动", "学习", "改进", "分析失败", "蒸馏", "融合skill", "融合 skill", "升级skill", "升级 skill", "官方源", "源码核验", "能力融合", "工作流工件", "可审计轨迹", "workflow", "packet"],
       "provider_id": "deepseek-web",
       "model": null,
       "priority": 30

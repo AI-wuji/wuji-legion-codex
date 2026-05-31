@@ -1,10 +1,28 @@
 param(
-  [string]$SkillDir = "C:\Users\Administrator\.codex\plugins\cache\openai-primary-runtime\presentations\26.521.10419\skills\presentations",
-  [string]$NodePath = "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe",
-  [string]$NodeModules = "C:\Users\Administrator\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules"
+  [string]$SkillDir = "",
+  [string]$NodePath = "",
+  [string]$NodeModules = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($SkillDir)) {
+  $presentationsRoot = Join-Path $env:USERPROFILE ".codex\plugins\cache\openai-primary-runtime\presentations"
+  $latest = Get-ChildItem -LiteralPath $presentationsRoot -Directory -ErrorAction SilentlyContinue |
+    Sort-Object Name -Descending |
+    Select-Object -First 1
+  if ($latest) {
+    $SkillDir = Join-Path $latest.FullName "skills\presentations"
+  }
+}
+
+if ([string]::IsNullOrWhiteSpace($NodePath)) {
+  $NodePath = Join-Path $env:USERPROFILE ".cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe"
+}
+
+if ([string]::IsNullOrWhiteSpace($NodeModules)) {
+  $NodeModules = Join-Path $env:USERPROFILE ".cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules"
+}
 
 if (-not (Test-Path -LiteralPath $NodePath)) {
   throw "Bundled Node not found: $NodePath"

@@ -1,94 +1,65 @@
-﻿<#
+<#
 .SYNOPSIS
-  无极军团 — 全量恢复脚本
-  系统重装/Codex重装后，一键还原所有配置
+  Restore Wuji Legion Codex.
+
+.DESCRIPTION
+  Restores the repository, skill directory, and global AGENTS.md after reinstalling Codex or Windows.
 #>
+
+$ErrorActionPreference = "Stop"
 
 $REPO = "https://github.com/AI-wuji/wuji-legion-codex.git"
 $REPO_NAME = "wuji-legion-codex"
-$WORK_DIR = "E:\wuji-projects\$REPO_NAME"
-$SKILL_DIR = "$env:USERPROFILE\.agents\skills\wuji-legion"
-$AGENTS_DST = "$env:USERPROFILE\.codex\AGENTS.md"
+$PROJECTS_ROOT = "E:\wuji-projects"
+$WORK_DIR = Join-Path $PROJECTS_ROOT $REPO_NAME
+$SKILL_DIR = Join-Path $env:USERPROFILE ".agents\skills\wuji-legion"
+$AGENTS_DST = Join-Path $env:USERPROFILE ".codex\AGENTS.md"
 
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  无极军团 v5.5 — 全量恢复" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
+function Copy-CleanTree {
+    param(
+        [Parameter(Mandatory=$true)][string]$Source,
+        [Parameter(Mandatory=$true)][string]$Destination
+    )
 
-# === STEP 1: 克隆/拉取仓库 ===
-Write-Host "[1/5] 获取仓库..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Force -Path $WORK_DIR -ErrorAction SilentlyContinue | Out-Null
-Set-Location $WORK_DIR
-if (Test-Path ".git") {
-    git pull 2>$null
-    Write-Host "  [OK] 已更新仓库" -ForegroundColor Green
-} else {
-    Set-Location "E:\wuji-projects"
-    git clone $REPO 2>$null
-    if (Test-Path "$WORK_DIR\SKILL.md") {
-        Write-Host "  [OK] 已克隆仓库" -ForegroundColor Green
-    } else {
-        Write-Host "  [FAIL] 无法克隆，请检查网络" -ForegroundColor Red
-        exit 1
+    New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+    robocopy $Source $Destination /MIR /XD .git __pycache__ output outputs .wuji-errors .wuji-backups /XF *.pyc *.tmp *.log /NFL /NDL /NJH /NJS /NP | Out-Null
+    if ($LASTEXITCODE -gt 7) {
+        throw "Copy failed: robocopy exit code $LASTEXITCODE"
     }
 }
 
-# === STEP 2: 安装全局规则 ===
-Write-Host "[2/5] 安装全局规则 AGENTS.md ..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Force -Path "$env:USERPROFILE\.codex" -ErrorAction SilentlyContinue | Out-Null
-Copy-Item -Path "$WORK_DIR\GLOBAL_AGENTS.md" -Destination $AGENTS_DST -Force
-if (Test-Path $AGENTS_DST) {
-    Write-Host "  [OK] 全局规则已安装（铁律+白帽纠察+MoE+Cache）" -ForegroundColor Green
-} else {
-    Write-Host "  [FAIL] 安装失败" -ForegroundColor Red
-}
-
-# === STEP 3: 安装无极军团Skill ===
-Write-Host "[3/5] 安装无极军团 Skill ..." -ForegroundColor Yellow
-Remove-Item -Recurse -Force $SKILL_DIR -ErrorAction SilentlyContinue
-$excludeList = @("node_modules", ".git", "__pycache__", ".gitignore")
-Copy-Item -Path "$WORK_DIR\*" -Destination $SKILL_DIR -Recurse -Force -Exclude $excludeList
-$skillFiles = (Get-ChildItem $SKILL_DIR -Recurse -File).Count
-Write-Host "  [OK] $skillFiles 个文件已安装到 $SKILL_DIR" -ForegroundColor Green
-
-# === STEP 4: 恢复E盘工作目录 ===
-Write-Host "[4/5] 恢复 E 盘工作目录 ..." -ForegroundColor Yellow
-$eDir = "E:\wuji-projects\$REPO_NAME"
-if (-not (Test-Path $eDir)) {
-    New-Item -ItemType Directory -Force -Path $eDir | Out-Null
-    Copy-Item -Path "$WORK_DIR\*" -Destination $eDir -Recurse -Force -Exclude $excludeList
-    Write-Host "  [OK] 工作目录已恢复" -ForegroundColor Green
-} else {
-    Write-Host "  [SKIP] E 盘目录已存在" -ForegroundColor Yellow
-}
-
-# === STEP 5: 列出插件恢复状态 ===
-Write-Host "[5/5] 插件恢复说明:" -ForegroundColor Yellow
-Write-Host "  [BUILT-IN] browser / documents / spreadsheets / presentations 以 config.toml 启用状态为准" -ForegroundColor Green
-Write-Host "  [MARKET] 以下市场插件如未授权，需要在 Codex Desktop → 设置 → 插件 中手动安装/登录:" -ForegroundColor Yellow
-$plugins = @(
-    @{Name="GitHub"; Pri="⭐"; Desc="PR/Issue/CI管理"},
-    @{Name="Supabase"; Pri="⭐"; Desc="数据库+后端"},
-    @{Name="Vercel"; Pri="⭐"; Desc="前端部署"},
-    @{Name="Figma"; Pri="⭐"; Desc="UI设计→代码"},
-    @{Name="HeyGen"; Pri="⭐"; Desc="AI数字人视频"},
-    @{Name="Sentry"; Pri="高"; Desc="错误追踪"},
-    @{Name="CodeRabbit"; Pri="高"; Desc="AI代码审查"},
-    @{Name="Notion"; Pri="高"; Desc="文档协作"},
-    @{Name="Remotion"; Pri="中"; Desc="程序化视频"},
-    @{Name="Cloudinary"; Pri="中"; Desc="媒体管理"},
-    @{Name="Linear"; Pri="中"; Desc="任务跟踪"},
-    @{Name="Canva"; Pri="低"; Desc="轻量设计"},
-    @{Name="CircleCI"; Pri="低"; Desc="CI/CD"},
-    @{Name="Hugging Face"; Pri="低"; Desc="AI模型/数据集"},
-    @{Name="Readwise"; Pri="低"; Desc="知识管理"},
-    @{Name="Game Studio"; Pri="低"; Desc="浏览器游戏"}
-)
-$plugins | ForEach-Object { Write-Host "  $($_.Pri) $($_.Name) — $($_.Desc)" }
-
-Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  恢复完成！" -ForegroundColor Green
-Write-Host "  全局规则 + 无极军团 Skill 已就绪" -ForegroundColor Green
-Write-Host "  市场插件需按需安装/授权（详见 units/plugins.md）" -ForegroundColor Yellow
+Write-Host "  Wuji Legion Codex v9.5 Restore" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+
+Write-Host "[1/4] Get repository..." -ForegroundColor Yellow
+New-Item -ItemType Directory -Force -Path $PROJECTS_ROOT | Out-Null
+if (Test-Path -LiteralPath (Join-Path $WORK_DIR ".git")) {
+    Set-Location $WORK_DIR
+    git pull --ff-only
+} else {
+    git clone $REPO $WORK_DIR
+}
+
+if (-not (Test-Path -LiteralPath (Join-Path $WORK_DIR "SKILL.md"))) {
+    throw "Repository is incomplete: SKILL.md not found"
+}
+
+Write-Host "[2/4] Install AGENTS.md..." -ForegroundColor Yellow
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $AGENTS_DST) | Out-Null
+Copy-Item -LiteralPath (Join-Path $WORK_DIR "GLOBAL_AGENTS.md") -Destination $AGENTS_DST -Force
+
+Write-Host "[3/4] Install skill..." -ForegroundColor Yellow
+Copy-CleanTree -Source $WORK_DIR -Destination $SKILL_DIR
+
+Write-Host "[4/4] Verify restore..." -ForegroundColor Yellow
+$skillFiles = (Get-ChildItem -LiteralPath $SKILL_DIR -Recurse -File).Count
+if ($skillFiles -lt 20) {
+    throw "Unexpected restored file count: $skillFiles"
+}
+
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Restore complete." -ForegroundColor Green
+Write-Host "  Skill: $SKILL_DIR" -ForegroundColor Cyan
+Write-Host "  AGENTS: $AGENTS_DST" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan

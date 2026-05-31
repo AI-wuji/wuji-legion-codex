@@ -1,6 +1,6 @@
 # target-range.py - 无极军团打靶场系统
 
-import os, sys, json, re, glob
+import os, sys, re, glob
 
 class TargetRange:
     """打靶场 - 沙盒测试环境"""
@@ -107,6 +107,49 @@ class TargetRange:
             "password" not in content.lower() and "secret" not in content.lower() and "token" not in content.lower(),
             "配置中包含敏感关键词，请确认是否需要加密")
 
+    def scan_skill(self, skill_dir):
+        """扫描 Codex skill / 无极军团目录"""
+        if not os.path.isdir(skill_dir):
+            self.check("skill目录存在", False, "目录不存在")
+            return
+
+        required_files = ["SKILL.md"]
+        for filename in required_files:
+            self.check("%s存在" % filename, os.path.exists(os.path.join(skill_dir, filename)))
+
+        skill_path = os.path.join(skill_dir, "SKILL.md")
+        if os.path.exists(skill_path):
+            with open(skill_path, "r", encoding="utf-8", errors="replace") as f:
+                skill_text = f.read()
+            self.check("SKILL.md非空", len(skill_text.strip()) > 0)
+            self.check("SKILL.md有frontmatter", skill_text.lstrip().startswith("---"))
+            self.check("SKILL.md无替换乱码符", "\ufffd" not in skill_text)
+
+        expected_dirs = ["units", "experts", "scripts"]
+        for dirname in expected_dirs:
+            self.check("%s目录存在" % dirname, os.path.isdir(os.path.join(skill_dir, dirname)))
+
+        text_exts = {".md", ".ps1", ".py", ".json", ".txt"}
+        bad_patterns = [
+            ("替换乱码符", "\ufffd"),
+            ("模板占位", "Lorem" + " ipsum"),
+        ]
+        ignored_dirs = {".git", "__pycache__", "output", "outputs", ".wuji-errors", ".wuji-backups"}
+        scanned = 0
+        for root, dirs, files in os.walk(skill_dir):
+            dirs[:] = [d for d in dirs if d not in ignored_dirs]
+            for filename in files:
+                if os.path.splitext(filename)[1].lower() not in text_exts:
+                    continue
+                path = os.path.join(root, filename)
+                with open(path, "r", encoding="utf-8", errors="replace") as f:
+                    content = f.read()
+                scanned += 1
+                for label, pattern in bad_patterns:
+                    self.check("%s:%s" % (label, os.path.relpath(path, skill_dir)), pattern not in content)
+
+        self.check("文本文件扫描完成", scanned > 0, "未扫描到文本文件")
+
     def scan_permission(self, operation_desc):
         """权限等级评估"""
         high_risk_keywords = ["delete", "remove", "rm", "format", "force push", "reset", "drop table",
@@ -190,7 +233,7 @@ if __name__ == "__main__":
     elif target_type == "permission":
         tr.scan_permission(target_path)
     elif target_type == "skill":
-        tr.scan_code(target_path)  # 复用代码扫描
+        tr.scan_skill(target_path)
     else:
         print("[ERROR] Unknown target type: %s" % target_type)
         sys.exit(1)

@@ -1,54 +1,52 @@
-# wuji-install.ps1 — 无极军团一键安装引导
+# wuji-install.ps1 - install Wuji Legion Codex
+
+$ErrorActionPreference = "Stop"
 
 $REPO = "AI-wuji/wuji-legion-codex"
-$SKILL_DIR = "$env:USERPROFILE\.agents\skills\wuji-legion"
+$SKILL_DIR = Join-Path $env:USERPROFILE ".agents\skills\wuji-legion"
+$AGENTS_DST = Join-Path $env:USERPROFILE ".codex\AGENTS.md"
+$temp = Join-Path $env:TEMP ("wuji-legion-codex-" + [guid]::NewGuid().ToString("N"))
 
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "   Wuji Legion Installer v1.0" -ForegroundColor Cyan
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host ""
+function Copy-CleanTree {
+    param(
+        [Parameter(Mandatory=$true)][string]$Source,
+        [Parameter(Mandatory=$true)][string]$Destination
+    )
 
-Write-Host "[1/4] Creating skill directory..." -ForegroundColor Yellow
-New-Item -ItemType Directory -Force -Path $SKILL_DIR | Out-Null
-
-Write-Host "[2/4] Downloading from github.com/$REPO ..." -ForegroundColor Yellow
-$temp = "$env:TEMP\wuji-legion-codex"
-Remove-Item -Recurse -Force $temp -ErrorAction SilentlyContinue
-git clone "https://github.com/$REPO.git" $temp 2>$null
-
-if (Test-Path "$temp\SKILL.md") {
-    Copy-Item -Path "$temp\*" -Destination $SKILL_DIR -Recurse -Force
-    Write-Host "  [OK] Downloaded successfully" -ForegroundColor Green
-} else {
-    Write-Host "  [FAIL] Cannot download from GitHub" -ForegroundColor Red
-    Write-Host "  Please check network or manually clone:"
-    Write-Host "  git clone https://github.com/$REPO.git"
-    exit 1
-}
-
-Write-Host "[3/4] Checking E drive backup..." -ForegroundColor Yellow
-$eBackup = "E:\wuji-legion-backup\skills\wuji-legion"
-if (Test-Path $eBackup) {
-    Write-Host "  [OK] E drive backup found at $eBackup" -ForegroundColor Green
-    $restore = Read-Host "  Restore from E drive backup? (y/N)"
-    if ($restore -eq "y" -or $restore -eq "Y") {
-        Copy-Item -Path "$eBackup\*" -Destination $SKILL_DIR -Recurse -Force
-        Write-Host "  [OK] Restored from E drive backup" -ForegroundColor Green
+    New-Item -ItemType Directory -Force -Path $Destination | Out-Null
+    robocopy $Source $Destination /MIR /XD .git __pycache__ output outputs .wuji-errors .wuji-backups /XF *.pyc *.tmp *.log /NFL /NDL /NJH /NJS /NP | Out-Null
+    if ($LASTEXITCODE -gt 7) {
+        throw "Copy failed: robocopy exit code $LASTEXITCODE"
     }
-} else {
-    Write-Host "  [SKIP] No E drive backup found" -ForegroundColor Yellow
 }
 
-Write-Host "[4/4] Verifying installation..." -ForegroundColor Yellow
-$files = (Get-ChildItem $SKILL_DIR -Recurse -File).Count
-if ($files -gt 5) {
-    Write-Host "  [OK] $files files installed" -ForegroundColor Green
-} else {
-    Write-Host "  [WARN] Only $files files - may be incomplete" -ForegroundColor Yellow
-}
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  Wuji Legion Codex Installer v10.2" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
 
-Write-Host ""
-Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  Installation complete!" -ForegroundColor Green
-Write-Host "  Now tell Codex: 阿极，恢复" -ForegroundColor White
-Write-Host "========================================" -ForegroundColor Cyan
+try {
+    Write-Host "[1/4] Clone repository..." -ForegroundColor Yellow
+    git clone "https://github.com/$REPO.git" $temp 2>$null
+    if (-not (Test-Path -LiteralPath (Join-Path $temp "SKILL.md"))) {
+        throw "Download failed: SKILL.md not found"
+    }
+
+    Write-Host "[2/4] Install skill..." -ForegroundColor Yellow
+    Copy-CleanTree -Source $temp -Destination $SKILL_DIR
+
+    Write-Host "[3/4] Install AGENTS.md..." -ForegroundColor Yellow
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $AGENTS_DST) | Out-Null
+    Copy-Item -LiteralPath (Join-Path $temp "GLOBAL_AGENTS.md") -Destination $AGENTS_DST -Force
+
+    Write-Host "[4/4] Verify install..." -ForegroundColor Yellow
+    $files = (Get-ChildItem -LiteralPath $SKILL_DIR -Recurse -File).Count
+    if ($files -lt 20) {
+        throw "Unexpected installed file count: $files"
+    }
+
+    Write-Host "OK: Wuji Legion Codex installed." -ForegroundColor Green
+    Write-Host "Skill: $SKILL_DIR" -ForegroundColor Cyan
+    Write-Host "AGENTS: $AGENTS_DST" -ForegroundColor Cyan
+} finally {
+    Remove-Item -LiteralPath $temp -Recurse -Force -ErrorAction SilentlyContinue
+}
