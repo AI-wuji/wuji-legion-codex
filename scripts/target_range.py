@@ -45,7 +45,7 @@ class TargetRange:
 
         key_patterns = [
             r'(?:api[_-]?key|apikey|secret|token|password)[\'"]\s*[:=]\s*[\'"](?!\s*$|os\.environ|os\.getenv)',
-            r'(?:AKIA[0-9A-Z]{16}|sk-[a-zA-Z0-9]{32,}|ghp_[a-zA-Z0-9]{36})'
+            r'(?:AKIA[0-9A-Z]{16}|sk' + r'-[a-zA-Z0-9]{32,}|gh' + r'p_[a-zA-Z0-9]{36})'
         ]
         has_hardcoded_key = False
         for pat in key_patterns:

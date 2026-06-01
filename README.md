@@ -1,40 +1,60 @@
 # 无极军团 Codex 版 / Wuji Legion for Codex
 
-**一句话 / One Sentence**  
-无极军团 Codex 版是一个 MoE 总调度执行框架：阿极统一入口，参谋本部选主帅，各师团主帅按模式执行，白帽/质检/安全/合规独立审查，把 Codex 从“会回答”推进到“能稳定交付”。
-Wuji Legion for Codex is an MoE-style execution framework: Aji is the single user-facing entrance, Staff HQ selects one commander, each division commander runs task-specific modes, and independent QA/security/compliance gates keep delivery reliable.
+**让 Codex 从“会回答”升级成“真交付”。**  
+无极军团不是再堆一堆 skill，也不是花哨的多 agent 表演。它是一套面向真实交付的执行系统：自动收敛角色、压低 token、提高命中率，把调研、代码、内容、PPT、HTML、配图、插件和规则升级都收口到可验证的结果。
 
----
+**一句话卖点**  
+更省 token，更少废话，更高命中，更稳交付。
 
-## 它是干什么的 / What It Does
+## 为什么会让人想用
 
-无极军团不是“再装很多 skill”。
+- 你不用自己学复杂工具链，阿极就是统一入口。
+- 你不用反复提醒“别跑偏、别半成品、别假完成”，底层门禁会先拦。
+- 你不用在简单任务上浪费高成本模型，它会先走低成本，再按难度升级。
+- 你不用把历史偏好一次次重讲，它会把可用偏好蒸馏成离线优化闭环。
+- 你不用担心一堆角色吵架，它默认单主帅负责到底，只有真缺能力才补位。
 
-它解决的是：让 Codex 在调研、代码、内容、PPT、HTML、配图、插件、规则升级这些任务里，不再乱调工具、不再堆流程口号，而是按一个稳定执行框架交付结果。
+## 它卖的不是概念，卖的是结果
 
-核心能力：
+- 调研：查得更准，结论更短，更少信息噪音。
+- 代码：Go 执行底座负责硬门禁，功能链路可构建、可测试、可审计。
+- 内容：写作、脚本、方案、教程不再像 AI 拼接稿。
+- PPT / HTML / UI：先过结构和风格门，再批量生成，减少返工。
+- 安全：白帽、质检、安全、合规独立，不让执行者自己给自己放行。
+- 进化：只蒸馏有用能力，不做无穷叠加。
 
-- 一个入口：默认永远是阿极。
-- 一个主帅：每个任务先选单主帅负责到底。
-- 一个师团主帅：每个师团内部尽量压成万能主帅入口。
-- 多个模式：小说、剧本、PPT、HTML、小程序、ComfyUI 插件、wuji-cli/Rust执行底座等能力进入主帅内置模式。
-- 独立审查：白帽、质检、安全、合规不并入执行者。
-- 硬门禁：能用 Rust师硬控的路径、PPTX可编辑性、参考素材复用、时间熔断，不靠嘴上反复提醒。
-- 持续进化：外部 skill 先查官方源和源码，再蒸馏机制，不叠加入口。
+## 最适合谁
+
+- 想把 Codex 当长期生产力系统的人
+- 不会编程、但要高质量成品的人
+- 讨厌半成品、试验版、待开发的人
+- 在乎成本、稳定、命中率和最终质量的人
+
+## 当前收口能力
+
+- Go 执行底座：`wuji-cli` 已覆盖 `reference-guard`、`workflow-guard`、`claim-guard`、`time-guard`、`task`、`sync`、`audit`、`bench`、`bench-report`、`route-task`、`context-pack`、`preview`、`asset-map`、`pptx-audit`、`pptx-preflight`、`pptx-batch-gate`、`mcp-guard`、`mcp-distill`、`feedback-log`、`feedback-dataset`、`prompt-candidate-audit`、`prompt-eval`、`prompt-distill`。
+- 模型分档：默认 `gpt-5.4-mini`，中档 `gpt-5.4`，高档 `gpt-5.5`，按任务难度推荐。
+- 自进化闭环：`feedback-log -> feedback-dataset -> prompt-candidate-audit -> prompt-eval -> prompt-distill`。
+- 交付铁律：只交最终结果，不交半成品，不拿路线表演冒充执行。
 
 ---
 
 ## v10.6 的关键变化 / Key Change
 
-v10.6 新增 `pilot-page` 快速闭环：PPT/HTML 视觉成品不再一口气批量试错，预检和三张表通过后先生成 1 页最高风险/最高密度/最能代表风格的 pilot page，记录 `pilot-score`，过线后才批量生成。Rust师新增 `pptx-batch-gate`，缺 `pilot-page`、`pilot-preview`、`pilot-score` 直接 `NO-GO`。
+v10.6 新增 `pilot-page` 快速闭环：PPT/HTML 视觉成品不再一口气批量试错，预检和三张表通过后先生成 1 页最高风险/最高密度/最能代表风格的 pilot page，记录 `pilot-score`，过线后才批量生成。执行底座新增 `pptx-batch-gate`，缺 `pilot-page`、`pilot-preview`、`pilot-score` 直接 `NO-GO`。
+
+当前无极执行底座主链路统一为 Go：`wuji-cli` 已覆盖 `reference-guard`、`workflow-guard`、`claim-guard`、`time-guard`、`task`、`sync`、`audit`、`bench`、`bench-report`、`route-task`、`context-pack`、`preview`、`asset-map`、`pptx-audit`、`pptx-preflight`、`pptx-batch-gate`、`mcp-guard`、`mcp-distill`、`feedback-log`、`feedback-dataset`、`prompt-candidate-audit`、`prompt-eval`、`prompt-distill`，并统一调度专项补位工具。
+模型档位当前收口为 3 档：默认 `gpt-5.4-mini`，中档 `gpt-5.4`，高档 `gpt-5.5`；由 `route-task` 按任务信号推荐 `tier + reasoning_effort`，以“先低成本、再按需升级”为默认原则。
+前台执行提示统一压成中文短句：执行前只报 `建议：5.4-mini 低` / `建议：5.4 中` / `建议：5.5 高` / `建议：5.5 超高`；任务完成后默认报 `建议切回：5.4-mini 低`。
+提示词自进化当前已收口为离线闭环：`feedback-log -> feedback-dataset -> prompt-candidate-audit -> prompt-eval -> prompt-distill`，只沉淀脱敏偏好信号，不把运行时上下文越堆越肥。
 
 ## v10.5 的关键变化 / Key Change
 
-v10.5 针对 PPT 长时间空转和低质交付加前置硬门禁：口头说“直接生成”不算执行；非代码任务 10/15/30 分钟分级熔断；参考 PPTX 必须同时当作风格系统和素材库，批量生成前先锁定 `reference-frame-map`、`reusable-asset-map`、`illustration-plan`；优先复用表格、图标、卡片、流程箭头、章节页、背景装饰、教学插图、案例图、公式图和 image2 生图资产；真 PPTX 不得每页一张整图冒充可编辑成品。Rust师新增 `pptx-preflight`、`pptx-audit`、`asset-map`、`time-guard` 方向，用确定性检查硬控这些问题。
+v10.5 针对 PPT 长时间空转和低质交付加前置硬门禁：口头说“直接生成”不算执行；非代码任务 10/15/30 分钟分级熔断；参考 PPTX 必须同时当作风格系统和素材库，批量生成前先锁定 `reference-frame-map`、`reusable-asset-map`、`illustration-plan`；优先复用表格、图标、卡片、流程箭头、章节页、背景装饰、教学插图、案例图、公式图和 image2 生图资产；真 PPTX 不得每页一张整图冒充可编辑成品。执行底座新增 `pptx-preflight`、`pptx-audit`、`asset-map`、`time-guard` 方向，用确定性检查硬控这些问题。
 
 ## v10.4 的关键变化 / Key Change
 
-v10.4 新增 `Rust师 / Rust主帅`：把无极军团自身稳定、重复、可判定的动作下沉为确定性执行底座，负责 `wuji-cli`、guard、task、sync、audit、workflow、beep、bench、preview调度。它不替代开发主帅，不抢普通 Rust/Tauri/业务代码，也不替代参谋本部、女娲、白帽、质检、安全、合规和进化判断。
+v10.4 新增 `执行底座 / 执行底座主帅`：把无极军团自身稳定、重复、可判定的动作下沉为确定性执行底座，负责 `wuji-cli`、guard、task、sync、audit、workflow、beep、bench、preview调度。它不替代开发主帅，不抢普通 Go/Tauri/业务代码，也不替代参谋本部、女娲、白帽、质检、安全、合规和进化判断。
 
 ## v10.3 的关键变化 / Key Change
 
@@ -118,7 +138,7 @@ v9.6 做的是质量整流：把“能跑”继续推进到“干净、可安装
 - 视觉主帅
 - 提示词主帅
 - 开发主帅
-- Rust主帅
+- 执行底座主帅
 - ComfyUI主帅
 - 情报主帅
 - 安全主帅
@@ -138,8 +158,8 @@ v9.6 做的是质量整流：把“能跑”继续推进到“干净、可安装
 |---|---|---|
 | 内容 | 内容主帅 | 小说、剧本、分镜、教程、计划书、营销方案、卖点提炼、短内容、人味改稿 |
 | 视觉 | 视觉主帅 | 真PPTX、HTML演示、UI页面、数据可视化、信息图、配图 |
-| 开发 | 开发主帅 | Rust/Tauri、前端、小程序、ComfyUI插件、AI工程、自动化、原型 |
-| Rust师 | Rust主帅 | 无极执行底座、wuji-cli、guard、task、sync、audit、workflow、beep、bench、preview调度、pptx-preflight、pptx-batch-gate、pptx-audit、asset-map、time-guard |
+| 开发 | 开发主帅 | Go/Tauri、前端、小程序、ComfyUI插件、AI工程、自动化、原型 |
+| 执行底座 | 执行底座主帅 | 无极执行底座、wuji-cli、guard、task、sync、audit、workflow、beep、bench、preview调度、pptx-preflight、pptx-batch-gate、pptx-audit、asset-map、time-guard |
 | 情报 | 情报主帅 | 全网搜索、GitHub源码核验、趋势、用户研究、本地化 |
 | 安全 | 安全主帅 | 威胁建模、漏洞验证、供应链、发布安全 |
 | 审查 | 白帽/质检/合规/性能 | 前置封驳、最终验收、许可证/隐私、速度/token基准 |
@@ -201,16 +221,16 @@ v9.6 做的是质量整流：把“能跑”继续推进到“干净、可安装
 - `2026-06-01 v10.6`
   - 新增 pilot page 快速闭环：先做 1 页代表页，过线后才批量生成。
   - pilot 最多两轮，不过线必须换路线或短报阻塞。
-  - Rust师新增 `pptx-batch-gate`，缺 pilot 产物或 pilot-score 不允许批量生成。
+  - 执行底座新增 `pptx-batch-gate`，缺 pilot 产物或 pilot-score 不允许批量生成。
 - `2026-06-01 v10.5`
   - 非代码任务新增 10/15/30 分钟熔断，禁止“嘴上直接生成、实际继续绕路”。
   - PPT 参考任务必须在生成前锁定 `reference-frame-map`、`reusable-asset-map`、`illustration-plan`。
   - PPT 参考任务必须继承风格、框架、可复用元素和同等级 image2 教学插图表达。
   - 真 PPTX 禁止每页一张整图冒充可编辑成品。
-  - Rust师新增 `pptx-preflight`、`pptx-audit`、`asset-map`、`time-guard` 硬门禁方向。
+  - 执行底座新增 `pptx-preflight`、`pptx-audit`、`asset-map`、`time-guard` 硬门禁方向。
 - `2026-06-01 v10.4`
-  - 新增 `Rust师 / Rust主帅`，作为无极军团通用确定性执行底座。
-  - 明确普通 Rust/Tauri/业务代码仍归开发主帅；`wuji-cli`、guard、sync、audit、workflow、beep、bench、preview调度归 Rust主帅。
+  - 新增 `执行底座 / 执行底座主帅`，作为无极军团通用确定性执行底座。
+  - 明确普通 Go/Tauri/业务代码仍归开发主帅；`wuji-cli`、guard、sync、audit、workflow、beep、bench、preview调度归 执行底座主帅。
 - `2026-06-01 v10.3`
   - 非代码成品任务先直接生成主成品，禁止开工前工具链连环验证。
   - PPT 顺序固定为读取输入、映射页型、生成完整成品、预览 QA、局部修复。

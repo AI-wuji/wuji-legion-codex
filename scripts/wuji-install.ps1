@@ -6,6 +6,18 @@ $REPO = "AI-wuji/wuji-legion-codex"
 $SKILL_DIR = Join-Path $env:USERPROFILE ".agents\skills\wuji-legion"
 $AGENTS_DST = Join-Path $env:USERPROFILE ".codex\AGENTS.md"
 $temp = Join-Path $env:TEMP ("wuji-legion-codex-" + [guid]::NewGuid().ToString("N"))
+$CONFIG_PATH = Join-Path $PSScriptRoot "..\config.json"
+$INSTALLER_VERSION = "unknown"
+
+if (Test-Path -LiteralPath $CONFIG_PATH) {
+    try {
+        $config = Get-Content -Raw -LiteralPath $CONFIG_PATH | ConvertFrom-Json
+        if ($config.iron_rules_version) {
+            $INSTALLER_VERSION = [string]$config.iron_rules_version
+        }
+    } catch {
+    }
+}
 
 function Copy-CleanTree {
     param(
@@ -21,7 +33,7 @@ function Copy-CleanTree {
 }
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  Wuji Legion Codex Installer v10.2" -ForegroundColor Cyan
+Write-Host "  Wuji Legion Codex Installer v$INSTALLER_VERSION" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 try {

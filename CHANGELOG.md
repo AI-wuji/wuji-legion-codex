@@ -1,5 +1,15 @@
 # 更新日志 / Changelog
 
+## 2026-06-01 v10.6 hard-gate completion
+
+- `wuji-cli` 新增 `reference-guard`：输出路径不得覆盖参考原件或写入参考目录。
+- `wuji-cli` 新增 `workflow-guard`：确定性检查复杂任务工作流工件完整性。
+- `wuji-cli` 新增 `claim-guard`：完成、成功、通过、已融合、已生成声明必须附验证证据。
+- `wuji-cli` 新增 `time-guard`：非代码任务 10/15/30 分钟无可验产物时直接 `NO-GO`。
+- `wuji-cli` 补齐 `task`、`sync`、`audit`、`bench`、`preview`、`asset-map`、`pptx-audit`，执行底座文档声明的核心命令全部落成可执行实现。
+- 新增 `scripts/test-wuji-cli.ps1`，回归验证四个通用 gate 与两道 PPTX gate。
+- 文档明确区分已落地子命令和后续方向，禁止把规划能力冒充已实现能力。
+
 ## 2026-06-01 v10.6
 
 ### Pilot Page 快速闭环
@@ -8,7 +18,7 @@
 - 三张表通过后先生成 1 页最高风险/最高密度/最能代表风格的 `pilot-page`，导出 `pilot-preview` 并记录 `pilot-score`。
 - pilot 只检验风格、结构、素材复用、插图策略和可编辑路线，不做工具链连环测试。
 - pilot 最多两轮；两轮不过线，必须换路线或短报阻塞，不得继续批量生成。
-- Rust师新增 `pptx-batch-gate`：缺 `pilot-page`、`pilot-preview`、`pilot-score` 时直接 `NO-GO`，不允许开始批量生成。
+- 执行底座新增 `pptx-batch-gate`：缺 `pilot-page`、`pilot-preview`、`pilot-score` 时直接 `NO-GO`，不允许开始批量生成。
 - 顶层 `GLOBAL_AGENTS.md` / `SKILL.md` 明确写入批量前必须过 `pptx-batch-gate`，避免新窗口只记得 pilot 规则、忘记硬门禁。
 
 ## 2026-06-01 v10.5
@@ -20,16 +30,16 @@
 - 参考 PPTX 任务生成前必须锁定 `reference-frame-map`、`reusable-asset-map`、`illustration-plan`，缺任一项不得批量生成。
 - 参考 PPTX 同时视为风格系统和素材库：表格、图标、卡片、图框、流程箭头、章节页、背景装饰、教学插图、案例图、公式图、image2 生图资产都要纳入复用或同风格补图判断。
 - 真 PPTX 路线必须在开工前锁定为可编辑 PPTX；每页渲染成整图再塞回 PPT 的方案不得启动。
-- Rust师新增 `pptx-preflight`、`pptx-audit`、`asset-map`、`time-guard` 方向，用确定性门禁在生成前拦截错误路线。
+- 执行底座新增 `pptx-preflight`、`pptx-audit`、`asset-map`、`time-guard` 方向，用确定性门禁在生成前拦截错误路线。
 
 ## 2026-06-01 v10.4
 
-### Rust师
+### 执行底座
 
-- 新增 `Rust师 / Rust主帅`，定位为无极军团通用确定性执行底座师团。
-- Rust师负责 `wuji-cli`、guard、task、sync、audit、workflow、beep、bench、preview调度等稳定工具链。
-- 明确边界：Rust师不替代开发主帅，不做普通业务软件主线，不负责内容、视觉、PPT设计、写作、蒸馏判断或参谋决策。
-- 普通 Rust/Tauri/后端/插件开发仍归开发主帅；无极军团自身执行器和稳定工具链归 Rust主帅。
+- 新增 `执行底座 / 执行底座主帅`，定位为无极军团通用确定性执行底座师团。
+- 执行底座负责 `wuji-cli`、guard、task、sync、audit、workflow、beep、bench、preview调度等稳定工具链。
+- 明确边界：执行底座不替代开发主帅，不做普通业务软件主线，不负责内容、视觉、PPT设计、写作、蒸馏判断或参谋决策。
+- 普通 Go/Tauri/后端/插件开发仍归开发主帅；无极军团自身执行器和稳定工具链归 执行底座主帅。
 
 ## 2026-06-01 v10.3
 
@@ -118,7 +128,7 @@
 - 明确边界：压缩的是单个师团内部入口，不是把整个无极军团压成一个超级大脑。
 - 内容师团合并为 `内容主帅`，内部覆盖小说、剧本、分镜、教程、计划书、商业营销方案、卖点提炼、短内容和人味改稿。
 - 视觉师团合并为 `视觉主帅`，内部覆盖真 PPTX、HTML 演示、UI 页面、数据可视化、视觉叙事和配图。
-- 开发师团合并为 `开发主帅`，内部覆盖 Rust/Tauri、前端、小程序、ComfyUI 插件、AI 工程、自动化和原型。
+- 开发师团合并为 `开发主帅`，内部覆盖 Go/Tauri、前端、小程序、ComfyUI 插件、AI 工程、自动化和原型。
 - 白帽、质检、安全、合规、性能基准保持独立，不并入执行主帅，避免自己写自己审。
 - 重写 `content`、`visual`、`dev`、`qa`、`security`、`intel`、`comfyui`、`nuwa`、`staff`、`prompt_engine`、`expedition`、`archive`、`auto_evolve`、`distillation` 规则文件，避免补丁式叠加。
 
@@ -166,7 +176,7 @@
 ### 进化部蒸馏师团
 
 - 新增 [distillation.md](E:\wuji-projects\wuji-legion-codex\units\distillation.md)
-- 新增 [Distillation Auditor.md](E:\wuji-projects\wuji-legion-codex\experts\evolve\Distillation Auditor.md)
+- 新增进化审计入口，后续已收口并并入 [进化主帅](E:\wuji-projects\wuji-legion-codex\experts\evolve\进化主帅.md)
 - 进化部从“复盘学习”升级为“复盘 -> 查源 -> 蒸馏 -> 验证 -> 入库”
 - 女娲补位前必须检查蒸馏台账，未核验外部能力不得进默认主链路
 - 白帽新增 skill 蒸馏退回红线：没看官方源、没看源码、没记录版本、没验证，都不能说已融合

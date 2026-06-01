@@ -69,7 +69,7 @@ python .\scripts\wuji_workflow.py verify <workflow_dir> --stage final
 - 三张表通过后先做 1 页 pilot page，pilot-score 通过后才允许批量生成。
 - pilot page 最多两轮；两轮不过线，交付主帅必须停止批量路线，要求换方法或短报阻塞。
 - 批量生成不是试错场，试错只允许发生在 pilot page。
-- PPTX 批量生成前必须要求 Rust师 `pptx-batch-gate` 放行；NO-GO 时交付主帅不得继续安慰式长跑。
+- PPTX 批量生成前必须要求 执行底座 `pptx-batch-gate` 放行；NO-GO 时交付主帅不得继续安慰式长跑。
 
 ## 当前专家
 

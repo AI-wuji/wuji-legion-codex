@@ -1,4 +1,4 @@
-﻿{
+{
   "providers": [
     {
       "id": "deepseek-web",
@@ -51,6 +51,24 @@
   "active_project": "wuji-legion-codex",
   "red_team_enabled": true,
   "iron_rules_version": "10.6",
+  "default_model_tier": "low",
+  "model_profiles": {
+    "low": {
+      "provider_id": "openai-api",
+      "model": "gpt-5.4-mini",
+      "reasoning_effort": "low"
+    },
+    "standard": {
+      "provider_id": "openai-api",
+      "model": "gpt-5.4",
+      "reasoning_effort": "medium"
+    },
+    "high": {
+      "provider_id": "openai-api",
+      "model": "gpt-5.5",
+      "reasoning_effort": "high"
+    }
+  },
   "cache_config": {
     "target_hit_rate": 0.95,
     "auto_compact_threshold": 0.8,
@@ -77,9 +95,9 @@
       "priority": 80
     },
     {
-      "id": "rust",
-      "name": "🦀 Rust师/执行底座",
-      "keywords": ["Rust师", "Rust主帅", "wuji-cli", "执行底座", "执行引擎", "guard", "task", "sync", "audit", "workflow", "beep", "bench", "preview调度", "pptx-preflight", "pptx-batch-gate", "pptx-audit", "asset-map", "time-guard", "reference-frame-map", "reusable-asset-map", "illustration-plan", "pilot-page", "pilot-preview", "pilot-score"],
+      "id": "execution-base",
+      "name": "⚙️ 执行底座",
+      "keywords": ["执行底座", "执行底座主帅", "wuji-cli", "Go", "执行引擎", "guard", "task", "sync", "audit", "workflow", "beep", "bench", "preview调度", "pptx-preflight", "pptx-batch-gate", "pptx-audit", "asset-map", "time-guard", "mcp-guard", "MCP门禁", "插件门禁", "reference-frame-map", "reusable-asset-map", "illustration-plan", "pilot-page", "pilot-preview", "pilot-score"],
       "provider_id": "deepseek-web",
       "model": null,
       "priority": 82

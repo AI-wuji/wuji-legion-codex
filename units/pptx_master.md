@@ -132,7 +132,7 @@
 - 优先选择内容密度最高、最代表风格、最依赖参考素材或最需要教学插图的一页。
 - pilot page 必须使用最终路线生成：可编辑 PPTX、参考元素复用、同等级教学插图策略。
 - pilot page 必须导出预览图，并记录 `pilot-score`。
-- 批量生成前必须通过 Rust师 `pptx-batch-gate`；缺三张表、pilot-page、pilot-preview 或 pilot-score 时，NO-GO。
+- 批量生成前必须通过 执行底座 `pptx-batch-gate`；缺三张表、pilot-page、pilot-preview 或 pilot-score 时，NO-GO。
 - 通过线：风格继承、结构继承、素材复用、插图表达、可编辑路线均无硬伤。
 - pilot 最多两轮。两轮仍不达标，不得批量生成，必须换路线或短报阻塞。
 

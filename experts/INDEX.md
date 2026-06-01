@@ -8,7 +8,7 @@
 - 每个师团主帅只能管本师团范围，不能跨师团抢权。
 - 小说、剧本、教程、商业方案等能力进入内容主帅内置模式，不再拆成重复专家卡。
 - 白帽、质检、安全、合规审计保持独立，不并入执行主帅。
-- Rust师只做无极执行底座，不替代开发主帅或判断层。
+- 执行底座只做无极执行底座，不替代开发主帅或判断层。
 - 外部 skill 只吸收源码验证后的机制，不照搬名称、组织编制或大段文本。
 
 ## 当前专家
@@ -27,11 +27,15 @@
 
 ### dev
 
-- [开发主帅](dev/开发主帅.md): 软件、Rust/Tauri、前端、小程序、ComfyUI插件、AI工程和自动化的开发入口
+- [开发主帅](dev/开发主帅.md): 软件、Go/Tauri、前端、小程序、ComfyUI插件、AI工程和自动化的开发入口
 
 ### evolve
 
 - [进化主帅](evolve/进化主帅.md): 官方源核验、能力蒸馏、失败复盘、实验验证和规则整流入口
+
+### execution_base
+
+- [执行底座主帅](execution_base/执行底座主帅.md): 无极军团通用执行底座、wuji-cli、guard、sync、audit、workflow、beep、bench、preview调度、pptx-preflight 和 pptx-audit 入口
 
 ### expedition
 
@@ -50,10 +54,6 @@
 - [性能基准官](qa/性能基准官.md): 速度、成本、token、接口耗时和系统性能基准测试入口
 - [白帽纠察官](qa/白帽纠察官.md): 前置反对意见、事实核查、路线否决和半成品拦截入口
 - [质检主帅](qa/质检主帅.md): 最终验收、可用性、可访问性、视觉/文档/代码交付质量的独立入口
-
-### rust
-
-- [Rust主帅](rust/Rust主帅.md): 无极军团通用执行底座、wuji-cli、guard、sync、audit、workflow、beep、bench、preview调度、pptx-preflight 和 pptx-audit 入口
 
 ### security
 

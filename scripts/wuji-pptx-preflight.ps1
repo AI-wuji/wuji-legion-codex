@@ -11,12 +11,12 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
-$src = Join-Path $root 'tools\wuji_cli.rs'
+$src = Join-Path $root 'tools\wuji_cli.go'
 $binDir = Join-Path $root '.wuji-tools'
-$bin = Join-Path $binDir 'wuji-cli.exe'
+$bin = Join-Path $binDir 'wuji-cli.cmd'
 
 if (-not (Test-Path -LiteralPath $src)) {
-    throw "Missing Rust source: $src"
+    throw "Missing Go source: $src"
 }
 
 if (-not (Test-Path -LiteralPath $binDir)) {
@@ -29,10 +29,7 @@ if (-not $needsBuild) {
 }
 
 if ($needsBuild) {
-    & rustc $src -O -o $bin
-    if ($LASTEXITCODE -ne 0) {
-        throw "rustc failed with exit code $LASTEXITCODE"
-    }
+    & (Join-Path $PSScriptRoot 'build-wuji-cli.ps1') -Output $bin
 }
 
 $command = if ($Mode -eq 'batch') { 'pptx-batch-gate' } else { 'pptx-preflight' }

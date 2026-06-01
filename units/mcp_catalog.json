@@ -1,0 +1,96 @@
+{
+  "checked_at": "2026-06-01",
+  "principle": "MCP is distilled as tool capability, not added as a new department or default route.",
+  "candidates": [
+    {
+      "name": "Filesystem MCP",
+      "owner": "archive/dev",
+      "source": "https://github.com/modelcontextprotocol/servers",
+      "license": "MIT",
+      "capability": "bounded workspace file read/write tool context",
+      "transport": "stdio",
+      "permissions": ["filesystem:workspace"],
+      "risk": "medium"
+    },
+    {
+      "name": "Git MCP",
+      "owner": "dev",
+      "source": "https://github.com/modelcontextprotocol/servers",
+      "license": "MIT",
+      "capability": "local git status, diff, log, and repository inspection",
+      "transport": "stdio",
+      "permissions": ["filesystem:workspace"],
+      "risk": "medium"
+    },
+    {
+      "name": "Fetch MCP",
+      "owner": "intel",
+      "source": "https://github.com/modelcontextprotocol/servers",
+      "license": "MIT",
+      "capability": "HTTP fetch for research and source verification",
+      "transport": "stdio",
+      "permissions": ["network"],
+      "risk": "medium"
+    },
+    {
+      "name": "Time MCP",
+      "owner": "staff",
+      "source": "https://github.com/modelcontextprotocol/servers",
+      "license": "MIT",
+      "capability": "timezone and current-time context",
+      "transport": "stdio",
+      "permissions": [],
+      "risk": "low"
+    },
+    {
+      "name": "Memory MCP",
+      "owner": "archive",
+      "source": "https://github.com/modelcontextprotocol/servers",
+      "license": "MIT",
+      "capability": "explicit user-approved memory graph",
+      "transport": "stdio",
+      "permissions": ["filesystem:workspace"],
+      "risk": "medium"
+    },
+    {
+      "name": "Sequential Thinking MCP",
+      "owner": "staff",
+      "source": "https://github.com/modelcontextprotocol/servers",
+      "license": "MIT",
+      "capability": "structured stepwise reasoning scratchpad",
+      "transport": "stdio",
+      "permissions": [],
+      "risk": "low"
+    },
+    {
+      "name": "GitHub MCP",
+      "owner": "dev",
+      "source": "https://github.com/github/github-mcp-server",
+      "license": "MIT",
+      "capability": "GitHub issues, PRs, code search, and repository actions",
+      "transport": "http",
+      "permissions": ["network", "oauth"],
+      "risk": "medium"
+    },
+    {
+      "name": "Postgres MCP",
+      "owner": "dev",
+      "source": "https://github.com/modelcontextprotocol/servers",
+      "license": "MIT",
+      "capability": "database inspection and query assistance",
+      "transport": "stdio",
+      "permissions": ["network", "secrets"],
+      "risk": "high"
+    },
+    {
+      "name": "Slack MCP",
+      "owner": "content",
+      "source": "https://github.com/modelcontextprotocol/servers",
+      "license": "MIT",
+      "capability": "workspace messages and team communication context",
+      "transport": "http",
+      "permissions": ["network", "oauth", "secrets"],
+      "risk": "high"
+    }
+  ]
+}

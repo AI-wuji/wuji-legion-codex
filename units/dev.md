@@ -23,8 +23,8 @@
 | 来源 | 吸收机制 | 裁决 |
 |---|---|---|
 | `addyosmani/agent-skills@6ce0298` | 阶段识别、spec/plan/build/test/review/ship、上下文工程、薄切片 | absorb |
-| `awesome-copilot@9b74459` | Rust、QA、MCP、小程序/平台类说明的细分技术规则 | absorb |
-| Rust API Guidelines / Rust Book | 类型驱动、Result错误处理、测试与文档 | absorb |
+| `awesome-copilot@9b74459` | Go、QA、MCP、小程序/平台类说明的细分技术规则 | absorb |
+| Go 官方文档 / Effective Go | 类型驱动、Result错误处理、测试与文档 | absorb |
 | 本地 ComfyUI 插件经验 | 节点注册、张量维度、import smoke test | absorb |
 
 ---
@@ -33,7 +33,7 @@
 
 | 模式 | 适用任务 | 默认门禁 |
 |---|---|---|
-| Rust优先模式 | CLI、核心后端、Tauri、性能敏感模块 | fmt/check/clippy/test/audit |
+| Go优先模式 | CLI、核心后端、Tauri、性能敏感模块 | fmt/test + quality gate |
 | 前端/HTML模式 | React/TS/原生页面、组件、交互 | typecheck/lint/test/build + Browser |
 | 小程序模式 | 微信/抖音等小程序页面、接口、状态 | 编译/预览/真机或模拟器说明 |
 | ComfyUI插件模式 | 自定义节点、工作流扩展、批处理脚本 | import smoke + NODE_CLASS_MAPPINGS |
@@ -43,22 +43,22 @@
 
 ---
 
-## Rust 优先规则
+## Go 优先规则
 
-能用 Rust 且合理时，优先 Rust：
+能用 Go 且合理时，优先 Go：
 
-- 桌面软件：Tauri + Rust。
-- 后端核心：Rust 单二进制或 Rust 服务。
-- 性能敏感：Rust 优先，再考虑 Python/Node 胶水。
-- CLI 工具：Rust 优先，除非一次性脚本明显更适合 PowerShell/Python。
+- 执行底座、CLI、调度器、门禁工具：Go 优先。
+- 后端核心：Go 单二进制或 Go 服务优先。
+- 性能敏感：先用 Go，只有证据明确不足时才上更底层语言。
+- CLI 工具：Go 优先，除非一次性脚本明显更适合 PowerShell/Python。
 
 边界：
 
-- 普通 Rust/Tauri、后端、前端、小程序、ComfyUI插件、业务软件开发仍归 `开发主帅`。
-- 无极军团自身 `wuji-cli`、guard、task、sync、audit、workflow、beep、bench、preview调度归 `Rust主帅`。
-- 开发主帅可以实现 Rust 代码，但不拥有 Rust师的全局执行底座规划权。
+- 普通 Go/Tauri、后端、前端、小程序、ComfyUI插件、业务软件开发仍归 `开发主帅`。
+- 无极军团自身 `wuji-cli`、guard、task、sync、audit、workflow、beep、bench、preview调度归 `执行底座主帅`。
+- 开发主帅可以实现 Go/C#/Python/Node 代码，但不拥有执行底座的全局执行底座规划权。
 
-Rust 红线：
+开发红线：
 
 - 业务路径不新增 `unwrap()` / `expect()`。
 - 外部输入必须返回可解释错误。
@@ -83,7 +83,7 @@ DEFINE -> PLAN -> BUILD -> VERIFY -> REVIEW -> SHIP
 
 | 识别文件 | 模式 |
 |---|---|
-| `Cargo.toml` | Rust优先模式 |
+| `go.mod` / `*.go` | Go优先模式 |
 | `src-tauri/` | Tauri桌面模式 |
 | `package.json` | 前端/Node模式 |
 | `project.config.json` / `app.json` | 小程序模式 |
@@ -117,5 +117,5 @@ DEFINE -> PLAN -> BUILD -> VERIFY -> REVIEW -> SHIP
 
 ## 当前专家
 
-- `开发主帅`：普通软件和业务工程开发入口，内部包含 Rust、前端、小程序、ComfyUI插件、AI工程、自动化和原型模式。
-- `Rust主帅`：无极军团自身确定性执行底座入口，负责 `wuji-cli`、guard、sync、audit、workflow、beep、bench 和 preview 调度。
+- `开发主帅`：普通软件和业务工程开发入口，内部包含 Go、前端、小程序、ComfyUI插件、AI工程、自动化和原型模式。
+- `执行底座主帅`：无极军团自身确定性执行底座入口，负责 `wuji-cli`、guard、sync、audit、workflow、beep、bench 和 preview 调度。
