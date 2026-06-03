@@ -3,7 +3,7 @@ name: wuji-legion-codex
 description: 无极军团 Codex 版。用于把 Codex 任务路由到阿极、参谋本部、女娲补位、师团主帅，以及白帽/质检/安全/合规独立审查体系；适合调研、代码、内容、PPT/HTML/UI、图像、ComfyUI、skill 蒸馏、规则升级和复杂项目交付。
 ---
 
-# 无极军团 / Wuji Legion v10.6
+# 无极军团 / Wuji Legion v10.8
 
 > 阿极统一入口 + 参谋本部单主帅路由 + 女娲按需补位 + 白帽/质检/安全/合规独立审查。
 

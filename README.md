@@ -1,5 +1,8 @@
 # 无极军团 Codex 版 / Wuji Legion for Codex
 
+**当前正式版：v10.8**  
+当前 GitHub 正式版已经收口到两条核心目标：`省 token，高命中`、`高质高效`。这一版把“不要做一步停一步”的执行要求和 PPT 动态/布局硬门一起沉进了代码与规则。
+
 **让 Codex 从“会回答”升级成“真交付”。**  
 无极军团不是再堆一堆 skill，也不是花哨的多 agent 表演。它是一套面向真实交付的执行系统：自动收敛角色、压低 token、提高命中率，把调研、代码、内容、PPT、HTML、配图、插件和规则升级都收口到可验证的结果。
 
@@ -78,7 +81,7 @@ v10.8 把 PPT 动态链和布局收口从“规则要求”补成了“代码硬
 
 这一版同时补齐了布局证据链：`pilot-preview-layout.json` 现在会被 `pptx-batch-gate` 确定性校验，真实越界和底部危险区贴边直接拦截；`HTML-first` 主链会同步产出 `htmlfirst-preview-layout.json` 和布局报告，避免页面做得漂亮却超出可视安全区。
 
-PPT 包装脚本也做了稳定性补强：`wuji-ppt-pipeline.ps1` 会自动串起 `motion-plan`、`live-demo-source.html`、`pilot-preview-layout.json`；模板续写链补上 staged input 保护和产物缺失回退，防止“报告成功但成品没落地”。这批改动已通过 `scripts/test-wuji-cli.ps1` 的 deterministic gates 回归。
+PPT 包装脚本也做了稳定性补强：`wuji-ppt-pipeline.ps1` 会自动串起 `motion-plan`、`live-demo-source.html`、`pilot-preview-layout.json`；模板续写链补上 staged input 保护和产物缺失回退，防止“报告成功但成品没落地”。同时，pilot 预览现在优先使用 PowerPoint COM 从最终 PPTX 导出，减少浏览器预览与真实成品视图不一致。整批改动已通过 `scripts/test-wuji-cli.ps1` 的 deterministic gates 回归。
 
 ## v10.5 的关键变化 / Key Change
 

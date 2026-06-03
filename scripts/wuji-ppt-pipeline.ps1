@@ -201,6 +201,108 @@ function Get-HtmlFirstPreviewPathFromPptx {
     return ''
 }
 
+function Export-PptPreviewWithCom {
+    param(
+        [string]$PptxPath,
+        [string]$OutputPath
+    )
+
+    $resolvedPptx = Resolve-ExistingPath -Path $PptxPath -Name 'preview pptx'
+    $resolvedOutput = Resolve-OutputPath -Path $OutputPath -Name 'preview output'
+    $exportDir = Join-Path ([System.IO.Path]::GetDirectoryName($resolvedOutput)) ([System.IO.Path]::GetFileNameWithoutExtension($resolvedOutput) + '-com-export')
+    New-Item -ItemType Directory -Force -Path $exportDir | Out-Null
+
+    $ppt = $null
+    $presentation = $null
+    try {
+        $ppt = New-Object -ComObject PowerPoint.Application
+        try {
+            $ppt.Visible = $false
+        }
+        catch {
+        }
+        $presentation = $ppt.Presentations.Open($resolvedPptx, $false, $false, $false)
+        $saveAsPng = 18
+        $presentation.SaveCopyAs($exportDir, $saveAsPng)
+    }
+    finally {
+        if ($presentation) {
+            $presentation.Close()
+        }
+        if ($ppt) {
+            $ppt.Quit()
+        }
+    }
+
+    $exportedPng = Get-FirstFile -Dir $exportDir -Filter '*.png'
+    return Copy-Artifact -Source $exportedPng -Destination $resolvedOutput
+}
+
+function Test-PreviewImageLooksUsable {
+    param([string]$Path)
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path)) {
+        return $false
+    }
+
+    Add-Type -AssemblyName System.Drawing
+    $bitmap = $null
+    try {
+        $bitmap = [System.Drawing.Bitmap]::new($Path)
+        if ($bitmap.Width -le 0 -or $bitmap.Height -le 0) {
+            return $false
+        }
+
+        $stepX = [Math]::Max([int][Math]::Floor($bitmap.Width / 320), 1)
+        $stepY = [Math]::Max([int][Math]::Floor($bitmap.Height / 180), 1)
+        $sampleCount = 0
+        $mean = 0.0
+        $m2 = 0.0
+        $light = 0
+        $dark = 0
+
+        for ($y = 0; $y -lt $bitmap.Height; $y += $stepY) {
+            for ($x = 0; $x -lt $bitmap.Width; $x += $stepX) {
+                $pixel = $bitmap.GetPixel($x, $y)
+                $luma = 0.2126 * $pixel.R + 0.7152 * $pixel.G + 0.0722 * $pixel.B
+                $sampleCount += 1
+                $delta = $luma - $mean
+                $mean += $delta / $sampleCount
+                $m2 += $delta * ($luma - $mean)
+                if ($luma -ge 235) {
+                    $light += 1
+                }
+                if ($luma -le 45) {
+                    $dark += 1
+                }
+            }
+        }
+
+        if ($sampleCount -eq 0) {
+            return $false
+        }
+
+        $variance = if ($sampleCount -gt 1) { $m2 / ($sampleCount - 1) } else { 0.0 }
+        $avg = $mean / 255.0
+        $std = [Math]::Sqrt([Math]::Max($variance, 0.0)) / 255.0
+        $lightRatio = $light / $sampleCount
+        $darkRatio = $dark / $sampleCount
+
+        $whitewashed = ($avg -ge 0.93 -and $std -le 0.05)
+        $lowContrast = ($std -le 0.035)
+        $nearBlank = ($lightRatio -ge 0.92 -and $darkRatio -le 0.01)
+        return (-not ($whitewashed -or $lowContrast -or $nearBlank))
+    }
+    catch {
+        return $false
+    }
+    finally {
+        if ($bitmap) {
+            $bitmap.Dispose()
+        }
+    }
+}
+
 function Set-PilotApprovalArtifact {
     param(
         [string]$WorkspacePath,
@@ -1274,18 +1376,32 @@ try {
                 css_fidelity = $htmlReport.css_fidelity
                 animation_transcoded = $htmlReport.animation_transcoded
                 animation_signals = @($htmlReport.animation_signals)
-                preview_path = $htmlReport.preview_path
+                browser_preview_path = $htmlReport.preview_path
                 preview_layout_report = $htmlReport.preview_layout_report
                 warnings = @($htmlReport.warnings)
             }
             $pilotPagePath = Copy-Artifact -Source $primaryOutputPath -Destination (Join-Path $resolvedWorkspace 'pilot-page.pptx')
-            $pilotPreviewSource = ''
-            if ($htmlReport.PSObject.Properties['preview_path'] -and -not [string]::IsNullOrWhiteSpace([string]$htmlReport.preview_path) -and (Test-Path -LiteralPath ([string]$htmlReport.preview_path))) {
-                $pilotPreviewSource = [string]$htmlReport.preview_path
-            } else {
-                $pilotPreviewSource = Get-FirstFile -Dir $inspectDir -Filter '*.png'
+            $pilotPreviewTargetPath = Join-Path $resolvedWorkspace 'pilot-preview.png'
+            $pilotPreviewPath = ''
+            if ($powerPointComAvailable) {
+                try {
+                    $candidatePreviewPath = Export-PptPreviewWithCom -PptxPath $primaryOutputPath -OutputPath $pilotPreviewTargetPath
+                    if (Test-PreviewImageLooksUsable -Path $candidatePreviewPath) {
+                        $pilotPreviewPath = $candidatePreviewPath
+                    }
+                }
+                catch {
+                }
             }
-            $pilotPreviewPath = Copy-Artifact -Source $pilotPreviewSource -Destination (Join-Path $resolvedWorkspace 'pilot-preview.png')
+            if ([string]::IsNullOrWhiteSpace($pilotPreviewPath)) {
+                $pilotPreviewSource = ''
+                if ($htmlReport.PSObject.Properties['preview_path'] -and -not [string]::IsNullOrWhiteSpace([string]$htmlReport.preview_path) -and (Test-Path -LiteralPath ([string]$htmlReport.preview_path))) {
+                    $pilotPreviewSource = [string]$htmlReport.preview_path
+                } else {
+                    $pilotPreviewSource = Get-FirstFile -Dir $inspectDir -Filter '*.png'
+                }
+                $pilotPreviewPath = Copy-Artifact -Source $pilotPreviewSource -Destination $pilotPreviewTargetPath
+            }
             $pilotPreviewLayoutPath = ''
             if ($htmlReport.PSObject.Properties['preview_layout_report'] -and -not [string]::IsNullOrWhiteSpace([string]$htmlReport.preview_layout_report) -and (Test-Path -LiteralPath ([string]$htmlReport.preview_layout_report))) {
                 $pilotPreviewLayoutPath = Copy-Artifact -Source ([string]$htmlReport.preview_layout_report) -Destination (Join-Path $resolvedWorkspace 'pilot-preview-layout.json')
@@ -1389,11 +1505,25 @@ try {
             }
 
             $pilotPagePath = Copy-Artifact -Source $starterPptxPath -Destination (Join-Path $resolvedWorkspace 'pilot-page.pptx')
-            $pilotPreviewSource = Get-HtmlFirstPreviewPathFromPptx -PptxPath $sourcePptxPath
-            if ([string]::IsNullOrWhiteSpace($pilotPreviewSource)) {
-                $pilotPreviewSource = Get-FirstFile -Dir $starterPreviewDir -Filter '*.png'
+            $pilotPreviewTargetPath = Join-Path $resolvedWorkspace 'pilot-preview.png'
+            $pilotPreviewPath = ''
+            if ($powerPointComAvailable) {
+                try {
+                    $candidatePreviewPath = Export-PptPreviewWithCom -PptxPath $starterPptxPath -OutputPath $pilotPreviewTargetPath
+                    if (Test-PreviewImageLooksUsable -Path $candidatePreviewPath) {
+                        $pilotPreviewPath = $candidatePreviewPath
+                    }
+                }
+                catch {
+                }
             }
-            $pilotPreviewPath = Copy-Artifact -Source $pilotPreviewSource -Destination (Join-Path $resolvedWorkspace 'pilot-preview.png')
+            if ([string]::IsNullOrWhiteSpace($pilotPreviewPath)) {
+                $pilotPreviewSource = Get-HtmlFirstPreviewPathFromPptx -PptxPath $sourcePptxPath
+                if ([string]::IsNullOrWhiteSpace($pilotPreviewSource)) {
+                    $pilotPreviewSource = Get-FirstFile -Dir $starterPreviewDir -Filter '*.png'
+                }
+                $pilotPreviewPath = Copy-Artifact -Source $pilotPreviewSource -Destination $pilotPreviewTargetPath
+            }
             $pilotScorePath = New-PilotScore -WorkspacePath $resolvedWorkspace -RouteName $Route -SlideCount ((Read-JsonFile -Path $workspaceMapPath).outputSlides.Count)
             $pilotApprovalPath = Set-PilotApprovalArtifact -WorkspacePath $resolvedWorkspace -AutoApproveEnabled $autoApproveEnabled -ApprovalPath $PilotApproval
 

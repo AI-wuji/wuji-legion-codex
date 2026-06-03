@@ -171,7 +171,7 @@ Invoke-Case -Name 'task-end-valid' -ExpectedExit 0 -Arguments @('task', '--works
 
 $routeConfig = Join-Path $fixture 'route-config.json'
 [System.IO.File]::WriteAllText($routeConfig, (@{
-    iron_rules_version = '10.6'
+    iron_rules_version = '10.8'
     cache_config = @{ target_hit_rate = 0.95; flatten_threshold = 10 }
 } | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
 $canonReport = Join-Path $fixture 'canon-report.json'
@@ -216,7 +216,7 @@ if ($chatRouteReport.matched_route.id -ne 'chat' -or $chatRouteReport.recommende
 }
 Invoke-Case -Name 'context-pack' -ExpectedExit 0 -Arguments @('context-pack', '--config', $routeConfig, '--workspace', $fixture, '--query', 'please build a ppt ui design', '--artifact', $artifact, '--report', (Join-Path $fixture 'context-pack.json'))
 $contextPack = Read-JsonUtf8 -Path (Join-Path $fixture 'context-pack.json')
-if ($contextPack.stable_prefix.iron_rules_version -ne '10.6' -or $contextPack.stable_prefix.model_tier -ne 'standard') {
+if ($contextPack.stable_prefix.iron_rules_version -ne '10.8' -or $contextPack.stable_prefix.model_tier -ne 'standard') {
     throw "FAIL context-pack wrong stable prefix"
 }
 Invoke-Case -Name 'feedback-log' -ExpectedExit 0 -Arguments @('feedback-log', '--workspace', $fixture, '--task', 'daily answer quality tuning', '--prefer', 'keep the answer concise', '--prefer', 'state uncertainty explicitly', '--avoid', 'placeholder', '--report', (Join-Path $fixture 'feedback-log-report.json'))

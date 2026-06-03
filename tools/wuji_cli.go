@@ -186,7 +186,7 @@ var pilotApprovalNegativeMarkers = []string{
 	"重做",
 }
 
-const builtinIronRulesVersion = "10.6"
+const builtinIronRulesVersion = "10.8"
 const builtinDefaultModelTier = "low"
 
 var builtinTopLevelRoles = []string{

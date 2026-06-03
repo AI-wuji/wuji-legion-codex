@@ -7,6 +7,7 @@
 - `asset-map` 现在会默认产出 `motion-plan.md/json`，避免动态要求仍靠人工补写。
 - `wuji-ppt-htmlfirst.mjs` 现已内置 `assets/wuji-motion-presets.css` 动效预设，并在导出时同步产出 `htmlfirst-preview-layout.json`。
 - `wuji-ppt-pipeline.ps1` 现在会自动落地 `motion-plan`、`live-demo-source.html`、`pilot-preview-layout.json`，把双轨动态链真正串起来。
+- `wuji-ppt-pipeline.ps1` 的 pilot 预览现在优先通过 PowerPoint COM 从最终 PPTX 导出，减少浏览器预览与真实成品视图不一致。
 - 修复 `template-following` 老链的 3 个稳定性问题：工作区初始化误伤输入文件、starter/edit 包装脚本偶发“报告成功但产物没落地”、pilot 误抓发白坏预览。
 - `scripts/test-wuji-cli.ps1` 已补充动态源缺失拦截、布局越界拦截、HTML-first 布局报告、template-following 稳定性回归；整套 `wuji-cli deterministic gates` 全量通过。
 
