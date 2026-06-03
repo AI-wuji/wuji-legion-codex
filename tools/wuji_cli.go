@@ -332,6 +332,8 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  wuji-cli bench-report --workspace <dir> [--report <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli code-map --workspace <dir> --goal <text> --entry <text> [--dependency <text>]... [--risk <text>]... [--verify <text>]... [--report <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli closeout-check --workspace <dir> --goal <text> [--artifact <file>]... [--verify <text>]... [--next-gap <text>]... [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli repeat-candidates --log <file> [--min-occurrences <n>] [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli evidence-grade --status <candidate|checked|verified|shipped> --summary <text> [--artifact <file>]... [--report <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli preview --command <exe> [--arg <value>]... --output <file>")
 	fmt.Fprintln(os.Stderr, "  wuji-cli asset-map --pptx <file> --workspace <dir>")
 	fmt.Fprintln(os.Stderr, "  wuji-cli pptx-audit --pptx <file> [--report <file>]")
@@ -1639,6 +1641,130 @@ func closeoutCheckCommand(args []string) int {
 		return 1
 	}
 	return printGate("closeout-check", failures)
+}
+
+func repeatCandidatesCommand(args []string) int {
+	logPath, ok := argValue(args, "--log")
+	if !ok {
+		usage()
+		return 2
+	}
+	minOccurrences := 2
+	if value, ok, err := parseIntArg(args, "--min-occurrences"); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 2
+	} else if ok {
+		minOccurrences = value
+	}
+	if minOccurrences < 2 {
+		fmt.Fprintln(os.Stderr, "min-occurrences must be >= 2")
+		return 2
+	}
+	reportPath, hasReport := argValue(args, "--report")
+	records, err := loadJSONLines(logPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	counts := map[string]int{}
+	examples := map[string]string{}
+	for _, record := range records {
+		task := objectString(record, "task")
+		if task == "" {
+			continue
+		}
+		counts[task]++
+		if examples[task] == "" {
+			examples[task] = strings.TrimSpace(objectString(record, "note"))
+		}
+	}
+	candidates := []jsonObject{}
+	for task, count := range counts {
+		if count >= minOccurrences {
+			candidates = append(candidates, jsonObject{
+				"task":             task,
+				"occurrences":      count,
+				"example_note":     examples[task],
+				"recommended_sink": "cli-or-skill",
+			})
+		}
+	}
+	sort.Slice(candidates, func(i, j int) bool {
+		left := candidates[i]["occurrences"].(int)
+		right := candidates[j]["occurrences"].(int)
+		if left == right {
+			return candidates[i]["task"].(string) < candidates[j]["task"].(string)
+		}
+		return left > right
+	})
+	report := jsonObject{
+		"log":             absClean(logPath),
+		"min_occurrences": minOccurrences,
+		"candidates":      candidates,
+	}
+	outputPath := reportPath
+	if !hasReport {
+		outputPath = filepath.Join(filepath.Dir(logPath), "repeat-candidates.json")
+	}
+	if err := writeJSON(outputPath, report); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	fmt.Printf("GO repeat-candidates\n- report=%s\n", absClean(outputPath))
+	return 0
+}
+
+func evidenceGradeCommand(args []string) int {
+	status, ok := argValue(args, "--status")
+	if !ok {
+		usage()
+		return 2
+	}
+	summary, ok := argValue(args, "--summary")
+	if !ok || strings.TrimSpace(summary) == "" {
+		usage()
+		return 2
+	}
+	allowed := map[string]bool{
+		"candidate": true,
+		"checked":   true,
+		"verified":  true,
+		"shipped":   true,
+	}
+	if !allowed[status] {
+		fmt.Fprintln(os.Stderr, "status must be candidate, checked, verified, or shipped")
+		return 2
+	}
+	artifacts := uniqueStrings(argValues(args, "--artifact"))
+	reportPath, hasReport := argValue(args, "--report")
+	failures := []string{}
+	if status == "verified" || status == "shipped" {
+		if len(artifacts) == 0 {
+			failures = append(failures, "verified_or_shipped_requires_artifact")
+		}
+	}
+	for _, artifact := range artifacts {
+		if !nonEmpty(artifact) {
+			failures = append(failures, "artifact_missing_or_too_small="+artifact)
+		}
+	}
+	report := jsonObject{
+		"status":    status,
+		"summary":   strings.TrimSpace(summary),
+		"artifacts": artifacts,
+	}
+	if len(failures) > 0 {
+		report["failures"] = failures
+	}
+	outputPath := reportPath
+	if !hasReport {
+		outputPath = filepath.Join(".", "evidence-grade.json")
+	}
+	if err := writeJSON(outputPath, report); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return printGate("evidence-grade", failures)
 }
 
 func syncCommand(args []string) int {
@@ -3585,6 +3711,10 @@ func main() {
 		code = codeMapCommand(args)
 	case "closeout-check":
 		code = closeoutCheckCommand(args)
+	case "repeat-candidates":
+		code = repeatCandidatesCommand(args)
+	case "evidence-grade":
+		code = evidenceGradeCommand(args)
 	case "preview":
 		code = previewCommand(args)
 	case "asset-map":

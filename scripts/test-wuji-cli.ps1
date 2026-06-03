@@ -209,9 +209,24 @@ if ($contextPack.stable_prefix.iron_rules_version -ne '10.6' -or $contextPack.st
 }
 Invoke-Case -Name 'feedback-log' -ExpectedExit 0 -Arguments @('feedback-log', '--workspace', $fixture, '--task', 'daily answer quality tuning', '--prefer', 'keep the answer concise', '--prefer', 'state uncertainty explicitly', '--avoid', 'placeholder', '--report', (Join-Path $fixture 'feedback-log-report.json'))
 Invoke-Case -Name 'feedback-log-second' -ExpectedExit 0 -Arguments @('feedback-log', '--workspace', $fixture, '--task', 'source discipline', '--prefer', 'cite primary sources', '--avoid', 'todo', '--source', 'qa')
+Invoke-Case -Name 'feedback-log-third-repeat-task' -ExpectedExit 0 -Arguments @('feedback-log', '--workspace', $fixture, '--task', 'daily answer quality tuning', '--prefer', 'keep the answer concise', '--note', 'repeat so candidate sink can trigger')
 $feedbackLog = Join-Path $fixture 'feedback\feedback-log.jsonl'
 $feedbackDataset = Join-Path $fixture 'feedback\feedback-dataset.json'
 Invoke-Case -Name 'feedback-dataset' -ExpectedExit 0 -Arguments @('feedback-dataset', '--log', $feedbackLog, '--report', $feedbackDataset)
+$repeatCandidatesReport = Join-Path $fixture 'feedback\repeat-candidates.json'
+Invoke-Case -Name 'repeat-candidates' -ExpectedExit 0 -Arguments @('repeat-candidates', '--log', $feedbackLog, '--report', $repeatCandidatesReport)
+$repeatCandidates = Read-JsonUtf8 -Path $repeatCandidatesReport
+if (-not ($repeatCandidates.candidates | Where-Object { $_.task -eq 'daily answer quality tuning' -and $_.occurrences -ge 2 })) {
+    throw "FAIL repeat-candidates report=$($repeatCandidates | ConvertTo-Json -Depth 6 -Compress)"
+}
+
+$evidenceGradeWorkspace = Join-Path $fixture 'evidence-grade'
+New-Item -ItemType Directory -Force -Path $evidenceGradeWorkspace | Out-Null
+$evidenceGradeArtifact = Join-Path $evidenceGradeWorkspace 'verified.txt'
+Write-Fixture $evidenceGradeArtifact 'verified evidence artifact'
+Invoke-Case -Name 'evidence-grade-candidate' -ExpectedExit 0 -Arguments @('evidence-grade', '--status', 'candidate', '--summary', 'possible issue found', '--report', (Join-Path $evidenceGradeWorkspace 'candidate.json'))
+Invoke-Case -Name 'evidence-grade-verified' -ExpectedExit 0 -Arguments @('evidence-grade', '--status', 'verified', '--summary', 'issue verified with artifact', '--artifact', $evidenceGradeArtifact, '--report', (Join-Path $evidenceGradeWorkspace 'verified.json'))
+Invoke-Case -Name 'evidence-grade-verified-missing-artifact-blocked' -ExpectedExit 1 -Arguments @('evidence-grade', '--status', 'verified', '--summary', 'issue verified without artifact')
 
 $source = Join-Path $fixture 'sync-source'
 $dest = Join-Path $fixture 'sync-dest'

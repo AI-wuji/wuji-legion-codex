@@ -33,7 +33,7 @@
 ## 当前收口能力
 
 - Go 执行底座：`wuji-cli` 已覆盖 `reference-guard`、`workflow-guard`、`claim-guard`、`time-guard`、`task`、`sync`、`audit`、`bench`、`bench-report`、`canon-report`、`route-task`、`context-pack`、`preview`、`asset-map`、`pptx-audit`、`pptx-preflight`、`pptx-batch-gate`、`mcp-guard`、`mcp-distill`、`feedback-log`、`feedback-dataset`、`prompt-candidate-audit`、`prompt-eval`、`prompt-distill`。
-- Go 执行底座：`wuji-cli` 已覆盖 `reference-guard`、`workflow-guard`、`claim-guard`、`time-guard`、`task`、`sync`、`audit`、`bench`、`bench-report`、`code-map`、`closeout-check`、`canon-report`、`route-task`、`context-pack`、`preview`、`asset-map`、`pptx-audit`、`pptx-preflight`、`pptx-batch-gate`、`mcp-guard`、`mcp-distill`、`feedback-log`、`feedback-dataset`、`prompt-candidate-audit`、`prompt-eval`、`prompt-distill`。
+- Go 执行底座：`wuji-cli` 已覆盖 `reference-guard`、`workflow-guard`、`claim-guard`、`time-guard`、`task`、`sync`、`audit`、`bench`、`bench-report`、`code-map`、`closeout-check`、`repeat-candidates`、`evidence-grade`、`canon-report`、`route-task`、`context-pack`、`preview`、`asset-map`、`pptx-audit`、`pptx-preflight`、`pptx-batch-gate`、`mcp-guard`、`mcp-distill`、`feedback-log`、`feedback-dataset`、`prompt-candidate-audit`、`prompt-eval`、`prompt-distill`。
 - 模型分档：默认 `gpt-5.4-mini`，中档 `gpt-5.4`，高档 `gpt-5.5`，按任务难度推荐。
 - 静态骨架：固定模型三档、核心路由骨架、内置插件归口和 MCP 默认裁决已沉入 Go 底座，`config.json` 只保留环境信息和覆盖项。
 - 图像直出：普通 `生图/插图/海报/封面/配图` 已从 `ComfyUI` 重链剥离，`route-task` 直接落到 `imagegen` 低档直出链。
