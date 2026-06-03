@@ -142,10 +142,13 @@ Invoke-Case -Name 'time-guard-with-artifact' -ExpectedExit 0 -Arguments @('time-
 $taskWorkspace = Join-Path $fixture 'task'
 Invoke-Case -Name 'task-start' -ExpectedExit 0 -Arguments @('task', '--workspace', $taskWorkspace, '--event', 'start', '--status', 'running', '--artifact', $artifact, '--note', 'task started')
 Invoke-Case -Name 'task-end-invalid-status-blocked' -ExpectedExit 2 -Arguments @('task', '--workspace', $taskWorkspace, '--event', 'end', '--status', 'running')
-Invoke-Case -Name 'task-end-valid' -ExpectedExit 0 -Arguments @('task', '--workspace', $taskWorkspace, '--event', 'end', '--status', 'done', '--artifact', $artifact)
 $benchWorkspace = Join-Path $fixture 'bench'
 Invoke-Case -Name 'bench-log' -ExpectedExit 0 -Arguments @('bench', '--workspace', $benchWorkspace, '--name', 'sample', '--input-tokens', '10', '--output-tokens', '20', '--duration-ms', '30', '--tool-calls', '2', '--retries', '0', '--qa-pass', 'true')
 Invoke-Case -Name 'bench-report' -ExpectedExit 0 -Arguments @('bench-report', '--workspace', $benchWorkspace, '--report', (Join-Path $fixture 'bench-report.json'))
+$benchReport = Read-JsonUtf8 -Path (Join-Path $fixture 'bench-report.json')
+if ($benchReport.decision -ne 'absorb' -or $benchReport.evidence_level -ne 'verified') {
+    throw "FAIL bench-report decision report=$($benchReport | ConvertTo-Json -Depth 6 -Compress)"
+}
 
 $codeMapWorkspace = Join-Path $fixture 'code-map'
 $codeMapReport = Join-Path $codeMapWorkspace 'code-map.json'
@@ -159,8 +162,12 @@ $closeoutWorkspace = Join-Path $fixture 'closeout'
 New-Item -ItemType Directory -Force -Path $closeoutWorkspace | Out-Null
 $closeoutArtifact = Join-Path $closeoutWorkspace 'final.txt'
 Write-Fixture $closeoutArtifact 'final artifact for closeout verification'
-Invoke-Case -Name 'closeout-check-pass' -ExpectedExit 0 -Arguments @('closeout-check', '--workspace', $closeoutWorkspace, '--goal', 'finish route update', '--artifact', $closeoutArtifact, '--verify', 'route-task regression', '--report', (Join-Path $closeoutWorkspace 'closeout-check.json'))
-Invoke-Case -Name 'closeout-check-gap-blocked' -ExpectedExit 1 -Arguments @('closeout-check', '--workspace', $closeoutWorkspace, '--goal', 'finish route update', '--artifact', $closeoutArtifact, '--verify', 'route-task regression', '--next-gap', 'still need to sync docs')
+$closeoutPassReport = Join-Path $closeoutWorkspace 'closeout-check-pass.json'
+Invoke-Case -Name 'closeout-check-pass' -ExpectedExit 0 -Arguments @('closeout-check', '--workspace', $closeoutWorkspace, '--goal', 'finish route update', '--artifact', $closeoutArtifact, '--verify', 'route-task regression', '--report', $closeoutPassReport)
+Invoke-Case -Name 'closeout-check-gap-blocked' -ExpectedExit 1 -Arguments @('closeout-check', '--workspace', $closeoutWorkspace, '--goal', 'finish route update', '--artifact', $closeoutArtifact, '--verify', 'route-task regression', '--next-gap', 'still need to sync docs', '--report', (Join-Path $closeoutWorkspace 'closeout-check-gap.json'))
+$verifiedEvidenceReport = Join-Path $closeoutWorkspace 'verified.json'
+Invoke-Case -Name 'evidence-grade-verified' -ExpectedExit 0 -Arguments @('evidence-grade', '--status', 'verified', '--summary', 'issue verified with artifact', '--artifact', $closeoutArtifact, '--report', $verifiedEvidenceReport)
+Invoke-Case -Name 'task-end-valid' -ExpectedExit 0 -Arguments @('task', '--workspace', $taskWorkspace, '--event', 'end', '--status', 'done', '--artifact', $artifact, '--closeout-report', $closeoutPassReport, '--evidence-report', $verifiedEvidenceReport)
 
 $routeConfig = Join-Path $fixture 'route-config.json'
 [System.IO.File]::WriteAllText($routeConfig, (@{
@@ -186,6 +193,11 @@ Invoke-Case -Name 'route-task' -ExpectedExit 0 -Arguments @('route-task', '--con
 $routeReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-report.json')
 if ($routeReport.matched_route.id -ne 'visual' -or $routeReport.recommended_tier -ne 'standard' -or $routeReport.recommended_profile.model -ne 'gpt-5.4') {
     throw "FAIL route-task wrong route or tier report=$($routeReport | ConvertTo-Json -Depth 6 -Compress)"
+}
+Invoke-Case -Name 'route-task-code-map-required' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'please refactor a Rust plugin and fix code across multiple files', '--report', (Join-Path $fixture 'route-code-report.json'))
+$routeCodeReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-code-report.json')
+if ($routeCodeReport.matched_route.id -ne 'code' -or $routeCodeReport.code_map_required -ne $true -or $routeCodeReport.next_required_artifact -ne 'code-map') {
+    throw "FAIL route-task code-map report=$($routeCodeReport | ConvertTo-Json -Depth 6 -Compress)"
 }
 Invoke-Case -Name 'route-task-imagegen' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'please generate a neon teaching illustration poster cover image', '--report', (Join-Path $fixture 'route-image-report.json'))
 $imageRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-image-report.json')
@@ -219,13 +231,15 @@ $repeatCandidates = Read-JsonUtf8 -Path $repeatCandidatesReport
 if (-not ($repeatCandidates.candidates | Where-Object { $_.task -eq 'daily answer quality tuning' -and $_.occurrences -ge 2 })) {
     throw "FAIL repeat-candidates report=$($repeatCandidates | ConvertTo-Json -Depth 6 -Compress)"
 }
+if (-not ($repeatCandidates.distill_queue | Where-Object { $_.task -eq 'daily answer quality tuning' -and $_.target -eq 'cli-or-skill' })) {
+    throw "FAIL repeat-candidates distill queue report=$($repeatCandidates | ConvertTo-Json -Depth 6 -Compress)"
+}
 
 $evidenceGradeWorkspace = Join-Path $fixture 'evidence-grade'
 New-Item -ItemType Directory -Force -Path $evidenceGradeWorkspace | Out-Null
 $evidenceGradeArtifact = Join-Path $evidenceGradeWorkspace 'verified.txt'
 Write-Fixture $evidenceGradeArtifact 'verified evidence artifact'
 Invoke-Case -Name 'evidence-grade-candidate' -ExpectedExit 0 -Arguments @('evidence-grade', '--status', 'candidate', '--summary', 'possible issue found', '--report', (Join-Path $evidenceGradeWorkspace 'candidate.json'))
-Invoke-Case -Name 'evidence-grade-verified' -ExpectedExit 0 -Arguments @('evidence-grade', '--status', 'verified', '--summary', 'issue verified with artifact', '--artifact', $evidenceGradeArtifact, '--report', (Join-Path $evidenceGradeWorkspace 'verified.json'))
 Invoke-Case -Name 'evidence-grade-verified-missing-artifact-blocked' -ExpectedExit 1 -Arguments @('evidence-grade', '--status', 'verified', '--summary', 'issue verified without artifact')
 
 $source = Join-Path $fixture 'sync-source'
@@ -586,6 +600,10 @@ Invoke-Case -Name 'mcp-distill' -ExpectedExit 0 -Arguments @('mcp-distill', '--c
 if (-not (Test-Path -LiteralPath $mcpReport)) {
     throw "FAIL mcp-distill missing report=$mcpReport"
 }
+$mcpDistill = Read-JsonUtf8 -Path $mcpReport
+if (-not ($mcpDistill.decisions | Where-Object { $_.name -eq 'time' -and $_.evidence_level -eq 'verified' })) {
+    throw "FAIL mcp-distill evidence report=$($mcpDistill | ConvertTo-Json -Depth 8 -Compress)"
+}
 
 $baselinePrompt = Join-Path $fixture 'baseline-prompt.json'
 $candidatePrompt = Join-Path $fixture 'candidate-prompt.json'
@@ -624,6 +642,10 @@ Invoke-Case -Name 'prompt-eval' -ExpectedExit 0 -Arguments @('prompt-eval', '--c
 Invoke-Case -Name 'prompt-distill' -ExpectedExit 0 -Arguments @('prompt-distill', '--baseline', $baselinePrompt, '--candidate', $candidatePrompt, '--dataset', $promptDataset, '--report', $promptDistillReport)
 if (-not (Test-Path -LiteralPath $promptDistillReport)) {
     throw "FAIL prompt-distill missing report=$promptDistillReport"
+}
+$promptDistill = Read-JsonUtf8 -Path $promptDistillReport
+if (-not $promptDistill.evidence_level) {
+    throw "FAIL prompt-distill missing evidence_level report=$($promptDistill | ConvertTo-Json -Depth 8 -Compress)"
 }
 
 $auditRoot = Join-Path $fixture 'audit'

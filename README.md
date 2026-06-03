@@ -42,6 +42,7 @@
 - 自进化闭环：`feedback-log -> feedback-dataset -> prompt-candidate-audit -> prompt-eval -> prompt-distill`。
 - 交付铁律：只交最终结果，不交半成品，不拿路线表演冒充执行。
 - Codex Use Cases 精华点已吸收为少数硬机制：持续目标直跑到底、复杂代码先出最小代码地图、重复工作优先沉成 skill/CLI、外部与批量操作必须留证据、前端默认真实浏览器验收、安全结果必须证据分级。
+- 这些机制现在不只在规则层：`task end` 已与 `closeout-check + evidence-grade` 串联，`route-task` 会显式提示复杂代码任务需要 `code-map`，`repeat-candidates` 会直接产出蒸馏候选队列，`bench-report` / `mcp-distill` / `prompt-distill` 会带证据等级。
 
 ---
 

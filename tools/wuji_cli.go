@@ -710,6 +710,19 @@ func boolFromAny(value any) (bool, bool) {
 	return typed, ok
 }
 
+func evidenceLevelFromDecision(decision string) string {
+	switch strings.ToLower(strings.TrimSpace(decision)) {
+	case "absorb":
+		return "verified"
+	case "defer":
+		return "checked"
+	case "reject":
+		return "checked"
+	default:
+		return "candidate"
+	}
+}
+
 func stringFromAny(value any) (string, bool) {
 	typed, ok := value.(string)
 	if !ok {
@@ -1490,6 +1503,8 @@ func taskCommand(args []string) int {
 	status, _ := argValue(args, "--status")
 	note, _ := argValue(args, "--note")
 	artifacts := argValues(args, "--artifact")
+	closeoutReport, _ := argValue(args, "--closeout-report")
+	evidenceReport, _ := argValue(args, "--evidence-report")
 	allowedStatus := map[string]bool{
 		"":               true,
 		"running":        true,
@@ -1520,6 +1535,31 @@ func taskCommand(args []string) int {
 			return 2
 		}
 	}
+	if event == "end" && status == "done" {
+		if !nonEmpty(closeoutReport) {
+			fmt.Fprintln(os.Stderr, "event end with status done requires --closeout-report")
+			return 2
+		}
+		if !nonEmpty(evidenceReport) {
+			fmt.Fprintln(os.Stderr, "event end with status done requires --evidence-report")
+			return 2
+		}
+		closeoutObj, err := loadJSONObject(closeoutReport)
+		if err != nil || objectString(closeoutObj, "status") != "pass" {
+			fmt.Fprintln(os.Stderr, "closeout-report must exist and have status=pass")
+			return 2
+		}
+		evidenceObj, err := loadJSONObject(evidenceReport)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "evidence-report must be readable")
+			return 2
+		}
+		evidenceStatus := objectString(evidenceObj, "status")
+		if evidenceStatus != "verified" && evidenceStatus != "shipped" {
+			fmt.Fprintln(os.Stderr, "evidence-report status must be verified or shipped")
+			return 2
+		}
+	}
 	if err := ensureDir(workspace); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -1530,6 +1570,12 @@ func taskCommand(args []string) int {
 		"status":    status,
 		"note":      note,
 		"artifacts": artifacts,
+	}
+	if closeoutReport != "" {
+		entry["closeout_report"] = absClean(closeoutReport)
+	}
+	if evidenceReport != "" {
+		entry["evidence_report"] = absClean(evidenceReport)
 	}
 	logPath := filepath.Join(workspace, "task-log.jsonl")
 	if err := appendJSONLine(logPath, entry); err != nil {
@@ -1697,10 +1743,21 @@ func repeatCandidatesCommand(args []string) int {
 		}
 		return left > right
 	})
+	distillQueue := []jsonObject{}
+	for _, candidate := range candidates {
+		distillQueue = append(distillQueue, jsonObject{
+			"task":          candidate["task"],
+			"occurrences":   candidate["occurrences"],
+			"action":        "evaluate_for_distillation",
+			"target":        candidate["recommended_sink"],
+			"evidence_level": "checked",
+		})
+	}
 	report := jsonObject{
 		"log":             absClean(logPath),
 		"min_occurrences": minOccurrences,
 		"candidates":      candidates,
+		"distill_queue":   distillQueue,
 	}
 	outputPath := reportPath
 	if !hasReport {
@@ -2059,6 +2116,14 @@ func benchReportCommand(args []string) int {
 		"qa_pass_rate":      qaPassRate,
 		"tokens_per_minute": tokensPerMinute,
 	}
+	decision := "defer"
+	if qaPassRate >= 0.9 && totalRetries <= totalRuns && avgDuration > 0 {
+		decision = "absorb"
+	} else if qaSeen > 0 && qaPassRate < 0.5 {
+		decision = "reject"
+	}
+	report["decision"] = decision
+	report["evidence_level"] = evidenceLevelFromDecision(decision)
 	if hasReport {
 		if err := writeJSON(reportPath, report); err != nil {
 			fmt.Fprintln(os.Stderr, err)
@@ -2707,6 +2772,7 @@ func mcpDistill(args []string) int {
 			"permissions": permissions,
 			"decision":    decision,
 			"reason":      reason,
+			"evidence_level": evidenceLevelFromDecision(decision),
 		})
 	}
 	sort.Slice(decisions, func(i, j int) bool {
@@ -3431,6 +3497,7 @@ func promptDistillCommand(args []string) int {
 		"reason":           reason,
 		"baseline_report":  baselineEval,
 		"candidate_report": candidateEval,
+		"evidence_level":   evidenceLevelFromDecision(decision),
 	}
 	if hasReport {
 		if err := writeJSON(reportPath, report); err != nil {
@@ -3583,6 +3650,14 @@ func routeTaskCommand(args []string) int {
 		"tier_reason":         tierReason,
 		"canon_source":        "go-builtin+config-overlay",
 		"route_rule_count":    len(rules),
+	}
+	codeMapRequired := false
+	if bestRouteID == "code" && (bestScore >= 3 || bestPriority >= 80) {
+		codeMapRequired = true
+	}
+	report["code_map_required"] = codeMapRequired
+	if codeMapRequired {
+		report["next_required_artifact"] = "code-map"
 	}
 	if hasReport {
 		if err := writeJSON(reportPath, report); err != nil {

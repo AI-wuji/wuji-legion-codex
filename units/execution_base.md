@@ -68,6 +68,9 @@
 - 收口前默认应跑一次 `closeout-check`，确认不存在同目标下显而易见、低风险、高收益且应顺手收完的缺口。
 - 同类反馈、同类任务、同类命令链重复出现时，应优先用 `repeat-candidates` 挖出可沉淀候选，而不是继续靠人脑记忆。
 - 证据默认统一走 `candidate / checked / verified / shipped` 四级；越高等级，越必须附真实工件。
+- `task --event end --status done` 现在默认要求挂上通过的 `closeout-check` 报告和 `verified/shipped` 级别的 `evidence-grade` 报告，避免“假完成”写进任务日志。
+- `route-task` 命中复杂代码任务时，会显式提示 `code_map_required=true`，把代码地图从建议升级成路由信号。
+- `bench-report` 现在会给出 `decision + evidence_level`，可以直接参与后续蒸馏放行判断。
 - 前端、网页、可视化交付的收口优先依赖真实浏览器预览与检查，不把静态描述当验收。
 - 安全与审计类任务的底座输出应支持证据分级和候选验证，不只给一个模糊风险结论。
 
