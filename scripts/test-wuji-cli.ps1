@@ -102,13 +102,21 @@ function New-PptxFixture {
 function Invoke-Case {
     param([string]$Name, [int]$ExpectedExit, [string[]]$Arguments)
     $previousNativeErrorPref = $PSNativeCommandUseErrorActionPreference
+    $previousErrorActionPreference = $ErrorActionPreference
     try {
         $PSNativeCommandUseErrorActionPreference = $false
-        $output = & $bin @Arguments 2>&1
+        $ErrorActionPreference = 'Continue'
+        try {
+            $output = & $bin @Arguments 2>&1
+        }
+        catch {
+            $output = @($_.Exception.Message)
+        }
         $actual = $LASTEXITCODE
     }
     finally {
         $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPref
+        $ErrorActionPreference = $previousErrorActionPreference
     }
     if ($actual -ne $ExpectedExit) {
         throw "FAIL $Name expected=$ExpectedExit actual=$actual output=$($output -join ' | ')"
@@ -133,9 +141,26 @@ Invoke-Case -Name 'time-guard-with-artifact' -ExpectedExit 0 -Arguments @('time-
 
 $taskWorkspace = Join-Path $fixture 'task'
 Invoke-Case -Name 'task-start' -ExpectedExit 0 -Arguments @('task', '--workspace', $taskWorkspace, '--event', 'start', '--status', 'running', '--artifact', $artifact, '--note', 'task started')
+Invoke-Case -Name 'task-end-invalid-status-blocked' -ExpectedExit 2 -Arguments @('task', '--workspace', $taskWorkspace, '--event', 'end', '--status', 'running')
+Invoke-Case -Name 'task-end-valid' -ExpectedExit 0 -Arguments @('task', '--workspace', $taskWorkspace, '--event', 'end', '--status', 'done', '--artifact', $artifact)
 $benchWorkspace = Join-Path $fixture 'bench'
 Invoke-Case -Name 'bench-log' -ExpectedExit 0 -Arguments @('bench', '--workspace', $benchWorkspace, '--name', 'sample', '--input-tokens', '10', '--output-tokens', '20', '--duration-ms', '30', '--tool-calls', '2', '--retries', '0', '--qa-pass', 'true')
 Invoke-Case -Name 'bench-report' -ExpectedExit 0 -Arguments @('bench-report', '--workspace', $benchWorkspace, '--report', (Join-Path $fixture 'bench-report.json'))
+
+$codeMapWorkspace = Join-Path $fixture 'code-map'
+$codeMapReport = Join-Path $codeMapWorkspace 'code-map.json'
+Invoke-Case -Name 'code-map' -ExpectedExit 0 -Arguments @('code-map', '--workspace', $codeMapWorkspace, '--goal', 'refactor route task defaults', '--entry', 'routeTaskCommand', '--dependency', 'contextPackCommand', '--risk', 'route drift', '--verify', 'route-task regression', '--report', $codeMapReport)
+$codeMap = Read-JsonUtf8 -Path $codeMapReport
+if ($codeMap.entry -ne 'routeTaskCommand' -or $codeMap.verifications.Count -lt 1) {
+    throw "FAIL code-map report=$($codeMap | ConvertTo-Json -Depth 6 -Compress)"
+}
+
+$closeoutWorkspace = Join-Path $fixture 'closeout'
+New-Item -ItemType Directory -Force -Path $closeoutWorkspace | Out-Null
+$closeoutArtifact = Join-Path $closeoutWorkspace 'final.txt'
+Write-Fixture $closeoutArtifact 'final artifact for closeout verification'
+Invoke-Case -Name 'closeout-check-pass' -ExpectedExit 0 -Arguments @('closeout-check', '--workspace', $closeoutWorkspace, '--goal', 'finish route update', '--artifact', $closeoutArtifact, '--verify', 'route-task regression', '--report', (Join-Path $closeoutWorkspace 'closeout-check.json'))
+Invoke-Case -Name 'closeout-check-gap-blocked' -ExpectedExit 1 -Arguments @('closeout-check', '--workspace', $closeoutWorkspace, '--goal', 'finish route update', '--artifact', $closeoutArtifact, '--verify', 'route-task regression', '--next-gap', 'still need to sync docs')
 
 $routeConfig = Join-Path $fixture 'route-config.json'
 [System.IO.File]::WriteAllText($routeConfig, (@{

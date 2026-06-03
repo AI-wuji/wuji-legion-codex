@@ -325,11 +325,13 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  wuji-cli workflow-guard --workspace <dir> [--stage scaffold|final]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli claim-guard --claim <text> [--evidence <file>]...")
 	fmt.Fprintln(os.Stderr, "  wuji-cli time-guard --kind <non-code|general> --elapsed-minutes <n> [--artifact <file>] [--phase <name>]")
-	fmt.Fprintln(os.Stderr, "  wuji-cli task --workspace <dir> --event <start|heartbeat|blocked|end> [--status <value>] [--artifact <file>]... [--note <text>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli task --workspace <dir> --event <start|heartbeat|blocked|end> [--status <running|blocked|needs_decision|done>] [--artifact <file>]... [--note <text>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli sync --source <dir> --dest <dir>")
 	fmt.Fprintln(os.Stderr, "  wuji-cli audit --path <dir> [--report <file>] [--sarif <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli bench --workspace <dir> --name <run> [--input-tokens <n>] [--output-tokens <n>] [--duration-ms <n>] [--tool-calls <n>] [--retries <n>] [--qa-pass <true|false>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli bench-report --workspace <dir> [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli code-map --workspace <dir> --goal <text> --entry <text> [--dependency <text>]... [--risk <text>]... [--verify <text>]... [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli closeout-check --workspace <dir> --goal <text> [--artifact <file>]... [--verify <text>]... [--next-gap <text>]... [--report <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli preview --command <exe> [--arg <value>]... --output <file>")
 	fmt.Fprintln(os.Stderr, "  wuji-cli asset-map --pptx <file> --workspace <dir>")
 	fmt.Fprintln(os.Stderr, "  wuji-cli pptx-audit --pptx <file> [--report <file>]")
@@ -1486,6 +1488,36 @@ func taskCommand(args []string) int {
 	status, _ := argValue(args, "--status")
 	note, _ := argValue(args, "--note")
 	artifacts := argValues(args, "--artifact")
+	allowedStatus := map[string]bool{
+		"":               true,
+		"running":        true,
+		"blocked":        true,
+		"needs_decision": true,
+		"done":           true,
+	}
+	if !allowedStatus[status] {
+		fmt.Fprintln(os.Stderr, "status must be running, blocked, needs_decision, or done")
+		return 2
+	}
+	expectedStatusByEvent := map[string][]string{
+		"start":     {"running"},
+		"heartbeat": {"running", "blocked", "needs_decision"},
+		"blocked":   {"blocked", "needs_decision"},
+		"end":       {"done"},
+	}
+	if expected, ok := expectedStatusByEvent[event]; ok {
+		valid := false
+		for _, item := range expected {
+			if status == item {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			fmt.Fprintf(os.Stderr, "event %s requires status %s\n", event, strings.Join(expected, " or "))
+			return 2
+		}
+	}
 	if err := ensureDir(workspace); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -1504,6 +1536,109 @@ func taskCommand(args []string) int {
 	}
 	fmt.Printf("GO task\n- log=%s\n", logPath)
 	return 0
+}
+
+func codeMapCommand(args []string) int {
+	workspace, ok := argValue(args, "--workspace")
+	if !ok {
+		usage()
+		return 2
+	}
+	goal, ok := argValue(args, "--goal")
+	if !ok || strings.TrimSpace(goal) == "" {
+		usage()
+		return 2
+	}
+	entry, ok := argValue(args, "--entry")
+	if !ok || strings.TrimSpace(entry) == "" {
+		usage()
+		return 2
+	}
+	dependencies := uniqueStrings(argValues(args, "--dependency"))
+	risks := uniqueStrings(argValues(args, "--risk"))
+	verifications := uniqueStrings(argValues(args, "--verify"))
+	if len(verifications) == 0 {
+		fmt.Fprintln(os.Stderr, "code-map requires at least one --verify item")
+		return 2
+	}
+	reportPath, hasReport := argValue(args, "--report")
+	if err := ensureDir(workspace); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	report := jsonObject{
+		"goal":         strings.TrimSpace(goal),
+		"entry":        strings.TrimSpace(entry),
+		"dependencies": dependencies,
+		"risks":        risks,
+		"verifications": verifications,
+		"generated_at": time.Now().UTC().Format(time.RFC3339),
+	}
+	outputPath := reportPath
+	if !hasReport {
+		outputPath = filepath.Join(workspace, "code-map.json")
+	}
+	if err := writeJSON(outputPath, report); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	fmt.Printf("GO code-map\n- report=%s\n", absClean(outputPath))
+	return 0
+}
+
+func closeoutCheckCommand(args []string) int {
+	workspace, ok := argValue(args, "--workspace")
+	if !ok {
+		usage()
+		return 2
+	}
+	goal, ok := argValue(args, "--goal")
+	if !ok || strings.TrimSpace(goal) == "" {
+		usage()
+		return 2
+	}
+	artifacts := uniqueStrings(argValues(args, "--artifact"))
+	verifications := uniqueStrings(argValues(args, "--verify"))
+	nextGaps := uniqueStrings(argValues(args, "--next-gap"))
+	reportPath, hasReport := argValue(args, "--report")
+	failures := []string{}
+	if len(artifacts) == 0 {
+		failures = append(failures, "closeout_requires_artifact")
+	}
+	for _, artifact := range artifacts {
+		if !nonEmpty(artifact) {
+			failures = append(failures, "artifact_missing_or_too_small="+artifact)
+		}
+	}
+	if len(verifications) == 0 {
+		failures = append(failures, "closeout_requires_verification")
+	}
+	for _, gap := range nextGaps {
+		if strings.TrimSpace(gap) != "" {
+			failures = append(failures, "closeout_gap_remaining="+gap)
+		}
+	}
+	report := jsonObject{
+		"workspace":      absClean(workspace),
+		"goal":           strings.TrimSpace(goal),
+		"artifacts":      artifacts,
+		"verifications":  verifications,
+		"remaining_gaps": nextGaps,
+		"status":         "pass",
+	}
+	if len(failures) > 0 {
+		report["status"] = "fail"
+		report["failures"] = failures
+	}
+	outputPath := reportPath
+	if !hasReport {
+		outputPath = filepath.Join(workspace, "closeout-check.json")
+	}
+	if err := writeJSON(outputPath, report); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return printGate("closeout-check", failures)
 }
 
 func syncCommand(args []string) int {
@@ -3446,6 +3581,10 @@ func main() {
 		code = benchCommand(args)
 	case "bench-report":
 		code = benchReportCommand(args)
+	case "code-map":
+		code = codeMapCommand(args)
+	case "closeout-check":
+		code = closeoutCheckCommand(args)
 	case "preview":
 		code = previewCommand(args)
 	case "asset-map":
