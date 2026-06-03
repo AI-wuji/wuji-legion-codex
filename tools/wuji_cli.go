@@ -83,6 +83,38 @@ var slideTextPattern = regexp.MustCompile(`(?is)<a:t[^>]*>(.*?)</a:t>`)
 var unfinishedLinePattern = regexp.MustCompile(`(?m)(^\s*(?:[-*]\s*)?(?:待开发|后续路线)(?:\s|$))|((?:待开发|后续路线)\s*[:：])`)
 var incompleteLinePattern = regexp.MustCompile(`(?im)(^\s*(?:[-*]|\[\s?\])\s*(?:todo|tbd)\b)|(^\s*(?:#|//|/\*|\*)\s*(?:todo|tbd)\b)|(\b(?:todo|tbd)\s*[:：])`)
 
+var executionPrecheckMarkers = []string{
+	"先看看能不能做",
+	"先确认能不能做",
+	"先查环境",
+	"先跑环境",
+	"先试工具",
+	"先试接口",
+	"先探接口",
+	"先扫一遍",
+	"先全仓扫描",
+	"先读 skill",
+	"先读规则",
+	"先检查一下",
+	"先预检",
+	"开工前预检",
+	"check environment first",
+	"check the environment first",
+	"test the tool first",
+	"probe the tool first",
+	"preflight first",
+	"scan the repo first",
+	"inspect the repo first",
+}
+
+var executionExploratoryPhases = map[string]bool{
+	"explore":   true,
+	"research":  true,
+	"probe":     true,
+	"prototype": true,
+	"preflight": true,
+}
+
 func auditMarkerText(text string) string {
 	lines := strings.Split(text, "\n")
 	filtered := make([]string, 0, len(lines))
@@ -112,6 +144,74 @@ func auditMarkerText(text string) string {
 func isAuditMarkerFixture(rel string) bool {
 	cleanRel := filepath.ToSlash(rel)
 	return cleanRel == "tools/wuji_cli.go" || cleanRel == "scripts/test-wuji-cli.ps1"
+}
+
+func normalizedLower(value string) string {
+	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func isExecutionMetaArtifact(path string) bool {
+	base := normalizedLower(filepath.Base(path))
+	if base == "" {
+		return true
+	}
+	metaHints := []string{
+		"audit", "report", "scan", "inspect", "preflight", "check", "log", "manifest",
+		"sarif", "evidence", "bench", "context-pack", "route-report", "canon-report",
+	}
+	for _, hint := range metaHints {
+		if strings.Contains(base, hint) {
+			return true
+		}
+	}
+	return false
+}
+
+func hasPrimaryArtifact(artifacts []string) bool {
+	for _, artifact := range artifacts {
+		if nonEmpty(artifact) && !isExecutionMetaArtifact(artifact) {
+			return true
+		}
+	}
+	return false
+}
+
+func executionRhythmFailures(record map[string]any) []string {
+	event := normalizedLower(objectString(record, "event"))
+	if event != "start" && event != "heartbeat" {
+		return nil
+	}
+	phase := normalizedLower(objectString(record, "phase"))
+	note := objectString(record, "note")
+	hits := markerHits(strings.Join([]string{phase, note}, "\n"), executionPrecheckMarkers)
+	exploratory := executionExploratoryPhases[phase]
+	artifacts := stringSlice(record, "artifacts")
+	if (exploratory || len(hits) > 0) && !hasPrimaryArtifact(artifacts) {
+		parts := []string{}
+		if phase != "" {
+			parts = append(parts, "phase="+phase)
+		}
+		if len(hits) > 0 {
+			parts = append(parts, "markers="+strings.Join(hits, "|"))
+		}
+		if len(artifacts) > 0 {
+			parts = append(parts, "artifacts="+strings.Join(artifacts, "|"))
+		} else {
+			parts = append(parts, "artifacts=none")
+		}
+		return []string{"execution_precheck_loop_detected " + strings.Join(parts, " ")}
+	}
+	return nil
+}
+
+func taskLogExecutionRhythmFailures(records []map[string]any) []string {
+	failures := []string{}
+	for idx, record := range records {
+		for _, failure := range executionRhythmFailures(record) {
+			failures = append(failures, fmt.Sprintf("task_log_record_%02d_%s", idx+1, strings.ReplaceAll(failure, " ", "_")))
+		}
+	}
+	return failures
 }
 
 var placeholderMarkers = []string{
@@ -358,7 +458,7 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  wuji-cli workflow-guard --workspace <dir> [--stage scaffold|final]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli claim-guard --claim <text> [--evidence <file>]...")
 	fmt.Fprintln(os.Stderr, "  wuji-cli time-guard --kind <non-code|general> --elapsed-minutes <n> [--artifact <file>] [--phase <name>]")
-	fmt.Fprintln(os.Stderr, "  wuji-cli task --workspace <dir> --event <start|heartbeat|blocked|end> [--status <running|blocked|needs_decision|done>] [--artifact <file>]... [--note <text>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli task --workspace <dir> --event <start|heartbeat|blocked|end> [--status <running|blocked|needs_decision|done>] [--artifact <file>]... [--note <text>] [--phase <name>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli sync --source <dir> --dest <dir>")
 	fmt.Fprintln(os.Stderr, "  wuji-cli audit --path <dir> [--report <file>] [--sarif <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli bench --workspace <dir> --name <run> [--input-tokens <n>] [--output-tokens <n>] [--duration-ms <n>] [--tool-calls <n>] [--retries <n>] [--qa-pass <true|false>]")
@@ -1628,6 +1728,7 @@ func workflowGuard(args []string) int {
 			if err != nil || len(records) == 0 {
 				failures = append(failures, "workflow_task_log_unreadable")
 			} else {
+				failures = append(failures, taskLogExecutionRhythmFailures(records)...)
 				last := records[len(records)-1]
 				if objectString(last, "event") != "end" || objectString(last, "status") != "done" {
 					failures = append(failures, "workflow_task_log_not_closed")
@@ -1703,10 +1804,9 @@ func timeGuard(args []string) int {
 	hasArtifact := hasArtifactArg && nonEmpty(artifact)
 	failures := []string{}
 	if kind == "non-code" {
-		explorePhase := map[string]bool{"explore": true, "research": true, "probe": true, "prototype": true, "preflight": true}
 		if minutes >= 30 && !hasArtifact {
 			failures = append(failures, fmt.Sprintf("no_verifiable_artifact_after_30_minutes phase=%s", phase))
-		} else if minutes >= 15 && !hasArtifact && explorePhase[phase] {
+		} else if minutes >= 15 && !hasArtifact && executionExploratoryPhases[phase] {
 			failures = append(failures, fmt.Sprintf("non_code_exploration_timeout_after_15_minutes phase=%s", phase))
 		} else if minutes >= 10 && !hasArtifact {
 			failures = append(failures, fmt.Sprintf("non_code_missing_primary_artifact_after_10_minutes phase=%s", phase))
@@ -1728,6 +1828,7 @@ func taskCommand(args []string) int {
 	}
 	status, _ := argValue(args, "--status")
 	note, _ := argValue(args, "--note")
+	phase, _ := argValue(args, "--phase")
 	artifacts := argValues(args, "--artifact")
 	closeoutReport, _ := argValue(args, "--closeout-report")
 	evidenceReport, _ := argValue(args, "--evidence-report")
@@ -1786,16 +1887,22 @@ func taskCommand(args []string) int {
 			return 2
 		}
 	}
-	if err := ensureDir(workspace); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
-	}
 	entry := jsonObject{
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"event":     event,
 		"status":    status,
 		"note":      note,
 		"artifacts": artifacts,
+	}
+	if phase != "" {
+		entry["phase"] = phase
+	}
+	if failures := executionRhythmFailures(entry); len(failures) > 0 {
+		return printGate("task", failures)
+	}
+	if err := ensureDir(workspace); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
 	}
 	if closeoutReport != "" {
 		entry["closeout_report"] = absClean(closeoutReport)
@@ -2108,7 +2215,7 @@ func auditCommand(args []string) int {
 	failures := []string{}
 	findings := []jsonObject{}
 	textExt := map[string]bool{
-		".md": true, ".ps1": true, ".py": true, ".go": true, ".json": true, ".toml": true, ".yaml": true, ".yml": true, ".txt": true,
+		".md": true, ".ps1": true, ".py": true, ".go": true, ".json": true, ".jsonl": true, ".toml": true, ".yaml": true, ".yml": true, ".txt": true,
 	}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -2138,6 +2245,16 @@ func auditCommand(args []string) int {
 		check := func(kind string, pattern string) {
 			findings = append(findings, jsonObject{"file": rel, "kind": kind, "pattern": pattern})
 			failures = append(failures, fmt.Sprintf("%s=%s", kind, rel))
+		}
+		if strings.EqualFold(filepath.Base(path), "task-log.jsonl") {
+			records, err := loadJSONLines(path)
+			if err != nil {
+				check("task_log_unreadable", "task log unreadable")
+				return nil
+			}
+			for _, failure := range taskLogExecutionRhythmFailures(records) {
+				check("execution_rhythm_violation", failure)
+			}
 		}
 		replacementChar := string(rune(0xfffd))
 		if strings.Contains(text, replacementChar) {

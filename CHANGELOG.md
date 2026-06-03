@@ -5,6 +5,8 @@
 - 把“默认不预检，先执行，报错再诊断”正式写进 `GLOBAL_AGENTS.md`、`SKILL.md` 和执行底座说明，避免“先扫一圈再开干”继续扩散成默认习惯。
 - 明确只保留四类零思考硬门：参考原件保护、批量/删除/外部同步前的目标路径确认、参考文件只读、明显缺输入时立即阻塞。
 - `pptx-preflight` 再次收紧为异常后或高风险路线的定向探针，禁止回流成日常任务默认第一步。
+- `wuji-cli task` 新增执行节奏硬拦截：`start/heartbeat` 如果以 `preflight/probe/research` 为主相位却没有主产物，或只挂检查型报告当首产出，直接 `NO-GO`。
+- `workflow-guard` 与 `audit` 现在会联查 `task-log.jsonl` 中的“先预检兜圈”痕迹，避免规则层说直跑、底盘层却放过带病收口。
 
 ## 2026-06-03 v10.8 ppt hardening and motion gate closure
 

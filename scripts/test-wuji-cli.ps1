@@ -128,9 +128,11 @@ $reference = Join-Path $fixture 'reference.txt'
 $output = Join-Path $fixture 'generated.txt'
 $evidence = Join-Path $fixture 'evidence.txt'
 $artifact = Join-Path $fixture 'artifact.txt'
+$metaReportArtifact = Join-Path $fixture 'meta-report.json'
 Write-Fixture $reference
 Write-Fixture $evidence
 Write-Fixture $artifact
+Write-Fixture $metaReportArtifact '{"status":"pass"}'
 
 Invoke-Case -Name 'reference-safe' -ExpectedExit 0 -Arguments @('reference-guard', '--reference', $reference, '--output', $output)
 Invoke-Case -Name 'reference-overwrite-blocked' -ExpectedExit 1 -Arguments @('reference-guard', '--reference', $reference, '--output', $reference)
@@ -141,6 +143,8 @@ Invoke-Case -Name 'time-guard-with-artifact' -ExpectedExit 0 -Arguments @('time-
 
 $taskWorkspace = Join-Path $fixture 'task'
 Invoke-Case -Name 'task-start' -ExpectedExit 0 -Arguments @('task', '--workspace', $taskWorkspace, '--event', 'start', '--status', 'running', '--artifact', $artifact, '--note', 'task started')
+Invoke-Case -Name 'task-start-precheck-blocked' -ExpectedExit 1 -Arguments @('task', '--workspace', (Join-Path $fixture 'task-precheck'), '--event', 'start', '--status', 'running', '--phase', 'preflight', '--note', '先看看能不能做，先查环境再说')
+Invoke-Case -Name 'task-heartbeat-precheck-report-only-blocked' -ExpectedExit 1 -Arguments @('task', '--workspace', (Join-Path $fixture 'task-precheck-report-only'), '--event', 'heartbeat', '--status', 'running', '--phase', 'probe', '--artifact', $metaReportArtifact, '--note', 'check environment first and scan the repo first')
 Invoke-Case -Name 'task-end-invalid-status-blocked' -ExpectedExit 2 -Arguments @('task', '--workspace', $taskWorkspace, '--event', 'end', '--status', 'running')
 $benchWorkspace = Join-Path $fixture 'bench'
 Invoke-Case -Name 'bench-log' -ExpectedExit 0 -Arguments @('bench', '--workspace', $benchWorkspace, '--name', 'sample', '--input-tokens', '10', '--output-tokens', '20', '--duration-ms', '30', '--tool-calls', '2', '--retries', '0', '--qa-pass', 'true')
@@ -263,6 +267,18 @@ Write-Fixture (Join-Path $workflow 'packets\01.md')
 Write-Fixture (Join-Path $workflow 'results\01.md')
 Copy-Item -LiteralPath (Join-Path $taskWorkspace 'task-log.jsonl') -Destination (Join-Path $workflow 'task-log.jsonl')
 Invoke-Case -Name 'workflow-final' -ExpectedExit 0 -Arguments @('workflow-guard', '--workspace', $workflow, '--stage', 'final')
+$workflowBlocked = Join-Path $fixture 'workflow-blocked'
+New-Item -ItemType Directory -Force -Path (Join-Path $workflowBlocked 'packets'), (Join-Path $workflowBlocked 'results') | Out-Null
+Write-Fixture (Join-Path $workflowBlocked 'contract.md')
+Write-Fixture (Join-Path $workflowBlocked 'state.json') '{"status":"done","verification":{"status":"passed"}}'
+Write-Fixture (Join-Path $workflowBlocked 'final-report.md') "# Report`n## Verification Evidence`n- passed"
+Write-Fixture (Join-Path $workflowBlocked 'packets\01.md')
+Write-Fixture (Join-Path $workflowBlocked 'results\01.md')
+[System.IO.File]::WriteAllLines((Join-Path $workflowBlocked 'task-log.jsonl'), @(
+    (@{ timestamp = '2026-06-03T00:00:00Z'; event = 'start'; status = 'running'; phase = 'preflight'; note = '先看看能不能做，先查环境'; artifacts = @() } | ConvertTo-Json -Compress),
+    (@{ timestamp = '2026-06-03T00:01:00Z'; event = 'end'; status = 'done'; note = 'done'; artifacts = @($artifact); closeout_report = $closeoutPassReport; evidence_report = $verifiedEvidenceReport } | ConvertTo-Json -Compress)
+), [System.Text.UTF8Encoding]::new($false))
+Invoke-Case -Name 'workflow-final-precheck-loop-blocked' -ExpectedExit 1 -Arguments @('workflow-guard', '--workspace', $workflowBlocked, '--stage', 'final')
 
 $pptxFile = Join-Path $fixture 'sample.pptx'
 New-PptxFixture -Path $pptxFile -Slides @(
@@ -713,6 +729,12 @@ $auditBlockedRoot = Join-Path $fixture 'audit-blocked'
 New-Item -ItemType Directory -Force -Path $auditBlockedRoot | Out-Null
 Write-Fixture (Join-Path $auditBlockedRoot 'todo.md') "// TODO: replace placeholder before release"
 Invoke-Case -Name 'audit-real-marker-blocked' -ExpectedExit 1 -Arguments @('audit', '--path', $auditBlockedRoot)
+$auditExecutionBlockedRoot = Join-Path $fixture 'audit-execution-blocked'
+New-Item -ItemType Directory -Force -Path $auditExecutionBlockedRoot | Out-Null
+[System.IO.File]::WriteAllLines((Join-Path $auditExecutionBlockedRoot 'task-log.jsonl'), @(
+    (@{ timestamp = '2026-06-03T00:00:00Z'; event = 'start'; status = 'running'; phase = 'preflight'; note = 'check environment first and scan the repo first'; artifacts = @() } | ConvertTo-Json -Compress)
+), [System.Text.UTF8Encoding]::new($false))
+Invoke-Case -Name 'audit-execution-precheck-blocked' -ExpectedExit 1 -Arguments @('audit', '--path', $auditExecutionBlockedRoot)
 
 $previewOut = Join-Path $fixture 'preview.txt'
 Invoke-Case -Name 'preview-dispatch' -ExpectedExit 0 -Arguments @('preview', '--command', 'powershell', '--arg', '-NoProfile', '--arg', '-Command', '--arg', ('Set-Content -LiteralPath ''' + $previewOut + ''' -Value ''preview output long enough'''), '--output', $previewOut)

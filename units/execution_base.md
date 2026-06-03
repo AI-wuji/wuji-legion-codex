@@ -77,10 +77,12 @@
 - 同类反馈、同类任务、同类命令链重复出现时，应优先用 `repeat-candidates` 挖出可沉淀候选，而不是继续靠人脑记忆。
 - 证据默认统一走 `candidate / checked / verified / shipped` 四级；越高等级，越必须附真实工件。
 - `task --event end --status done` 现在默认要求挂上通过的 `closeout-check` 报告和 `verified/shipped` 级别的 `evidence-grade` 报告，避免“假完成”写进任务日志。
+- `task` 现在会直接拦截两类起手兜圈：`start/heartbeat` 阶段把 `preflight/probe/research` 当主相位却没有主产物，以及只挂检查型报告却声称已经开工。
 - `route-task` 命中复杂代码任务时，会显式提示 `code_map_required=true`，把代码地图从建议升级成路由信号。
 - `bench-report` 现在会给出 `decision + evidence_level`，可以直接参与后续蒸馏放行判断。
 - `repeat-candidates` 现在会顺手写出固定的 `distill-queue.json`，让重复动作候选直接进入蒸馏台账，而不是停留在一次性报告里。
 - `workflow-guard --stage final` 现在会联查 `task-log.jsonl`、`closeout_report` 和 `evidence_report`，确保工作流完成态和任务日志完成态一致。
+- `workflow-guard --stage final` 现在还会复核任务日志里是否出现“先预检兜圈、没有主产物就开工”的节奏违规；带病日志不得收口。
 - 前端、网页、可视化交付的收口优先依赖真实浏览器预览与检查，不把静态描述当验收。
 - 安全与审计类任务的底座输出应支持证据分级和候选验证，不只给一个模糊风险结论。
 
@@ -95,6 +97,7 @@
 
 - 默认不在开工前跑分析型预检；`asset-map`、`pptx-batch-gate`、`pptx-audit` 服务于产出链和批量放行，不服务于“先确认一下能不能做”。
 - `pptx-preflight` 只在新路线、可疑 generator、白帽明确封驳、或已经出现真实异常后才触发；不得把它重新扩散成日常任务的默认第一步。
+- `audit` 现在会专扫 `task-log.jsonl` 里的执行节奏违规：如果起手就在 `preflight/probe/research` 打转，且没有主产物，直接记为执行层失败模式。
 - `asset-map` 必须产出：`reference-frame-map`、`reusable-asset-map`、`illustration-plan`
 - `asset-map` 现在默认还要补出 `motion-plan.md/json`，避免动态任务继续靠人工补规则
 - 教学页如果在 `illustration-plan` 里出现 `requires_visual=true` 或教学信号，批量前还必须具备 `outline` 和 `speaker-notes`
