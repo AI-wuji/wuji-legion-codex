@@ -1,7 +1,7 @@
 # 无极军团 Codex 版 / Wuji Legion for Codex
 
 **当前正式版：v10.8**  
-当前 GitHub 正式版已经收口到两条核心目标：`省 token，高命中`、`高质高效`。这一版把“不要做一步停一步”的执行要求和 PPT 动态/布局硬门一起沉进了代码与规则。
+当前 GitHub 正式版已经收口到两条核心目标：`省 token，高命中`、`高质高效`。这一版把“不要做一步停一步”和“默认不预检，先执行，报错再诊断”的执行要求一起沉进了代码与规则。
 
 **让 Codex 从“会回答”升级成“真交付”。**  
 无极军团不是再堆一堆 skill，也不是花哨的多 agent 表演。它是一套面向真实交付的执行系统：自动收敛角色、压低 token、提高命中率，把调研、代码、内容、PPT、HTML、配图、插件和规则升级都收口到可验证的结果。
@@ -40,6 +40,7 @@
 - 模型分档：默认 `gpt-5.4-mini`，中档 `gpt-5.4`，高档 `gpt-5.5`，按任务难度推荐。
 - 静态骨架：固定模型三档、核心路由骨架、内置插件归口和 MCP 默认裁决已沉入 Go 底座，`config.json` 只保留环境信息和覆盖项。
 - 图像直出：普通 `生图/插图/海报/封面/配图` 已从 `ComfyUI` 重链剥离，`route-task` 直接落到 `imagegen` 低档直出链。
+- 执行节奏：普通任务默认不做开工前预检，不扫全仓、不试环境、不探接口；直接做主线，只有文件安全、外部同步、批量破坏性动作保留零思考硬门。
 - PPT 主链：模板续写走 `Presentations template-following exact clone/edit`；从零高颜值走 `HTML-first -> editable PPTX`；Windows PowerPoint COM/MCP 只做最后一公里精修；Go 负责锁三张表、`style-lock`、`page-role-policy`、pilot 放行和收口 QA，默认主线不再先跑 `pptx-preflight`。
 - 当前 `HTML-first` 的真实边界已明确：它优先走 `Playwright + dom-to-pptx` 的浏览器计算样式导出，能高保真保留静态 HTML/CSS 视觉，但仍不把 HTML/CSS 的动画、过渡和动态组件自动转成 PowerPoint 动画。
 - 动态交付主张：演示型 PPT 默认双轨成品，`live HTML demo` 承接动态体验，`editable PPTX` 承接可编辑交付；静态 PPT 不再冒充动态成品。

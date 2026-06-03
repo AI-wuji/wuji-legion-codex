@@ -1,5 +1,11 @@
 # 更新日志 / Changelog
 
+## 2026-06-03 v10.8 execution rhythm hardening
+
+- 把“默认不预检，先执行，报错再诊断”正式写进 `GLOBAL_AGENTS.md`、`SKILL.md` 和执行底座说明，避免“先扫一圈再开干”继续扩散成默认习惯。
+- 明确只保留四类零思考硬门：参考原件保护、批量/删除/外部同步前的目标路径确认、参考文件只读、明显缺输入时立即阻塞。
+- `pptx-preflight` 再次收紧为异常后或高风险路线的定向探针，禁止回流成日常任务默认第一步。
+
 ## 2026-06-03 v10.8 ppt hardening and motion gate closure
 
 - `wuji-cli pptx-preflight / pptx-batch-gate` 现已把 `motion-plan` 纳入必检工件；动态任务如果要求动效却没有 `live HTML demo` 或等效动态源，直接 `NO-GO`。

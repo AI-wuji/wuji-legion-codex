@@ -10,6 +10,14 @@
 把稳定、重复、可判定的动作下沉为 Go 命令和硬门禁。
 ```
 
+默认执行姿势：
+
+```text
+先执行主线
+-> 真报错再诊断
+-> 只有零思考硬门允许前置
+```
+
 ## 边界
 
 执行底座负责：
@@ -85,6 +93,8 @@
 
 ## PPTX 专属硬门
 
+- 默认不在开工前跑分析型预检；`asset-map`、`pptx-batch-gate`、`pptx-audit` 服务于产出链和批量放行，不服务于“先确认一下能不能做”。
+- `pptx-preflight` 只在新路线、可疑 generator、白帽明确封驳、或已经出现真实异常后才触发；不得把它重新扩散成日常任务的默认第一步。
 - `asset-map` 必须产出：`reference-frame-map`、`reusable-asset-map`、`illustration-plan`
 - `asset-map` 现在默认还要补出 `motion-plan.md/json`，避免动态任务继续靠人工补规则
 - 教学页如果在 `illustration-plan` 里出现 `requires_visual=true` 或教学信号，批量前还必须具备 `outline` 和 `speaker-notes`
