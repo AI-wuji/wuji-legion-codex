@@ -1,5 +1,16 @@
 # 更新日志 / Changelog
 
+## 2026-06-03 v10.7 execution-base evolution loop
+
+- `wuji-cli task` 收紧为显式状态机：`running / blocked / needs_decision / done`。
+- `wuji-cli` 新增 `code-map`、`closeout-check`、`repeat-candidates`、`evidence-grade`。
+- `task --event end --status done` 现在要求通过的 `closeout-check` 报告和 `verified/shipped` 级别 `evidence-grade` 报告，避免假完成写进任务日志。
+- `route-task` 命中复杂代码任务时，会显式给出 `code_map_required=true` 和 `next_required_artifact=code-map`。
+- `repeat-candidates` 现在会同时产出固定 `distill-queue.json`，让重复动作直接进入蒸馏台账。
+- `workflow-guard --stage final` 现在会联查 `task-log`、`closeout-report`、`evidence-report` 是否闭环。
+- `bench-report`、`mcp-distill`、`prompt-distill` 统一补上 `decision + evidence_level`，让进化放行更可判定。
+- `scripts/test-wuji-cli.ps1` 已新增上述能力的回归用例，整套 deterministic gates 继续通过。
+
 ## 2026-06-01 v10.6 hard-gate completion
 
 - `wuji-cli` 新增 `reference-guard`：输出路径不得覆盖参考原件或写入参考目录。
