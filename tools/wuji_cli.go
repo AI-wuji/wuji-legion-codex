@@ -1421,6 +1421,31 @@ func workflowGuard(args []string) int {
 		if !strings.Contains(string(report), "Verification Evidence") {
 			failures = append(failures, "final_report_missing_verification_evidence_heading")
 		}
+		taskLogPath := filepath.Join(workspace, "task-log.jsonl")
+		if nonEmpty(taskLogPath) {
+			records, err := loadJSONLines(taskLogPath)
+			if err != nil || len(records) == 0 {
+				failures = append(failures, "workflow_task_log_unreadable")
+			} else {
+				last := records[len(records)-1]
+				if objectString(last, "event") != "end" || objectString(last, "status") != "done" {
+					failures = append(failures, "workflow_task_log_not_closed")
+				}
+				if path := objectString(last, "closeout_report"); path == "" || !nonEmpty(path) {
+					failures = append(failures, "workflow_task_log_missing_closeout_report")
+				}
+				if path := objectString(last, "evidence_report"); path == "" || !nonEmpty(path) {
+					failures = append(failures, "workflow_task_log_missing_evidence_report")
+				} else if evidenceObj, err := loadJSONObject(path); err != nil {
+					failures = append(failures, "workflow_evidence_report_unreadable")
+				} else {
+					status := objectString(evidenceObj, "status")
+					if status != "verified" && status != "shipped" {
+						failures = append(failures, "workflow_evidence_report_not_verified")
+					}
+				}
+			}
+		}
 	}
 	return printGate("workflow-guard", failures)
 }
@@ -1764,6 +1789,16 @@ func repeatCandidatesCommand(args []string) int {
 		outputPath = filepath.Join(filepath.Dir(logPath), "repeat-candidates.json")
 	}
 	if err := writeJSON(outputPath, report); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	distillQueuePath := filepath.Join(filepath.Dir(logPath), "distill-queue.json")
+	if err := writeJSON(distillQueuePath, jsonObject{
+		"source_log":      absClean(logPath),
+		"generated_at":    time.Now().UTC().Format(time.RFC3339),
+		"evidence_level":  "checked",
+		"queue":           distillQueue,
+	}); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}

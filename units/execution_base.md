@@ -71,6 +71,8 @@
 - `task --event end --status done` 现在默认要求挂上通过的 `closeout-check` 报告和 `verified/shipped` 级别的 `evidence-grade` 报告，避免“假完成”写进任务日志。
 - `route-task` 命中复杂代码任务时，会显式提示 `code_map_required=true`，把代码地图从建议升级成路由信号。
 - `bench-report` 现在会给出 `decision + evidence_level`，可以直接参与后续蒸馏放行判断。
+- `repeat-candidates` 现在会顺手写出固定的 `distill-queue.json`，让重复动作候选直接进入蒸馏台账，而不是停留在一次性报告里。
+- `workflow-guard --stage final` 现在会联查 `task-log.jsonl`、`closeout_report` 和 `evidence_report`，确保工作流完成态和任务日志完成态一致。
 - 前端、网页、可视化交付的收口优先依赖真实浏览器预览与检查，不把静态描述当验收。
 - 安全与审计类任务的底座输出应支持证据分级和候选验证，不只给一个模糊风险结论。
 

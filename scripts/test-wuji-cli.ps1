@@ -234,6 +234,9 @@ if (-not ($repeatCandidates.candidates | Where-Object { $_.task -eq 'daily answe
 if (-not ($repeatCandidates.distill_queue | Where-Object { $_.task -eq 'daily answer quality tuning' -and $_.target -eq 'cli-or-skill' })) {
     throw "FAIL repeat-candidates distill queue report=$($repeatCandidates | ConvertTo-Json -Depth 6 -Compress)"
 }
+if (-not (Test-Path -LiteralPath (Join-Path $fixture 'feedback\distill-queue.json'))) {
+    throw "FAIL repeat-candidates missing distill queue file"
+}
 
 $evidenceGradeWorkspace = Join-Path $fixture 'evidence-grade'
 New-Item -ItemType Directory -Force -Path $evidenceGradeWorkspace | Out-Null
@@ -258,6 +261,7 @@ Write-Fixture (Join-Path $workflow 'state.json') '{"status":"done","verification
 Write-Fixture (Join-Path $workflow 'final-report.md') "# Report`n## Verification Evidence`n- passed"
 Write-Fixture (Join-Path $workflow 'packets\01.md')
 Write-Fixture (Join-Path $workflow 'results\01.md')
+Copy-Item -LiteralPath (Join-Path $taskWorkspace 'task-log.jsonl') -Destination (Join-Path $workflow 'task-log.jsonl')
 Invoke-Case -Name 'workflow-final' -ExpectedExit 0 -Arguments @('workflow-guard', '--workspace', $workflow, '--stage', 'final')
 
 $pptxFile = Join-Path $fixture 'sample.pptx'
