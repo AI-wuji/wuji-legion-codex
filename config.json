@@ -51,24 +51,6 @@
   "active_project": "wuji-legion-codex",
   "red_team_enabled": true,
   "iron_rules_version": "10.6",
-  "default_model_tier": "low",
-  "model_profiles": {
-    "low": {
-      "provider_id": "openai-api",
-      "model": "gpt-5.4-mini",
-      "reasoning_effort": "low"
-    },
-    "standard": {
-      "provider_id": "openai-api",
-      "model": "gpt-5.4",
-      "reasoning_effort": "medium"
-    },
-    "high": {
-      "provider_id": "openai-api",
-      "model": "gpt-5.5",
-      "reasoning_effort": "high"
-    }
-  },
   "cache_config": {
     "target_hit_rate": 0.95,
     "auto_compact_threshold": 0.8,
@@ -77,104 +59,6 @@
     "storm_window_size": 5,
     "flatten_threshold": 10
   },
-  "routing_rules": [
-    {
-      "id": "search",
-      "name": "🔍 搜索/信息检索",
-      "keywords": ["搜索", "查", "调研", "研究", "搜一下", "find", "search"],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 100
-    },
-    {
-      "id": "code",
-      "name": "💻 代码生成/开发",
-      "keywords": ["写", "开发", "实现", "函数", "生成", "创建", "bug", "修复", "重构", "Rust", "Tauri", "小程序", "ComfyUI插件", "插件", "Python", "PowerShell", "自动化", "AI工程", "RAG", "编程", "compile"],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 80
-    },
-    {
-      "id": "execution-base",
-      "name": "⚙️ 执行底座",
-      "keywords": ["执行底座", "执行底座主帅", "wuji-cli", "Go", "执行引擎", "guard", "task", "sync", "audit", "workflow", "beep", "bench", "preview调度", "pptx-preflight", "pptx-batch-gate", "pptx-audit", "asset-map", "time-guard", "mcp-guard", "MCP门禁", "插件门禁", "reference-frame-map", "reusable-asset-map", "illustration-plan", "pilot-page", "pilot-preview", "pilot-score"],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 82
-    },
-    {
-      "id": "content",
-      "name": "✍️ 文案/内容创作",
-      "keywords": ["文章", "文案", "脚本", "剧本", "分镜", "小说", "短篇", "长篇", "爽文", "教程", "教案", "课程", "计划书", "营销方案", "卖点", "博客", "故事", "内容", "文档", "报告", "Word", "docx", "markdown"],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 70
-    },
-    {
-      "id": "visual",
-      "name": "🎨 视觉/PPT/UI",
-      "keywords": ["PPT", "presentation", "演示文稿", "幻灯片", "slide", "deck", "OpenDesign", "Remotion", "设计系统", "动态演示", "设计", "美化", "画", "UI", "界面", "页面", "落地页", "官网", "前端", "html", "css", "预览图", "页面图"],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 60
-    },
-    {
-      "id": "video",
-      "name": "🎬 视频/短视频/短剧",
-      "keywords": ["视频", "短视频", "短剧", "短片", "动画", "reel"],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 55
-    },
-    {
-      "id": "prompt",
-      "name": "🎯 提示词工程",
-      "keywords": ["prompt", "提示词", "提示词扩写", "扩写", "分镜", "故事板", "storyboard", "image-spec", "图片提示词"],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 50
-    },
-    {
-      "id": "spreadsheet",
-      "name": "📊 表格/结构化数据",
-      "keywords": ["表格", "Excel", "xlsx", "spreadsheet", "数据表", "清单", "台账"],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 58
-    },
-    {
-      "id": "comfyui",
-      "name": "🤖 ComfyUI/图像生成",
-      "keywords": ["ComfyUI", "工作流", "生图", "生成图片", "图片生成", "图像生成", "截图", "主界面", "App截图", "海报", "封面", "图像", "图片", "渲染"],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 95
-    },
-    {
-      "id": "qa",
-      "name": "✅ 审计/红队",
-      "keywords": ["审计", "审核", "检查", "验收", "审查", "质量", "反对", "批评", "白帽", "质检", "合规", "许可证", "安全", "性能", "token", "bug一堆", "不好用", "丑", "崩", "报错"],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 40
-    },
-    {
-      "id": "evolve",
-      "name": "🔄 进化/复盘",
-      "keywords": ["复盘", "进化", "优化", "自动", "学习", "改进", "分析失败", "蒸馏", "融合skill", "融合 skill", "升级skill", "升级 skill", "官方源", "源码核验", "能力融合", "工作流工件", "可审计轨迹", "workflow", "packet"],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 30
-    },
-    {
-      "id": "chat",
-      "name": "💬 日常对话",
-      "keywords": [],
-      "provider_id": "deepseek-web",
-      "model": null,
-      "priority": 0
-    }
-  ],
   "deepseek_session_path": null,
   "python_path": "python"
 }

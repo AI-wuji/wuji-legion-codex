@@ -13,12 +13,14 @@ if (-not $Output) {
 $Output = [System.IO.Path]::GetFullPath($Output)
 
 function Find-Go {
-    $cmd = Get-Command go -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
+    $manual = Join-Path $binDir 'go-manual\go\bin\go.exe'
+    if (Test-Path -LiteralPath $manual) {
+        return $manual
+    }
 
     $portable = Get-ChildItem -LiteralPath $binDir -Recurse -Filter go.exe -ErrorAction SilentlyContinue |
         Where-Object { $_.FullName -like '*\go\bin\go.exe' } |
-        Sort-Object FullName |
+        Sort-Object LastWriteTime -Descending |
         Select-Object -First 1
     if ($portable) { return $portable.FullName }
 
@@ -27,10 +29,17 @@ function Find-Go {
         Select-Object -First 1
     if ($zip) {
         $dest = Join-Path $binDir ($zip.BaseName)
-        if (-not (Test-Path -LiteralPath (Join-Path $dest 'go\bin\go.exe'))) {
+        $expandedGo = Join-Path $dest 'go\bin\go.exe'
+        if (-not (Test-Path -LiteralPath $expandedGo)) {
             Expand-Archive -LiteralPath $zip.FullName -DestinationPath $dest -Force
         }
+        if (Test-Path -LiteralPath $expandedGo) {
+            return $expandedGo
+        }
     }
+
+    $cmd = Get-Command go -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
 
     throw 'Go toolchain not found. Install Go or place go*.windows-amd64.zip under .wuji-tools.'
 }
@@ -40,9 +49,45 @@ if (-not (Test-Path -LiteralPath $src)) {
 }
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Output) | Out-Null
 $go = Find-Go
-& $go build -trimpath -ldflags '-s -w' -o $Output $src
-if ($LASTEXITCODE -ne 0) {
-    throw "go build failed with exit code $LASTEXITCODE"
+$goEnvRoot = Join-Path $binDir 'go-env'
+$goCache = Join-Path $goEnvRoot 'cache'
+$goTmp = Join-Path $goEnvRoot 'tmp'
+$goModCache = Join-Path $goEnvRoot 'pkg\mod'
+New-Item -ItemType Directory -Force -Path $goEnvRoot, $goCache, $goTmp, $goModCache | Out-Null
+
+$previousGoCache = $env:GOCACHE
+$previousGoTmpDir = $env:GOTMPDIR
+$previousGoModCache = $env:GOMODCACHE
+$previousGoTelemetry = $env:GOTELEMETRY
+$previousGoEnv = $env:GOENV
+$previousAppData = $env:APPDATA
+$previousLocalAppData = $env:LOCALAPPDATA
+$goAppData = Join-Path $goEnvRoot 'appdata\roaming'
+$goLocalAppData = Join-Path $goEnvRoot 'appdata\local'
+New-Item -ItemType Directory -Force -Path $goAppData, $goLocalAppData | Out-Null
+
+try {
+    $env:GOCACHE = $goCache
+    $env:GOTMPDIR = $goTmp
+    $env:GOMODCACHE = $goModCache
+    $env:GOTELEMETRY = 'off'
+    $env:GOENV = 'off'
+    $env:APPDATA = $goAppData
+    $env:LOCALAPPDATA = $goLocalAppData
+
+    & $go build -trimpath -ldflags '-s -w' -o $Output $src
+    if ($LASTEXITCODE -ne 0) {
+        throw "go build failed with exit code $LASTEXITCODE"
+    }
+}
+finally {
+    $env:GOCACHE = $previousGoCache
+    $env:GOTMPDIR = $previousGoTmpDir
+    $env:GOMODCACHE = $previousGoModCache
+    $env:GOTELEMETRY = $previousGoTelemetry
+    $env:GOENV = $previousGoEnv
+    $env:APPDATA = $previousAppData
+    $env:LOCALAPPDATA = $previousLocalAppData
 }
 Write-Host "Built: $Output"
 

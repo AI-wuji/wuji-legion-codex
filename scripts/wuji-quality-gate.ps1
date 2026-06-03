@@ -78,6 +78,11 @@ function Get-TrackedRootFiles {
     return $files
 }
 
+function Read-JsonUtf8 {
+    param([string]$Path)
+    return [System.IO.File]::ReadAllText($Path, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+}
+
 function Resolve-MarkdownTarget {
     param(
         [string]$Target,
@@ -128,7 +133,7 @@ function Run-Check {
 function Run-PackageScript {
     param([string]$Script)
     if (-not (Test-Path "package.json")) { return }
-    $pkg = Get-Content -Raw "package.json" | ConvertFrom-Json
+    $pkg = Read-JsonUtf8 -Path (Resolve-Path -LiteralPath "package.json")
     if ($pkg.scripts.PSObject.Properties.Name -contains $Script) {
         if (Test-CommandExists "pnpm") {
             Run-Check "frontend:$Script" "pnpm" @($Script)
@@ -262,8 +267,7 @@ foreach ($file in $markdownFiles) {
 
 if ((Test-Path -LiteralPath ".\config.json") -and (Test-Path -LiteralPath ".\scripts\wuji-install.ps1")) {
     try {
-        $configRaw = [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath ".\config.json"))
-        $config = $configRaw | ConvertFrom-Json
+        $config = Read-JsonUtf8 -Path (Resolve-Path -LiteralPath ".\config.json")
         $install = [System.IO.File]::ReadAllText((Resolve-Path -LiteralPath ".\scripts\wuji-install.ps1"))
         $expected = [string]$config.iron_rules_version
         $readsConfigVersion = $install -match [regex]::Escape('$config.iron_rules_version')

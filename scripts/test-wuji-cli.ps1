@@ -17,10 +17,99 @@ function Write-Fixture {
     Set-Content -LiteralPath $Path -Value $Content -Encoding UTF8
 }
 
+function Read-JsonUtf8 {
+    param([string]$Path)
+    return [System.IO.File]::ReadAllText($Path, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+}
+
+function Read-NdjsonUtf8 {
+    param([string]$Path)
+    return [System.IO.File]::ReadAllLines($Path, [System.Text.UTF8Encoding]::new($false)) | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json }
+}
+
+function Normalize-InspectText {
+    param([string]$Text)
+    if ($null -eq $Text) {
+        return ''
+    }
+    return (($Text -replace '[\u200B-\u200D\uFEFF]', '') -replace '\s+', ' ').Trim()
+}
+
+Add-Type -AssemblyName System.Drawing
+
+function Write-PngFixture {
+    param(
+        [string]$Path,
+        [ValidateSet('contrast', 'whitewashed', 'lowcontrast')]
+        [string]$Mode = 'contrast'
+    )
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Path) | Out-Null
+    $bmp = New-Object System.Drawing.Bitmap 96, 96
+    $graphics = [System.Drawing.Graphics]::FromImage($bmp)
+    try {
+        switch ($Mode) {
+            'contrast' {
+                $graphics.Clear([System.Drawing.Color]::Black)
+                $graphics.FillRectangle([System.Drawing.Brushes]::White, 48, 0, 48, 96)
+            }
+            'whitewashed' {
+                $graphics.Clear([System.Drawing.Color]::White)
+            }
+            'lowcontrast' {
+                $graphics.Clear([System.Drawing.Color]::FromArgb(138, 138, 138))
+                $brush = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(150, 150, 150))
+                try {
+                    $graphics.FillRectangle($brush, 12, 12, 72, 72)
+                }
+                finally {
+                    $brush.Dispose()
+                }
+            }
+        }
+        $bmp.Save($Path, [System.Drawing.Imaging.ImageFormat]::Png)
+    }
+    finally {
+        $graphics.Dispose()
+        $bmp.Dispose()
+    }
+}
+
+function New-PptxFixture {
+    param(
+        [string]$Path,
+        [string[]]$Slides,
+        [switch]$IncludeMedia
+    )
+    $workspace = Join-Path $fixture ("pptx-" + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Force -Path $workspace, (Join-Path $workspace 'ppt\slides'), (Join-Path $workspace 'ppt\media'), (Join-Path $workspace 'ppt\slideLayouts'), (Join-Path $workspace 'ppt\theme') | Out-Null
+    for ($i = 0; $i -lt $Slides.Count; $i++) {
+        $slidePath = Join-Path $workspace ("ppt\slides\slide{0}.xml" -f ($i + 1))
+        Set-Content -LiteralPath $slidePath -Value $Slides[$i] -Encoding UTF8
+    }
+    Set-Content -LiteralPath (Join-Path $workspace 'ppt\slideLayouts\slideLayout1.xml') -Value '<layout />' -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $workspace 'ppt\theme\theme1.xml') -Value '<theme />' -Encoding UTF8
+    if ($IncludeMedia) {
+        Set-Content -LiteralPath (Join-Path $workspace 'ppt\media\image1.png') -Value 'png bytes long enough for test' -Encoding UTF8
+    }
+    $zipPath = [System.IO.Path]::ChangeExtension($Path, '.zip')
+    if (Test-Path $Path) { Remove-Item -LiteralPath $Path -Force }
+    if (Test-Path $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
+    Compress-Archive -Path (Join-Path $workspace '*') -DestinationPath $zipPath
+    Move-Item -LiteralPath $zipPath -Destination $Path
+    Remove-Item -LiteralPath $workspace -Recurse -Force
+}
+
 function Invoke-Case {
     param([string]$Name, [int]$ExpectedExit, [string[]]$Arguments)
-    $output = & $bin @Arguments 2>&1
-    $actual = $LASTEXITCODE
+    $previousNativeErrorPref = $PSNativeCommandUseErrorActionPreference
+    try {
+        $PSNativeCommandUseErrorActionPreference = $false
+        $output = & $bin @Arguments 2>&1
+        $actual = $LASTEXITCODE
+    }
+    finally {
+        $PSNativeCommandUseErrorActionPreference = $previousNativeErrorPref
+    }
     if ($actual -ne $ExpectedExit) {
         throw "FAIL $Name expected=$ExpectedExit actual=$actual output=$($output -join ' | ')"
     }
@@ -51,21 +140,48 @@ Invoke-Case -Name 'bench-report' -ExpectedExit 0 -Arguments @('bench-report', '-
 $routeConfig = Join-Path $fixture 'route-config.json'
 [System.IO.File]::WriteAllText($routeConfig, (@{
     iron_rules_version = '10.6'
-    default_model_tier = 'low'
-    model_profiles = @{
-        low = @{ provider_id = 'openai-api'; model = 'gpt-5.4-mini'; reasoning_effort = 'low' }
-        standard = @{ provider_id = 'openai-api'; model = 'gpt-5.4'; reasoning_effort = 'medium' }
-        high = @{ provider_id = 'openai-api'; model = 'gpt-5.5'; reasoning_effort = 'high' }
-    }
     cache_config = @{ target_hit_rate = 0.95; flatten_threshold = 10 }
-    routing_rules = @(
-        @{ id = 'visual'; name = 'visual'; provider_id = 'deepseek-web'; model = ''; priority = 60; keywords = @('ppt', 'ui', 'design') },
-        @{ id = 'code'; name = 'code'; provider_id = 'deepseek-web'; model = ''; priority = 80; keywords = @('go', 'code', 'compile') },
-        @{ id = 'chat'; name = 'chat'; provider_id = 'deepseek-web'; model = ''; priority = 0; keywords = @() }
-    )
 } | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+$canonReport = Join-Path $fixture 'canon-report.json'
+Invoke-Case -Name 'canon-report' -ExpectedExit 0 -Arguments @('canon-report', '--report', $canonReport)
+if (-not (Test-Path -LiteralPath $canonReport)) {
+    throw "FAIL canon-report missing report=$canonReport"
+}
+$canon = Read-JsonUtf8 -Path $canonReport
+if ($canon.default_model_tier -ne 'low') {
+    throw "FAIL canon-report wrong default tier=$($canon.default_model_tier)"
+}
+if ($canon.model_profiles.low.model -ne 'gpt-5.4-mini' -or $canon.model_profiles.standard.model -ne 'gpt-5.4' -or $canon.model_profiles.high.model -ne 'gpt-5.5') {
+    throw "FAIL canon-report wrong model profiles"
+}
+if ($canon.built_in_plugins.Count -lt 4) {
+    throw "FAIL canon-report missing built-in plugins"
+}
 Invoke-Case -Name 'route-task' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'please build a ppt ui design', '--report', (Join-Path $fixture 'route-report.json'))
+$routeReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-report.json')
+if ($routeReport.matched_route.id -ne 'visual' -or $routeReport.recommended_tier -ne 'standard' -or $routeReport.recommended_profile.model -ne 'gpt-5.4') {
+    throw "FAIL route-task wrong route or tier report=$($routeReport | ConvertTo-Json -Depth 6 -Compress)"
+}
+Invoke-Case -Name 'route-task-imagegen' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'please generate a neon teaching illustration poster cover image', '--report', (Join-Path $fixture 'route-image-report.json'))
+$imageRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-image-report.json')
+if ($imageRouteReport.matched_route.id -ne 'imagegen' -or $imageRouteReport.recommended_tier -ne 'low' -or $imageRouteReport.reasoning_effort -ne 'low') {
+    throw "FAIL route-task imagegen report=$($imageRouteReport | ConvertTo-Json -Depth 6 -Compress)"
+}
+Invoke-Case -Name 'route-task-comfyui' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'build a ComfyUI workflow node plugin for batch generation', '--report', (Join-Path $fixture 'route-comfyui-report.json'))
+$comfyRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-comfyui-report.json')
+if ($comfyRouteReport.matched_route.id -ne 'comfyui') {
+    throw "FAIL route-task comfyui report=$($comfyRouteReport | ConvertTo-Json -Depth 6 -Compress)"
+}
+Invoke-Case -Name 'route-task-fallback-chat' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'just chat casually with me', '--report', (Join-Path $fixture 'route-chat-report.json'))
+$chatRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-chat-report.json')
+if ($chatRouteReport.matched_route.id -ne 'chat' -or $chatRouteReport.recommended_tier -ne 'low') {
+    throw "FAIL route-task fallback chat report=$($chatRouteReport | ConvertTo-Json -Depth 6 -Compress)"
+}
 Invoke-Case -Name 'context-pack' -ExpectedExit 0 -Arguments @('context-pack', '--config', $routeConfig, '--workspace', $fixture, '--query', 'please build a ppt ui design', '--artifact', $artifact, '--report', (Join-Path $fixture 'context-pack.json'))
+$contextPack = Read-JsonUtf8 -Path (Join-Path $fixture 'context-pack.json')
+if ($contextPack.stable_prefix.iron_rules_version -ne '10.6' -or $contextPack.stable_prefix.model_tier -ne 'standard') {
+    throw "FAIL context-pack wrong stable prefix"
+}
 Invoke-Case -Name 'feedback-log' -ExpectedExit 0 -Arguments @('feedback-log', '--workspace', $fixture, '--task', 'daily answer quality tuning', '--prefer', 'keep the answer concise', '--prefer', 'state uncertainty explicitly', '--avoid', 'placeholder', '--report', (Join-Path $fixture 'feedback-log-report.json'))
 Invoke-Case -Name 'feedback-log-second' -ExpectedExit 0 -Arguments @('feedback-log', '--workspace', $fixture, '--task', 'source discipline', '--prefer', 'cite primary sources', '--avoid', 'todo', '--source', 'qa')
 $feedbackLog = Join-Path $fixture 'feedback\feedback-log.jsonl'
@@ -90,27 +206,296 @@ Write-Fixture (Join-Path $workflow 'packets\01.md')
 Write-Fixture (Join-Path $workflow 'results\01.md')
 Invoke-Case -Name 'workflow-final' -ExpectedExit 0 -Arguments @('workflow-guard', '--workspace', $workflow, '--stage', 'final')
 
-$pptx = Join-Path $fixture 'pptx'
-New-Item -ItemType Directory -Force -Path $pptx,(Join-Path $pptx 'ppt\slides'),(Join-Path $pptx 'ppt\media'),(Join-Path $pptx 'ppt\slideLayouts'),(Join-Path $pptx 'ppt\theme') | Out-Null
-Set-Content -LiteralPath (Join-Path $pptx 'ppt\slides\slide1.xml') -Value '<p:sld><p:cSld><p:spTree><p:sp/><p:pic/><a:t>Hello</a:t></p:spTree></p:cSld></p:sld>' -Encoding UTF8
-Set-Content -LiteralPath (Join-Path $pptx 'ppt\slideLayouts\slideLayout1.xml') -Value '<layout />' -Encoding UTF8
-Set-Content -LiteralPath (Join-Path $pptx 'ppt\theme\theme1.xml') -Value '<theme />' -Encoding UTF8
-Set-Content -LiteralPath (Join-Path $pptx 'ppt\media\image1.png') -Value 'png bytes long enough for test' -Encoding UTF8
 $pptxFile = Join-Path $fixture 'sample.pptx'
-if (Test-Path $pptxFile) { Remove-Item -LiteralPath $pptxFile -Force }
-$zipFile = Join-Path $fixture 'sample.zip'
-if (Test-Path $zipFile) { Remove-Item -LiteralPath $zipFile -Force }
-Compress-Archive -Path (Join-Path $pptx '*') -DestinationPath $zipFile
-Move-Item -LiteralPath $zipFile -Destination $pptxFile
+New-PptxFixture -Path $pptxFile -Slides @(
+    '<p:sld><p:cSld><p:spTree><p:sp/><p:pic/><a:t>Hello</a:t><a:t>Dark neon card</a:t></p:spTree></p:cSld></p:sld>'
+) -IncludeMedia
 
 $assetWorkspace = Join-Path $fixture 'asset-map'
 Invoke-Case -Name 'asset-map' -ExpectedExit 0 -Arguments @('asset-map', '--pptx', $pptxFile, '--workspace', $assetWorkspace)
 Write-Fixture (Join-Path $assetWorkspace 'pilot-page.pptx')
-Write-Fixture (Join-Path $assetWorkspace 'pilot-preview.png')
+Write-PngFixture -Path (Join-Path $assetWorkspace 'pilot-preview.png') -Mode 'contrast'
 Write-Fixture (Join-Path $assetWorkspace 'pilot-score.md')
 Invoke-Case -Name 'pptx-audit' -ExpectedExit 0 -Arguments @('pptx-audit', '--pptx', $pptxFile, '--report', (Join-Path $fixture 'pptx-audit.json'))
 Invoke-Case -Name 'pptx-preflight' -ExpectedExit 0 -Arguments @('pptx-preflight', '--workspace', $assetWorkspace)
+Invoke-Case -Name 'pptx-batch-gate-missing-approval' -ExpectedExit 1 -Arguments @('pptx-batch-gate', '--workspace', $assetWorkspace)
+Write-Fixture (Join-Path $assetWorkspace 'pilot-approval.md') 'approved by user after pilot review'
 Invoke-Case -Name 'pptx-batch-gate' -ExpectedExit 0 -Arguments @('pptx-batch-gate', '--workspace', $assetWorkspace)
+foreach ($requiredPath in @(
+    (Join-Path $assetWorkspace 'style-lock.md'),
+    (Join-Path $assetWorkspace 'style-lock.json'),
+    (Join-Path $assetWorkspace 'page-role-policy.md'),
+    (Join-Path $assetWorkspace 'page-role-policy.json')
+)) {
+    if (-not (Test-Path -LiteralPath $requiredPath)) {
+        throw "FAIL asset-map missing route guard artifact=$requiredPath"
+    }
+}
+
+$badPreviewWorkspace = Join-Path $fixture 'asset-map-bad-preview'
+New-Item -ItemType Directory -Force -Path $badPreviewWorkspace | Out-Null
+Copy-Item -LiteralPath (Join-Path $assetWorkspace 'reference-frame-map.md'), (Join-Path $assetWorkspace 'reusable-asset-map.md'), (Join-Path $assetWorkspace 'illustration-plan.md'), (Join-Path $assetWorkspace 'style-lock.md'), (Join-Path $assetWorkspace 'page-role-policy.md') -Destination $badPreviewWorkspace
+Write-Fixture (Join-Path $badPreviewWorkspace 'pilot-page.pptx')
+Write-PngFixture -Path (Join-Path $badPreviewWorkspace 'pilot-preview.png') -Mode 'whitewashed'
+Write-Fixture (Join-Path $badPreviewWorkspace 'pilot-score.md')
+Write-Fixture (Join-Path $badPreviewWorkspace 'pilot-approval.md') 'approved'
+Invoke-Case -Name 'pptx-batch-gate-whitewashed-preview' -ExpectedExit 1 -Arguments @('pptx-batch-gate', '--workspace', $badPreviewWorkspace)
+
+$lowContrastWorkspace = Join-Path $fixture 'asset-map-low-contrast'
+New-Item -ItemType Directory -Force -Path $lowContrastWorkspace | Out-Null
+Copy-Item -LiteralPath (Join-Path $assetWorkspace 'reference-frame-map.md'), (Join-Path $assetWorkspace 'reusable-asset-map.md'), (Join-Path $assetWorkspace 'illustration-plan.md'), (Join-Path $assetWorkspace 'style-lock.md'), (Join-Path $assetWorkspace 'page-role-policy.md') -Destination $lowContrastWorkspace
+Write-Fixture (Join-Path $lowContrastWorkspace 'pilot-page.pptx')
+Write-PngFixture -Path (Join-Path $lowContrastWorkspace 'pilot-preview.png') -Mode 'lowcontrast'
+Write-Fixture (Join-Path $lowContrastWorkspace 'pilot-score.md')
+Write-Fixture (Join-Path $lowContrastWorkspace 'pilot-approval.md') 'approved'
+Invoke-Case -Name 'pptx-batch-gate-low-contrast-preview' -ExpectedExit 1 -Arguments @('pptx-batch-gate', '--workspace', $lowContrastWorkspace)
+
+$teachingWorkspace = Join-Path $fixture 'asset-map-teaching'
+New-Item -ItemType Directory -Force -Path $teachingWorkspace | Out-Null
+Write-Fixture (Join-Path $teachingWorkspace 'reference-frame-map.md') "# reference-frame-map`n`n- slide-01 summary"
+Write-Fixture (Join-Path $teachingWorkspace 'reusable-asset-map.md') "# reusable-asset-map`n`n- media: none"
+Write-Fixture (Join-Path $teachingWorkspace 'illustration-plan.md') "# illustration-plan`n`n- slide-01 [content]: add software screenshot / step diagram / image2 teaching illustration | requires_visual=true | signals=tutorial-keywords, multi-step-content"
+Write-Fixture (Join-Path $teachingWorkspace 'style-lock.md') "# style-lock`n`n- visual_system: 霓虹赛博卡通风`n- background_policy: 深紫蓝暗色底，禁止发白洗底。`n- highlight_policy: 粉紫蓝霓虹高光。`n- illustration_policy: 卡通化教学插图。`n- fixed_page_rule: 固定页型不得挪用。`n- prompt_rule: 风格名必须原样写进配图提示。`n- keep_dark_background: true"
+Write-Fixture (Join-Path $teachingWorkspace 'page-role-policy.md') "# page-role-policy`n`n- slide-01 [summary]: fixed_page=true | page_type=固定总结页 | do_not_repurpose=true"
+Write-Fixture (Join-Path $teachingWorkspace 'pilot-page.pptx')
+Write-PngFixture -Path (Join-Path $teachingWorkspace 'pilot-preview.png') -Mode 'contrast'
+Write-Fixture (Join-Path $teachingWorkspace 'pilot-score.md')
+Write-Fixture (Join-Path $teachingWorkspace 'pilot-approval.md') 'approved'
+Invoke-Case -Name 'pptx-batch-gate-teaching-missing-content-artifacts' -ExpectedExit 1 -Arguments @('pptx-batch-gate', '--workspace', $teachingWorkspace)
+Write-Fixture (Join-Path $teachingWorkspace 'outline.md') "# outline`n`n## slide-01 [content]`ntitle: Editing Review"
+Write-Fixture (Join-Path $teachingWorkspace 'speaker-notes.md') "# speaker-notes`n`n## slide-01 [content] Editing Review`nThis slide explains the review steps."
+Invoke-Case -Name 'pptx-batch-gate-teaching-with-content-artifacts' -ExpectedExit 0 -Arguments @('pptx-batch-gate', '--workspace', $teachingWorkspace)
+
+$badPptxFile = Join-Path $fixture 'sample-bad.pptx'
+New-PptxFixture -Path $badPptxFile -Slides @(
+    '<p:sld><p:cSld><p:spTree><p:sp/><a:t>Click to add title</a:t></p:spTree></p:cSld></p:sld>',
+    '<p:sld><p:cSld><p:spTree><p:sp/><p:sp/></p:spTree></p:cSld></p:sld>'
+)
+Invoke-Case -Name 'pptx-audit-placeholder-and-residue-blocked' -ExpectedExit 1 -Arguments @('pptx-audit', '--pptx', $badPptxFile)
+
+$pptPipeline = Join-Path $fixture 'ppt-pipeline'
+New-Item -ItemType Directory -Force -Path $pptPipeline | Out-Null
+$pptHtml = Join-Path $pptPipeline 'source.html'
+$pptHtmlContent = (
+    @(
+        '<html>',
+        '<head><title>Wuji PPT Smoke</title></head>',
+        '<body style="background:#07131F;color:#F4FBFF;">',
+        '  <section class="slide" data-title="Neon Review">',
+        '    <div style="animation:pulse 2s infinite;">Animated intro block</div>',
+        '    <h1>Neon Review</h1>',
+        '    <p>Two key reminders for the lesson.</p>',
+        '    <ul>',
+        '      <li>Keep the cyber neon mood consistent.</li>',
+        '      <li>Make all text editable in PowerPoint.</li>',
+        '    </ul>',
+        '  </section>',
+        '  <section class="slide" data-title="Next Step">',
+        '    <h2>Next Step</h2>',
+        '    <p>Use the source layout as the editing base instead of rebuilding from scratch.</p>',
+        '  </section>',
+        '</body>',
+        '</html>'
+    ) -join "`n"
+)
+[System.IO.File]::WriteAllText($pptHtml, $pptHtmlContent, [System.Text.UTF8Encoding]::new($false))
+$htmlFirstPptx = Join-Path $pptPipeline 'htmlfirst.pptx'
+$htmlFirstReport = Join-Path $pptPipeline 'htmlfirst-report.json'
+Invoke-Case -Name 'ppt-htmlfirst' -ExpectedExit 0 -Arguments @('ppt-htmlfirst', '--workspace', $pptPipeline, '--html', $pptHtml, '--out', $htmlFirstPptx, '--report', $htmlFirstReport)
+$htmlFirst = Read-JsonUtf8 -Path $htmlFirstReport
+if ($htmlFirst.slide_count -ne 2 -or -not (Test-Path -LiteralPath $htmlFirstPptx)) {
+    throw "FAIL ppt-htmlfirst report=$($htmlFirst | ConvertTo-Json -Depth 6 -Compress)"
+}
+if ($htmlFirst.renderer_mode -ne 'browser-computed-style' -or $htmlFirst.editable_output -ne $true -or $htmlFirst.animation_transcoded -ne $false -or $htmlFirst.engine -ne 'dom-to-pptx' -or $htmlFirst.css_fidelity -ne 'high') {
+    throw "FAIL ppt-htmlfirst capability report=$($htmlFirst | ConvertTo-Json -Depth 6 -Compress)"
+}
+if (@($htmlFirst.animation_signals).Count -lt 1) {
+    throw "FAIL ppt-htmlfirst missing animation signal report=$($htmlFirst | ConvertTo-Json -Depth 6 -Compress)"
+}
+
+$inspectDir = Join-Path $pptPipeline 'template-inspect'
+Invoke-Case -Name 'ppt-template-inspect' -ExpectedExit 0 -Arguments @('ppt-template-inspect', '--workspace', $pptPipeline, '--pptx', $htmlFirstPptx, '--out-dir', $inspectDir)
+$inspectNdjson = Join-Path $inspectDir 'template-inspect.ndjson'
+$inspectRecords = @(Read-NdjsonUtf8 -Path $inspectNdjson)
+$slide1TitleId = ($inspectRecords | Where-Object { $_.kind -eq 'textbox' -and $_.slide -eq 1 -and $_.text -eq 'Neon Review' } | Select-Object -First 1).id
+$slide1BodyId = ($inspectRecords | Where-Object {
+    $_.kind -eq 'textbox' -and
+    $_.slide -eq 1 -and
+    (Normalize-InspectText -Text ([string]$_.textPreview)).Contains('Keep the cyber neon mood consistent.')
+} | Select-Object -First 1).id
+$slide2TitleId = ($inspectRecords | Where-Object { $_.kind -eq 'textbox' -and $_.slide -eq 2 -and $_.text -eq 'Next Step' } | Select-Object -First 1).id
+$slide2BodyId = ($inspectRecords | Where-Object {
+    $_.kind -eq 'textbox' -and
+    $_.slide -eq 2 -and
+    (Normalize-InspectText -Text ([string]$_.textPreview)).Contains('Use the source layout as the editing base')
+} | Select-Object -First 1).id
+if (-not $slide1TitleId -or -not $slide1BodyId -or -not $slide2TitleId -or -not $slide2BodyId) {
+    throw "FAIL ppt-template-inspect could not resolve expected text boxes"
+}
+
+$frameMapPath = Join-Path $pptPipeline 'template-frame-map.json'
+$frameMap = @{
+    outputSlides = @(
+        @{
+            outputSlide = 1
+            sourceSlide = 1
+            reuseMode = 'duplicate-slide'
+            narrativeRole = 'summary'
+            editTargets = @(
+                @{ shapeId = $slide1TitleId; action = 'rewrite'; text = 'Pilot Neon Review' },
+                @{ shapeId = $slide1BodyId; action = 'rewrite'; text = "Keep the cyber neon mood consistent.`nMake every block editable and reusable." }
+            )
+        },
+        @{
+            outputSlide = 2
+            sourceSlide = 2
+            reuseMode = 'duplicate-slide'
+            narrativeRole = 'summary'
+            editTargets = @(
+                @{ shapeId = $slide2TitleId; action = 'rewrite'; text = 'Pilot Next Step' },
+                @{ shapeId = $slide2BodyId; action = 'rewrite'; text = 'Stay on the source layout and edit inherited elements instead of rebuilding the slide.' }
+            )
+        }
+    )
+}
+[System.IO.File]::WriteAllText($frameMapPath, ($frameMap | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+
+$starterPptx = Join-Path $pptPipeline 'template-starter.pptx'
+$starterPreviewDir = Join-Path $pptPipeline 'template-starter-preview'
+$starterLayoutDir = Join-Path $pptPipeline 'template-starter-layout'
+Invoke-Case -Name 'ppt-template-starter' -ExpectedExit 0 -Arguments @('ppt-template-starter', '--workspace', $pptPipeline, '--pptx', $htmlFirstPptx, '--map', $frameMapPath, '--out', $starterPptx, '--preview-dir', $starterPreviewDir, '--layout-dir', $starterLayoutDir, '--inspect', $inspectNdjson)
+
+$finalPptx = Join-Path $pptPipeline 'template-final.pptx'
+$finalPreviewDir = Join-Path $pptPipeline 'preview\final'
+$finalLayoutDir = Join-Path $pptPipeline 'layout\final'
+$editReportPath = Join-Path $pptPipeline 'template-edit-report.json'
+Invoke-Case -Name 'ppt-template-edit' -ExpectedExit 0 -Arguments @('ppt-template-edit', '--workspace', $pptPipeline, '--starter-pptx', $starterPptx, '--map', $frameMapPath, '--out', $finalPptx, '--preview-dir', $finalPreviewDir, '--layout-dir', $finalLayoutDir, '--report', $editReportPath)
+$editReport = Read-JsonUtf8 -Path $editReportPath
+if (-not ($editReport.appliedTargets | Where-Object { $_.applied -eq $true })) {
+    throw "FAIL ppt-template-edit report=$($editReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+
+Invoke-Case -Name 'ppt-template-fidelity' -ExpectedExit 0 -Arguments @('ppt-template-fidelity', '--workspace', $pptPipeline, '--final-pptx', $finalPptx, '--map', $frameMapPath, '--starter-pptx', $starterPptx, '--starter-layout-dir', $starterLayoutDir, '--final-layout-dir', $finalLayoutDir, '--edit-dir', $pptPipeline)
+$fidelityReport = Read-JsonUtf8 -Path (Join-Path $pptPipeline 'qa\template-fidelity-check.json')
+if ($fidelityReport.status -ne 'pass') {
+    throw "FAIL ppt-template-fidelity report=$($fidelityReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+
+$pipelineHtmlWorkspace = Join-Path $pptPipeline 'pipeline-htmlfirst'
+$pipelineHtmlFinal = Join-Path $pipelineHtmlWorkspace 'final.pptx'
+$pipelineHtmlReport = Join-Path $pipelineHtmlWorkspace 'ppt-pipeline-report.json'
+Invoke-Case -Name 'ppt-pipeline-htmlfirst' -ExpectedExit 0 -Arguments @('ppt-pipeline', '--workspace', $pipelineHtmlWorkspace, '--route', 'html-first', '--html', $pptHtml, '--out', $pipelineHtmlFinal, '--report', $pipelineHtmlReport, '--cli', $bin)
+$pipelineHtml = Read-JsonUtf8 -Path $pipelineHtmlReport
+if ($pipelineHtml.status -ne 'pass' -or $pipelineHtml.route -ne 'html-first' -or -not (Test-Path -LiteralPath $pipelineHtmlFinal)) {
+    throw "FAIL ppt-pipeline-htmlfirst report=$($pipelineHtml | ConvertTo-Json -Depth 8 -Compress)"
+}
+if (-not $pipelineHtml.PSObject.Properties['html_capability'] -or $pipelineHtml.html_capability.animation_transcoded -ne $false) {
+    throw "FAIL ppt-pipeline-htmlfirst capability report=$($pipelineHtml | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($pipelineHtml.html_capability.renderer_mode -ne 'browser-computed-style' -or $pipelineHtml.html_capability.css_fidelity -ne 'high') {
+    throw "FAIL ppt-pipeline-htmlfirst fidelity report=$($pipelineHtml | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($pipelineHtml.auto_approve -ne $true -or ($pipelineHtml.steps -contains 'pptx-preflight')) {
+    throw "FAIL ppt-pipeline-htmlfirst defaults report=$($pipelineHtml | ConvertTo-Json -Depth 8 -Compress)"
+}
+if (-not $pipelineHtml.PSObject.Properties['content_artifacts'] -or -not $pipelineHtml.PSObject.Properties['com_refine_available']) {
+    throw "FAIL ppt-pipeline-htmlfirst missing content/com fields report=$($pipelineHtml | ConvertTo-Json -Depth 8 -Compress)"
+}
+foreach ($artifactPath in @(
+    $pipelineHtml.content_artifacts.outline,
+    $pipelineHtml.content_artifacts.speaker_notes,
+    $pipelineHtml.content_artifacts.illustration_plan,
+    $pipelineHtml.content_artifacts.style_lock,
+    $pipelineHtml.content_artifacts.page_role_policy
+)) {
+    if ([string]::IsNullOrWhiteSpace([string]$artifactPath) -or -not (Test-Path -LiteralPath $artifactPath)) {
+        throw "FAIL ppt-pipeline-htmlfirst missing content artifact=$artifactPath"
+    }
+}
+$pipelineHtmlInspectManifest = Read-JsonUtf8 -Path (Join-Path $pipelineHtmlWorkspace 'pilot-inspect\template-manifest.json')
+if ($pipelineHtmlInspectManifest.renderPreview -ne $true -or $pipelineHtmlInspectManifest.renderLayout -ne $false -or $pipelineHtmlInspectManifest.renderedSlideCount -ne 1) {
+    throw "FAIL ppt-pipeline-htmlfirst inspect manifest=$($pipelineHtmlInspectManifest | ConvertTo-Json -Depth 8 -Compress)"
+}
+if (@($pipelineHtmlInspectManifest.selectedSlides).Count -ne 1 -or [int]$pipelineHtmlInspectManifest.selectedSlides[0] -ne 1) {
+    throw "FAIL ppt-pipeline-htmlfirst selected slides manifest=$($pipelineHtmlInspectManifest | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($pipelineHtml.com_refine_available -eq $true) {
+    $htmlComRefineReport = Join-Path $pipelineHtmlWorkspace 'com-refine-report.json'
+    if (-not (Test-Path -LiteralPath $htmlComRefineReport)) {
+        throw "FAIL ppt-pipeline-htmlfirst missing com refine report"
+    }
+    $htmlComRefine = Read-JsonUtf8 -Path $htmlComRefineReport
+    if ($htmlComRefine.updated_slide_notes -lt 1) {
+        throw "FAIL ppt-pipeline-htmlfirst notes not updated report=$($htmlComRefine | ConvertTo-Json -Depth 8 -Compress)"
+    }
+}
+foreach ($requiredPath in @(
+    (Join-Path $pipelineHtmlWorkspace 'pilot-page.pptx'),
+    (Join-Path $pipelineHtmlWorkspace 'pilot-preview.png'),
+    (Join-Path $pipelineHtmlWorkspace 'pilot-score.md'),
+    (Join-Path $pipelineHtmlWorkspace 'pilot-approval.md'),
+    (Join-Path $pipelineHtmlWorkspace 'qa\pptx-audit.json')
+)) {
+    if (-not (Test-Path -LiteralPath $requiredPath)) {
+        throw "FAIL ppt-pipeline-htmlfirst missing artifact=$requiredPath"
+    }
+}
+
+$pipelineTemplateWorkspace = Join-Path $pptPipeline 'pipeline-template-following'
+$pipelineTemplateFinal = Join-Path $pipelineTemplateWorkspace 'final.pptx'
+$pipelineTemplateReport = Join-Path $pipelineTemplateWorkspace 'ppt-pipeline-report.json'
+Invoke-Case -Name 'ppt-pipeline-template-following' -ExpectedExit 0 -Arguments @('ppt-pipeline', '--workspace', $pipelineTemplateWorkspace, '--route', 'template-following', '--pptx', $htmlFirstPptx, '--map', $frameMapPath, '--out', $pipelineTemplateFinal, '--report', $pipelineTemplateReport, '--cli', $bin)
+$pipelineTemplate = Read-JsonUtf8 -Path $pipelineTemplateReport
+if ($pipelineTemplate.status -ne 'pass' -or $pipelineTemplate.route -ne 'template-following' -or -not (Test-Path -LiteralPath $pipelineTemplateFinal)) {
+    throw "FAIL ppt-pipeline-template-following report=$($pipelineTemplate | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($pipelineTemplate.auto_approve -ne $true -or ($pipelineTemplate.steps -contains 'pptx-preflight')) {
+    throw "FAIL ppt-pipeline-template-following defaults report=$($pipelineTemplate | ConvertTo-Json -Depth 8 -Compress)"
+}
+if (-not $pipelineTemplate.PSObject.Properties['content_artifacts'] -or -not $pipelineTemplate.PSObject.Properties['com_refine_available']) {
+    throw "FAIL ppt-pipeline-template-following missing content/com fields report=$($pipelineTemplate | ConvertTo-Json -Depth 8 -Compress)"
+}
+foreach ($artifactPath in @(
+    $pipelineTemplate.content_artifacts.outline,
+    $pipelineTemplate.content_artifacts.speaker_notes,
+    $pipelineTemplate.content_artifacts.illustration_plan,
+    $pipelineTemplate.content_artifacts.style_lock,
+    $pipelineTemplate.content_artifacts.page_role_policy
+)) {
+    if ([string]::IsNullOrWhiteSpace([string]$artifactPath) -or -not (Test-Path -LiteralPath $artifactPath)) {
+        throw "FAIL ppt-pipeline-template-following missing content artifact=$artifactPath"
+    }
+}
+$pipelineTemplateInspectManifest = Read-JsonUtf8 -Path (Join-Path $pipelineTemplateWorkspace 'template-inspect\template-manifest.json')
+if ($pipelineTemplateInspectManifest.renderPreview -ne $false -or $pipelineTemplateInspectManifest.renderLayout -ne $false) {
+    throw "FAIL ppt-pipeline-template-following inspect manifest=$($pipelineTemplateInspectManifest | ConvertTo-Json -Depth 8 -Compress)"
+}
+$pipelineTemplateEditReport = Read-JsonUtf8 -Path $pipelineTemplate.template_edit_report
+if ($pipelineTemplateEditReport.renderPreview -ne $false -or $pipelineTemplateEditReport.renderLayout -ne $true) {
+    throw "FAIL ppt-pipeline-template-following edit report=$($pipelineTemplateEditReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($pipelineTemplate.com_refine_available -eq $true) {
+    $templateComRefineReport = Join-Path $pipelineTemplateWorkspace 'com-refine-report.json'
+    if (-not (Test-Path -LiteralPath $templateComRefineReport)) {
+        throw "FAIL ppt-pipeline-template-following missing com refine report"
+    }
+    $templateComRefine = Read-JsonUtf8 -Path $templateComRefineReport
+    if ($templateComRefine.updated_slide_notes -lt 1) {
+        throw "FAIL ppt-pipeline-template-following notes not updated report=$($templateComRefine | ConvertTo-Json -Depth 8 -Compress)"
+    }
+}
+foreach ($requiredPath in @(
+    (Join-Path $pipelineTemplateWorkspace 'pilot-page.pptx'),
+    (Join-Path $pipelineTemplateWorkspace 'pilot-preview.png'),
+    (Join-Path $pipelineTemplateWorkspace 'pilot-score.md'),
+    (Join-Path $pipelineTemplateWorkspace 'pilot-approval.md'),
+    (Join-Path $pipelineTemplateWorkspace 'qa\template-fidelity-check.json'),
+    (Join-Path $pipelineTemplateWorkspace 'qa\pptx-audit.json')
+)) {
+    if (-not (Test-Path -LiteralPath $requiredPath)) {
+        throw "FAIL ppt-pipeline-template-following missing artifact=$requiredPath"
+    }
+}
 
 $mcpSafe = Join-Path $fixture 'mcp-safe.json'
 $mcpNetwork = Join-Path $fixture 'mcp-network.json'
@@ -185,6 +570,16 @@ $promptDistillReport = Join-Path $fixture 'prompt-distill-report.json'
 } | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText($promptDataset, (Get-Content -Raw -LiteralPath $feedbackDataset), [System.Text.UTF8Encoding]::new($false))
 Invoke-Case -Name 'prompt-candidate-audit' -ExpectedExit 0 -Arguments @('prompt-candidate-audit', '--candidate', $candidatePrompt, '--report', (Join-Path $fixture 'prompt-candidate-audit.json'))
+$badImagePrompt = Join-Path $fixture 'bad-image-prompt.json'
+[System.IO.File]::WriteAllText($badImagePrompt, (@{
+    name = 'bad-image-probe'
+    objective = 'generate a teaching illustration image quickly'
+    metric = 'latency'
+    prompt_template = 'I will first check the local image entrypoint, read SKILL.md, inspect OPENAI_API_KEY, and search available generation capabilities before creating the illustration poster.'
+    stable_prefix = 'Wuji image direct generation stable prefix with forbidden preflight probing behavior.'
+    variables = @('task')
+} | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+Invoke-Case -Name 'prompt-candidate-audit-image-probe-blocked' -ExpectedExit 1 -Arguments @('prompt-candidate-audit', '--candidate', $badImagePrompt, '--report', (Join-Path $fixture 'bad-image-prompt-audit.json'))
 Invoke-Case -Name 'prompt-eval' -ExpectedExit 0 -Arguments @('prompt-eval', '--candidate', $candidatePrompt, '--dataset', $promptDataset, '--report', $promptReport)
 Invoke-Case -Name 'prompt-distill' -ExpectedExit 0 -Arguments @('prompt-distill', '--baseline', $baselinePrompt, '--candidate', $candidatePrompt, '--dataset', $promptDataset, '--report', $promptDistillReport)
 if (-not (Test-Path -LiteralPath $promptDistillReport)) {

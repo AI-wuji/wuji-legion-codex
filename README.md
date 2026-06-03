@@ -19,7 +19,7 @@
 - 调研：查得更准，结论更短，更少信息噪音。
 - 代码：Go 执行底座负责硬门禁，功能链路可构建、可测试、可审计。
 - 内容：写作、脚本、方案、教程不再像 AI 拼接稿。
-- PPT / HTML / UI：先过结构和风格门，再批量生成，减少返工。
+- PPT / HTML / UI：先走真正的生产引擎，再做预览、校验和修复，减少返工。
 - 安全：白帽、质检、安全、合规独立，不让执行者自己给自己放行。
 - 进化：只蒸馏有用能力，不做无穷叠加。
 
@@ -32,8 +32,12 @@
 
 ## 当前收口能力
 
-- Go 执行底座：`wuji-cli` 已覆盖 `reference-guard`、`workflow-guard`、`claim-guard`、`time-guard`、`task`、`sync`、`audit`、`bench`、`bench-report`、`route-task`、`context-pack`、`preview`、`asset-map`、`pptx-audit`、`pptx-preflight`、`pptx-batch-gate`、`mcp-guard`、`mcp-distill`、`feedback-log`、`feedback-dataset`、`prompt-candidate-audit`、`prompt-eval`、`prompt-distill`。
+- Go 执行底座：`wuji-cli` 已覆盖 `reference-guard`、`workflow-guard`、`claim-guard`、`time-guard`、`task`、`sync`、`audit`、`bench`、`bench-report`、`canon-report`、`route-task`、`context-pack`、`preview`、`asset-map`、`pptx-audit`、`pptx-preflight`、`pptx-batch-gate`、`mcp-guard`、`mcp-distill`、`feedback-log`、`feedback-dataset`、`prompt-candidate-audit`、`prompt-eval`、`prompt-distill`。
 - 模型分档：默认 `gpt-5.4-mini`，中档 `gpt-5.4`，高档 `gpt-5.5`，按任务难度推荐。
+- 静态骨架：固定模型三档、核心路由骨架、内置插件归口和 MCP 默认裁决已沉入 Go 底座，`config.json` 只保留环境信息和覆盖项。
+- 图像直出：普通 `生图/插图/海报/封面/配图` 已从 `ComfyUI` 重链剥离，`route-task` 直接落到 `imagegen` 低档直出链。
+- PPT 主链：模板续写走 `Presentations template-following exact clone/edit`；从零高颜值走 `HTML-first -> editable PPTX`；Windows PowerPoint COM/MCP 只做最后一公里精修；Go 负责锁三张表、`style-lock`、`page-role-policy`、pilot 放行和收口 QA，默认主线不再先跑 `pptx-preflight`。
+- 当前 `HTML-first` 的真实边界已明确：它优先走 `Playwright + dom-to-pptx` 的浏览器计算样式导出，能高保真保留静态 HTML/CSS 视觉，但仍不把 HTML/CSS 的动画、过渡和动态组件自动转成 PowerPoint 动画。
 - 自进化闭环：`feedback-log -> feedback-dataset -> prompt-candidate-audit -> prompt-eval -> prompt-distill`。
 - 交付铁律：只交最终结果，不交半成品，不拿路线表演冒充执行。
 
@@ -41,16 +45,28 @@
 
 ## v10.6 的关键变化 / Key Change
 
-v10.6 新增 `pilot-page` 快速闭环：PPT/HTML 视觉成品不再一口气批量试错，预检和三张表通过后先生成 1 页最高风险/最高密度/最能代表风格的 pilot page，记录 `pilot-score`，过线后才批量生成。执行底座新增 `pptx-batch-gate`，缺 `pilot-page`、`pilot-preview`、`pilot-score` 直接 `NO-GO`。
+v10.6 新增 `pilot-page` 快速闭环：PPT/HTML 视觉成品不再一口气批量试错，三张表锁路后先生成 1 页最高风险/最高密度/最能代表风格的 pilot page，记录 `pilot-score`。首套新模板/新路线/高风险风格变更必须用户明确批准后再批量；成熟同路线默认允许自动批准继续批量，但仍必须留下 `pilot-approval` 工件。执行底座新增 `pptx-batch-gate`，缺 `pilot-page`、`pilot-preview`、`pilot-score`、`pilot-approval`，或 preview 发白/低对比，直接 `NO-GO`。
 
-当前无极执行底座主链路统一为 Go：`wuji-cli` 已覆盖 `reference-guard`、`workflow-guard`、`claim-guard`、`time-guard`、`task`、`sync`、`audit`、`bench`、`bench-report`、`route-task`、`context-pack`、`preview`、`asset-map`、`pptx-audit`、`pptx-preflight`、`pptx-batch-gate`、`mcp-guard`、`mcp-distill`、`feedback-log`、`feedback-dataset`、`prompt-candidate-audit`、`prompt-eval`、`prompt-distill`，并统一调度专项补位工具。
-模型档位当前收口为 3 档：默认 `gpt-5.4-mini`，中档 `gpt-5.4`，高档 `gpt-5.5`；由 `route-task` 按任务信号推荐 `tier + reasoning_effort`，以“先低成本、再按需升级”为默认原则。
+PPT 主链同时完成整流：不再把 Go 门禁当成 PPT 生产引擎。模板续写/补页固定切到官方 `Presentations`；从零高颜值固定补进 `HTML-first -> editable PPTX`；PowerPoint COM/MCP 只保留为最后一公里精修；原有 Go 链降到后置 QA 和安全护栏。这里的 `HTML-first` 当前主引擎已切到 `dom-to-pptx`，属于“高保真静态 HTML/CSS 导出”，不再是旧的低保真重画链。
+
+教程、课程、说明、方案类 PPT 的默认内容顺序也已收口：`source -> outline -> speaker-notes -> slide-spec/design-brief -> reference-frame-map -> reusable-asset-map -> illustration-plan -> pilot-page -> pptx-batch-gate -> full PPTX -> notes -> QA`。除非用户明确要先审大纲，否则内部自动直跑；逐字稿默认进备注区，不再硬塞进正文。
+
+教学页现在不允许只剩大框架：如果页面包含步骤、操作、界面、按钮、导入导出等教学信号，系统会默认生成 `outline / speaker-notes / illustration-plan` 工件，并把“截图 / 步骤示意图 / image2 教学插图 / 复用参考图框”写成显式策略；`pptx-batch-gate` 会拦截缺视觉策略的教学页。
+
+这次又把两条高频跑偏点彻底写死进了 PPT 开发逻辑。第一，`style-lock` 会把整套 deck 的风格名、背景深浅、霓虹/高光语言、插图语言和禁止项固化下来；像“霓虹赛博卡通风”这种用户明确点名的风格，后续必须原样进入 image2 / 配图提示，不能再静默洗成白底或写实风。第二，`page-role-policy` 会把首页、目录页、单元页、总结页、结尾页这些固定页型锁住，后续不得再拿这些页去塞普通内容页。
+
+为压速度，PPT 主链还额外固化了几条默认跳过规则：不再重复跑 `pptx-preflight`；同路线成功过后默认复用已有 inspect，不再重复 template inspect；html-first 默认只渲染 pilot 所需最小预览，不做整套 layout 体检；模板续写默认跳过无必要的 final preview 重渲染；同任务里已经验证过的工具链，不再为“确认能不能做”重复探路。
+
+当前无极执行底座主链路统一为 Go：`wuji-cli` 已覆盖 `reference-guard`、`workflow-guard`、`claim-guard`、`time-guard`、`task`、`sync`、`audit`、`bench`、`bench-report`、`canon-report`、`route-task`、`context-pack`、`preview`、`asset-map`、`pptx-audit`、`pptx-preflight`、`pptx-batch-gate`、`mcp-guard`、`mcp-distill`、`feedback-log`、`feedback-dataset`、`prompt-candidate-audit`、`prompt-eval`、`prompt-distill`，并统一调度专项补位工具；但在 PPT 体系里，它只负责锁路线、批量放行和收口 QA，不再充当主生产器，`pptx-preflight` 只在定向探针场景触发。
+模型档位当前收口为 3 档：默认 `gpt-5.4-mini`，中档 `gpt-5.4`，高档 `gpt-5.5`；由 `route-task` 基于 Go 内置路由骨架推荐 `tier + reasoning_effort`，再按需叠加 `config.json` 覆盖项，以“先低成本、再按需升级”为默认原则。
+普通图像任务现在也加了确定性收口：普通 `生图/插图/海报/封面/配图` 直接走 `imagegen`，不再允许先查环境、先读系统 skill、先看 key、先试通道。
 前台执行提示统一压成中文短句：执行前只报 `建议：5.4-mini 低` / `建议：5.4 中` / `建议：5.5 高` / `建议：5.5 超高`；任务完成后默认报 `建议切回：5.4-mini 低`。
 提示词自进化当前已收口为离线闭环：`feedback-log -> feedback-dataset -> prompt-candidate-audit -> prompt-eval -> prompt-distill`，只沉淀脱敏偏好信号，不把运行时上下文越堆越肥。
+`prompt-candidate-audit` 已把这类生图前探路话术列为失败项，防止规则说对了、执行又绕回去。
 
 ## v10.5 的关键变化 / Key Change
 
-v10.5 针对 PPT 长时间空转和低质交付加前置硬门禁：口头说“直接生成”不算执行；非代码任务 10/15/30 分钟分级熔断；参考 PPTX 必须同时当作风格系统和素材库，批量生成前先锁定 `reference-frame-map`、`reusable-asset-map`、`illustration-plan`；优先复用表格、图标、卡片、流程箭头、章节页、背景装饰、教学插图、案例图、公式图和 image2 生图资产；真 PPTX 不得每页一张整图冒充可编辑成品。执行底座新增 `pptx-preflight`、`pptx-audit`、`asset-map`、`time-guard` 方向，用确定性检查硬控这些问题。
+v10.5 针对 PPT 长时间空转和低质交付加前置硬门禁：口头说“直接生成”不算执行；非代码任务 10/15/30 分钟分级熔断；参考 PPTX 必须同时当作风格系统和素材库，批量生成前先锁定 `reference-frame-map`、`reusable-asset-map`、`illustration-plan`；优先复用表格、图标、卡片、流程箭头、章节页、背景装饰、教学插图、案例图、公式图和 image2 生图资产；真 PPTX 不得每页一张整图冒充可编辑成品。执行底座对占位符残留、空白页、模板碎片页和低对比 preview 做确定性硬拦截。
 
 ## v10.4 的关键变化 / Key Change
 
@@ -221,7 +237,7 @@ v9.6 做的是质量整流：把“能跑”继续推进到“干净、可安装
 - `2026-06-01 v10.6`
   - 新增 pilot page 快速闭环：先做 1 页代表页，过线后才批量生成。
   - pilot 最多两轮，不过线必须换路线或短报阻塞。
-  - 执行底座新增 `pptx-batch-gate`，缺 pilot 产物或 pilot-score 不允许批量生成。
+  - 执行底座新增 `pptx-batch-gate`，缺 pilot 产物、`pilot-approval` 或 pilot-score 不允许批量生成；preview 发白/低对比也直接拦截。
 - `2026-06-01 v10.5`
   - 非代码任务新增 10/15/30 分钟熔断，禁止“嘴上直接生成、实际继续绕路”。
   - PPT 参考任务必须在生成前锁定 `reference-frame-map`、`reusable-asset-map`、`illustration-plan`。

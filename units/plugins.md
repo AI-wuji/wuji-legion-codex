@@ -1,99 +1,78 @@
-# 无极军团 · 插件注册中心 v1.2
+# 插件注册中心
 
-> 本文件记录“无极军团纳管和路由”的插件/skill，不把未验证的安装状态写死。
-> 市场插件是否已安装，以 Codex Desktop 本地插件页和 `~/.codex/config.toml` 为准；内置插件目前已在配置中启用 browser/documents/spreadsheets/presentations。
+## 定位
 
----
+本文件只记录三件事：
 
-## 筛选逻辑
+- 本机已启用哪些插件
+- 哪些候选值得保留台账
+- 插件默认归谁调用
 
-**入选标准：** 与无极七方向直接相关，去重取最优。
-**排除：** 金融/HR/销售/法律/会议/邮件类，除非项目明确需要。
-**融合原则：** 插件只做能力补足，不做新部门；参谋本部路由，女娲按需组队。
+插件只做能力补位，不做新入口、不替代主帅。权限边界和门禁看 [mcp_plugins.md](mcp_plugins.md)。
 
----
+## 本机已启用
 
-## Codex 内置插件（本机已启用）
+| 插件 | 默认归口 | 用途 |
+|---|---|---|
+| Browser | 视觉主帅 / 开发主帅 | 网页打开、检查、交互测试、截图 |
+| Documents | 内容主帅 | Word/文档生成、整理、归档 |
+| Spreadsheets | 情报主帅 / 内容主帅 | 表格、结构化数据、分析交付 |
+| Presentations | 视觉主帅 | 模板续写、补页、真 PPTX 导入编辑、导出预览 |
 
-| 插件 | 路由到 | 用途 |
-|------|--------|------|
-| Browser | intel.md + proving_ground.md | 网页打开、检查、交互测试、截图 |
-| Documents | content.md + archive.md | Word/文档生成、整理、归档 |
-| Spreadsheets | intel.md + content.md | 表格、结构化数据、分析交付 |
-| Presentations | visual.md + content.md | PPT生成、修改、导出预览 |
+## 候选台账
 
----
+候选只表示“值得保留观察”，不表示“已经纳入主链”。
+未安装、未授权、未验证时，一律按不可用处理。
 
-## PPT/HTML候选最终裁决
+### 视觉与演示
 
-| 候选 | 裁决 | 原因 | 触发条件 |
-|------|------|------|----------|
-| PptxGenJS | 保留，按需试验接入 | 程序化PPT能力强，但与现有 `pptx-generation` 重叠 | 现有PPT引擎无法满足复杂图表/JS项目批量生成时启用试验 |
-| Marp | 保留，快速预览链路 | Markdown转演示快，但设计上限不如主PPT链路 | 用户明确要从 Markdown 快速生成预览型 PPT/PDF 时使用 |
-| reveal.js | 保留，Web演示专用 | 适合HTML演示和动效，不适合替代PPTX交付 | 用户明确要网页演示、演讲页面或在线deck时使用 |
-| OpenDesign | 保留，设计增强链 | 擅长设计系统、Deck/原型/HTML预览和多方向探索，但不替代PPTX主交付 | PPT/HTML/UI需要更强视觉探索、设计系统抽取、交互预览或Deck预览时接入 |
-| shadcn/ui | 保留，组件参考 | 组件质量高，但不强行引入依赖 | React/Tailwind项目需要高质量组件参考时使用 |
-| html2pptx | 丢弃默认接入 | HTML转PPT布局稳定性不可控，容易和PPTX主线冲突 | 不进入默认链路；只有用户明确要求HTML转PPT时临时评估 |
-| daisyUI | 丢弃默认接入 | 快速但模板味重，容易降低无极视觉质量 | 不进入默认链路；只允许低保真原型临时参考 |
+| 候选 | 裁决 | 触发条件 |
+|---|---|---|
+| Figma | defer | 需要读取设计稿、组件库或设计系统时 |
+| OpenDesign | defer | PPT/HTML/UI 需要更强视觉探索、原型预览或设计抽取时 |
+| Canva | defer | 需要轻量素材补图或社媒图时 |
+| Remotion | defer | 需要把页面或脚本转成程序化视频时 |
+| PptxGenJS | defer | 从零高颜值 PPTX 需要 JS 批量生成或可编辑转换时 |
+| dom-to-pptx | defer | HTML/CSS 已经做对，需要高保真转 editable PPTX 时 |
+| html2pptx | defer | 需要先走 HTML-first，再转可编辑 PowerPoint 时 |
+| Marp | defer | 用户明确要 Markdown 快速预览型演示稿时 |
+| reveal.js | defer | 用户明确要 Web 演示稿而非真 PPTX 时 |
 
-裁决原则：没有“永久候选”。保留项有明确触发条件；丢弃项不再占主路由，只在用户明确指定时临时评估。
+### PowerPoint 精修
 
----
+| 候选 | 裁决 | 触发条件 |
+|---|---|---|
+| ppt-mcp | defer | 基础 deck 已有，需要 Windows PowerPoint 精准修版时 |
+| mcp-server-ppt | defer | 需要最后一公里对齐、占位符处理、导出复核时 |
 
-## 市场插件纳管清单
+### 开发与交付
 
-### 第二师 visual.md
+| 候选 | 裁决 | 触发条件 |
+|---|---|---|
+| GitHub | defer | 需要 PR、Issue、CI、仓库协作时 |
+| Supabase | defer | 需要数据库、Auth、Storage 或 Edge Functions 时 |
+| Vercel | defer | 需要前端部署或在线 Agent 发布时 |
+| Sentry | defer | 需要线上报错或性能追踪时 |
+| Linear | defer | 需要外部任务排期和状态跟踪时 |
 
-| 插件 | 用途 | 融合方式 |
-|------|------|---------|
-| Figma | 设计稿转代码、UI组件库、设计系统 | 专业UI优先入口 |
-| Canva | 轻量设计、社媒图、PPT素材 | 视觉主帅素材补充 |
-| OpenDesign | 设计系统、Deck、原型、HTML预览 | 第二师设计增强；由参谋本部判定，女娲按需接入 |
-| Remotion | React视频、动态图形 | 文字/页面视频化 |
+### 内容与资料
 
-### 第三师 comfyui.md
+| 候选 | 裁决 | 触发条件 |
+|---|---|---|
+| Notion | defer | 需要知识库、Spec 或协作文档时 |
+| Readwise | defer | 需要研究摘录、阅读高亮整理时 |
 
-| 插件 | 用途 | 融合方式 |
-|------|------|---------|
-| HeyGen | AI数字人视频、头像讲解 | 短视频流水线数字人环节 |
-| Cloudinary | 媒体资产管理、图片/视频CDN | 档案局媒体管理补充 |
-| Hugging Face | 模型库、数据集、Spaces | 模型选型和资源查询 |
+### 媒体与模型
 
-### 第四师 dev.md
+| 候选 | 裁决 | 触发条件 |
+|---|---|---|
+| HeyGen | defer | 需要数字人讲解或真人出镜补位时 |
+| Cloudinary | defer | 需要媒体资产管理、图片/视频分发时 |
+| Hugging Face | defer | 需要模型、数据集或公开资源检索时 |
 
-| 插件 | 用途 | 融合方式 |
-|------|------|---------|
-| GitHub | PR/Issue/CI管理、仓库协作 | 开发协作入口 |
-| Supabase | 数据库、Auth、Edge Functions、Storage | 全栈后端补充 |
-| Vercel | 前端部署和Agent发布 | 发布通道 |
-| CircleCI | CI/CD流水线 | DevOps自动化补充 |
-| Sentry | 错误追踪、性能监控 | QA线上质量反馈 |
-| CodeRabbit | AI代码审查 | PR审查自动化 |
-| Game Studio | 浏览器游戏开发 | 创意交互输出 |
+## 调用铁律
 
-### 第一师 content.md
-
-| 插件 | 用途 | 融合方式 |
-|------|------|---------|
-| Notion | 文档协作、Spec、知识库 | 内容素材和项目文档管理 |
-| Readwise | 阅读高亮、研究笔记 | 情报局调研信息源 |
-| Remotion | 程序化视频 | 内容视频化输出 |
-| HeyGen | 数字人讲解 | 真人出镜/课程讲解补充 |
-
-### 远征军 expedition.md
-
-| 插件/skill | 用途 | 融合方式 |
-|------------|------|---------|
-| Linear | Issue跟踪、项目管理 | 任务拆分、排期和状态跟踪 |
-| Notion | Spec、协作文档 | Handoff和需求文档 |
-| GitHub | PR/Issue管理 | 开发项目外派协作 |
-| Superpowers | 任务拆解、TDD、复审纪律 | 执行纪律补充，不覆盖MoE路由 |
-
----
-
-## 调用原则
-
-1. 插件不直接响应用户指令，通过对应部门调用。
-2. 参谋本部先判断是否需要插件，女娲只在需要跨部门组队或冲突消解时介入。
-3. 未确认安装的市场插件，只能提示需要安装/授权，不得假装可用。
-4. 成品型输出默认只保留两个入口：预览 + “文件在……”
+- 插件不直接响应用户，由对应主帅调用。
+- 未确认安装或授权，不得说成可用。
+- 插件结果必须回到主帅收口，不绕过白帽、质检、安全、合规。
+- 成品型输出默认只保留两个入口：预览、文件路径。

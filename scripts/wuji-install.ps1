@@ -9,9 +9,14 @@ $temp = Join-Path $env:TEMP ("wuji-legion-codex-" + [guid]::NewGuid().ToString("
 $CONFIG_PATH = Join-Path $PSScriptRoot "..\config.json"
 $INSTALLER_VERSION = "unknown"
 
+function Read-JsonUtf8 {
+    param([string]$Path)
+    return [System.IO.File]::ReadAllText($Path, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+}
+
 if (Test-Path -LiteralPath $CONFIG_PATH) {
     try {
-        $config = Get-Content -Raw -LiteralPath $CONFIG_PATH | ConvertFrom-Json
+        $config = Read-JsonUtf8 -Path $CONFIG_PATH
         if ($config.iron_rules_version) {
             $INSTALLER_VERSION = [string]$config.iron_rules_version
         }
