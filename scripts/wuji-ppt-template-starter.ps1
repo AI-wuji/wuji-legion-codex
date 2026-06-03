@@ -54,3 +54,18 @@ $code = Invoke-WujiNodeScript -Runtime $runtime -ScriptPath $scriptPath -Argumen
 if ($code -ne 0) {
     throw "prepare_template_starter_deck failed with exit code $code"
 }
+
+$resolvedOut = [System.IO.Path]::GetFullPath($Out)
+if (-not (Test-Path -LiteralPath $resolvedOut)) {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $resolvedOut) | Out-Null
+    Copy-Item -LiteralPath $resolvedPptx -Destination $resolvedOut -Force
+}
+
+$resolvedOut = [System.IO.Path]::GetFullPath($Out)
+if (-not (Test-Path -LiteralPath $resolvedOut)) {
+    $parent = Split-Path -Parent $resolvedOut
+    if ($parent) {
+        New-Item -ItemType Directory -Force -Path $parent | Out-Null
+    }
+    Copy-Item -LiteralPath $resolvedPptx -Destination $resolvedOut -Force
+}

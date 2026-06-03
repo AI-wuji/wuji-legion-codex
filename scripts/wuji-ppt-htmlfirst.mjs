@@ -11,6 +11,7 @@ const DEFAULT_VIEWPORT = { width: 1920, height: 1080 };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const MOTION_PRESETS_PATH = path.resolve(__dirname, "..", "assets", "wuji-motion-presets.css");
 
 function parseArgs(argv) {
   const args = {};
@@ -210,6 +211,14 @@ function resolveRepoRoot() {
   return path.resolve(__dirname, "..");
 }
 
+function loadMotionPresetCss() {
+  try {
+    return fsSync.readFileSync(MOTION_PRESETS_PATH, "utf8");
+  } catch {
+    return "";
+  }
+}
+
 async function ensureDomToPptxBundle(repoRoot) {
   const envBundle = process.env.WUJI_DOM_TO_PPTX_BUNDLE;
   if (envBundle && fsSync.existsSync(envBundle)) {
@@ -295,10 +304,12 @@ function resolveBrowserExecutable() {
 
 function buildHtmlDocument(html, htmlPath) {
   const baseHref = pathToFileURL(`${path.dirname(htmlPath)}${path.sep}`).href;
+  const presetCss = loadMotionPresetCss();
+  const presetTag = presetCss ? `<style id="wuji-motion-presets">\n${presetCss}\n</style>` : "";
   if (/<head\b[^>]*>/i.test(html)) {
-    return html.replace(/<head\b[^>]*>/i, (match) => `${match}<base href="${baseHref}">`);
+    return html.replace(/<head\b[^>]*>/i, (match) => `${match}<base href="${baseHref}">${presetTag}`);
   }
-  return `<!doctype html><html><head><base href="${baseHref}"></head><body>${html}</body></html>`;
+  return `<!doctype html><html><head><base href="${baseHref}">${presetTag}</head><body>${html}</body></html>`;
 }
 
 async function waitForDocumentAssets(page) {
@@ -353,6 +364,64 @@ async function capturePilotPreview(page, workspace) {
   return previewPath;
 }
 
+async function analyzePilotLayout(page) {
+  const safeArea = { top: 0, right: 0, bottom: 64, left: 0 };
+  return page.evaluate(({ safeArea }) => {
+    const root = document.querySelector("section.slide, section[data-slide]") || document.body;
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    const selectors = [
+      "h1", "h2", "h3", "h4", "h5", "h6",
+      "p", "li", "span", "div",
+      "img", "svg", "canvas", "video", "figure", "table", "pre", "blockquote",
+    ];
+    const elements = [];
+    for (const element of root.querySelectorAll(selectors.join(","))) {
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      const text = (element.innerText || element.getAttribute("aria-label") || element.alt || "").trim().replace(/\s+/g, " ").slice(0, 80);
+      const visible = rect.width > 2 && rect.height > 2 && style.visibility !== "hidden" && style.display !== "none" && Number(style.opacity || "1") > 0;
+      if (!visible) continue;
+      const overflowLeft = rect.left < -2;
+      const overflowTop = rect.top < -2;
+      const overflowRight = rect.right > viewport.width + 2;
+      const overflowBottom = rect.bottom > viewport.height + 2;
+      const unsafeLeft = false;
+      const unsafeTop = false;
+      const unsafeRight = false;
+      const unsafeBottom = rect.bottom > viewport.height - safeArea.bottom;
+      if (!(overflowLeft || overflowTop || overflowRight || overflowBottom || unsafeLeft || unsafeTop || unsafeRight || unsafeBottom)) {
+        continue;
+      }
+      elements.push({
+        tag: element.tagName.toLowerCase(),
+        text,
+        left: Math.round(rect.left),
+        top: Math.round(rect.top),
+        right: Math.round(rect.right),
+        bottom: Math.round(rect.bottom),
+        overflow_left: overflowLeft,
+        overflow_top: overflowTop,
+        overflow_right: overflowRight,
+        overflow_bottom: overflowBottom,
+        unsafe_left: unsafeLeft,
+        unsafe_top: unsafeTop,
+        unsafe_right: unsafeRight,
+        unsafe_bottom: unsafeBottom,
+      });
+    }
+    const overflowCount = elements.filter((item) => item.overflow_left || item.overflow_top || item.overflow_right || item.overflow_bottom).length;
+    const unsafeCount = elements.filter((item) => item.unsafe_left || item.unsafe_top || item.unsafe_right || item.unsafe_bottom).length;
+    return {
+      viewport,
+      safe_area: safeArea,
+      overflow_count: overflowCount,
+      unsafe_count: unsafeCount,
+      pass: overflowCount === 0 && unsafeCount === 0,
+      elements: elements.slice(0, 24),
+    };
+  }, { safeArea });
+}
+
 async function exportDeckViaDomToPptx({ htmlDocument, outPath, bundlePath, title, animationSignals }) {
   const playwright = loadNodePackage("playwright");
   const { chromium } = playwright;
@@ -370,6 +439,7 @@ async function exportDeckViaDomToPptx({ htmlDocument, outPath, bundlePath, title
       await freezeAnimations(page);
     }
     const pilotPreviewPath = await capturePilotPreview(page, path.dirname(outPath));
+    const pilotLayout = await analyzePilotLayout(page);
     await page.addScriptTag({ path: bundlePath });
     await page.waitForTimeout(200);
 
@@ -403,6 +473,7 @@ async function exportDeckViaDomToPptx({ htmlDocument, outPath, bundlePath, title
       exportedSlideCount: exportResult.exported_slide_count,
       outputBytes: exportResult.size,
       pilotPreviewPath,
+      pilotLayout,
     };
   } finally {
     await browser.close();
@@ -465,6 +536,7 @@ async function main() {
     bundle_path: bundlePath,
     output_bytes: exportMeta.outputBytes,
     preview_path: exportMeta.pilotPreviewPath,
+    preview_layout: exportMeta.pilotLayout,
     warnings:
       animationSignals.length > 0
         ? [
@@ -472,6 +544,10 @@ async function main() {
           ]
         : [],
   };
+
+  const previewLayoutReportPath = path.join(workspace, "htmlfirst-preview-layout.json");
+  await fs.writeFile(previewLayoutReportPath, `${JSON.stringify(exportMeta.pilotLayout, null, 2)}\n`, "utf8");
+  report.preview_layout_report = previewLayoutReportPath;
 
   await fs.mkdir(path.dirname(reportPath), { recursive: true });
   await fs.writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");

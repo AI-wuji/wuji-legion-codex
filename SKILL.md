@@ -113,8 +113,11 @@ description: 无极军团 Codex 版。用于把 Codex 任务路由到阿极、�
 - 当前本地 `HTML-first` 的真实能力边界是“高保真静态 HTML/CSS 导出”，不是把 HTML/CSS 动画、过渡和动态组件自动转成 PowerPoint 动画。
 - PowerPoint COM / MCP 只做局部精修、对齐和修版，不做主生产器。
 - Go 执行底座在 PPT 体系内只负责门禁、审计、批量放行和收口，不再充当主生产引擎。
+- 课程、教程、发布会、演示型 deck 默认按“双轨成品”理解：`live HTML demo` 负责动态体验源，`editable PPTX` 负责可编辑交付源。
+- 用户要“大量动态效果”“科技感演示”“看板动效”“赛博氛围”时，`design-brief` 必须写出 `motion-plan`；静态 PPT 不得冒充已经承接 HTML 动效。
 - 真 PPTX 批量前必须锁死三张表：`reference-frame-map`、`reusable-asset-map`、`illustration-plan`。
 - 真 PPTX 批量前还必须有两条路线护栏：`style-lock`、`page-role-policy`。前者锁整体风格、背景深浅和插图语言，后者锁首页/目录页/单元页/总结页/结尾页这些固定页型不得挪用。
+- `page-role-policy` 默认优先沿用模板里已经定好的首页、目录页、单元页、总结页、结尾页，不得擅自改页型角色。
 - 教程、课程、说明、方案类 PPT，默认内容顺序必须先于页面顺序：`source -> outline -> speaker-notes -> slide-spec -> design-brief -> reference-frame-map -> reusable-asset-map -> illustration-plan -> pilot-page -> pptx-batch-gate -> layout-plan -> preview -> full PPTX -> notes -> QA`。
 - 逐字稿默认写进备注 notes，不写进观众可见区；没有逐页备注的教程型 PPT，视为未收口。
 - 纯文字看不懂的教学页，`illustration-plan` 必须明确标注补 `截图 / 教学配图 / image2 示意图`，不能只交空框架。

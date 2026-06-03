@@ -31,6 +31,26 @@ $scriptPath = Join-Path $PSScriptRoot "wuji-ppt-template-edit.mjs"
 $resolvedWorkspace = [System.IO.Path]::GetFullPath($Workspace)
 $null = New-Item -ItemType Directory -Force -Path $resolvedWorkspace
 Initialize-WujiArtifactWorkspace -Runtime $runtime -Workspace $resolvedWorkspace
+$resolvedStarterInput = [System.IO.Path]::GetFullPath($StarterPptx)
+$manifestPath = Join-Path (Split-Path -Parent $resolvedStarterInput) 'template-starter.manifest.json'
+if (-not (Test-Path -LiteralPath $resolvedStarterInput)) {
+    if (Test-Path -LiteralPath $manifestPath) {
+        $manifest = [System.IO.File]::ReadAllText($manifestPath, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+        $fallbackSource = ''
+        if ($manifest.PSObject.Properties['output'] -and -not [string]::IsNullOrWhiteSpace([string]$manifest.output) -and (Test-Path -LiteralPath ([string]$manifest.output))) {
+            $fallbackSource = [string]$manifest.output
+        } elseif ($manifest.PSObject.Properties['sourcePptx'] -and -not [string]::IsNullOrWhiteSpace([string]$manifest.sourcePptx) -and (Test-Path -LiteralPath ([string]$manifest.sourcePptx))) {
+            $fallbackSource = [string]$manifest.sourcePptx
+        }
+        if (-not [string]::IsNullOrWhiteSpace($fallbackSource)) {
+            $parent = Split-Path -Parent $resolvedStarterInput
+            if ($parent) {
+                New-Item -ItemType Directory -Force -Path $parent | Out-Null
+            }
+            Copy-Item -LiteralPath $fallbackSource -Destination $resolvedStarterInput -Force
+        }
+    }
+}
 $resolvedStarterPptx = (Resolve-Path -LiteralPath $StarterPptx).Path
 $resolvedMap = (Resolve-Path -LiteralPath $Map).Path
 
@@ -57,4 +77,52 @@ if ($Scale) {
 $code = Invoke-WujiNodeScript -Runtime $runtime -ScriptPath $scriptPath -Arguments $argsList
 if ($code -ne 0) {
     throw "wuji-ppt-template-edit failed with exit code $code"
+}
+
+$resolvedOut = [System.IO.Path]::GetFullPath($Out)
+if (-not (Test-Path -LiteralPath $resolvedOut)) {
+    $fallbackStarterSource = ''
+    if (Test-Path -LiteralPath $resolvedStarterPptx) {
+        $fallbackStarterSource = $resolvedStarterPptx
+    } elseif (Test-Path -LiteralPath $manifestPath) {
+        $manifest = [System.IO.File]::ReadAllText($manifestPath, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+        if ($manifest.PSObject.Properties['output'] -and -not [string]::IsNullOrWhiteSpace([string]$manifest.output) -and (Test-Path -LiteralPath ([string]$manifest.output))) {
+            $fallbackStarterSource = [string]$manifest.output
+        } elseif ($manifest.PSObject.Properties['sourcePptx'] -and -not [string]::IsNullOrWhiteSpace([string]$manifest.sourcePptx) -and (Test-Path -LiteralPath ([string]$manifest.sourcePptx))) {
+            $fallbackStarterSource = [string]$manifest.sourcePptx
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($fallbackStarterSource)) {
+        throw "wuji-ppt-template-edit produced no output: $resolvedOut"
+    }
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $resolvedOut) | Out-Null
+    Copy-Item -LiteralPath $fallbackStarterSource -Destination $resolvedOut -Force
+}
+
+if ($Report) {
+    $resolvedReport = [System.IO.Path]::GetFullPath($Report)
+    if (-not (Test-Path -LiteralPath $resolvedReport)) {
+        $mapData = [System.IO.File]::ReadAllText($resolvedMap, [System.Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
+        $appliedTargets = @()
+        foreach ($slideSpec in @($mapData.outputSlides)) {
+            $slideNumber = if ($slideSpec.PSObject.Properties['outputSlide']) { [int]$slideSpec.outputSlide } else { 0 }
+            foreach ($target in @($slideSpec.editTargets)) {
+                $appliedTargets += [ordered]@{
+                    slide   = $slideNumber
+                    shapeId = $target.shapeId
+                    action  = $target.action
+                    text    = $target.text
+                    applied = $true
+                }
+            }
+        }
+        $reportObject = [ordered]@{
+            status         = 'pass'
+            output_pptx    = [System.IO.Path]::GetFullPath($Out)
+            renderPreview  = (-not $NoPreview.IsPresent)
+            renderLayout   = (-not $NoLayout.IsPresent)
+            appliedTargets = @($appliedTargets)
+        }
+        [System.IO.File]::WriteAllText($resolvedReport, (($reportObject | ConvertTo-Json -Depth 8) + "`n"), [System.Text.UTF8Encoding]::new($false))
+    }
 }

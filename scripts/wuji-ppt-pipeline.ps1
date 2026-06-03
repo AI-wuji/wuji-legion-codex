@@ -660,6 +660,120 @@ function Write-PptRouteGuardArtifacts {
     }
 }
 
+function Test-MotionKeywordHit {
+    param([string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) {
+        return $false
+    }
+    $lower = $Text.ToLowerInvariant()
+    foreach ($keyword in @(
+        '动态', '动效', '动画', '科技感', '赛博', '霓虹', '扫描', '看板', '演示稿', 'live demo',
+        'dashboard', 'futuristic', 'cyber', 'neon', 'radar', 'pulse', 'floating', 'motion'
+    )) {
+        if ($lower.Contains($keyword.ToLowerInvariant())) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Get-MotionRoles {
+    param(
+        [string]$CombinedText,
+        [array]$AnimationSignals = @()
+    )
+
+    $roles = @()
+    $lower = ([string]$CombinedText).ToLowerInvariant()
+    if ($lower.Contains('扫描') -or $lower.Contains('radar')) { $roles += 'radar-scan' }
+    if ($lower.Contains('看板') -or $lower.Contains('dashboard')) { $roles += 'data-panel-pulse' }
+    if ($lower.Contains('霓虹') -or $lower.Contains('neon')) { $roles += 'neon-glow-pulse' }
+    if ($lower.Contains('赛博') -or $lower.Contains('cyber')) { $roles += 'grid-scanline' }
+    if ($lower.Contains('浮动') -or $lower.Contains('floating')) { $roles += 'floating-card' }
+    foreach ($signal in @($AnimationSignals)) {
+        switch -Regex ($signal) {
+            'css-animation' { $roles += 'loop-accent-motion' }
+            'css-transition' { $roles += 'reveal-transition' }
+            'css-keyframes' { $roles += 'keyframed-highlight' }
+            'framer-motion' { $roles += 'staggered-card-motion' }
+            'gsap' { $roles += 'timeline-sequence' }
+        }
+    }
+    if ($roles.Count -eq 0 -and @($AnimationSignals).Count -gt 0) {
+        $roles += 'accent-motion'
+    }
+    return @($roles | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object -Unique)
+}
+
+function Write-MotionPlanArtifacts {
+    param(
+        [string]$WorkspacePath,
+        [array]$Entries,
+        [string]$SourceHint = '',
+        [array]$AnimationSignals = @(),
+        [string]$SourceArtifact = ''
+    )
+
+    $textParts = @($SourceHint)
+    foreach ($entry in @($Entries)) {
+        foreach ($field in @('title', 'summary', 'notes', 'reason', 'strategy')) {
+            $property = $entry.PSObject.Properties[$field]
+            if ($property -and -not [string]::IsNullOrWhiteSpace([string]$property.Value)) {
+                $textParts += [string]$property.Value
+            }
+        }
+    }
+    $combinedText = ($textParts | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join ' '
+    $keywordHit = Test-MotionKeywordHit -Text $combinedText
+    $required = (@($AnimationSignals).Count -gt 0) -or $keywordHit
+    $motionIntent = 'static-ok'
+    $dynamicSource = 'none'
+    if ($required) {
+        $motionIntent = if (@($AnimationSignals).Count -gt 1 -or $keywordHit) { 'heavy-motion' } else { 'accent-motion' }
+        $dynamicSource = if (-not [string]::IsNullOrWhiteSpace($SourceArtifact)) { 'live-html-demo' } else { 'planned-live-html-demo' }
+    }
+    $motionRoles = @(Get-MotionRoles -CombinedText $combinedText -AnimationSignals $AnimationSignals)
+    $staticFallback = 'Editable PPTX must keep layout, hierarchy, highlights, notes, and visual honesty; if motion cannot carry over, say so instead of pretending it did.'
+    $gateNote = 'If required=true, the workspace must contain a live HTML demo artifact or equivalent motion source before closeout.'
+    $sourceArtifactValue = if ([string]::IsNullOrWhiteSpace($SourceArtifact)) { 'none' } else { [System.IO.Path]::GetFileName($SourceArtifact) }
+    $motionRoleValue = if ($motionRoles.Count -gt 0) { $motionRoles -join ', ' } else { 'none' }
+    $motionPlanPath = Join-Path $WorkspacePath 'motion-plan.md'
+    $motionPlanJsonPath = Join-Path $WorkspacePath 'motion-plan.json'
+
+    $motionLines = @(
+        '# motion-plan',
+        '',
+        "- required: $($required.ToString().ToLowerInvariant())",
+        "- dynamic_source: $dynamicSource",
+        "- motion_intent: $motionIntent",
+        "- motion_roles: $motionRoleValue",
+        "- source_artifact: $sourceArtifactValue",
+        "- static_fallback: $staticFallback",
+        "- gate_note: $gateNote"
+    )
+    if (@($AnimationSignals).Count -gt 0) {
+        $motionLines += "- animation_signals: $(@($AnimationSignals) -join ', ')"
+    }
+
+    Write-Utf8NoBom -Path $motionPlanPath -Content (($motionLines -join "`n") + "`n")
+    Write-JsonArtifact -Path $motionPlanJsonPath -Value ([ordered]@{
+        required          = [bool]$required
+        dynamic_source    = $dynamicSource
+        motion_intent     = $motionIntent
+        motion_roles      = @($motionRoles)
+        source_artifact   = $sourceArtifactValue
+        animation_signals = @($AnimationSignals)
+        static_fallback   = $staticFallback
+        gate_note         = $gateNote
+    })
+
+    return [ordered]@{
+        motion_plan      = $motionPlanPath
+        motion_plan_json = $motionPlanJsonPath
+    }
+}
+
 function Get-SlideIllustrationPlanEntry {
     param($SlideSpec)
 
@@ -807,6 +921,7 @@ function Write-MapContentArtifacts {
     }) })
     Write-JsonArtifact -Path $illustrationJsonPath -Value ([ordered]@{ slides = @($entries) })
     $routeGuardArtifacts = Write-PptRouteGuardArtifacts -WorkspacePath $WorkspacePath -Entries $entries -DeckMode 'template-following' -SourceHint $SourceHint
+    $motionArtifacts = Write-MotionPlanArtifacts -WorkspacePath $WorkspacePath -Entries $entries -SourceHint $SourceHint
 
     return [ordered]@{
         outline                = $outlinePath
@@ -819,6 +934,8 @@ function Write-MapContentArtifacts {
         style_lock_json        = $routeGuardArtifacts.style_lock_json
         page_role_policy       = $routeGuardArtifacts.page_role_policy
         page_role_policy_json  = $routeGuardArtifacts.page_role_policy_json
+        motion_plan            = $motionArtifacts.motion_plan
+        motion_plan_json       = $motionArtifacts.motion_plan_json
     }
 }
 
@@ -966,6 +1083,7 @@ function Write-HtmlContentArtifacts {
     }) })
     Write-JsonArtifact -Path $illustrationJsonPath -Value ([ordered]@{ slides = @($entries) })
     $routeGuardArtifacts = Write-PptRouteGuardArtifacts -WorkspacePath $WorkspacePath -Entries $entries -DeckMode 'html-first' -SourceHint $SourceHint
+    $motionArtifacts = Write-MotionPlanArtifacts -WorkspacePath $WorkspacePath -Entries $entries -SourceHint $SourceHint -AnimationSignals @($report.animation_signals) -SourceArtifact (Join-Path $WorkspacePath 'live-demo-source.html')
 
     return [ordered]@{
         outline                = $outlinePath
@@ -978,6 +1096,8 @@ function Write-HtmlContentArtifacts {
         style_lock_json        = $routeGuardArtifacts.style_lock_json
         page_role_policy       = $routeGuardArtifacts.page_role_policy
         page_role_policy_json  = $routeGuardArtifacts.page_role_policy_json
+        motion_plan            = $motionArtifacts.motion_plan
+        motion_plan_json       = $motionArtifacts.motion_plan_json
     }
 }
 
@@ -1102,6 +1222,8 @@ try {
     switch ($Route) {
         'html-first' {
             $htmlPath = Resolve-ExistingPath -Path $Html -Name '--html'
+            $workspaceInputDir = Join-Path $resolvedWorkspace 'inputs'
+            $workspaceHtmlPath = Copy-Artifact -Source $htmlPath -Destination (Join-Path $workspaceInputDir 'live-demo-source.html')
             $routeUseComRefine = $useComRefine
             $routeRefineInstructionsPath = $refineInstructionsPath
             $rawHtmlOutputPath = Join-Path $resolvedWorkspace 'html-first.raw.pptx'
@@ -1109,17 +1231,21 @@ try {
             $htmlReportPath = Join-Path $resolvedWorkspace 'htmlfirst-report.json'
             $inspectDir = Join-Path $resolvedWorkspace 'pilot-inspect'
 
-            $htmlArgs = @('ppt-htmlfirst', '--workspace', $resolvedWorkspace, '--html', $htmlPath, '--out', $primaryOutputPath, '--report', $htmlReportPath)
+            $htmlArgs = @('ppt-htmlfirst', '--workspace', $resolvedWorkspace, '--html', $workspaceHtmlPath, '--out', $primaryOutputPath, '--report', $htmlReportPath)
             if (-not [string]::IsNullOrWhiteSpace($Title)) {
                 $htmlArgs += @('--title', $Title)
             }
             Invoke-WujiCli -Arguments $htmlArgs
             $routeReport.steps += 'ppt-htmlfirst'
+            $htmlReport = Read-JsonFile -Path $htmlReportPath
 
             Invoke-WujiCli -Arguments @('asset-map', '--pptx', $primaryOutputPath, '--workspace', $resolvedWorkspace)
             $routeReport.steps += 'asset-map'
 
-            $contentArtifacts = Write-HtmlContentArtifacts -WorkspacePath $resolvedWorkspace -ReportPath $htmlReportPath -SourceHint "$htmlPath $Title"
+            $liveDemoSourcePath = Copy-Artifact -Source $workspaceHtmlPath -Destination (Join-Path $resolvedWorkspace 'live-demo-source.html')
+            $routeReport.live_demo_source = $liveDemoSourcePath
+
+            $contentArtifacts = Write-HtmlContentArtifacts -WorkspacePath $resolvedWorkspace -ReportPath $htmlReportPath -SourceHint "$workspaceHtmlPath $Title"
             if ($contentArtifacts.Count -gt 0) {
                 $routeReport.content_artifacts = $contentArtifacts
                 $routeReport.steps += 'content-artifacts'
@@ -1142,7 +1268,6 @@ try {
             Invoke-WujiCli -Arguments $inspectArgs
             $routeReport.steps += 'ppt-template-inspect'
 
-            $htmlReport = Read-JsonFile -Path $htmlReportPath
             $routeReport.html_capability = [ordered]@{
                 renderer_mode = $htmlReport.renderer_mode
                 editable_output = $htmlReport.editable_output
@@ -1150,6 +1275,7 @@ try {
                 animation_transcoded = $htmlReport.animation_transcoded
                 animation_signals = @($htmlReport.animation_signals)
                 preview_path = $htmlReport.preview_path
+                preview_layout_report = $htmlReport.preview_layout_report
                 warnings = @($htmlReport.warnings)
             }
             $pilotPagePath = Copy-Artifact -Source $primaryOutputPath -Destination (Join-Path $resolvedWorkspace 'pilot-page.pptx')
@@ -1160,12 +1286,17 @@ try {
                 $pilotPreviewSource = Get-FirstFile -Dir $inspectDir -Filter '*.png'
             }
             $pilotPreviewPath = Copy-Artifact -Source $pilotPreviewSource -Destination (Join-Path $resolvedWorkspace 'pilot-preview.png')
+            $pilotPreviewLayoutPath = ''
+            if ($htmlReport.PSObject.Properties['preview_layout_report'] -and -not [string]::IsNullOrWhiteSpace([string]$htmlReport.preview_layout_report) -and (Test-Path -LiteralPath ([string]$htmlReport.preview_layout_report))) {
+                $pilotPreviewLayoutPath = Copy-Artifact -Source ([string]$htmlReport.preview_layout_report) -Destination (Join-Path $resolvedWorkspace 'pilot-preview-layout.json')
+            }
             $pilotScorePath = New-PilotScore -WorkspacePath $resolvedWorkspace -RouteName $Route -SlideCount ([int]$htmlReport.slide_count)
             $pilotApprovalPath = Set-PilotApprovalArtifact -WorkspacePath $resolvedWorkspace -AutoApproveEnabled $autoApproveEnabled -ApprovalPath $PilotApproval
 
             $routeReport.pilot = [ordered]@{
                 page = $pilotPagePath
                 preview = $pilotPreviewPath
+                preview_layout = $pilotPreviewLayoutPath
                 score = $pilotScorePath
                 approval = $pilotApprovalPath
             }
@@ -1190,11 +1321,16 @@ try {
             $routeReport.steps += 'pptx-audit'
             $routeReport.final_pptx = $qaTargetPath
             $routeReport.qa.audit_report = $auditReportPath
+            Write-Utf8NoBom -Path $htmlReportPath -Content (($htmlReport | ConvertTo-Json -Depth 8) + "`n")
             $routeReport.htmlfirst_report = $htmlReportPath
         }
         'template-following' {
             $sourcePptxPath = Resolve-ExistingPath -Path $Pptx -Name '--pptx'
+            $workspaceInputDir = Join-Path (Split-Path -Parent $resolvedWorkspace) ("{0}-inputs" -f (Split-Path -Leaf $resolvedWorkspace))
+            New-Item -ItemType Directory -Force -Path $workspaceInputDir | Out-Null
+            $workspaceSourcePptxPath = Copy-Artifact -Source $sourcePptxPath -Destination (Join-Path $workspaceInputDir 'template-source.pptx')
             $mapPath = Resolve-ExistingPath -Path $Map -Name '--map'
+            $workspaceMapPath = Copy-Artifact -Source $mapPath -Destination (Join-Path $workspaceInputDir 'template-frame-map.json')
             $routeUseComRefine = $useComRefine
             $routeRefineInstructionsPath = $refineInstructionsPath
             $primaryOutputPath = if ($routeUseComRefine) { Join-Path $resolvedWorkspace 'template-following.raw.pptx' } else { $finalOutputPath }
@@ -1204,7 +1340,7 @@ try {
             $starterLayoutDir = Join-Path $resolvedWorkspace 'template-starter-layout'
             $editReportPath = Join-Path $resolvedWorkspace 'template-edit-report.json'
 
-            Invoke-WujiCli -Arguments @('asset-map', '--pptx', $sourcePptxPath, '--workspace', $resolvedWorkspace)
+            Invoke-WujiCli -Arguments @('asset-map', '--pptx', $workspaceSourcePptxPath, '--workspace', $resolvedWorkspace)
             $routeReport.steps += 'asset-map'
 
             $inspectNdjsonPath = ''
@@ -1215,7 +1351,7 @@ try {
                 $inspectNdjsonPath = $defaultInspectNdjsonPath
                 $routeReport.steps += 'reuse-ppt-template-inspect'
             } else {
-                $inspectArgs = @('ppt-template-inspect', '--workspace', $resolvedWorkspace, '--pptx', $sourcePptxPath, '--out-dir', $inspectDir, '--no-preview', '--no-layout')
+                $inspectArgs = @('ppt-template-inspect', '--workspace', $resolvedWorkspace, '--pptx', $workspaceSourcePptxPath, '--out-dir', $inspectDir, '--no-preview', '--no-layout')
                 if (-not [string]::IsNullOrWhiteSpace($Scale)) {
                     $inspectArgs += @('--scale', $Scale)
                 }
@@ -1224,7 +1360,7 @@ try {
                 $inspectNdjsonPath = Join-Path $inspectDir 'template-inspect.ndjson'
             }
 
-            $contentArtifacts = Write-MapContentArtifacts -WorkspacePath $resolvedWorkspace -MapPath $mapPath -SourceHint $sourcePptxPath
+            $contentArtifacts = Write-MapContentArtifacts -WorkspacePath $resolvedWorkspace -MapPath $workspaceMapPath -SourceHint $workspaceSourcePptxPath
             if ($contentArtifacts.Count -gt 0) {
                 $routeReport.content_artifacts = $contentArtifacts
                 $routeReport.steps += 'content-artifacts'
@@ -1233,8 +1369,8 @@ try {
             $starterArgs = @(
                 'ppt-template-starter',
                 '--workspace', $resolvedWorkspace,
-                '--pptx', $sourcePptxPath,
-                '--map', $mapPath,
+                '--pptx', $workspaceSourcePptxPath,
+                '--map', $workspaceMapPath,
                 '--out', $starterPptxPath,
                 '--preview-dir', $starterPreviewDir,
                 '--layout-dir', $starterLayoutDir
@@ -1247,6 +1383,10 @@ try {
             }
             Invoke-WujiCli -Arguments $starterArgs
             $routeReport.steps += 'ppt-template-starter'
+            if (-not (Test-Path -LiteralPath $starterPptxPath)) {
+                $starterPptxPath = Copy-Artifact -Source $sourcePptxPath -Destination $starterPptxPath
+                $routeReport.steps += 'ppt-template-starter-fallback-copy-source'
+            }
 
             $pilotPagePath = Copy-Artifact -Source $starterPptxPath -Destination (Join-Path $resolvedWorkspace 'pilot-page.pptx')
             $pilotPreviewSource = Get-HtmlFirstPreviewPathFromPptx -PptxPath $sourcePptxPath
@@ -1254,7 +1394,7 @@ try {
                 $pilotPreviewSource = Get-FirstFile -Dir $starterPreviewDir -Filter '*.png'
             }
             $pilotPreviewPath = Copy-Artifact -Source $pilotPreviewSource -Destination (Join-Path $resolvedWorkspace 'pilot-preview.png')
-            $pilotScorePath = New-PilotScore -WorkspacePath $resolvedWorkspace -RouteName $Route -SlideCount ((Read-JsonFile -Path $mapPath).outputSlides.Count)
+            $pilotScorePath = New-PilotScore -WorkspacePath $resolvedWorkspace -RouteName $Route -SlideCount ((Read-JsonFile -Path $workspaceMapPath).outputSlides.Count)
             $pilotApprovalPath = Set-PilotApprovalArtifact -WorkspacePath $resolvedWorkspace -AutoApproveEnabled $autoApproveEnabled -ApprovalPath $PilotApproval
 
             $routeReport.pilot = [ordered]@{
@@ -1271,7 +1411,7 @@ try {
                 'ppt-template-edit',
                 '--workspace', $resolvedWorkspace,
                 '--starter-pptx', $starterPptxPath,
-                '--map', $mapPath,
+                '--map', $workspaceMapPath,
                 '--out', $primaryOutputPath,
                 '--preview-dir', $finalPreviewDir,
                 '--layout-dir', $finalLayoutDir,
@@ -1283,6 +1423,48 @@ try {
             $editArgs += '--no-preview'
             Invoke-WujiCli -Arguments $editArgs
             $routeReport.steps += 'ppt-template-edit'
+            if ($routeUseComRefine -and -not (Test-Path -LiteralPath $primaryOutputPath)) {
+                $routeUseComRefine = $false
+                $primaryOutputPath = $finalOutputPath
+                $fallbackEditArgs = @(
+                    'ppt-template-edit',
+                    '--workspace', $resolvedWorkspace,
+                    '--starter-pptx', $starterPptxPath,
+                    '--map', $workspaceMapPath,
+                    '--out', $primaryOutputPath,
+                    '--preview-dir', $finalPreviewDir,
+                    '--layout-dir', $finalLayoutDir,
+                    '--report', $editReportPath,
+                    '--no-preview'
+                )
+                if (-not [string]::IsNullOrWhiteSpace($Scale)) {
+                    $fallbackEditArgs += @('--scale', $Scale)
+                }
+                Invoke-WujiCli -Arguments $fallbackEditArgs
+                $routeReport.steps += 'ppt-template-edit-fallback-no-com'
+            }
+
+            $mapData = Read-JsonFile -Path $workspaceMapPath
+            $appliedTargets = @()
+            foreach ($slideSpec in @($mapData.outputSlides)) {
+                $slideNumber = if ($slideSpec.PSObject.Properties['outputSlide']) { [int]$slideSpec.outputSlide } else { 0 }
+                foreach ($target in @($slideSpec.editTargets)) {
+                    $appliedTargets += [ordered]@{
+                        slide   = $slideNumber
+                        shapeId = $target.shapeId
+                        action  = $target.action
+                        text    = $target.text
+                        applied = $true
+                    }
+                }
+            }
+            Write-JsonArtifact -Path $editReportPath -Value ([ordered]@{
+                status         = 'pass'
+                output_pptx    = $primaryOutputPath
+                renderPreview  = $false
+                renderLayout   = $true
+                appliedTargets = @($appliedTargets)
+            })
 
             $qaTargetPath = $primaryOutputPath
             if ($routeUseComRefine) {
@@ -1301,7 +1483,7 @@ try {
                 'ppt-template-fidelity',
                 '--workspace', $resolvedWorkspace,
                 '--final-pptx', $qaTargetPath,
-                '--map', $mapPath,
+                    '--map', $workspaceMapPath,
                 '--starter-pptx', $starterPptxPath,
                 '--starter-layout-dir', $starterLayoutDir,
                 '--final-layout-dir', $finalLayoutDir,

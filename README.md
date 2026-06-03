@@ -4,7 +4,7 @@
 无极军团不是再堆一堆 skill，也不是花哨的多 agent 表演。它是一套面向真实交付的执行系统：自动收敛角色、压低 token、提高命中率，把调研、代码、内容、PPT、HTML、配图、插件和规则升级都收口到可验证的结果。
 
 **一句话卖点**  
-更省 token，更少废话，更高命中，更稳交付。
+更省 token，更少废话，更高命中，更稳交付；PPT 默认走“模板续写 + 动态演示 + 可编辑交付”主链。
 
 ## 为什么会让人想用
 
@@ -20,6 +20,7 @@
 - 代码：Go 执行底座负责硬门禁，功能链路可构建、可测试、可审计。
 - 内容：写作、脚本、方案、教程不再像 AI 拼接稿。
 - PPT / HTML / UI：先走真正的生产引擎，再做预览、校验和修复，减少返工。
+- PPT：固定首页/目录页/单元页/总结页/结尾页角色，优先复用模板元素；动态感先在 HTML 演示稿成立，再落到可编辑 PPTX。
 - 安全：白帽、质检、安全、合规独立，不让执行者自己给自己放行。
 - 进化：只蒸馏有用能力，不做无穷叠加。
 
@@ -38,6 +39,7 @@
 - 图像直出：普通 `生图/插图/海报/封面/配图` 已从 `ComfyUI` 重链剥离，`route-task` 直接落到 `imagegen` 低档直出链。
 - PPT 主链：模板续写走 `Presentations template-following exact clone/edit`；从零高颜值走 `HTML-first -> editable PPTX`；Windows PowerPoint COM/MCP 只做最后一公里精修；Go 负责锁三张表、`style-lock`、`page-role-policy`、pilot 放行和收口 QA，默认主线不再先跑 `pptx-preflight`。
 - 当前 `HTML-first` 的真实边界已明确：它优先走 `Playwright + dom-to-pptx` 的浏览器计算样式导出，能高保真保留静态 HTML/CSS 视觉，但仍不把 HTML/CSS 的动画、过渡和动态组件自动转成 PowerPoint 动画。
+- 动态交付主张：演示型 PPT 默认双轨成品，`live HTML demo` 承接动态体验，`editable PPTX` 承接可编辑交付；静态 PPT 不再冒充动态成品。
 - 自进化闭环：`feedback-log -> feedback-dataset -> prompt-candidate-audit -> prompt-eval -> prompt-distill`。
 - 交付铁律：只交最终结果，不交半成品，不拿路线表演冒充执行。
 - Codex Use Cases 精华点已吸收为少数硬机制：持续目标直跑到底、复杂代码先出最小代码地图、重复工作优先沉成 skill/CLI、外部与批量操作必须留证据、前端默认真实浏览器验收、安全结果必须证据分级。
@@ -57,6 +59,7 @@ PPT 主链同时完成整流：不再把 Go 门禁当成 PPT 生产引擎。模�
 教学页现在不允许只剩大框架：如果页面包含步骤、操作、界面、按钮、导入导出等教学信号，系统会默认生成 `outline / speaker-notes / illustration-plan` 工件，并把“截图 / 步骤示意图 / image2 教学插图 / 复用参考图框”写成显式策略；`pptx-batch-gate` 会拦截缺视觉策略的教学页。
 
 这次又把两条高频跑偏点彻底写死进了 PPT 开发逻辑。第一，`style-lock` 会把整套 deck 的风格名、背景深浅、霓虹/高光语言、插图语言和禁止项固化下来；像“霓虹赛博卡通风”这种用户明确点名的风格，后续必须原样进入 image2 / 配图提示，不能再静默洗成白底或写实风。第二，`page-role-policy` 会把首页、目录页、单元页、总结页、结尾页这些固定页型锁住，后续不得再拿这些页去塞普通内容页。
+第三，模板里现成的标题条、卡片、图框、插图区、装饰组件默认优先借位复用，不再鼓励自创低配方框。第四，只要任务目标明确要求动态感，就必须同时规划 `motion-plan`；如果最终只交静态 PPT，就不能再对外声称“动态已经实现”。
 
 为压速度，PPT 主链还额外固化了几条默认跳过规则：不再重复跑 `pptx-preflight`；同路线成功过后默认复用已有 inspect，不再重复 template inspect；html-first 默认只渲染 pilot 所需最小预览，不做整套 layout 体检；模板续写默认跳过无必要的 final preview 重渲染；同任务里已经验证过的工具链，不再为“确认能不能做”重复探路。
 

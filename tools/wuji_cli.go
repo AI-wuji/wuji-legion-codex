@@ -80,6 +80,39 @@ type canonDecision struct {
 }
 
 var slideTextPattern = regexp.MustCompile(`(?is)<a:t[^>]*>(.*?)</a:t>`)
+var unfinishedLinePattern = regexp.MustCompile(`(?m)(^\s*(?:[-*]\s*)?(?:待开发|后续路线)(?:\s|$))|((?:待开发|后续路线)\s*[:：])`)
+var incompleteLinePattern = regexp.MustCompile(`(?im)(^\s*(?:[-*]|\[\s?\])\s*(?:todo|tbd)\b)|(^\s*(?:#|//|/\*|\*)\s*(?:todo|tbd)\b)|(\b(?:todo|tbd)\s*[:：])`)
+
+func auditMarkerText(text string) string {
+	lines := strings.Split(text, "\n")
+	filtered := make([]string, 0, len(lines))
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		lowerTrimmed := strings.ToLower(trimmed)
+		hasMarkerToken := strings.Contains(lowerTrimmed, "todo") ||
+			strings.Contains(lowerTrimmed, "tbd") ||
+			strings.Contains(trimmed, "待开发") ||
+			strings.Contains(trimmed, "后续路线") ||
+			strings.Contains(trimmed, "A/B") ||
+			strings.Contains(lowerTrimmed, "a/b")
+		if unfinishedLinePattern.MatchString(trimmed) ||
+			incompleteLinePattern.MatchString(trimmed) ||
+			(hasMarkerToken && (strings.HasPrefix(trimmed, "#") ||
+				strings.HasPrefix(trimmed, "//") ||
+				strings.HasPrefix(trimmed, "/*") ||
+				strings.HasPrefix(trimmed, "*") ||
+				strings.Contains(trimmed, "A/B:") ||
+				strings.Contains(lowerTrimmed, "a/b:"))) {
+			filtered = append(filtered, line)
+		}
+	}
+	return strings.Join(filtered, "\n")
+}
+
+func isAuditMarkerFixture(rel string) bool {
+	cleanRel := filepath.ToSlash(rel)
+	return cleanRel == "tools/wuji_cli.go" || cleanRel == "scripts/test-wuji-cli.ps1"
+}
 
 var placeholderMarkers = []string{
 	"输入标题内容",
@@ -1161,6 +1194,174 @@ func pageRolePolicyFailures(workspace string) []string {
 	return uniqueSorted(failures)
 }
 
+func motionPlanRequired(workspace string) bool {
+	path, ok := existingPlanFile(workspace, "motion-plan")
+	if !ok || !nonEmpty(path) {
+		return false
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return false
+	}
+	if strings.EqualFold(filepath.Ext(path), ".json") {
+		payload := map[string]any{}
+		if err := json.Unmarshal(raw, &payload); err == nil {
+			if required, ok := boolFromAny(payload["required"]); ok {
+				return required
+			}
+		}
+	}
+	lower := strings.ToLower(string(raw))
+	return strings.Contains(lower, "required: true")
+}
+
+func motionPlanFailures(workspace string) []string {
+	path, ok := existingPlanFile(workspace, "motion-plan")
+	if !ok || !nonEmpty(path) {
+		return nil
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return []string{fmt.Sprintf("motion_plan_unreadable=%s", path)}
+	}
+	failures := []string{}
+	required := false
+	if strings.EqualFold(filepath.Ext(path), ".json") {
+		payload := map[string]any{}
+		if err := json.Unmarshal(raw, &payload); err != nil {
+			return []string{fmt.Sprintf("motion_plan_invalid_json=%s", path)}
+		}
+		if value, ok := boolFromAny(payload["required"]); ok {
+			required = value
+		}
+		requiredKeys := []string{"dynamic_source", "motion_intent", "static_fallback", "gate_note"}
+		for _, key := range requiredKeys {
+			if objectString(payload, key) == "" {
+				failures = append(failures, fmt.Sprintf("motion_plan_missing_%s=%s", key, path))
+			}
+		}
+		if required && len(objectStringSlice(payload, "motion_roles")) == 0 {
+			failures = append(failures, fmt.Sprintf("motion_plan_missing_motion_roles=%s", path))
+		}
+	} else {
+		lower := strings.ToLower(string(raw))
+		required = strings.Contains(lower, "required: true")
+		for _, marker := range []string{"dynamic_source:", "motion_intent:", "static_fallback:", "gate_note:"} {
+			if !strings.Contains(lower, marker) {
+				failures = append(failures, fmt.Sprintf("motion_plan_missing_marker=%s", marker))
+			}
+		}
+		if required && !strings.Contains(lower, "motion_roles:") {
+			failures = append(failures, "motion_plan_missing_marker=motion_roles:")
+		}
+	}
+	if required {
+		if sourceArtifact, ok := motionPlanSourceArtifact(workspace); ok {
+			if _, err := os.Stat(sourceArtifact); err != nil {
+				failures = append(failures, fmt.Sprintf("motion_plan_missing_source_artifact=%s", sourceArtifact))
+			}
+		} else if !hasWorkspaceHTMLArtifact(workspace) {
+			failures = append(failures, "motion_plan_required_but_no_live_html_demo_artifact")
+		}
+	}
+	return uniqueSorted(failures)
+}
+
+func objectStringSlice(payload map[string]any, key string) []string {
+	values := []string{}
+	raw, ok := payload[key]
+	if !ok {
+		return values
+	}
+	switch typed := raw.(type) {
+	case []any:
+		for _, item := range typed {
+			if text, ok := stringFromAny(item); ok && strings.TrimSpace(text) != "" {
+				values = append(values, strings.TrimSpace(text))
+			}
+		}
+	case []string:
+		for _, item := range typed {
+			if strings.TrimSpace(item) != "" {
+				values = append(values, strings.TrimSpace(item))
+			}
+		}
+	}
+	return values
+}
+
+func motionPlanSourceArtifact(workspace string) (string, bool) {
+	path, ok := existingPlanFile(workspace, "motion-plan")
+	if !ok || !nonEmpty(path) {
+		return "", false
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	if strings.EqualFold(filepath.Ext(path), ".json") {
+		payload := map[string]any{}
+		if err := json.Unmarshal(raw, &payload); err == nil {
+			if value := strings.TrimSpace(objectString(payload, "source_artifact")); value != "" {
+				if filepath.IsAbs(value) {
+					return value, true
+				}
+				return filepath.Join(workspace, value), true
+			}
+		}
+	}
+	for _, line := range strings.Split(string(raw), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(strings.ToLower(trimmed), "- source_artifact:") {
+			continue
+		}
+		value := strings.TrimSpace(strings.TrimPrefix(trimmed, "- source_artifact:"))
+		if value == "" {
+			return "", false
+		}
+		if filepath.IsAbs(value) {
+			return value, true
+		}
+		return filepath.Join(workspace, value), true
+	}
+	return "", false
+}
+
+func hasWorkspaceHTMLArtifact(workspace string) bool {
+	entries, err := os.ReadDir(workspace)
+	if err != nil {
+		return false
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		if strings.EqualFold(filepath.Ext(entry.Name()), ".html") {
+			return true
+		}
+	}
+	return false
+}
+
+func pilotPreviewLayoutFailures(path string) []string {
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		return []string{fmt.Sprintf("pilot_preview_layout_unreadable=%s", path)}
+	}
+	payload := map[string]any{}
+	if err := json.Unmarshal(raw, &payload); err != nil {
+		return []string{fmt.Sprintf("pilot_preview_layout_invalid_json=%s", path)}
+	}
+	failures := []string{}
+	if overflowCount, ok := intFromAny(payload["overflow_count"]); ok && overflowCount > 0 {
+		failures = append(failures, fmt.Sprintf("pilot_preview_layout_overflow=%s count=%d", path, overflowCount))
+	}
+	if unsafeCount, ok := intFromAny(payload["unsafe_count"]); ok && unsafeCount > 0 {
+		failures = append(failures, fmt.Sprintf("pilot_preview_layout_unsafe_area=%s count=%d", path, unsafeCount))
+	}
+	return uniqueSorted(failures)
+}
+
 func decodeImage(path string) (image.Image, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -1931,7 +2132,9 @@ func auditCommand(args []string) int {
 			return nil
 		}
 		text := string(bytes)
+		markerText := auditMarkerText(text)
 		rel, _ := filepath.Rel(root, path)
+		allowMarkerChecks := !isAuditMarkerFixture(rel)
 		check := func(kind string, pattern string) {
 			findings = append(findings, jsonObject{"file": rel, "kind": kind, "pattern": pattern})
 			failures = append(failures, fmt.Sprintf("%s=%s", kind, rel))
@@ -1953,18 +2156,20 @@ func auditCommand(args []string) int {
 				check("stale_rust_mainline_ref", "Rust mainline")
 			}
 		}
-		unfinishedRefs := []string{"待" + "开发", "后续" + "路线"}
-		for _, unfinishedRef := range unfinishedRefs {
-			if strings.Contains(text, unfinishedRef) {
-				check("unfinished_marker", "unfinished marker")
-				break
+		if allowMarkerChecks {
+			unfinishedRefs := []string{"待" + "开发", "后续" + "路线"}
+			for _, unfinishedRef := range unfinishedRefs {
+				if strings.Contains(markerText, unfinishedRef) {
+					check("unfinished_marker", "unfinished marker")
+					break
+				}
 			}
-		}
-		stackingRefs := []string{"A" + "/B", "a" + "/b", "并行" + "主线"}
-		for _, stackingRef := range stackingRefs {
-			if strings.Contains(text, stackingRef) {
-				check("stacking_marker", "stacking marker")
-				break
+			stackingRefs := []string{"A" + "/B", "a" + "/b", "并行" + "主线"}
+			for _, stackingRef := range stackingRefs {
+				if strings.Contains(markerText, stackingRef) {
+					check("stacking_marker", "stacking marker")
+					break
+				}
 			}
 		}
 		secretPatterns := []string{
@@ -1983,12 +2188,14 @@ func auditCommand(args []string) int {
 				break
 			}
 		}
-		incompleteRefs := []string{"to" + "do", "t" + "bd"}
-		lowerText := strings.ToLower(text)
-		for _, incompleteRef := range incompleteRefs {
-			if strings.Contains(lowerText, incompleteRef) {
-				check("incomplete_marker", "incomplete marker")
-				break
+		if allowMarkerChecks {
+			incompleteRefs := []string{"to" + "do", "t" + "bd"}
+			lowerText := strings.ToLower(markerText)
+			for _, incompleteRef := range incompleteRefs {
+				if strings.Contains(lowerText, incompleteRef) {
+					check("incomplete_marker", "incomplete marker")
+					break
+				}
 			}
 		}
 		return nil
@@ -2323,6 +2530,16 @@ func assetMapCommand(args []string) int {
 	illustrationLines := []string{"# illustration-plan", ""}
 	styleLines := []string{"# style-lock", ""}
 	pageRoleLines := []string{"# page-role-policy", ""}
+	motionLines := []string{
+		"# motion-plan",
+		"",
+		"- required: false",
+		"- dynamic_source: none",
+		"- motion_intent: static-ok",
+		"- motion_roles: none",
+		"- static_fallback: keep the editable PPTX honest; if later tasks require motion, add a live HTML demo instead of claiming PowerPoint already inherited it.",
+		"- gate_note: upgrade this plan and attach a live HTML demo artifact before closeout whenever the task asks for dynamic experience.",
+	}
 	stylePreset := styleLockPresetForDeck(pptxPath, summary.Slides)
 	styleLines = append(styleLines,
 		fmt.Sprintf("- visual_system: %v", stylePreset["style_brief"]),
@@ -2425,6 +2642,10 @@ func assetMapCommand(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	if err := os.WriteFile(filepath.Join(workspace, "motion-plan.md"), []byte(strings.Join(motionLines, "\n")+"\n"), 0o644); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
 	if err := writeJSON(filepath.Join(workspace, "page-role-policy.json"), jsonObject{
 		"locked_roles": lockedRoles,
 		"default_rules": []string{
@@ -2432,6 +2653,17 @@ func assetMapCommand(args []string) int {
 			"do not repurpose cover/agenda/section/summary/ending frames",
 			"content pages must use content-capable layouts",
 		},
+	}); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSON(filepath.Join(workspace, "motion-plan.json"), jsonObject{
+		"required":        false,
+		"dynamic_source":  "none",
+		"motion_intent":   "static-ok",
+		"motion_roles":    []string{},
+		"static_fallback": "keep the editable PPTX honest; if later tasks require motion, add a live HTML demo instead of claiming PowerPoint already inherited it.",
+		"gate_note":       "upgrade this plan and attach a live HTML demo artifact before closeout whenever the task asks for dynamic experience.",
 	}); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
@@ -2517,6 +2749,10 @@ func existingPlanFile(workspace string, stem string) (string, bool) {
 	return "", false
 }
 
+func requiredPPTPlanStems() []string {
+	return []string{"reference-frame-map", "reusable-asset-map", "illustration-plan", "style-lock", "page-role-policy", "motion-plan"}
+}
+
 func scanGenerator(path string) []string {
 	failures := []string{}
 	bytes, err := os.ReadFile(path)
@@ -2552,7 +2788,7 @@ func pptxPreflight(args []string) int {
 	if info, err := os.Stat(workspace); err != nil || !info.IsDir() {
 		failures = append(failures, fmt.Sprintf("workspace_missing=%s", workspace))
 	}
-	for _, stem := range []string{"reference-frame-map", "reusable-asset-map", "illustration-plan", "style-lock", "page-role-policy"} {
+	for _, stem := range requiredPPTPlanStems() {
 		if path, ok := existingPlanFile(workspace, stem); ok {
 			if !nonEmpty(path) {
 				failures = append(failures, fmt.Sprintf("plan_file_too_small=%s", path))
@@ -2563,6 +2799,7 @@ func pptxPreflight(args []string) int {
 	}
 	failures = append(failures, styleLockFailures(workspace)...)
 	failures = append(failures, pageRolePolicyFailures(workspace)...)
+	failures = append(failures, motionPlanFailures(workspace)...)
 	if generator, ok := argValue(args, "--generator"); ok {
 		failures = append(failures, scanGenerator(generator)...)
 	}
@@ -2591,7 +2828,7 @@ func pptxBatchGate(args []string) int {
 	}
 	illustrationPlanPath := ""
 	requireDarkStyleLock := styleLockRequiresDarkBackground(workspace)
-	for _, stem := range []string{"reference-frame-map", "reusable-asset-map", "illustration-plan", "style-lock", "page-role-policy"} {
+	for _, stem := range requiredPPTPlanStems() {
 		if path, ok := existingPlanFile(workspace, stem); ok {
 			if !nonEmpty(path) {
 				failures = append(failures, fmt.Sprintf("plan_file_too_small=%s", path))
@@ -2605,6 +2842,7 @@ func pptxBatchGate(args []string) int {
 	failures = append(failures, illustrationPlanFailures(workspace)...)
 	failures = append(failures, styleLockFailures(workspace)...)
 	failures = append(failures, pageRolePolicyFailures(workspace)...)
+	failures = append(failures, motionPlanFailures(workspace)...)
 	if illustrationPlanPath != "" && hasTeachingSignalsInPlan(illustrationPlanPath) {
 		if path, ok := existingPlanFile(workspace, "outline"); !ok || !nonEmpty(path) {
 			failures = append(failures, "missing_required_content_artifact=outline")
@@ -2624,6 +2862,9 @@ func pptxBatchGate(args []string) int {
 		} else {
 			failures = append(failures, fmt.Sprintf("missing_required_pilot=%s", stem))
 		}
+	}
+	if path, ok := existingPlanFile(workspace, "pilot-preview-layout"); ok && nonEmpty(path) {
+		failures = append(failures, pilotPreviewLayoutFailures(path)...)
 	}
 	if path, ok := existingPlanFile(workspace, "pilot-score"); ok {
 		if !nonEmpty(path) {
