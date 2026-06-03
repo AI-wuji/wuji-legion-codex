@@ -40,6 +40,8 @@
 - PPT 主链：模板续写走 `Presentations template-following exact clone/edit`；从零高颜值走 `HTML-first -> editable PPTX`；Windows PowerPoint COM/MCP 只做最后一公里精修；Go 负责锁三张表、`style-lock`、`page-role-policy`、pilot 放行和收口 QA，默认主线不再先跑 `pptx-preflight`。
 - 当前 `HTML-first` 的真实边界已明确：它优先走 `Playwright + dom-to-pptx` 的浏览器计算样式导出，能高保真保留静态 HTML/CSS 视觉，但仍不把 HTML/CSS 的动画、过渡和动态组件自动转成 PowerPoint 动画。
 - 动态交付主张：演示型 PPT 默认双轨成品，`live HTML demo` 承接动态体验，`editable PPTX` 承接可编辑交付；静态 PPT 不再冒充动态成品。
+- 动态硬门现已落地：`motion-plan` 成为批量前必检工件；如果任务要求动效却没有 `live-demo-source.html` 或等效动态源，`pptx-batch-gate` 直接 `NO-GO`。
+- 布局硬门现已落地：`pilot-preview-layout.json` 会确定性拦截真实越界和底部危险区贴边；`HTML-first` 导出链也会同步生成 `htmlfirst-preview-layout.json` 作为布局证据。
 - 自进化闭环：`feedback-log -> feedback-dataset -> prompt-candidate-audit -> prompt-eval -> prompt-distill`。
 - 交付铁律：只交最终结果，不交半成品，不拿路线表演冒充执行。
 - Codex Use Cases 精华点已吸收为少数硬机制：持续目标直跑到底、复杂代码先出最小代码地图、重复工作优先沉成 skill/CLI、外部与批量操作必须留证据、前端默认真实浏览器验收、安全结果必须证据分级。
@@ -50,7 +52,7 @@
 
 ## v10.6 的关键变化 / Key Change
 
-v10.6 新增 `pilot-page` 快速闭环：PPT/HTML 视觉成品不再一口气批量试错，三张表锁路后先生成 1 页最高风险/最高密度/最能代表风格的 pilot page，记录 `pilot-score`。首套新模板/新路线/高风险风格变更必须用户明确批准后再批量；成熟同路线默认允许自动批准继续批量，但仍必须留下 `pilot-approval` 工件。执行底座新增 `pptx-batch-gate`，缺 `pilot-page`、`pilot-preview`、`pilot-score`、`pilot-approval`，或 preview 发白/低对比，直接 `NO-GO`。
+v10.6 新增 `pilot-page` 快速闭环：PPT/HTML 视觉成品不再一口气批量试错，三张表锁路后先生成 1 页最高风险/最高密度/最能代表风格的 pilot page，记录 `pilot-score`。pilot 默认先走内部 gate；只有命中真实审批点、用户明确要求先看中间结果，或路线风险高到无法内部判定取舍时，才停下给用户确认。其余情况默认允许自动批准继续批量，但仍必须留下 `pilot-approval` 工件。执行底座新增 `pptx-batch-gate`，缺 `pilot-page`、`pilot-preview`、`pilot-score`、`pilot-approval`，或 preview 发白/低对比，直接 `NO-GO`。
 
 PPT 主链同时完成整流：不再把 Go 门禁当成 PPT 生产引擎。模板续写/补页固定切到官方 `Presentations`；从零高颜值固定补进 `HTML-first -> editable PPTX`；PowerPoint COM/MCP 只保留为最后一公里精修；原有 Go 链降到后置 QA 和安全护栏。这里的 `HTML-first` 当前主引擎已切到 `dom-to-pptx`，属于“高保真静态 HTML/CSS 导出”，不再是旧的低保真重画链。
 
@@ -69,6 +71,14 @@ PPT 主链同时完成整流：不再把 Go 门禁当成 PPT 生产引擎。模�
 前台执行提示统一压成中文短句：执行前只报 `建议：5.4-mini 低` / `建议：5.4 中` / `建议：5.5 高` / `建议：5.5 超高`；任务完成后默认报 `建议切回：5.4-mini 低`。
 提示词自进化当前已收口为离线闭环：`feedback-log -> feedback-dataset -> prompt-candidate-audit -> prompt-eval -> prompt-distill`，只沉淀脱敏偏好信号，不把运行时上下文越堆越肥。
 `prompt-candidate-audit` 已把这类生图前探路话术列为失败项，防止规则说对了、执行又绕回去。
+
+## v10.8 的关键变化 / Key Change
+
+v10.8 把 PPT 动态链和布局收口从“规则要求”补成了“代码硬门”。`motion-plan` 现已正式进入 `wuji-cli pptx-preflight / pptx-batch-gate` 必检清单；动态任务如果缺 `live HTML demo` 或等效动态源，不再允许批量放行。`asset-map` 也会默认落地 `motion-plan.md/json`，不再靠人工补写。
+
+这一版同时补齐了布局证据链：`pilot-preview-layout.json` 现在会被 `pptx-batch-gate` 确定性校验，真实越界和底部危险区贴边直接拦截；`HTML-first` 主链会同步产出 `htmlfirst-preview-layout.json` 和布局报告，避免页面做得漂亮却超出可视安全区。
+
+PPT 包装脚本也做了稳定性补强：`wuji-ppt-pipeline.ps1` 会自动串起 `motion-plan`、`live-demo-source.html`、`pilot-preview-layout.json`；模板续写链补上 staged input 保护和产物缺失回退，防止“报告成功但成品没落地”。这批改动已通过 `scripts/test-wuji-cli.ps1` 的 deterministic gates 回归。
 
 ## v10.5 的关键变化 / Key Change
 
@@ -241,7 +251,7 @@ v9.6 做的是质量整流：把“能跑”继续推进到“干净、可安装
 ## 更新日志 / Changelog
 
 - `2026-06-01 v10.6`
-  - 新增 pilot page 快速闭环：先做 1 页代表页，过线后才批量生成。
+  - 新增 pilot page 快速闭环：先做 1 页代表页，先过内部 gate，再批量生成；只有命中真实审批点才停给用户看。
   - pilot 最多两轮，不过线必须换路线或短报阻塞。
   - 执行底座新增 `pptx-batch-gate`，缺 pilot 产物、`pilot-approval` 或 pilot-score 不允许批量生成；preview 发白/低对比也直接拦截。
 - `2026-06-01 v10.5`

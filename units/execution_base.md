@@ -86,13 +86,17 @@
 ## PPTX 专属硬门
 
 - `asset-map` 必须产出：`reference-frame-map`、`reusable-asset-map`、`illustration-plan`
+- `asset-map` 现在默认还要补出 `motion-plan.md/json`，避免动态任务继续靠人工补规则
 - 教学页如果在 `illustration-plan` 里出现 `requires_visual=true` 或教学信号，批量前还必须具备 `outline` 和 `speaker-notes`
 - `pptx-preflight` 只负责新路线或可疑 generator 的定向拦截，不再作为默认主链必经
 - `pptx-batch-gate` 缺 `pilot-page`、`pilot-preview`、`pilot-score`、`pilot-approval`、三张表或教学内容工件时，一律 `NO-GO`
+- 任务如果声明需要动效，`pptx-preflight / pptx-batch-gate` 还必须看到可用的 `motion-plan`；其中 `required=true` 时必须同时存在 `live-demo-source.html` 或等效动态源，否则一律 `NO-GO`
 - `pptx-batch-gate` 负责拦截发白洗底、低对比、近空白 preview
+- `pptx-batch-gate` 现在还会校验 `pilot-preview-layout.json`：`overflow_count > 0` 或 `unsafe_count > 0` 直接拦截，重点封死真实越界和底部危险区贴边
 - `pptx-audit` 负责拦截占位符残留、空白页、模板碎片页、整页图片区伪装可编辑 PPT
 - 模板续写时，Go 底座只负责检查三张表、pilot 和成品审计，不负责替代 `Presentations` 主生产链
 - 从零高颜值路线时，Go 底座只负责检查是否走错成整页图/假可编辑，不负责决定版式审美
+- `HTML-first` 现在会同步导出 `htmlfirst-preview-layout.json` 和布局报告，作为批量前后的布局证据；包装脚本会自动落地 `motion-plan`、`live-demo-source.html`、`pilot-preview-layout.json`
 
 ## 执行顺序
 

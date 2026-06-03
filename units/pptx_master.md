@@ -88,6 +88,7 @@ source
 - `editable PPTX` 是交付源：负责可编辑、可讲解、可继续修改、可复用模板资产。
 - 静态 PPT 只负责承接版式、结构、备注、配图和模板元素，不得谎称自己已经承接了 HTML 动态效果。
 - 只要任务要求“大量动态效果”“科技感演示”“看板动效”“赛博氛围”，`design-brief` 里就必须显式写出 `motion-plan`，至少包含：页面动效角色、节奏、可接受的静态降级方式。
+- `motion-plan` 不是软建议，而是批量前硬工件；如果标记 `required=true`，就必须同时产出 `live-demo-source.html` 或等效动态源，否则不得进入批量。
 - 当前默认事实边界必须写死：HTML 动画、过渡、呼吸光效、旋转扫描、浮动卡片等，可先在 HTML 演示稿实现；PowerPoint 侧默认只承接静态可编辑表达，除非后续明确接入 PPT 原生动画编排链。
 
 ## 三张表
@@ -119,7 +120,8 @@ source
 - pilot page 不是工具链测试，只验风格、结构、素材复用、插图策略和可编辑路线。
 - pilot 必须选最有代表性、最高风险、最高密度的一页。
 - pilot 必须导出 preview，并记录 `pilot-score`。
-- 首套新模板、新路线或高风险视觉任务，pilot 后只有在规则明确要求用户审批时才停下给用户看 preview；其余成熟同路线任务默认自动继续，不得为了展示过程额外停顿。
+- pilot 现在还必须尽量附带 `pilot-preview-layout.json`；一旦出现真实越界或底部危险区贴边，`pptx-batch-gate` 直接拦截，不允许带病批量。
+- pilot 后默认先走内部 gate 判断是否可继续；只有命中真实审批点、用户明确要求先看中间结果，或路线风险高到无法内部判定取舍时，才停下给用户看 preview；其余情况默认自动继续，不得为了展示过程额外停顿。
 - 成熟同路线默认允许自动批准继续批量，但仍必须留下 `pilot-approval` 工件。
 - pilot 最多两轮；两轮仍不过线，必须换路线或短报阻塞。
 - `pptx-batch-gate` 是默认批量放行门；缺三张表、`pilot-page`、`pilot-preview`、`pilot-score` 或 `pilot-approval`，一律 `NO-GO`。
@@ -140,6 +142,7 @@ source
 - 非代码成品默认先跑主链，遇错再修，不做连环前测。
 - 同一路线在当前任务里成功过一次，不得重复验证同类能力。
 - html-first 的 inspect 默认只取 pilot 所需最小集，不做整套预览和整套 layout 体检。
+- html-first 虽然不做整套 layout 体检，但现在会同步产出 `htmlfirst-preview-layout.json` 作为布局证据；重点只拦真实越界和底部危险区，不扩大成过度体检。
 - template-following 默认复用已有 inspect，并跳过不必要的 final preview 渲染。
 - 备注逐字稿在机器支持 PowerPoint COM 时默认自动写入，不让用户再额外提醒。
 - 默认跳过：开工前工具可用性连环测试、环境探测表演、重复 template inspect、重复 preflight、无必要的全量 preview 重渲染。

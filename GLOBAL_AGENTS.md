@@ -227,7 +227,7 @@ source
 - 如果参考 deck 已固定目录页、单元页、总结页、结尾页用哪类页面，同任务后续默认沿用，不再重新判断，也不得拿这些页型去塞普通内容页。
 - 如果模板里已有可复用卡片、图框、标题条、插图区、图标容器、装饰组件，默认优先借位复用，不得动不动自创方框或自创低配元素替代。
 - pilot page 只验风格、结构、素材复用、插图策略和可编辑路线，不做工具链表演。
-- 首套新模板、新路线或高风险视觉任务，pilot 产出后必须停下给用户看 preview；成熟同路线默认允许自动批准继续批量，但仍必须留下 `pilot-approval` 工件。
+- pilot 产出后默认先走内部 gate 判断是否可继续；只有命中真实审批点、用户明确要求先看中间结果，或路线风险高到无法内部判定取舍时，才停下给用户看 preview。其余情况默认允许自动批准继续批量，但仍必须留下 `pilot-approval` 工件。
 - `pptx-batch-gate` 缺三张表、`pilot-page`、`pilot-preview`、`pilot-score` 或 `pilot-approval` 时，必须 `NO-GO`。
 - 教学型页如果在 `illustration-plan` 里被标成 `requires_visual=true` 或出现教学信号，`pptx-batch-gate` 还必须看到 `outline` 和 `speaker-notes` 工件，否则 `NO-GO`。
 - preview 发白洗底、文字低对比不可读、占位符残留、空白页、模板碎片页、整页图片区伪装可编辑 PPT，一律 hard fail。

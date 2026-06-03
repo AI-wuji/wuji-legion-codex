@@ -1,5 +1,15 @@
 # 更新日志 / Changelog
 
+## 2026-06-03 v10.8 ppt hardening and motion gate closure
+
+- `wuji-cli pptx-preflight / pptx-batch-gate` 现已把 `motion-plan` 纳入必检工件；动态任务如果要求动效却没有 `live HTML demo` 或等效动态源，直接 `NO-GO`。
+- `wuji-cli pptx-batch-gate` 新增 `pilot-preview-layout.json` 校验，开始确定性拦截两类高频问题：真实越界，以及底部危险区贴边。
+- `asset-map` 现在会默认产出 `motion-plan.md/json`，避免动态要求仍靠人工补写。
+- `wuji-ppt-htmlfirst.mjs` 现已内置 `assets/wuji-motion-presets.css` 动效预设，并在导出时同步产出 `htmlfirst-preview-layout.json`。
+- `wuji-ppt-pipeline.ps1` 现在会自动落地 `motion-plan`、`live-demo-source.html`、`pilot-preview-layout.json`，把双轨动态链真正串起来。
+- 修复 `template-following` 老链的 3 个稳定性问题：工作区初始化误伤输入文件、starter/edit 包装脚本偶发“报告成功但产物没落地”、pilot 误抓发白坏预览。
+- `scripts/test-wuji-cli.ps1` 已补充动态源缺失拦截、布局越界拦截、HTML-first 布局报告、template-following 稳定性回归；整套 `wuji-cli deterministic gates` 全量通过。
+
 ## 2026-06-03 v10.7 execution-base evolution loop
 
 - `wuji-cli task` 收紧为显式状态机：`running / blocked / needs_decision / done`。
