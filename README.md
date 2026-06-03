@@ -40,6 +40,7 @@
 - 当前 `HTML-first` 的真实边界已明确：它优先走 `Playwright + dom-to-pptx` 的浏览器计算样式导出，能高保真保留静态 HTML/CSS 视觉，但仍不把 HTML/CSS 的动画、过渡和动态组件自动转成 PowerPoint 动画。
 - 自进化闭环：`feedback-log -> feedback-dataset -> prompt-candidate-audit -> prompt-eval -> prompt-distill`。
 - 交付铁律：只交最终结果，不交半成品，不拿路线表演冒充执行。
+- Codex Use Cases 精华点已吸收为少数硬机制：持续目标直跑到底、复杂代码先出最小代码地图、重复工作优先沉成 skill/CLI、外部与批量操作必须留证据、前端默认真实浏览器验收、安全结果必须证据分级。
 
 ---
 
