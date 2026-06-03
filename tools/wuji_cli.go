@@ -115,6 +115,20 @@ var executionExploratoryPhases = map[string]bool{
 	"preflight": true,
 }
 
+var closeoutLeakMarkers = []string{
+	"下一步",
+	"还有可优化",
+	"还可以优化",
+	"继续优化",
+	"要不要继续",
+	"是否继续",
+	"next step",
+	"could continue",
+	"can continue",
+	"more to optimize",
+	"further optimization",
+}
+
 func auditMarkerText(text string) string {
 	lines := strings.Split(text, "\n")
 	filtered := make([]string, 0, len(lines))
@@ -209,6 +223,21 @@ func taskLogExecutionRhythmFailures(records []map[string]any) []string {
 	for idx, record := range records {
 		for _, failure := range executionRhythmFailures(record) {
 			failures = append(failures, fmt.Sprintf("task_log_record_%02d_%s", idx+1, strings.ReplaceAll(failure, " ", "_")))
+		}
+	}
+	return failures
+}
+
+func taskLogCloseoutLeakFailures(records []map[string]any) []string {
+	failures := []string{}
+	for idx, record := range records {
+		event := normalizedLower(objectString(record, "event"))
+		status := normalizedLower(objectString(record, "status"))
+		note := objectString(record, "note")
+		if event == "end" && status == "done" {
+			if hits := markerHits(note, closeoutLeakMarkers); len(hits) > 0 {
+				failures = append(failures, fmt.Sprintf("task_log_record_%02d_done_note_reopens_work=%s", idx+1, strings.Join(hits, "|")))
+			}
 		}
 	}
 	return failures
@@ -1729,6 +1758,7 @@ func workflowGuard(args []string) int {
 				failures = append(failures, "workflow_task_log_unreadable")
 			} else {
 				failures = append(failures, taskLogExecutionRhythmFailures(records)...)
+				failures = append(failures, taskLogCloseoutLeakFailures(records)...)
 				last := records[len(records)-1]
 				if objectString(last, "event") != "end" || objectString(last, "status") != "done" {
 					failures = append(failures, "workflow_task_log_not_closed")
@@ -1887,6 +1917,10 @@ func taskCommand(args []string) int {
 			return 2
 		}
 	}
+	if (status == "blocked" || status == "needs_decision" || event == "blocked") && strings.TrimSpace(note) == "" {
+		fmt.Fprintln(os.Stderr, "blocked or needs_decision status requires a concrete --note reason")
+		return 2
+	}
 	entry := jsonObject{
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"event":     event,
@@ -1899,6 +1933,11 @@ func taskCommand(args []string) int {
 	}
 	if failures := executionRhythmFailures(entry); len(failures) > 0 {
 		return printGate("task", failures)
+	}
+	if event == "end" && status == "done" {
+		if hits := markerHits(note, closeoutLeakMarkers); len(hits) > 0 {
+			return printGate("task", []string{"done_note_reopens_work=" + strings.Join(hits, "|")})
+		}
 	}
 	if err := ensureDir(workspace); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -2254,6 +2293,9 @@ func auditCommand(args []string) int {
 			}
 			for _, failure := range taskLogExecutionRhythmFailures(records) {
 				check("execution_rhythm_violation", failure)
+			}
+			for _, failure := range taskLogCloseoutLeakFailures(records) {
+				check("closeout_leak_violation", failure)
 			}
 		}
 		replacementChar := string(rune(0xfffd))
