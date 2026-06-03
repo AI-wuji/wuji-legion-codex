@@ -1389,9 +1389,9 @@ try {
             }
 
             $pilotPagePath = Copy-Artifact -Source $starterPptxPath -Destination (Join-Path $resolvedWorkspace 'pilot-page.pptx')
-            $pilotPreviewSource = Get-HtmlFirstPreviewPathFromPptx -PptxPath $sourcePptxPath
+            $pilotPreviewSource = Get-FirstFile -Dir $starterPreviewDir -Filter '*.png'
             if ([string]::IsNullOrWhiteSpace($pilotPreviewSource)) {
-                $pilotPreviewSource = Get-FirstFile -Dir $starterPreviewDir -Filter '*.png'
+                $pilotPreviewSource = Get-HtmlFirstPreviewPathFromPptx -PptxPath $sourcePptxPath
             }
             $pilotPreviewPath = Copy-Artifact -Source $pilotPreviewSource -Destination (Join-Path $resolvedWorkspace 'pilot-preview.png')
             $pilotScorePath = New-PilotScore -WorkspacePath $resolvedWorkspace -RouteName $Route -SlideCount ((Read-JsonFile -Path $workspaceMapPath).outputSlides.Count)

@@ -28,10 +28,27 @@ $ErrorActionPreference = "Stop"
 $runtime = Get-WujiPptRuntime -SkillDir $SkillDir -NodePath $NodePath -NodeModules $NodeModules -PythonPath $PythonPath
 $scriptPath = Join-Path $runtime.SkillDir "scripts\prepare_template_starter_deck.mjs"
 $resolvedWorkspace = [System.IO.Path]::GetFullPath($Workspace)
+$resolvedPptxInput = [System.IO.Path]::GetFullPath($Pptx)
+$resolvedMapInput = [System.IO.Path]::GetFullPath($Map)
+$workspacePrefix = $resolvedWorkspace.TrimEnd('\','/') + [System.IO.Path]::DirectorySeparatorChar
+$stagedDir = Join-Path (Split-Path -Parent $resolvedWorkspace) ("{0}-staged-inputs" -f (Split-Path -Leaf $resolvedWorkspace))
+if ($resolvedPptxInput.StartsWith($workspacePrefix, [System.StringComparison]::OrdinalIgnoreCase) -or $resolvedMapInput.StartsWith($workspacePrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    New-Item -ItemType Directory -Force -Path $stagedDir | Out-Null
+    if ($resolvedPptxInput.StartsWith($workspacePrefix, [System.StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $resolvedPptxInput)) {
+        $stagedPptx = Join-Path $stagedDir ([System.IO.Path]::GetFileName($resolvedPptxInput))
+        Copy-Item -LiteralPath $resolvedPptxInput -Destination $stagedPptx -Force
+        $resolvedPptxInput = $stagedPptx
+    }
+    if ($resolvedMapInput.StartsWith($workspacePrefix, [System.StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $resolvedMapInput)) {
+        $stagedMap = Join-Path $stagedDir ([System.IO.Path]::GetFileName($resolvedMapInput))
+        Copy-Item -LiteralPath $resolvedMapInput -Destination $stagedMap -Force
+        $resolvedMapInput = $stagedMap
+    }
+}
 $null = New-Item -ItemType Directory -Force -Path $resolvedWorkspace
 Initialize-WujiArtifactWorkspace -Runtime $runtime -Workspace $resolvedWorkspace
-$resolvedPptx = (Resolve-Path -LiteralPath $Pptx).Path
-$resolvedMap = (Resolve-Path -LiteralPath $Map).Path
+$resolvedPptx = (Resolve-Path -LiteralPath $resolvedPptxInput).Path
+$resolvedMap = (Resolve-Path -LiteralPath $resolvedMapInput).Path
 
 $argsList = @("--workspace", $resolvedWorkspace, "--pptx", $resolvedPptx, "--map", $resolvedMap, "--out", [System.IO.Path]::GetFullPath($Out))
 if ($PreviewDir) {

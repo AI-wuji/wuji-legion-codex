@@ -29,9 +29,25 @@ $ErrorActionPreference = "Stop"
 $runtime = Get-WujiPptRuntime -SkillDir $SkillDir -NodePath $NodePath -NodeModules $NodeModules -PythonPath $PythonPath
 $scriptPath = Join-Path $PSScriptRoot "wuji-ppt-template-edit.mjs"
 $resolvedWorkspace = [System.IO.Path]::GetFullPath($Workspace)
+$resolvedStarterInput = [System.IO.Path]::GetFullPath($StarterPptx)
+$resolvedMapInput = [System.IO.Path]::GetFullPath($Map)
+$workspacePrefix = $resolvedWorkspace.TrimEnd('\','/') + [System.IO.Path]::DirectorySeparatorChar
+$stagedDir = Join-Path (Split-Path -Parent $resolvedWorkspace) ("{0}-staged-inputs" -f (Split-Path -Leaf $resolvedWorkspace))
+if ($resolvedStarterInput.StartsWith($workspacePrefix, [System.StringComparison]::OrdinalIgnoreCase) -or $resolvedMapInput.StartsWith($workspacePrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+    New-Item -ItemType Directory -Force -Path $stagedDir | Out-Null
+    if ($resolvedStarterInput.StartsWith($workspacePrefix, [System.StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $resolvedStarterInput)) {
+        $stagedStarter = Join-Path $stagedDir ([System.IO.Path]::GetFileName($resolvedStarterInput))
+        Copy-Item -LiteralPath $resolvedStarterInput -Destination $stagedStarter -Force
+        $resolvedStarterInput = $stagedStarter
+    }
+    if ($resolvedMapInput.StartsWith($workspacePrefix, [System.StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $resolvedMapInput)) {
+        $stagedMap = Join-Path $stagedDir ([System.IO.Path]::GetFileName($resolvedMapInput))
+        Copy-Item -LiteralPath $resolvedMapInput -Destination $stagedMap -Force
+        $resolvedMapInput = $stagedMap
+    }
+}
 $null = New-Item -ItemType Directory -Force -Path $resolvedWorkspace
 Initialize-WujiArtifactWorkspace -Runtime $runtime -Workspace $resolvedWorkspace
-$resolvedStarterInput = [System.IO.Path]::GetFullPath($StarterPptx)
 $manifestPath = Join-Path (Split-Path -Parent $resolvedStarterInput) 'template-starter.manifest.json'
 if (-not (Test-Path -LiteralPath $resolvedStarterInput)) {
     if (Test-Path -LiteralPath $manifestPath) {
@@ -52,7 +68,7 @@ if (-not (Test-Path -LiteralPath $resolvedStarterInput)) {
     }
 }
 $resolvedStarterPptx = (Resolve-Path -LiteralPath $StarterPptx).Path
-$resolvedMap = (Resolve-Path -LiteralPath $Map).Path
+$resolvedMap = (Resolve-Path -LiteralPath $resolvedMapInput).Path
 
 $argsList = @("--workspace", $resolvedWorkspace, "--starter-pptx", $resolvedStarterPptx, "--map", $resolvedMap, "--out", [System.IO.Path]::GetFullPath($Out))
 if ($PreviewDir) {
