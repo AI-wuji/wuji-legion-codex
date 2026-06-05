@@ -138,6 +138,11 @@ Invoke-Case -Name 'reference-safe' -ExpectedExit 0 -Arguments @('reference-guard
 Invoke-Case -Name 'reference-overwrite-blocked' -ExpectedExit 1 -Arguments @('reference-guard', '--reference', $reference, '--output', $reference)
 Invoke-Case -Name 'claim-without-evidence-blocked' -ExpectedExit 1 -Arguments @('claim-guard', '--claim', 'completed and passed')
 Invoke-Case -Name 'claim-with-evidence' -ExpectedExit 0 -Arguments @('claim-guard', '--claim', 'completed and passed', '--evidence', $evidence)
+Invoke-Case -Name 'truth-state-fact-with-evidence' -ExpectedExit 0 -Arguments @('truth-state', '--text', 'fixed and verified', '--state', 'fact', '--evidence', $evidence, '--report', (Join-Path $fixture 'truth-fact.json'))
+Invoke-Case -Name 'truth-state-fact-without-evidence-blocked' -ExpectedExit 1 -Arguments @('truth-state', '--text', 'fixed and verified', '--state', 'fact')
+Invoke-Case -Name 'truth-state-inference-success-claim-blocked' -ExpectedExit 1 -Arguments @('truth-state', '--text', 'maybe already fixed', '--state', 'inference', '--report', (Join-Path $fixture 'truth-inference-bad.json'))
+Invoke-Case -Name 'truth-state-inference-pass' -ExpectedExit 0 -Arguments @('truth-state', '--text', 'possibly caused by route rules, needs verification', '--state', 'inference', '--report', (Join-Path $fixture 'truth-inference.json'))
+Invoke-Case -Name 'truth-state-todo-success-claim-blocked' -ExpectedExit 1 -Arguments @('truth-state', '--text', 'next step completed', '--state', 'todo')
 Invoke-Case -Name 'time-guard-blocked' -ExpectedExit 1 -Arguments @('time-guard', '--kind', 'non-code', '--elapsed-minutes', '15', '--phase', 'prototype')
 Invoke-Case -Name 'time-guard-with-artifact' -ExpectedExit 0 -Arguments @('time-guard', '--kind', 'non-code', '--elapsed-minutes', '15', '--phase', 'prototype', '--artifact', $artifact)
 
@@ -163,6 +168,42 @@ if ($codeMap.entry -ne 'routeTaskCommand' -or $codeMap.verifications.Count -lt 1
     throw "FAIL code-map report=$($codeMap | ConvertTo-Json -Depth 6 -Compress)"
 }
 
+$bugfixWorkspace = Join-Path $fixture 'bugfix'
+New-Item -ItemType Directory -Force -Path $bugfixWorkspace | Out-Null
+$bugfixArtifact = Join-Path $bugfixWorkspace 'app.exe'
+$bugfixSelfTest = Join-Path $bugfixWorkspace 'self-test.txt'
+$bugfixBrowserCheck = Join-Path $bugfixWorkspace 'browser-check.txt'
+Write-Fixture $bugfixArtifact 'binary output bytes'
+Write-Fixture $bugfixSelfTest 'self test passed on reproduced bug path'
+Write-Fixture $bugfixBrowserCheck 'browser verification passed on fixed flow'
+Invoke-Case -Name 'bugfix-guard-pass' -ExpectedExit 0 -Arguments @('bugfix-guard', '--workspace', $bugfixWorkspace, '--goal', 'fix login button bug', '--repro', 'click login button on home page', '--artifact', $bugfixArtifact, '--verify', 'login flow no longer freezes', '--self-test', $bugfixSelfTest, '--browser-check', $bugfixBrowserCheck, '--report', (Join-Path $bugfixWorkspace 'bugfix-pass.json'))
+Invoke-Case -Name 'bugfix-guard-still-failing-blocked' -ExpectedExit 1 -Arguments @('bugfix-guard', '--workspace', $bugfixWorkspace, '--goal', 'fix login button bug', '--repro', 'click login button on home page', '--artifact', $bugfixArtifact, '--verify', 'login flow no longer freezes', '--self-test', $bugfixSelfTest, '--browser-check', $bugfixBrowserCheck, '--still-failing', 'login button still freezes after click', '--report', (Join-Path $bugfixWorkspace 'bugfix-fail.json'))
+Invoke-Case -Name 'bugfix-guard-self-test-required' -ExpectedExit 1 -Arguments @('bugfix-guard', '--workspace', $bugfixWorkspace, '--goal', 'fix login button bug', '--repro', 'click login button on home page', '--artifact', $bugfixArtifact, '--verify', 'login flow no longer freezes', '--browser-check', $bugfixBrowserCheck, '--report', (Join-Path $bugfixWorkspace 'bugfix-no-selftest.json'))
+
+$qaWorkspace = Join-Path $fixture 'qa'
+New-Item -ItemType Directory -Force -Path $qaWorkspace | Out-Null
+$qaArtifact = Join-Path $qaWorkspace 'deliverable.txt'
+$qaBrowserCheck = Join-Path $qaWorkspace 'browser-check.txt'
+Write-Fixture $qaArtifact 'deliverable bytes'
+Write-Fixture $qaBrowserCheck 'browser independent verification passed'
+Invoke-Case -Name 'qa-guard-pass' -ExpectedExit 0 -Arguments @('qa-guard', '--workspace', $qaWorkspace, '--goal', 'qa verify frontend bugfix', '--artifact', $qaArtifact, '--verify', 'browser flow works end to end', '--browser-check', $qaBrowserCheck, '--report', (Join-Path $qaWorkspace 'qa-pass.json'))
+Invoke-Case -Name 'qa-guard-missing-check-blocked' -ExpectedExit 1 -Arguments @('qa-guard', '--workspace', $qaWorkspace, '--goal', 'qa verify frontend bugfix', '--artifact', $qaArtifact, '--verify', 'browser flow works end to end', '--report', (Join-Path $qaWorkspace 'qa-missing-check.json'))
+Invoke-Case -Name 'qa-guard-still-failing-blocked' -ExpectedExit 1 -Arguments @('qa-guard', '--workspace', $qaWorkspace, '--goal', 'qa verify frontend bugfix', '--artifact', $qaArtifact, '--verify', 'browser flow works end to end', '--browser-check', $qaBrowserCheck, '--still-failing', 'submit button still does not respond', '--report', (Join-Path $qaWorkspace 'qa-still-failing.json'))
+
+$migrationWorkspace = Join-Path $fixture 'migration'
+New-Item -ItemType Directory -Force -Path $migrationWorkspace | Out-Null
+$featureMap = Join-Path $migrationWorkspace 'feature-map.json'
+$runEvidence = Join-Path $migrationWorkspace 'cargo-run.txt'
+$previewEvidence = Join-Path $migrationWorkspace 'preview.txt'
+$migrationArtifact = Join-Path $migrationWorkspace 'target-app.exe'
+Write-Fixture $featureMap '{"pages":["home","settings"],"flows":["import","sync"]}'
+Write-Fixture $runEvidence 'cargo run success'
+Write-Fixture $previewEvidence 'manual preview evidence'
+Write-Fixture $migrationArtifact 'built executable bytes'
+Invoke-Case -Name 'migration-guard-pass' -ExpectedExit 0 -Arguments @('migration-guard', '--workspace', $migrationWorkspace, '--goal', 'port old app to rust', '--feature-map', $featureMap, '--artifact', $migrationArtifact, '--verify', 'cargo run opens main flow', '--run-evidence', $runEvidence, '--preview-evidence', $previewEvidence, '--report', (Join-Path $migrationWorkspace 'migration-pass.json'))
+Invoke-Case -Name 'migration-guard-fake-page-blocked' -ExpectedExit 1 -Arguments @('migration-guard', '--workspace', $migrationWorkspace, '--goal', 'port old app to rust', '--feature-map', $featureMap, '--artifact', $migrationArtifact, '--verify', 'cargo run opens main flow', '--run-evidence', $runEvidence, '--fake-page', 'settings page is placeholder', '--report', (Join-Path $migrationWorkspace 'migration-fail.json'))
+Invoke-Case -Name 'migration-guard-run-evidence-required' -ExpectedExit 1 -Arguments @('migration-guard', '--workspace', $migrationWorkspace, '--goal', 'port old app to rust', '--feature-map', $featureMap, '--artifact', $migrationArtifact, '--verify', 'cargo run opens main flow', '--report', (Join-Path $migrationWorkspace 'migration-no-run.json'))
+
 $closeoutWorkspace = Join-Path $fixture 'closeout'
 New-Item -ItemType Directory -Force -Path $closeoutWorkspace | Out-Null
 $closeoutArtifact = Join-Path $closeoutWorkspace 'final.txt'
@@ -170,6 +211,15 @@ Write-Fixture $closeoutArtifact 'final artifact for closeout verification'
 $closeoutPassReport = Join-Path $closeoutWorkspace 'closeout-check-pass.json'
 Invoke-Case -Name 'closeout-check-pass' -ExpectedExit 0 -Arguments @('closeout-check', '--workspace', $closeoutWorkspace, '--goal', 'finish route update', '--artifact', $closeoutArtifact, '--verify', 'route-task regression', '--report', $closeoutPassReport)
 Invoke-Case -Name 'closeout-check-gap-blocked' -ExpectedExit 1 -Arguments @('closeout-check', '--workspace', $closeoutWorkspace, '--goal', 'finish route update', '--artifact', $closeoutArtifact, '--verify', 'route-task regression', '--next-gap', 'still need to sync docs', '--report', (Join-Path $closeoutWorkspace 'closeout-check-gap.json'))
+$closeoutDecisionReport = Join-Path $closeoutWorkspace 'closeout-check-decision.json'
+Invoke-Case -Name 'closeout-check-needs-decision-pass' -ExpectedExit 0 -Arguments @('closeout-check', '--workspace', $closeoutWorkspace, '--goal', 'finish route update', '--artifact', $closeoutArtifact, '--verify', 'route-task regression', '--next-gap', 'choose release branch', '--needs-user-decision', 'true', '--blocked-reason', 'release branch choice requires user input', '--report', $closeoutDecisionReport)
+$closeoutDecision = Read-JsonUtf8 -Path $closeoutDecisionReport
+if ($closeoutDecision.status -ne 'pass' -or $closeoutDecision.needs_user_decision -ne $true -or $closeoutDecision.resolved_gap_mode -ne $true) {
+    throw "FAIL closeout-check decision report=$($closeoutDecision | ConvertTo-Json -Depth 6 -Compress)"
+}
+Invoke-Case -Name 'finish-or-block-pass' -ExpectedExit 0 -Arguments @('finish-or-block', '--goal', 'finish route update', '--report', (Join-Path $closeoutWorkspace 'finish-pass.json'))
+Invoke-Case -Name 'finish-or-block-remaining-step-blocked' -ExpectedExit 1 -Arguments @('finish-or-block', '--goal', 'finish route update', '--remaining-step', 'still need to sync docs', '--report', (Join-Path $closeoutWorkspace 'finish-fail.json'))
+Invoke-Case -Name 'finish-or-block-needs-decision-pass' -ExpectedExit 0 -Arguments @('finish-or-block', '--goal', 'finish route update', '--remaining-step', 'choose release branch', '--needs-user-decision', 'true', '--blocked-reason', 'release branch choice requires user input', '--report', (Join-Path $closeoutWorkspace 'finish-decision.json'))
 $verifiedEvidenceReport = Join-Path $closeoutWorkspace 'verified.json'
 Invoke-Case -Name 'evidence-grade-verified' -ExpectedExit 0 -Arguments @('evidence-grade', '--status', 'verified', '--summary', 'issue verified with artifact', '--artifact', $closeoutArtifact, '--report', $verifiedEvidenceReport)
 Invoke-Case -Name 'task-end-valid' -ExpectedExit 0 -Arguments @('task', '--workspace', $taskWorkspace, '--event', 'end', '--status', 'done', '--artifact', $artifact, '--closeout-report', $closeoutPassReport, '--evidence-report', $verifiedEvidenceReport)
@@ -293,6 +343,18 @@ Write-Fixture (Join-Path $workflowLeak 'results\\01.md')
     (@{ timestamp = '2026-06-03T00:01:00Z'; event = 'end'; status = 'done'; note = 'next step could continue with further optimization'; artifacts = @($artifact); closeout_report = $closeoutPassReport; evidence_report = $verifiedEvidenceReport } | ConvertTo-Json -Compress)
 ), [System.Text.UTF8Encoding]::new($false))
 Invoke-Case -Name 'workflow-final-closeout-leak-blocked' -ExpectedExit 1 -Arguments @('workflow-guard', '--workspace', $workflowLeak, '--stage', 'final')
+$workflowBlockedWait = Join-Path $fixture 'workflow-blocked-wait'
+New-Item -ItemType Directory -Force -Path (Join-Path $workflowBlockedWait 'packets'), (Join-Path $workflowBlockedWait 'results') | Out-Null
+Write-Fixture (Join-Path $workflowBlockedWait 'contract.md')
+Write-Fixture (Join-Path $workflowBlockedWait 'state.json') '{"status":"done","verification":{"status":"passed"}}'
+Write-Fixture (Join-Path $workflowBlockedWait 'final-report.md') "# Report`n## Verification Evidence`n- passed"
+Write-Fixture (Join-Path $workflowBlockedWait 'packets\\01.md')
+Write-Fixture (Join-Path $workflowBlockedWait 'results\\01.md')
+[System.IO.File]::WriteAllLines((Join-Path $workflowBlockedWait 'task-log.jsonl'), @(
+    (@{ timestamp = '2026-06-03T00:00:00Z'; event = 'blocked'; status = 'needs_decision'; note = 'reply continue after your confirmation'; artifacts = @() } | ConvertTo-Json -Compress),
+    (@{ timestamp = '2026-06-03T00:01:00Z'; event = 'end'; status = 'done'; note = 'done'; artifacts = @($artifact); closeout_report = $closeoutPassReport; evidence_report = $verifiedEvidenceReport } | ConvertTo-Json -Compress)
+), [System.Text.UTF8Encoding]::new($false))
+Invoke-Case -Name 'workflow-final-blocked-wait-blocked' -ExpectedExit 1 -Arguments @('workflow-guard', '--workspace', $workflowBlockedWait, '--stage', 'final')
 
 $pptxFile = Join-Path $fixture 'sample.pptx'
 New-PptxFixture -Path $pptxFile -Slides @(
@@ -720,6 +782,27 @@ $badImagePrompt = Join-Path $fixture 'bad-image-prompt.json'
     variables = @('task')
 } | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
 Invoke-Case -Name 'prompt-candidate-audit-image-probe-blocked' -ExpectedExit 1 -Arguments @('prompt-candidate-audit', '--candidate', $badImagePrompt, '--report', (Join-Path $fixture 'bad-image-prompt-audit.json'))
+$badCloseoutPrompt = Join-Path $fixture 'bad-closeout-prompt.json'
+[System.IO.File]::WriteAllText($badCloseoutPrompt, (@{
+    name = 'bad-closeout-reopen'
+    objective = 'answer with concise execution and complete closeout'
+    metric = 'closeout'
+    prompt_template = 'Finish the task, then tell the user the next step and ask whether to continue for further optimization.'
+    stable_prefix = 'Wuji closeout prompt stable prefix with forbidden reopen-work language.'
+    variables = @('task')
+} | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+Invoke-Case -Name 'prompt-candidate-audit-closeout-reopen-blocked' -ExpectedExit 1 -Arguments @('prompt-candidate-audit', '--candidate', $badCloseoutPrompt, '--report', (Join-Path $fixture 'bad-closeout-prompt-audit.json'))
+$badManagementPrompt = Join-Path $fixture 'bad-management-prompt.json'
+[System.IO.File]::WriteAllText($badManagementPrompt, (@{
+    name = 'bad-management-pause-loop'
+    objective = 'manage a complex task'
+    metric = 'speed'
+    prompt_template = ('Command center has taken over. Phase 1 analysis, phase 2 execution, phase 3 review. ' +
+        'Role breakdown follows. Wait for user confirmation, then continue to the next phase.')
+    stable_prefix = 'Wuji management prompt stable prefix with forbidden stage pause loop behavior.'
+    variables = @('task')
+} | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+Invoke-Case -Name 'prompt-candidate-audit-management-pause-loop-blocked' -ExpectedExit 1 -Arguments @('prompt-candidate-audit', '--candidate', $badManagementPrompt, '--report', (Join-Path $fixture 'bad-management-prompt-audit.json'))
 Invoke-Case -Name 'prompt-eval' -ExpectedExit 0 -Arguments @('prompt-eval', '--candidate', $candidatePrompt, '--dataset', $promptDataset, '--report', $promptReport)
 Invoke-Case -Name 'prompt-distill' -ExpectedExit 0 -Arguments @('prompt-distill', '--baseline', $baselinePrompt, '--candidate', $candidatePrompt, '--dataset', $promptDataset, '--report', $promptDistillReport)
 if (-not (Test-Path -LiteralPath $promptDistillReport)) {
@@ -755,6 +838,12 @@ New-Item -ItemType Directory -Force -Path $auditCloseoutLeakRoot | Out-Null
     (@{ timestamp = '2026-06-03T00:01:00Z'; event = 'end'; status = 'done'; note = 'next step could continue with further optimization'; artifacts = @($artifact); closeout_report = $closeoutPassReport; evidence_report = $verifiedEvidenceReport } | ConvertTo-Json -Compress)
 ), [System.Text.UTF8Encoding]::new($false))
 Invoke-Case -Name 'audit-closeout-leak-blocked' -ExpectedExit 1 -Arguments @('audit', '--path', $auditCloseoutLeakRoot)
+$auditBlockedWaitRoot = Join-Path $fixture 'audit-blocked-wait'
+New-Item -ItemType Directory -Force -Path $auditBlockedWaitRoot | Out-Null
+[System.IO.File]::WriteAllLines((Join-Path $auditBlockedWaitRoot 'task-log.jsonl'), @(
+    (@{ timestamp = '2026-06-03T00:02:00Z'; event = 'blocked'; status = 'needs_decision'; note = 'reply continue after your confirmation'; artifacts = @() } | ConvertTo-Json -Compress)
+), [System.Text.UTF8Encoding]::new($false))
+Invoke-Case -Name 'audit-blocked-wait-blocked' -ExpectedExit 1 -Arguments @('audit', '--path', $auditBlockedWaitRoot)
 
 $previewOut = Join-Path $fixture 'preview.txt'
 Invoke-Case -Name 'preview-dispatch' -ExpectedExit 0 -Arguments @('preview', '--command', 'powershell', '--arg', '-NoProfile', '--arg', '-Command', '--arg', ('Set-Content -LiteralPath ''' + $previewOut + ''' -Value ''preview output long enough'''), '--output', $previewOut)

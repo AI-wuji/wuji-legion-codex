@@ -8,7 +8,7 @@
 - 哪些候选值得保留台账
 - 插件默认归谁调用
 
-插件只做能力补位，不做新入口、不替代主帅。权限边界和门禁看 [mcp_plugins.md](mcp_plugins.md)。
+插件只做能力补位，不做新入口、不替代主帅，也不构成默认运行时主链。权限边界和门禁看 [mcp_plugins.md](mcp_plugins.md)。
 
 ## 本机已启用
 
@@ -32,7 +32,7 @@
 | OpenDesign | defer | PPT/HTML/UI 需要更强视觉探索、原型预览或设计抽取时 |
 | Canva | defer | 需要轻量素材补图或社媒图时 |
 | Remotion | defer | 需要把页面或脚本转成程序化视频时 |
-| PptxGenJS | defer | 从零高颜值 PPTX 需要 JS 批量生成或可编辑转换时 |
+| PptxGenJS | targeted-absorb | 从零高颜值 PPTX 需要 JS 批量生成、可编辑转换或原生超链接/动作按钮交互时 |
 | dom-to-pptx | defer | HTML/CSS 已经做对，需要高保真转 editable PPTX 时 |
 | html2pptx | defer | 需要先走 HTML-first，再转可编辑 PowerPoint 时 |
 | Marp | defer | 用户明确要 Markdown 快速预览型演示稿时 |
@@ -72,7 +72,7 @@
 
 ## 调用铁律
 
-- 插件不直接响应用户，由对应主帅调用。
+- 插件不直接响应用户，由对应主帅按需调用。
 - 未确认安装或授权，不得说成可用。
 - 插件结果必须回到主帅收口，不绕过白帽、质检、安全、合规。
 - 成品型输出默认只保留两个入口：预览、文件路径。

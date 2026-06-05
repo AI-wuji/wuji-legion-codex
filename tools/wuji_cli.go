@@ -129,6 +129,60 @@ var closeoutLeakMarkers = []string{
 	"further optimization",
 }
 
+var managementCeremonyMarkers = []string{
+	"参谋本部已接管",
+	"第一阶段",
+	"第二阶段",
+	"第三阶段",
+	"阶段一",
+	"阶段二",
+	"阶段三",
+	"分五个阶段",
+	"多角色协作",
+	"多角色会诊",
+	"角色分工如下",
+	"committee",
+	"phase 1",
+	"phase 2",
+	"phase 3",
+	"five phases",
+	"multi-agent coordination",
+	"role breakdown",
+}
+
+var managementPauseMarkers = []string{
+	"等你继续",
+	"等你确认",
+	"回复继续",
+	"你回复继续后",
+	"确认后继续",
+	"收到继续后",
+	"wait for your confirmation",
+	"wait for user confirmation",
+	"wait for confirmation",
+	"reply continue",
+	"continue to proceed",
+	"after your confirmation",
+	"continue to the next phase",
+	"next phase after confirmation",
+}
+
+var uncertaintyMarkers = []string{
+	"推测",
+	"猜测",
+	"未验证",
+	"待查",
+	"不确定",
+	"可能",
+	"大概",
+	"maybe",
+	"might",
+	"possibly",
+	"unverified",
+	"uncertain",
+	"needs verification",
+}
+
 func auditMarkerText(text string) string {
 	lines := strings.Split(text, "\n")
 	filtered := make([]string, 0, len(lines))
@@ -238,6 +292,19 @@ func taskLogCloseoutLeakFailures(records []map[string]any) []string {
 			if hits := markerHits(note, closeoutLeakMarkers); len(hits) > 0 {
 				failures = append(failures, fmt.Sprintf("task_log_record_%02d_done_note_reopens_work=%s", idx+1, strings.Join(hits, "|")))
 			}
+		}
+	}
+	return failures
+}
+
+func taskLogBlockedWaitFailures(records []map[string]any) []string {
+	failures := []string{}
+	for idx, record := range records {
+		event := normalizedLower(objectString(record, "event"))
+		status := normalizedLower(objectString(record, "status"))
+		note := objectString(record, "note")
+		if (event == "blocked" || status == "blocked" || status == "needs_decision") && len(markerHits(note, managementPauseMarkers)) > 0 {
+			failures = append(failures, fmt.Sprintf("task_log_record_%02d_blocked_note_waits_for_continue=%s", idx+1, strings.Join(markerHits(note, managementPauseMarkers), "|")))
 		}
 	}
 	return failures
@@ -364,7 +431,7 @@ var builtinRoutingRules = []routeRule{
 	{
 		ID:         "execution-base",
 		Name:       "执行底座",
-		Keywords:   []string{"执行底座", "执行底座主帅", "wuji-cli", "Go", "执行引擎", "guard", "task", "sync", "audit", "workflow", "beep", "bench", "preview调度", "pptx-preflight", "pptx-batch-gate", "pptx-audit", "asset-map", "time-guard", "mcp-guard", "MCP门禁", "插件门禁", "reference-frame-map", "reusable-asset-map", "illustration-plan", "pilot-page", "pilot-preview", "pilot-score"},
+		Keywords:   []string{"执行底座", "执行底座主帅", "wuji-cli", "Go", "执行引擎", "guard", "audit", "claim-guard", "reference-guard", "truth-state", "finish-or-block", "closeout-check", "pptx-preflight", "pptx-batch-gate", "pptx-audit", "asset-map", "time-guard", "mcp-guard", "MCP门禁", "插件门禁", "reference-frame-map", "reusable-asset-map", "illustration-plan", "pilot-page", "pilot-preview", "pilot-score"},
 		ProviderID: "deepseek-web",
 		Priority:   82,
 	},
@@ -493,9 +560,14 @@ func usage() {
 	fmt.Fprintln(os.Stderr, "  wuji-cli bench --workspace <dir> --name <run> [--input-tokens <n>] [--output-tokens <n>] [--duration-ms <n>] [--tool-calls <n>] [--retries <n>] [--qa-pass <true|false>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli bench-report --workspace <dir> [--report <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli code-map --workspace <dir> --goal <text> --entry <text> [--dependency <text>]... [--risk <text>]... [--verify <text>]... [--report <file>]")
-	fmt.Fprintln(os.Stderr, "  wuji-cli closeout-check --workspace <dir> --goal <text> [--artifact <file>]... [--verify <text>]... [--next-gap <text>]... [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli bugfix-guard --workspace <dir> --goal <text> --repro <text> [--artifact <file>]... [--verify <text>]... [--self-test <file>]... [--independent-check <file>]... [--browser-check <file>]... [--still-failing <text>]... [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli qa-guard --workspace <dir> --goal <text> [--artifact <file>]... [--verify <text>]... [--browser-check <file>]... [--program-check <file>]... [--command-check <file>]... [--mcp-check <file>]... [--still-failing <text>]... [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli migration-guard --workspace <dir> --goal <text> --feature-map <file> [--artifact <file>]... [--verify <text>]... [--run-evidence <file>]... [--preview-evidence <file>]... [--missing-feature <text>]... [--fake-page <text>]... [--placeholder-page <text>]... [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli closeout-check --workspace <dir> --goal <text> [--artifact <file>]... [--verify <text>]... [--next-gap <text>]... [--needs-user-decision true|false] [--blocked-reason <text>] [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli finish-or-block --goal <text> [--remaining-step <text>]... [--needs-user-decision true|false] [--blocked-reason <text>] [--report <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli repeat-candidates --log <file> [--min-occurrences <n>] [--report <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli evidence-grade --status <candidate|checked|verified|shipped> --summary <text> [--artifact <file>]... [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli truth-state --text <text> --state <fact|inference|todo> [--evidence <file>]... [--report <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli preview --command <exe> [--arg <value>]... --output <file>")
 	fmt.Fprintln(os.Stderr, "  wuji-cli asset-map --pptx <file> --workspace <dir>")
 	fmt.Fprintln(os.Stderr, "  wuji-cli pptx-audit --pptx <file> [--report <file>]")
@@ -1759,6 +1831,7 @@ func workflowGuard(args []string) int {
 			} else {
 				failures = append(failures, taskLogExecutionRhythmFailures(records)...)
 				failures = append(failures, taskLogCloseoutLeakFailures(records)...)
+				failures = append(failures, taskLogBlockedWaitFailures(records)...)
 				last := records[len(records)-1]
 				if objectString(last, "event") != "end" || objectString(last, "status") != "done" {
 					failures = append(failures, "workflow_task_log_not_closed")
@@ -2006,6 +2079,294 @@ func codeMapCommand(args []string) int {
 	return 0
 }
 
+func bugfixGuardCommand(args []string) int {
+	workspace, ok := argValue(args, "--workspace")
+	if !ok {
+		usage()
+		return 2
+	}
+	goal, ok := argValue(args, "--goal")
+	if !ok || strings.TrimSpace(goal) == "" {
+		usage()
+		return 2
+	}
+	repro, ok := argValue(args, "--repro")
+	if !ok || strings.TrimSpace(repro) == "" {
+		usage()
+		return 2
+	}
+	artifacts := uniqueStrings(argValues(args, "--artifact"))
+	verifications := uniqueStrings(argValues(args, "--verify"))
+	selfTests := uniqueStrings(argValues(args, "--self-test"))
+	independentChecks := uniqueStrings(argValues(args, "--independent-check"))
+	browserChecks := uniqueStrings(argValues(args, "--browser-check"))
+	stillFailing := uniqueStrings(argValues(args, "--still-failing"))
+	reportPath, hasReport := argValue(args, "--report")
+
+	failures := []string{}
+	if len(artifacts) == 0 {
+		failures = append(failures, "bugfix_requires_primary_artifact")
+	}
+	for _, artifact := range artifacts {
+		if !nonEmpty(artifact) {
+			failures = append(failures, "artifact_missing_or_too_small="+artifact)
+		}
+	}
+	if len(verifications) == 0 {
+		failures = append(failures, "bugfix_requires_verification")
+	}
+	if len(selfTests) == 0 {
+		failures = append(failures, "bugfix_requires_self_test")
+	}
+	for _, path := range selfTests {
+		if !nonEmpty(path) {
+			failures = append(failures, "self_test_missing_or_too_small="+path)
+		}
+	}
+	if len(independentChecks) == 0 && len(browserChecks) == 0 {
+		failures = append(failures, "bugfix_requires_independent_or_browser_check")
+	}
+	for _, path := range independentChecks {
+		if !nonEmpty(path) {
+			failures = append(failures, "independent_check_missing_or_too_small="+path)
+		}
+	}
+	for _, path := range browserChecks {
+		if !nonEmpty(path) {
+			failures = append(failures, "browser_check_missing_or_too_small="+path)
+		}
+	}
+	for _, item := range stillFailing {
+		if strings.TrimSpace(item) != "" {
+			failures = append(failures, "still_failing="+strings.TrimSpace(item))
+		}
+	}
+
+	report := jsonObject{
+		"workspace":          absClean(workspace),
+		"goal":               strings.TrimSpace(goal),
+		"repro":              strings.TrimSpace(repro),
+		"artifacts":          artifacts,
+		"verifications":      verifications,
+		"self_tests":         selfTests,
+		"independent_checks": independentChecks,
+		"browser_checks":     browserChecks,
+		"still_failing":      stillFailing,
+		"status":             "pass",
+	}
+	if len(failures) > 0 {
+		report["status"] = "fail"
+		report["failures"] = failures
+	}
+	outputPath := reportPath
+	if !hasReport {
+		outputPath = filepath.Join(workspace, "bugfix-guard.json")
+	}
+	if err := ensureDir(workspace); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSON(outputPath, report); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return printGate("bugfix-guard", failures)
+}
+
+func qaGuardCommand(args []string) int {
+	workspace, ok := argValue(args, "--workspace")
+	if !ok {
+		usage()
+		return 2
+	}
+	goal, ok := argValue(args, "--goal")
+	if !ok || strings.TrimSpace(goal) == "" {
+		usage()
+		return 2
+	}
+	artifacts := uniqueStrings(argValues(args, "--artifact"))
+	verifications := uniqueStrings(argValues(args, "--verify"))
+	browserChecks := uniqueStrings(argValues(args, "--browser-check"))
+	programChecks := uniqueStrings(argValues(args, "--program-check"))
+	commandChecks := uniqueStrings(argValues(args, "--command-check"))
+	mcpChecks := uniqueStrings(argValues(args, "--mcp-check"))
+	stillFailing := uniqueStrings(argValues(args, "--still-failing"))
+	reportPath, hasReport := argValue(args, "--report")
+
+	failures := []string{}
+	if len(artifacts) == 0 {
+		failures = append(failures, "qa_requires_artifact")
+	}
+	for _, artifact := range artifacts {
+		if !nonEmpty(artifact) {
+			failures = append(failures, "artifact_missing_or_too_small="+artifact)
+		}
+	}
+	if len(verifications) == 0 {
+		failures = append(failures, "qa_requires_verification")
+	}
+	totalChecks := len(browserChecks) + len(programChecks) + len(commandChecks) + len(mcpChecks)
+	if totalChecks == 0 {
+		failures = append(failures, "qa_requires_independent_check")
+	}
+	for _, path := range browserChecks {
+		if !nonEmpty(path) {
+			failures = append(failures, "browser_check_missing_or_too_small="+path)
+		}
+	}
+	for _, path := range programChecks {
+		if !nonEmpty(path) {
+			failures = append(failures, "program_check_missing_or_too_small="+path)
+		}
+	}
+	for _, path := range commandChecks {
+		if !nonEmpty(path) {
+			failures = append(failures, "command_check_missing_or_too_small="+path)
+		}
+	}
+	for _, path := range mcpChecks {
+		if !nonEmpty(path) {
+			failures = append(failures, "mcp_check_missing_or_too_small="+path)
+		}
+	}
+	for _, item := range stillFailing {
+		if strings.TrimSpace(item) != "" {
+			failures = append(failures, "still_failing="+strings.TrimSpace(item))
+		}
+	}
+
+	report := jsonObject{
+		"workspace":       absClean(workspace),
+		"goal":            strings.TrimSpace(goal),
+		"artifacts":       artifacts,
+		"verifications":   verifications,
+		"browser_checks":  browserChecks,
+		"program_checks":  programChecks,
+		"command_checks":  commandChecks,
+		"mcp_checks":      mcpChecks,
+		"still_failing":   stillFailing,
+		"status":          "pass",
+	}
+	if len(failures) > 0 {
+		report["status"] = "fail"
+		report["failures"] = failures
+	}
+	outputPath := reportPath
+	if !hasReport {
+		outputPath = filepath.Join(workspace, "qa-guard.json")
+	}
+	if err := ensureDir(workspace); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSON(outputPath, report); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return printGate("qa-guard", failures)
+}
+
+func migrationGuardCommand(args []string) int {
+	workspace, ok := argValue(args, "--workspace")
+	if !ok {
+		usage()
+		return 2
+	}
+	goal, ok := argValue(args, "--goal")
+	if !ok || strings.TrimSpace(goal) == "" {
+		usage()
+		return 2
+	}
+	featureMap, ok := argValue(args, "--feature-map")
+	if !ok || strings.TrimSpace(featureMap) == "" {
+		usage()
+		return 2
+	}
+	artifacts := uniqueStrings(argValues(args, "--artifact"))
+	verifications := uniqueStrings(argValues(args, "--verify"))
+	runEvidence := uniqueStrings(argValues(args, "--run-evidence"))
+	previewEvidence := uniqueStrings(argValues(args, "--preview-evidence"))
+	missingFeatures := uniqueStrings(argValues(args, "--missing-feature"))
+	fakePages := uniqueStrings(argValues(args, "--fake-page"))
+	placeholderPages := uniqueStrings(argValues(args, "--placeholder-page"))
+	reportPath, hasReport := argValue(args, "--report")
+
+	failures := []string{}
+	if !nonEmpty(featureMap) {
+		failures = append(failures, "feature_map_missing_or_too_small="+featureMap)
+	}
+	if len(artifacts) == 0 {
+		failures = append(failures, "migration_requires_primary_artifact")
+	}
+	for _, artifact := range artifacts {
+		if !nonEmpty(artifact) {
+			failures = append(failures, "artifact_missing_or_too_small="+artifact)
+		}
+	}
+	if len(verifications) == 0 {
+		failures = append(failures, "migration_requires_verification")
+	}
+	if len(runEvidence) == 0 {
+		failures = append(failures, "migration_requires_run_evidence")
+	}
+	for _, path := range runEvidence {
+		if !nonEmpty(path) {
+			failures = append(failures, "run_evidence_missing_or_too_small="+path)
+		}
+	}
+	for _, path := range previewEvidence {
+		if !nonEmpty(path) {
+			failures = append(failures, "preview_evidence_missing_or_too_small="+path)
+		}
+	}
+	for _, item := range missingFeatures {
+		if strings.TrimSpace(item) != "" {
+			failures = append(failures, "missing_feature="+strings.TrimSpace(item))
+		}
+	}
+	for _, item := range fakePages {
+		if strings.TrimSpace(item) != "" {
+			failures = append(failures, "fake_page="+strings.TrimSpace(item))
+		}
+	}
+	for _, item := range placeholderPages {
+		if strings.TrimSpace(item) != "" {
+			failures = append(failures, "placeholder_page="+strings.TrimSpace(item))
+		}
+	}
+
+	report := jsonObject{
+		"workspace":         absClean(workspace),
+		"goal":              strings.TrimSpace(goal),
+		"feature_map":       absClean(featureMap),
+		"artifacts":         artifacts,
+		"verifications":     verifications,
+		"run_evidence":      runEvidence,
+		"preview_evidence":  previewEvidence,
+		"missing_features":  missingFeatures,
+		"fake_pages":        fakePages,
+		"placeholder_pages": placeholderPages,
+		"status":            "pass",
+	}
+	if len(failures) > 0 {
+		report["status"] = "fail"
+		report["failures"] = failures
+	}
+	outputPath := reportPath
+	if !hasReport {
+		outputPath = filepath.Join(workspace, "migration-guard.json")
+	}
+	if err := ensureDir(workspace); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if err := writeJSON(outputPath, report); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return printGate("migration-guard", failures)
+}
+
 func closeoutCheckCommand(args []string) int {
 	workspace, ok := argValue(args, "--workspace")
 	if !ok {
@@ -2033,18 +2394,34 @@ func closeoutCheckCommand(args []string) int {
 	if len(verifications) == 0 {
 		failures = append(failures, "closeout_requires_verification")
 	}
+	needsDecisionText, _ := argValue(args, "--needs-user-decision")
+	blockedReason, _ := argValue(args, "--blocked-reason")
+	needsDecision := strings.EqualFold(strings.TrimSpace(needsDecisionText), "true")
+	hasResolvedGap := false
 	for _, gap := range nextGaps {
-		if strings.TrimSpace(gap) != "" {
-			failures = append(failures, "closeout_gap_remaining="+gap)
+		trimmedGap := strings.TrimSpace(gap)
+		if trimmedGap == "" {
+			continue
 		}
+		if needsDecision || strings.TrimSpace(blockedReason) != "" {
+			hasResolvedGap = true
+			continue
+		}
+		failures = append(failures, "unfinished_goal_has_remaining_step="+trimmedGap)
+	}
+	if needsDecision && strings.TrimSpace(blockedReason) == "" {
+		failures = append(failures, "needs_user_decision_requires_blocked_reason")
 	}
 	report := jsonObject{
-		"workspace":      absClean(workspace),
-		"goal":           strings.TrimSpace(goal),
-		"artifacts":      artifacts,
-		"verifications":  verifications,
-		"remaining_gaps": nextGaps,
-		"status":         "pass",
+		"workspace":           absClean(workspace),
+		"goal":                strings.TrimSpace(goal),
+		"artifacts":           artifacts,
+		"verifications":       verifications,
+		"remaining_gaps":      nextGaps,
+		"needs_user_decision": needsDecision,
+		"blocked_reason":      strings.TrimSpace(blockedReason),
+		"resolved_gap_mode":   hasResolvedGap,
+		"status":              "pass",
 	}
 	if len(failures) > 0 {
 		report["status"] = "fail"
@@ -2059,6 +2436,51 @@ func closeoutCheckCommand(args []string) int {
 		return 1
 	}
 	return printGate("closeout-check", failures)
+}
+
+func finishOrBlockCommand(args []string) int {
+	goal, ok := argValue(args, "--goal")
+	if !ok || strings.TrimSpace(goal) == "" {
+		usage()
+		return 2
+	}
+	remainingSteps := uniqueStrings(argValues(args, "--remaining-step"))
+	needsDecisionText, _ := argValue(args, "--needs-user-decision")
+	blockedReason, _ := argValue(args, "--blocked-reason")
+	reportPath, hasReport := argValue(args, "--report")
+	needsDecision := strings.EqualFold(strings.TrimSpace(needsDecisionText), "true")
+	failures := []string{}
+	for _, step := range remainingSteps {
+		if strings.TrimSpace(step) == "" {
+			continue
+		}
+		if !needsDecision && strings.TrimSpace(blockedReason) == "" {
+			failures = append(failures, "unfinished_goal_has_remaining_step="+step)
+		}
+	}
+	if needsDecision && strings.TrimSpace(blockedReason) == "" {
+		failures = append(failures, "needs_user_decision_requires_blocked_reason")
+	}
+	report := jsonObject{
+		"goal":                strings.TrimSpace(goal),
+		"remaining_steps":     remainingSteps,
+		"needs_user_decision": needsDecision,
+		"blocked_reason":      strings.TrimSpace(blockedReason),
+		"status":              "pass",
+	}
+	if len(failures) > 0 {
+		report["status"] = "fail"
+		report["failures"] = failures
+	}
+	outputPath := reportPath
+	if !hasReport {
+		outputPath = filepath.Join(os.TempDir(), fmt.Sprintf("wuji-finish-or-block-%d.json", time.Now().UnixNano()))
+	}
+	if err := writeJSON(outputPath, report); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return printGate("finish-or-block", failures)
 }
 
 func repeatCandidatesCommand(args []string) int {
@@ -2206,6 +2628,88 @@ func evidenceGradeCommand(args []string) int {
 	return printGate("evidence-grade", failures)
 }
 
+func truthStateCommand(args []string) int {
+	text, ok := argValue(args, "--text")
+	if !ok || strings.TrimSpace(text) == "" {
+		usage()
+		return 2
+	}
+	state, ok := argValue(args, "--state")
+	if !ok {
+		usage()
+		return 2
+	}
+	state = strings.ToLower(strings.TrimSpace(state))
+	allowedStates := map[string]bool{
+		"fact":      true,
+		"inference": true,
+		"todo":      true,
+	}
+	if !allowedStates[state] {
+		fmt.Fprintln(os.Stderr, "state must be fact, inference, or todo")
+		return 2
+	}
+	evidence := uniqueStrings(argValues(args, "--evidence"))
+	reportPath, hasReport := argValue(args, "--report")
+	failures := []string{}
+	lowerText := strings.ToLower(text)
+	successWords := []string{"完成", "成功", "通过", "已融合", "已生成", "已修复", "已实现", "verified", "passed", "complete", "completed", "success", "fixed", "resolved", "implemented"}
+	makesSuccessClaim := false
+	for _, word := range successWords {
+		if strings.Contains(text, word) || strings.Contains(lowerText, word) {
+			makesSuccessClaim = true
+			break
+		}
+	}
+	hasUncertainty := len(markerHits(text, uncertaintyMarkers)) > 0
+	switch state {
+	case "fact":
+		if len(evidence) == 0 {
+			failures = append(failures, "fact_requires_evidence")
+		}
+		if hasUncertainty {
+			failures = append(failures, "fact_must_not_include_uncertainty_markers")
+		}
+	case "inference":
+		if makesSuccessClaim {
+			failures = append(failures, "inference_must_not_make_success_claim")
+		}
+		if !hasUncertainty {
+			failures = append(failures, "inference_requires_uncertainty_marker")
+		}
+	case "todo":
+		if makesSuccessClaim {
+			failures = append(failures, "todo_must_not_make_success_claim")
+		}
+	}
+	for _, path := range evidence {
+		if !nonEmpty(path) {
+			failures = append(failures, "evidence_missing_or_too_small="+path)
+		}
+	}
+	report := jsonObject{
+		"text":           strings.TrimSpace(text),
+		"state":          state,
+		"evidence":       evidence,
+		"success_claim":  makesSuccessClaim,
+		"has_uncertainty": hasUncertainty,
+		"status":         "pass",
+	}
+	if len(failures) > 0 {
+		report["status"] = "fail"
+		report["failures"] = failures
+	}
+	outputPath := reportPath
+	if !hasReport {
+		outputPath = filepath.Join(os.TempDir(), fmt.Sprintf("wuji-truth-state-%d.json", time.Now().UnixNano()))
+	}
+	if err := writeJSON(outputPath, report); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return printGate("truth-state", failures)
+}
+
 func syncCommand(args []string) int {
 	source, okSource := argValue(args, "--source")
 	dest, okDest := argValue(args, "--dest")
@@ -2296,6 +2800,9 @@ func auditCommand(args []string) int {
 			}
 			for _, failure := range taskLogCloseoutLeakFailures(records) {
 				check("closeout_leak_violation", failure)
+			}
+			for _, failure := range taskLogBlockedWaitFailures(records) {
+				check("blocked_wait_violation", failure)
 			}
 		}
 		replacementChar := string(rune(0xfffd))
@@ -3713,6 +4220,23 @@ func promptCandidateAudit(args []string) int {
 			failures = append(failures, "image_task_contains_preflight_probe="+strings.Join(hits, "|"))
 		}
 	}
+	if hits := markerHits(candidateNarrative, closeoutLeakMarkers); len(hits) > 0 {
+		failures = append(failures, "candidate_reopens_closeout="+strings.Join(hits, "|"))
+	}
+	ceremonyHits := markerHits(candidateNarrative, managementCeremonyMarkers)
+	pauseHits := markerHits(candidateNarrative, managementPauseMarkers)
+	if len(ceremonyHits) > 0 && len(pauseHits) > 0 {
+		failures = append(failures, "candidate_contains_management_pause_loop="+strings.Join(append(ceremonyHits, pauseHits...), "|"))
+	}
+	roleHits := []string{}
+	for _, role := range builtinTopLevelRoles {
+		if strings.Contains(candidateNarrative, role) {
+			roleHits = append(roleHits, role)
+		}
+	}
+	if len(roleHits) >= 4 && (strings.Contains(candidateNarrative, "负责") || strings.Contains(strings.ToLower(candidateNarrative), "handoff")) {
+		warnings = append(warnings, "candidate_role_theater_bloat="+strings.Join(roleHits, "|"))
+	}
 	stablePrefix := objectString(candidate, "stable_prefix")
 	if strings.TrimSpace(stablePrefix) == "" {
 		warnings = append(warnings, "candidate_missing_stable_prefix")
@@ -4219,12 +4743,22 @@ func main() {
 		code = benchReportCommand(args)
 	case "code-map":
 		code = codeMapCommand(args)
+	case "bugfix-guard":
+		code = bugfixGuardCommand(args)
+	case "qa-guard":
+		code = qaGuardCommand(args)
+	case "migration-guard":
+		code = migrationGuardCommand(args)
 	case "closeout-check":
 		code = closeoutCheckCommand(args)
+	case "finish-or-block":
+		code = finishOrBlockCommand(args)
 	case "repeat-candidates":
 		code = repeatCandidatesCommand(args)
 	case "evidence-grade":
 		code = evidenceGradeCommand(args)
+	case "truth-state":
+		code = truthStateCommand(args)
 	case "preview":
 		code = previewCommand(args)
 	case "asset-map":

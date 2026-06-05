@@ -14,7 +14,7 @@
 | 视频模式 | 文生视频、图生视频、动效说明 | subject/action/scene/camera/duration |
 | 分镜模式 | 短剧、动画、AI 视频故事板 | 镜号、景别、画面、对白、时长 |
 | 工具模式 | CLI/API/脚本参数 | tool-spec 或命令参数 |
-| 蒸馏模式 | 提示词候选优化、缓存友好重写、离线评测 | candidate-audit / eval / distill report |
+| 蒸馏模式 | 提示词候选优化、缓存友好重写、离线评测 | 仅离线候选审计与晋升记录 |
 
 ## 普通生图规则
 
@@ -39,9 +39,11 @@
 ## 提示词蒸馏
 
 - DSPy / GEPA / MIPROv2 只吸收“离线优化机制”，不作为运行时主框架进入默认主链路。
-- 日常使用中的偏好、纠偏和禁忌词，先用 `feedback-log` 做脱敏沉淀，再由 `feedback-dataset` 蒸馏成评测集。
-- 提示词主帅先把候选压成稳定前缀 + 动态任务，再交执行底座做 `prompt-candidate-audit`、`prompt-eval`、`prompt-distill`。
+- `headroom learn` 只吸收“失败会话 -> 候选修正 -> 离线晋升”机制，不吸收自动改主规则。
+- 日常使用中的偏好、纠偏和禁忌词，必要时才进入 `feedback-log` 脱敏沉淀，再由 `feedback-dataset` 蒸馏成评测集。
+- 提示词主帅只在做离线候选晋升时，才把候选交执行底座做 `prompt-candidate-audit`、`prompt-eval`、`prompt-distill`。
 - 候选只有在评测集覆盖率、缓存友好度和简洁度同时过线时，才允许晋升。
+- `feedback-log / feedback-dataset / prompt-eval / prompt-distill` 默认属于离线治理链，不属于每次执行任务都要经过的运行时主链。
 - 规则见 [prompt_optimization.md](E:\wuji-projects\wuji-legion-codex\units\prompt_optimization.md)。
 
 ## 当前专家

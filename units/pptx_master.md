@@ -85,7 +85,7 @@ source
 
 - 凡是课程、教程、发布会、演示型 deck，默认同时规划两层成品：`editable PPTX` 和 `live HTML demo`。
 - `live HTML demo` 是动态体验源：负责动效、节奏、科技感、信息显隐和氛围验证。
-- `editable PPTX` 是交付源：负责可编辑、可讲解、可继续修改、可复用模板资产。
+- `editable PPTX` 是交付源：负责可编辑、可讲解、可复用模板资产。
 - 静态 PPT 只负责承接版式、结构、备注、配图和模板元素，不得谎称自己已经承接了 HTML 动态效果。
 - 只要任务要求“大量动态效果”“科技感演示”“看板动效”“赛博氛围”，`design-brief` 里就必须显式写出 `motion-plan`，至少包含：页面动效角色、节奏、可接受的静态降级方式。
 - `motion-plan` 不是软建议，而是批量前硬工件；如果标记 `required=true`，就必须同时产出 `live-demo-source.html` 或等效动态源，否则不得进入批量。
@@ -121,8 +121,8 @@ source
 - pilot 必须选最有代表性、最高风险、最高密度的一页。
 - pilot 必须导出 preview，并记录 `pilot-score`。
 - pilot 现在还必须尽量附带 `pilot-preview-layout.json`；一旦出现真实越界或底部危险区贴边，`pptx-batch-gate` 直接拦截，不允许带病批量。
-- pilot 后默认先走内部 gate 判断是否可继续；只有命中真实审批点、用户明确要求先看中间结果，或路线风险高到无法内部判定取舍时，才停下给用户看 preview；其余情况默认自动继续，不得为了展示过程额外停顿。
-- 成熟同路线默认允许自动批准继续批量，但仍必须留下 `pilot-approval` 工件。
+- pilot 后默认先走内部 gate 判断是否放行；只有命中真实审批点、用户明确要求先看中间结果，或路线风险高到无法内部判定取舍时，才停下给用户看 preview；其余情况默认自动放行，不得为了展示过程额外停顿。
+- 成熟同路线默认允许自动批准批量，但仍必须留下 `pilot-approval` 工件。
 - pilot 最多两轮；两轮仍不过线，必须换路线或短报阻塞。
 - `pptx-batch-gate` 是默认批量放行门；缺三张表、`pilot-page`、`pilot-preview`、`pilot-score` 或 `pilot-approval`，一律 `NO-GO`。
 
@@ -181,7 +181,7 @@ source
 - `Presentations`：`absorb`，作为模板续写真主线
 - `html2pptx`：`targeted-absorb`，适合从零高颜值路线
 - `dom-to-pptx`：`targeted-absorb`，适合本地 HTML 转可编辑 PPTX
-- `PptxGenJS`：`targeted-absorb`，适合 JS 生态批量可编辑生成
+- `PptxGenJS`：`targeted-absorb`，适合 JS 生态批量可编辑生成，尤其是原生超链接、目录跳转和 action button 这类真交互 PPTX
 - `mcp-server-ppt` / `ppt-mcp`：`defer`，适合 Windows 最后一公里精修
 - `python-pptx`：保留为补位，不作为模板续写主线
 

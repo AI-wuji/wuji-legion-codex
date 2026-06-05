@@ -96,4 +96,16 @@ if ([System.IO.Path]::GetFileName($Output) -eq 'wuji-exec-base.exe') {
     $shimContent = "@echo off`r`n`"%~dp0wuji-exec-base.exe`" %*`r`n"
     [System.IO.File]::WriteAllText($shim, $shimContent, [System.Text.ASCIIEncoding]::new())
     Write-Host "Shim: $shim"
+
+    $psShim = Join-Path ([System.IO.Path]::GetDirectoryName($Output)) 'wuji-cli.ps1'
+    $psShimContent = @'
+param(
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$Args
+)
+& "$PSScriptRoot\wuji-exec-base.exe" @Args
+exit $LASTEXITCODE
+'@
+    [System.IO.File]::WriteAllText($psShim, $psShimContent, [System.Text.UTF8Encoding]::new($false))
+    Write-Host "PowerShell Shim: $psShim"
 }

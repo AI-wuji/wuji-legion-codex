@@ -1,23 +1,21 @@
 # 无极军团 Codex 版 / Wuji Legion for Codex
 
 **当前正式版：v10.8**  
-当前 GitHub 正式版已经收口到两条核心目标：`省 token，高命中`、`高质高效`。这一版把“不要做一步停一步”和“默认不预检，先执行，报错再诊断”的执行要求一起沉进了代码与规则。
+当前仓库的设计目标是：`以总成本最省为准，高命中优先`、`高质高效`。这里主要记录系统结构、工具边界和版本变化，不作为运行时行为注入文本。
 
 **让 Codex 从“会回答”升级成“真交付”。**  
-无极军团不是再堆一堆 skill，也不是花哨的多 agent 表演。它是一套面向真实交付的执行系统：自动收敛角色、压低 token、提高命中率，把调研、代码、内容、PPT、HTML、配图、插件和规则升级都收口到可验证的结果。
+无极军团是一套面向真实交付的执行系统：把调研、代码、内容、PPT、HTML、配图、插件和规则升级收口到可验证结果。
 
 **一句话卖点**  
-更省 token，更少废话，更高命中，更稳交付；PPT 默认走“模板续写 + 动态演示 + 可编辑交付”主链。
+以更少返工换更低总成本；复杂任务走真实生产链，简单任务走低噪音直达链。
 
-## 为什么会让人想用
+## 使用定位
 
 - 你不用自己学复杂工具链，阿极就是统一入口。
-- 你不用反复提醒“别跑偏、别半成品、别假完成”，底层门禁会先拦。
-- 你不用在简单任务上浪费高成本模型，它会先走低成本，再按难度升级。
-- 你不用把历史偏好一次次重讲，它会把可用偏好蒸馏成离线优化闭环。
-- 你不用担心一堆角色吵架，它默认单主帅负责到底，只有真缺能力才补位。
+- 你可以按需使用门禁、底座、PPT 生产链和独立审查位。
+- 这里描述的是仓库能力，不是运行时必须逐条展开给用户的话术。
 
-## 它卖的不是概念，卖的是结果
+## 能力范围
 
 - 调研：查得更准，结论更短，更少信息噪音。
 - 代码：Go 执行底座负责硬门禁，功能链路可构建、可测试、可审计。
@@ -36,156 +34,45 @@
 
 ## 当前收口能力
 
-- Go 执行底座：`wuji-cli` 已覆盖 `reference-guard`、`workflow-guard`、`claim-guard`、`time-guard`、`task`、`sync`、`audit`、`bench`、`bench-report`、`code-map`、`closeout-check`、`repeat-candidates`、`evidence-grade`、`canon-report`、`route-task`、`context-pack`、`preview`、`asset-map`、`pptx-audit`、`pptx-preflight`、`pptx-batch-gate`、`mcp-guard`、`mcp-distill`、`feedback-log`、`feedback-dataset`、`prompt-candidate-audit`、`prompt-eval`、`prompt-distill`。
-- 模型分档：默认 `gpt-5.4-mini`，中档 `gpt-5.4`，高档 `gpt-5.5`，按任务难度推荐。
+- Go 执行底座：`wuji-cli` 当前保留的核心硬门包括 `reference-guard`、`claim-guard`、`time-guard`、`audit`、`code-map`、`bugfix-guard`、`qa-guard`、`migration-guard`、`closeout-check`、`mcp-guard` 以及 PPT 专属门禁；其他能力更适合作为离线治理或专项分析工具，而不是默认主链必经项。
+- 模型分档：低档 `gpt-5.4-mini`，中档 `gpt-5.4`，高档 `gpt-5.5`；按任务难度、验证成本和总返工成本选档，不把 `mini` 写死成一切任务默认档。
 - 静态骨架：固定模型三档、核心路由骨架、内置插件归口和 MCP 默认裁决已沉入 Go 底座，`config.json` 只保留环境信息和覆盖项。
-- 图像直出：普通 `生图/插图/海报/封面/配图` 已从 `ComfyUI` 重链剥离，`route-task` 直接落到 `imagegen` 低档直出链。
+- 图像直出：普通 `生图/插图/海报/封面/配图` 已从 `ComfyUI` 重链剥离，默认直走 `imagegen`。
 - 执行节奏：普通任务默认不做开工前预检，不扫全仓、不试环境、不探接口；直接做主线，只有文件安全、外部同步、批量破坏性动作保留零思考硬门。
-- Go 底盘也已跟上：`task` 会直接拦“先预检/先探测/先扫仓、却没有主产物”的假开工；`workflow-guard` 和 `audit` 会复查任务日志，防止这类旧习惯混进最终收口。
+- Go 底盘主要承担可判定硬门，不承担默认管理编排。
 - PPT 主链：模板续写走 `Presentations template-following exact clone/edit`；从零高颜值走 `HTML-first -> editable PPTX`；Windows PowerPoint COM/MCP 只做最后一公里精修；Go 负责锁三张表、`style-lock`、`page-role-policy`、pilot 放行和收口 QA，默认主线不再先跑 `pptx-preflight`。
 - 当前 `HTML-first` 的真实边界已明确：它优先走 `Playwright + dom-to-pptx` 的浏览器计算样式导出，能高保真保留静态 HTML/CSS 视觉，但仍不把 HTML/CSS 的动画、过渡和动态组件自动转成 PowerPoint 动画。
 - 动态交付主张：演示型 PPT 默认双轨成品，`live HTML demo` 承接动态体验，`editable PPTX` 承接可编辑交付；静态 PPT 不再冒充动态成品。
 - 动态硬门现已落地：`motion-plan` 成为批量前必检工件；如果任务要求动效却没有 `live-demo-source.html` 或等效动态源，`pptx-batch-gate` 直接 `NO-GO`。
 - 布局硬门现已落地：`pilot-preview-layout.json` 会确定性拦截真实越界和底部危险区贴边；`HTML-first` 导出链也会同步生成 `htmlfirst-preview-layout.json` 作为布局证据。
-- 自进化闭环：`feedback-log -> feedback-dataset -> prompt-candidate-audit -> prompt-eval -> prompt-distill`。
+- 自进化闭环：保留为离线治理能力，不建议作为每次执行的默认主链。
 - 交付铁律：只交最终结果，不交半成品，不拿路线表演冒充执行。
-- Codex Use Cases 精华点已吸收为少数硬机制：持续目标直跑到底、复杂代码先出最小代码地图、重复工作优先沉成 skill/CLI、外部与批量操作必须留证据、前端默认真实浏览器验收、安全结果必须证据分级。
-- 这些机制现在不只在规则层：`task end` 已与 `closeout-check + evidence-grade` 串联，`route-task` 会显式提示复杂代码任务需要 `code-map`，`repeat-candidates` 会直接产出蒸馏候选队列，`bench-report` / `mcp-distill` / `prompt-distill` 会带证据等级。
-- 现在连工作流收口也被串上了：`workflow-guard` 会检查 `task-log`、`closeout-report`、`evidence-report` 是否闭环；`repeat-candidates` 也会自动写出固定 `distill-queue.json`。
+- Codex Use Cases 吸收重点：持续目标直跑到底、复杂代码先出最小代码地图、重复工作沉成 skill/CLI、外部与批量操作保留证据、前端优先真实浏览器验收。
+- Headroom 吸收重点：稳定前缀缓存对齐、按内容类型压缩路由、重要性优先上下文装配、失败模式离线学习。
 
 ---
 
-## v10.6 的关键变化 / Key Change
+## 当前关键变化 / Key Changes
 
-v10.6 新增 `pilot-page` 快速闭环：PPT/HTML 视觉成品不再一口气批量试错，三张表锁路后先生成 1 页最高风险/最高密度/最能代表风格的 pilot page，记录 `pilot-score`。pilot 默认先走内部 gate；只有命中真实审批点、用户明确要求先看中间结果，或路线风险高到无法内部判定取舍时，才停下给用户确认。其余情况默认允许自动批准继续批量，但仍必须留下 `pilot-approval` 工件。执行底座新增 `pptx-batch-gate`，缺 `pilot-page`、`pilot-preview`、`pilot-score`、`pilot-approval`，或 preview 发白/低对比，直接 `NO-GO`。
+- 执行底座当前只强调少而硬的门禁与审计能力，不再把 `workflow-guard / task / route-task / context-pack / feedback-* / prompt-distill` 这类治理链路当作日常执行默认必经层。
+- `truth-state`、`finish-or-block`、`closeout-check` 已把“胡说/假完成/收口后再问继续”从文案要求推进到 Go 硬门。
+- 白帽显式出场与“同任务默认持续执行到收口”已继续写入全局规则和审查规则，不再只靠前台口头承诺。
+- `bugfix-guard` 已加入修 bug 专属门禁：没有复现、自测、回归/独立复验证据，或浏览器/程序/关键流程仍失败时，一律不得宣称修好。
+- `qa-guard` 已加入质检专属门禁：没有浏览器/程序/命令/MCP 独立复验证据，或复验已明确仍失败时，一律不得宣称质检已通过。
+- `migration-guard` 已加入旧项目迁移专属门禁：没有功能对照表、可运行证据、关键流程证据，或仍存在假页/空壳页时，一律不得宣称完成。
+- 质检能力边界已增强：质检不再只看报告，默认可调用浏览器、启动命令、本地程序及必要的已过门禁 MCP/插件做独立复验，不过就直接打回继续修。
+- `prompt-candidate-audit` 现在会拦截：
+  - 生图前探路话术
+  - 收口后再问继续
+  - 参谋进入套话 + 分阶段停机 + 等用户继续
+- `audit` 现在会拦截任务日志里的“等待用户继续”假阻塞。
+- PPT 主链当前收口为：模板续写走 `Presentations template-following exact clone/edit`；从零高颜值走 `HTML-first -> editable PPTX`；Go 负责三张表、pilot 放行和 QA，不再把 `pptx-preflight` 扩散成默认第一步。
+- 模型分档当前只保留三档事实：`gpt-5.4-mini / gpt-5.4 / gpt-5.5`；按任务复杂度、验证负担和返工风险选档，不写死某一档为一切任务默认答案。
+- 普通图像任务默认直走 `imagegen`，不再允许先探环境、先读系统 skill、先看 key、先试通道。
+- 提示音保留，但只作为工具层习惯，不承载原则层含义。
+- Headroom 已被定向蒸馏为四个机制，不引入整套 proxy/wrap 外壳，也不开放自动改主规则。
 
-PPT 主链同时完成整流：不再把 Go 门禁当成 PPT 生产引擎。模板续写/补页固定切到官方 `Presentations`；从零高颜值固定补进 `HTML-first -> editable PPTX`；PowerPoint COM/MCP 只保留为最后一公里精修；原有 Go 链降到后置 QA 和安全护栏。这里的 `HTML-first` 当前主引擎已切到 `dom-to-pptx`，属于“高保真静态 HTML/CSS 导出”，不再是旧的低保真重画链。
-
-教程、课程、说明、方案类 PPT 的默认内容顺序也已收口：`source -> outline -> speaker-notes -> slide-spec/design-brief -> reference-frame-map -> reusable-asset-map -> illustration-plan -> pilot-page -> pptx-batch-gate -> full PPTX -> notes -> QA`。除非用户明确要先审大纲，否则内部自动直跑；逐字稿默认进备注区，不再硬塞进正文。
-
-教学页现在不允许只剩大框架：如果页面包含步骤、操作、界面、按钮、导入导出等教学信号，系统会默认生成 `outline / speaker-notes / illustration-plan` 工件，并把“截图 / 步骤示意图 / image2 教学插图 / 复用参考图框”写成显式策略；`pptx-batch-gate` 会拦截缺视觉策略的教学页。
-
-这次又把两条高频跑偏点彻底写死进了 PPT 开发逻辑。第一，`style-lock` 会把整套 deck 的风格名、背景深浅、霓虹/高光语言、插图语言和禁止项固化下来；像“霓虹赛博卡通风”这种用户明确点名的风格，后续必须原样进入 image2 / 配图提示，不能再静默洗成白底或写实风。第二，`page-role-policy` 会把首页、目录页、单元页、总结页、结尾页这些固定页型锁住，后续不得再拿这些页去塞普通内容页。
-第三，模板里现成的标题条、卡片、图框、插图区、装饰组件默认优先借位复用，不再鼓励自创低配方框。第四，只要任务目标明确要求动态感，就必须同时规划 `motion-plan`；如果最终只交静态 PPT，就不能再对外声称“动态已经实现”。
-
-为压速度，PPT 主链还额外固化了几条默认跳过规则：不再重复跑 `pptx-preflight`；同路线成功过后默认复用已有 inspect，不再重复 template inspect；html-first 默认只渲染 pilot 所需最小预览，不做整套 layout 体检；模板续写默认跳过无必要的 final preview 重渲染；同任务里已经验证过的工具链，不再为“确认能不能做”重复探路。
-
-当前无极执行底座主链路统一为 Go：`wuji-cli` 已覆盖 `reference-guard`、`workflow-guard`、`claim-guard`、`time-guard`、`task`、`sync`、`audit`、`bench`、`bench-report`、`canon-report`、`route-task`、`context-pack`、`preview`、`asset-map`、`pptx-audit`、`pptx-preflight`、`pptx-batch-gate`、`mcp-guard`、`mcp-distill`、`feedback-log`、`feedback-dataset`、`prompt-candidate-audit`、`prompt-eval`、`prompt-distill`，并统一调度专项补位工具；但在 PPT 体系里，它只负责锁路线、批量放行和收口 QA，不再充当主生产器，`pptx-preflight` 只在定向探针场景触发。
-模型档位当前收口为 3 档：默认 `gpt-5.4-mini`，中档 `gpt-5.4`，高档 `gpt-5.5`；由 `route-task` 基于 Go 内置路由骨架推荐 `tier + reasoning_effort`，再按需叠加 `config.json` 覆盖项，以“先低成本、再按需升级”为默认原则。
-普通图像任务现在也加了确定性收口：普通 `生图/插图/海报/封面/配图` 直接走 `imagegen`，不再允许先查环境、先读系统 skill、先看 key、先试通道。
-前台执行提示统一压成中文短句：执行前只报 `建议：5.4-mini 低` / `建议：5.4 中` / `建议：5.5 高` / `建议：5.5 超高`；任务完成后默认报 `建议切回：5.4-mini 低`。
-提示词自进化当前已收口为离线闭环：`feedback-log -> feedback-dataset -> prompt-candidate-audit -> prompt-eval -> prompt-distill`，只沉淀脱敏偏好信号，不把运行时上下文越堆越肥。
-`prompt-candidate-audit` 已把这类生图前探路话术列为失败项，防止规则说对了、执行又绕回去。
-
-## v10.8 的关键变化 / Key Change
-
-v10.8 把 PPT 动态链和布局收口从“规则要求”补成了“代码硬门”。`motion-plan` 现已正式进入 `wuji-cli pptx-preflight / pptx-batch-gate` 必检清单；动态任务如果缺 `live HTML demo` 或等效动态源，不再允许批量放行。`asset-map` 也会默认落地 `motion-plan.md/json`，不再靠人工补写。
-
-这一版同时补齐了布局证据链：`pilot-preview-layout.json` 现在会被 `pptx-batch-gate` 确定性校验，真实越界和底部危险区贴边直接拦截；`HTML-first` 主链会同步产出 `htmlfirst-preview-layout.json` 和布局报告，避免页面做得漂亮却超出可视安全区。
-
-PPT 包装脚本也做了稳定性补强：`wuji-ppt-pipeline.ps1` 会自动串起 `motion-plan`、`live-demo-source.html`、`pilot-preview-layout.json`；模板续写链补上 staged input 保护和产物缺失回退，防止“报告成功但成品没落地”。同时，pilot 预览现在优先使用 PowerPoint COM 从最终 PPTX 导出，减少浏览器预览与真实成品视图不一致。整批改动已通过 `scripts/test-wuji-cli.ps1` 的 deterministic gates 回归。
-
-## v10.5 的关键变化 / Key Change
-
-v10.5 针对 PPT 长时间空转和低质交付加前置硬门禁：口头说“直接生成”不算执行；非代码任务 10/15/30 分钟分级熔断；参考 PPTX 必须同时当作风格系统和素材库，批量生成前先锁定 `reference-frame-map`、`reusable-asset-map`、`illustration-plan`；优先复用表格、图标、卡片、流程箭头、章节页、背景装饰、教学插图、案例图、公式图和 image2 生图资产；真 PPTX 不得每页一张整图冒充可编辑成品。执行底座对占位符残留、空白页、模板碎片页和低对比 preview 做确定性硬拦截。
-
-## v10.4 的关键变化 / Key Change
-
-v10.4 新增 `执行底座 / 执行底座主帅`：把无极军团自身稳定、重复、可判定的动作下沉为确定性执行底座，负责 `wuji-cli`、guard、task、sync、audit、workflow、beep、bench、preview调度。它不替代开发主帅，不抢普通 Go/Tauri/业务代码，也不替代参谋本部、女娲、白帽、质检、安全、合规和进化判断。
-
-## v10.3 的关键变化 / Key Change
-
-v10.3 增加非代码交付先执行铁律：PPT、文档、图片、HTML演示稿、逐字稿等成品任务，默认先直接生成主成品；不允许开工前把时间耗在反复验证工具链上，除非遇到真实错误或安全风险。
-
-## v10.2 的关键变化 / Key Change
-
-v10.2 吸收 `DannyMac180/skills` 的动态工作流机制，但不新增入口：复杂 `LEGION_TASK` 必须留下最小可审计轨迹，包含目标、成功标准、任务切片、验证结果和最终收口；简单任务不启用，避免变慢。
-
-## v10.1 的关键变化 / Key Change
-
-v10.1 增加参考文件只读铁律：用户提供、点名、上传、要求“参考/借鉴/按照/对照”的文件默认只读；生成物、修复版、重做版必须另存为新文件，不得覆盖参考原件。
-
-v10.0 修正 LEGION_TASK 触发口径：不再只看用户有没有喊“激活无极军团”。只要任务本身需要多能力协作，就必须进入 `LEGION_TASK`，并用参谋本部接管格式开场。
-
-例如：根据大纲参考上节课 PPT，生成新 PPT 和逐字稿。
-
----
-
-## v9.9 的关键变化 / Key Change
-
-v9.9 修正“声音不是在最后响”的体感问题：由于工具只能在最终回复前运行，收尾提醒改为后台延迟响铃。
-
-- 最终回复前调度：`.\scripts\beep.ps1 complete -SpawnDelayed -DelayMs 1200`
-- 最终文字发出后约 1.2 秒响铃。
-- 这样听感更接近微信/QQ的消息结束提醒。
-
----
-
-## v9.8 的关键变化 / Key Change
-
-v9.8 修正提示音触发时机：提示音不是“验证中响一下”，而是任务真正结束前的最后提醒。
-
-- 非轻量对话任务收尾时，`beep.ps1` 必须尽量作为最终回复前的最后一个工具动作。
-- 成功完成用 `.\scripts\beep.ps1 complete`。
-- 阻塞或失败用 `.\scripts\beep.ps1 error`。
-
----
-
-## v9.7 的关键变化 / Key Change
-
-v9.7 增加任务收尾提示音：执行型任务完成、阻塞或失败收口前，会优先调用 [beep.ps1](E:\wuji-projects\wuji-legion-codex\scripts\beep.ps1) 生成临时 WAV 并播放提示音，避免多窗口工作时错过结果。
-
-- 完成任务：`.\scripts\beep.ps1 complete`
-- 阻塞或失败：`.\scripts\beep.ps1 error`
-- 轻提醒：`.\scripts\beep.ps1 notify`
-
-纯聊天/身份问答这类 `FAST_REPLY` 不强制响铃，避免日常对话太吵。
-
----
-
-## v9.6 的关键变化 / Key Change
-
-v9.6 做的是质量整流：把“能跑”继续推进到“干净、可安装、可验证”。
-
-- 根 `SKILL.md` 已补齐 Codex skill frontmatter。
-- 安装、恢复、同步、推送脚本已清掉旧路径、旧版本和破坏式逻辑。
-- 远征军 Trae 工兵已从旧项目专用说明改为无极军团通用 handoff 工兵。
-- 打靶场已支持 `skill` 目录扫描，可检查 frontmatter、乱码和占位残留。
-- 本轮验证通过：专家生成 15 张；PowerShell 语法通过；Python 编译通过；打靶场 116/116 通过。
-
----
-
-## v9.5 的关键变化 / Key Change
-
-旧版专家库是“很多专家卡”。v9.5 改成：
-
-```text
-师团万能主帅入口
--> 内置多模式
--> 按任务切换
--> 独立白帽/质检/安全/合规审查
-```
-
-压缩的是单个师团内部入口，不是把整个无极军团压成一个超级大脑。
-
-当前专家库从 `44` 张主责卡继续压缩为 `16` 张高密度卡：
-
-- 参谋主帅
-- 内容主帅
-- 视觉主帅
-- 提示词主帅
-- 开发主帅
-- 执行底座主帅
-- ComfyUI主帅
-- 情报主帅
-- 安全主帅
-- 合规审计官
-- 白帽纠察官
-- 质检主帅
-- 性能基准官
-- 进化主帅
-- 交付主帅
-- 归档主帅
+完整历史变更请看：[CHANGELOG.md](E:\wuji-projects\wuji-legion-codex\CHANGELOG.md)
 
 ---
 
@@ -196,7 +83,7 @@ v9.6 做的是质量整流：把“能跑”继续推进到“干净、可安装
 | 内容 | 内容主帅 | 小说、剧本、分镜、教程、计划书、营销方案、卖点提炼、短内容、人味改稿 |
 | 视觉 | 视觉主帅 | 真PPTX、HTML演示、UI页面、数据可视化、信息图、配图 |
 | 开发 | 开发主帅 | Go/Tauri、前端、小程序、ComfyUI插件、AI工程、自动化、原型 |
-| 执行底座 | 执行底座主帅 | 无极执行底座、wuji-cli、guard、task、sync、audit、workflow、beep、bench、preview调度、pptx-preflight、pptx-batch-gate、pptx-audit、asset-map、time-guard |
+| 执行底座 | 执行底座主帅 | 无极执行底座、wuji-cli、少而硬的 guard/audit 门禁、PPT 批量门禁、提示音与专项审计 |
 | 情报 | 情报主帅 | 全网搜索、GitHub源码核验、趋势、用户研究、本地化 |
 | 安全 | 安全主帅 | 威胁建模、漏洞验证、供应链、发布安全 |
 | 审查 | 白帽/质检/合规/性能 | 前置封驳、最终验收、许可证/隐私、速度/token基准 |
@@ -206,7 +93,7 @@ v9.6 做的是质量整流：把“能跑”继续推进到“干净、可安装
 
 ## 借鉴了什么 / What It Distills
 
-为避免误会，这里明确说明：无极军团 Codex 版参考、蒸馏、整流了多条开源 skill / 工作流，但没有把上游项目原样搬运进来。
+为避免误会，这里明确说明：无极军团 Codex 版参考、蒸馏、整流了多条开源 skill / 流程，但没有把上游项目原样搬运进来。
 
 它借走的是机制，不是名字：
 
@@ -218,7 +105,7 @@ v9.6 做的是质量整流：把“能跑”继续推进到“干净、可安装
 - `powerpoint-skill`：视觉优先、密度边界、重叠检查、预览验证。
 - `ppt-master`、`elite-powerpoint-designer`、`slide-studio`、`Presentations`：真 PPTX 分阶段、可编辑交付、审美上限和验证闭环。
 - `SkillClaw`、`Edict`：任务后进化、候选验证、前置封驳和状态审计。
-- `DannyMac180/skills`：动态工作流工件、packet 切片、结果收集和验证脚手架。
+- `DannyMac180/skills`：复杂任务最小审计工件、切片回收、结果收集和验证脚手架。
 
 来源、commit 和裁决记录见 [distillation.md](E:\wuji-projects\wuji-legion-codex\units\distillation.md)。
 
@@ -255,49 +142,4 @@ v9.6 做的是质量整流：把“能跑”继续推进到“干净、可安装
 
 ## 更新日志 / Changelog
 
-- `2026-06-01 v10.6`
-  - 新增 pilot page 快速闭环：先做 1 页代表页，先过内部 gate，再批量生成；只有命中真实审批点才停给用户看。
-  - pilot 最多两轮，不过线必须换路线或短报阻塞。
-  - 执行底座新增 `pptx-batch-gate`，缺 pilot 产物、`pilot-approval` 或 pilot-score 不允许批量生成；preview 发白/低对比也直接拦截。
-- `2026-06-01 v10.5`
-  - 非代码任务新增 10/15/30 分钟熔断，禁止“嘴上直接生成、实际继续绕路”。
-  - PPT 参考任务必须在生成前锁定 `reference-frame-map`、`reusable-asset-map`、`illustration-plan`。
-  - PPT 参考任务必须继承风格、框架、可复用元素和同等级 image2 教学插图表达。
-  - 真 PPTX 禁止每页一张整图冒充可编辑成品。
-  - 执行底座新增 `pptx-preflight`、`pptx-audit`、`asset-map`、`time-guard` 硬门禁方向。
-- `2026-06-01 v10.4`
-  - 新增 `执行底座 / 执行底座主帅`，作为无极军团通用确定性执行底座。
-  - 明确普通 Go/Tauri/业务代码仍归开发主帅；`wuji-cli`、guard、sync、audit、workflow、beep、bench、preview调度归 执行底座主帅。
-- `2026-06-01 v10.3`
-  - 非代码成品任务先直接生成主成品，禁止开工前工具链连环验证。
-  - PPT 顺序固定为读取输入、映射页型、生成完整成品、预览 QA、局部修复。
-- `2026-06-01 v10.2`
-  - 吸收 `DannyMac180/skills@5695fa1` 的动态工作流机制。
-  - 复杂 `LEGION_TASK` 增加最小可审计轨迹；简单任务不启用，避免 token 噪音。
-  - 新增 `scripts/wuji_workflow.py`，用于生成、切片、收集和验证无极工作流工件。
-- `2026-05-31 v10.1`
-- `2026-05-31 v10.0`
-  - 修正 `LEGION_TASK` 触发口径：复杂多能力任务即使用户没喊“激活无极军团”，也必须进入参谋本部接管格式。
-- `2026-05-31 v9.9`
-  - `beep.ps1` 新增后台延迟模式 `-SpawnDelayed -DelayMs`。
-  - 收尾提示音改为最终回复前调度、最终回复后响起，解决“不是结束时响”的体感问题。
-- `2026-05-31 v9.8`
-  - 修正提示音触发时机：提示音必须尽量作为最终回复前的最后一个工具动作，避免验证阶段提前响完。
-- `2026-05-31 v9.7`
-  - 增强 `scripts/beep.ps1`，用临时 WAV 播放提示音，支持 `complete`、`error`、`notify` 三种提示音。
-  - 规则新增任务完成提示音：非 FAST_REPLY 的任务收尾前先响铃，再给最终结果。
-- `2026-05-31 v9.6`
-  - 补齐根 `SKILL.md` frontmatter。
-  - 清理无用缓存，修复安装/恢复/同步/推送脚本。
-  - Trae 工兵改为无极远征通用 handoff 执行层。
-  - 修复打靶场 `skill` 扫描，验证结果 116/116 通过。
-- `2026-05-31 v9.5`
-  - 专家库从 `44` 张主责卡压缩为 `15` 张高密度卡。
-  - 改为“师团万能主帅入口 + 内置多模式 + 独立质检”结构。
-  - 内容、视觉、开发等执行师团合并入口；白帽、质检、安全、合规继续独立。
-  - 新增全网源码核验来源：`github/awesome-copilot`、`marketingskills`、`humanizer`、`powerpoint-skill`、`ppt-master`。
-- `2026-05-31 v9.4`
-  - 专家库从 `70` 张卡蒸馏压缩到 `44` 张主责专家卡。
-  - 合并重复人物和重复能力，新增 `experts/INDEX.md` 作为唯一专家索引。
-  - 规则明确“专家不以量取胜、蒸馏不是叠加”。
-- 详细记录见：[CHANGELOG.md](E:\wuji-projects\wuji-legion-codex\CHANGELOG.md)
+详细历史记录见：[CHANGELOG.md](E:\wuji-projects\wuji-legion-codex\CHANGELOG.md)

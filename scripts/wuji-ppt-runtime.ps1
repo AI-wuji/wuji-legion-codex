@@ -182,7 +182,17 @@ function Ensure-WujiWorkspacePackageLink {
         Remove-Item -LiteralPath $target -Recurse -Force
     }
 
-    New-Item -ItemType Junction -Path $target -Target $SourcePath | Out-Null
+    try {
+        New-Item -ItemType Junction -Path $target -Target $SourcePath | Out-Null
+        return
+    }
+    catch {
+        $resolvedTarget = [System.IO.Path]::GetFullPath($target)
+        if (-not $resolvedTarget.StartsWith($workspaceRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "Refusing to copy package source outside workspace: $resolvedTarget"
+        }
+        Copy-Item -LiteralPath $SourcePath -Destination $target -Recurse -Force
+    }
 }
 
 function Initialize-WujiArtifactWorkspace {

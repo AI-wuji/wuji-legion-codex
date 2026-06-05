@@ -45,8 +45,9 @@ source scan
 | `AMAP-ML/SkillClaw` | 2026-05-31 | `1f96ec8` | 任务后进化、候选验证、版本轨迹 |
 | `cft0808/edict` | 2026-05-31 | `14a2075` | 前置封驳、状态审计、可观测协作 |
 | `vercel-labs/agent-skills` | 2026-05-31 | `1801156` | skill 组织和轻量安装参考 |
-| `DannyMac180/skills` | 2026-06-01 | `5695fa1` | 动态工作流工件、packet 切片、结果收集、验证脚手架 |
+| `DannyMac180/skills` | 2026-06-01 | `5695fa1` | 复杂任务的最小审计工件、切片回收、验证脚手架 |
 | `OpenAI Codex Use Cases` | 2026-06-03 | official docs | 持续目标、代码地图、内部完成判据、skill/CLI 沉淀、真实浏览器校验、证据化安全扫描 |
+| `chopratejas/headroom` | 2026-06-05 | docs + README | `CacheAligner`、`ContentRouter`、`IntelligentContext`、失败学习回写机制 |
 
 ## 本轮蒸馏结论
 
@@ -58,8 +59,25 @@ source scan
 - `nuwa`：不再重复整张主帅总表，只保留补位顺序、补位格式和补位禁区。
 - `mcp_plugins`、`plugins`：拆成“工具边界”和“插件台账”两层；已启用和候选分开，避免把市场清单写成默认可用。
 - `content`、`prompt`、`security`：来源裁决回收到本文件，本体文件只保留执行模式、硬规则和审查边界。
-- `dynamic workflow`：不新增入口，蒸馏为复杂 LEGION_TASK 的最小可审计轨迹；参谋本部定 contract，交付主帅管 packets/results，质检主帅按 verification 放行。
+- `dynamic execution trace`：不新增入口，只保留复杂 LEGION_TASK 必要的最小审计轨迹；参谋本部定目标，交付主帅管最小切片与结果回收，质检主帅按 verification 放行。
 - `OpenAI Codex Use Cases`：不按案例标题扩编入口，只吸收“持续目标 + 内部完成判据 + 改前先出代码地图 + 重复工作 skill/CLI 化 + 外部操作留证据 + 前端必须真实浏览器校验 + 安全扫描证据分级”这些低噪音高命中机制。
+- `Headroom`：不引入整套代理壳，只定向吸收四个机制：稳定前缀缓存对齐、按内容类型压缩路由、重要性优先的上下文装配、失败模式离线学习回写。
+
+## Headroom 会审结论
+
+白帽、进化主帅、执行底座联合裁决：
+
+- `absorb`
+  - `CacheAligner`：把日期、时间、session id、随机字段等动态内容尽量后移，稳定前缀，提高 provider cache 命中。
+  - `ContentRouter`：按 `json / code / logs / text / tool-output` 自动走不同压缩路径，不再用一种长提示硬压所有内容。
+  - `IntelligentContext`：按重要性装配上下文，优先保留高价值片段；压缩不是盲删，必要时要能追回原文或保留证据引用。
+  - `learn` 思路：把失败会话、纠偏记录和最终成功路径沉到离线候选层，再进入 `repeat-candidates / distill-queue / prompt-distill`，不靠人脑记忆。
+- `defer`
+  - Headroom 的完整 proxy / wrap / SDK 接入；有价值，但先不把外部运行层直接塞进无极默认主链。
+  - 自动把学习结果直接写回 `AGENTS.md / CLAUDE.md / MEMORY.md`；保留思路，不默认开放直写。
+- `reject`
+  - 把 Headroom 当成新的默认总控层或新的“执行底座外壳”。
+  - 不经白帽和质检审查，就让 learn 结果自动改主规则、主 skill 或默认提示。
 
 ## OpenAI Codex Use Cases 会审结论
 
@@ -74,7 +92,7 @@ source scan
   - 安全证据分级：安全扫描不只报“有风险”，还要给候选验证、攻击路径和证据级别。
 - `defer`
   - 强依赖 Gmail、Slack、Calendar、跨 SaaS 自动化的协作流；有价值，但不进默认主链。
-  - Computer Use 深接管桌面类能力；保留为高风险补位，不作为日常默认路线。
+  - Computer Use 深进入桌面类能力；保留为高风险补位，不作为日常默认路线。
 - `reject`
   - 按官网 50+ 案例扩编新入口、新主帅或新路由标签。
   - 把 showcase 文案直接复制成规则正文。
