@@ -1,17 +1,17 @@
 # Wuji Legion for Codex / 无极军团 Codex 版
 
-> A Codex-native execution kernel for disciplined, audited, token-efficient AI work.
+> A Codex system-level meta-skill: it atomically distills the strongest parts of many skills, then routes, mounts, audits, and verifies them through one main chain.
 >
-> 一个运行在 Codex 内部的 AI 执行内核：单主链、按需能力挂载、独立审查、低 token 总成本、真实验证后交付。
+> 无极军团是 Codex 的系统级总 skill：把众多 skill 的强项拆成原子后优胜劣汰、融合重组，再由唯一主链统一路由、按需挂载、审计验证和交付。
 
 Current version: `v11.3`
 Truth source: `kernel-source.json`
 
 ## Why Wuji Legion
 
-无极军团不是“多角色聊天皮肤”。它是一套给 Codex 使用的任务执行操作系统：先路由，再按需挂载能力，再用 Go 执行底座做确定性门禁和验证。目标很简单：少兜圈、少返工、少烧 token，但不牺牲命中率、证据链和交付质量。
+无极军团不是“多角色聊天皮肤”，也不是把一堆 skill 叠在一起的合集。它是一套给 Codex 使用的系统级总 skill：把 OpenSquilla、Headroom、Reasonix、PPT、调研、审计、根因修复等来源的有效能力拆成原子，经过查漏补缺、优胜劣汰后，融合进唯一主链。执行时只按任务需要挂载能力，再用 Go 底座做确定性门禁和真实验证。目标很简单：少兜圈、少返工、少烧 token，但不牺牲命中率、证据链和交付质量。
 
-Wuji Legion is not a role-play prompt pack. It is a Codex-native task execution kernel: route the task, mount only the needed capabilities, then verify with deterministic Go gates. The goal is simple: fewer loops, less rework, lower total token cost, without weakening accuracy, evidence, or delivery quality.
+Wuji Legion is not a role-play prompt pack, and it is not a pile of separate skills. It is a Codex system-level meta-skill: useful capabilities from OpenSquilla, Headroom, Reasonix, presentation work, research, audit, root-cause repair, and other sources are broken into atoms, filtered by gap-fill or replacement value, and fused into one main chain. At runtime, only the needed atoms are mounted, then deterministic Go gates and real-run checks verify the result. The goal is simple: fewer loops, less rework, lower total token cost, without weakening accuracy, evidence, or delivery quality.
 
 ## Core Selling Points / 核心卖点
 
@@ -229,3 +229,13 @@ Useful contributions are welcome, especially:
 See repository license if present. Third-party source pools and distilled ideas must keep their own license, source, privacy, and attribution boundaries.
 
 如仓库包含许可证，请以仓库许可证为准。外部 source pool 和被蒸馏能力必须保留各自的许可、来源、隐私和归属边界。
+
+## Support / 支持一下
+
+If Wuji Legion helps your Codex workflow, a small donation keeps the project moving.
+
+如果无极军团帮到了你，欢迎随手赞赏，支持继续打磨。
+
+<p align="center">
+  <img src="assets/reward-qr.jpg" width="260" alt="Donation QR / 赞赏码">
+</p>

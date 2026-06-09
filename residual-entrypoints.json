@@ -135,6 +135,12 @@
       "reason": "human orientation, not runtime truth"
     },
     {
+      "path": "assets/reward-qr.jpg",
+      "type": "repo-readme-asset",
+      "status": "on-demand",
+      "reason": "inline donation QR for the GitHub README support section; not runtime doctrine, route input, or context material"
+    },
+    {
       "path": "SKILL.md",
       "type": "mirror-doc",
       "status": "on-demand",
