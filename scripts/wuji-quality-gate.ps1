@@ -49,9 +49,15 @@ function Find-GoTool {
     param([string]$Name)
     $cmd = Get-Command $Name -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
-    $portable = Get-ChildItem -Path ".\.wuji-tools" -Recurse -Filter "$Name.exe" -ErrorAction SilentlyContinue |
-        Select-Object -First 1
-    if ($portable) { return $portable.FullName }
+    foreach ($candidate in @(
+        (Join-Path ".\.wuji-tools\go-manual\go\bin" "$Name.exe"),
+        (Join-Path ".\.wuji-tools\go\bin" "$Name.exe"),
+        (Join-Path ".\.wuji-tools" "$Name.exe")
+    )) {
+        if (Test-Path -LiteralPath $candidate) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+    }
     return $null
 }
 
@@ -277,6 +283,26 @@ if ((Test-Path -LiteralPath ".\config.json") -and (Test-Path -LiteralPath ".\scr
             Add-Result "version:installer" "FAIL" "installer banner does not match config iron_rules_version=$expected"
         } else {
             Add-Result "version:installer" "PASS" "installer banner matches config iron_rules_version=$expected"
+        }
+        if ($install -notmatch '\[string\]\$Ref' -or $install -notmatch '40-char commit sha') {
+            Add-Result "supply-chain:installer-ref" "FAIL" "installer must require pinned 40-char commit sha"
+        } else {
+            Add-Result "supply-chain:installer-ref" "PASS" "installer requires pinned commit sha"
+        }
+        if ($install -match 'git clone\s+"https://github.com/\$REPO\.git"\s+\$temp') {
+            Add-Result "supply-chain:installer-moving-branch" "FAIL" "installer must not clone moving default branch"
+        } else {
+            Add-Result "supply-chain:installer-moving-branch" "PASS" "installer avoids moving default branch clone"
+        }
+        if ($install -match 'if \(Test-Path -LiteralPath \$ensureScript\)\s*\{' -or $install -match '& powershell[^\r\n]+ensure-wuji-cli[^\r\n]+-Quiet') {
+            Add-Result "supply-chain:installer-bootstrap" "FAIL" "installer bootstrap must be behind explicit -Bootstrap"
+        } else {
+            Add-Result "supply-chain:installer-bootstrap" "PASS" "installer bootstrap is explicit"
+        }
+        if ($install -match 'Copy-Item[^\r\n]+GLOBAL_AGENTS\.md[^\r\n]+-Destination \$AGENTS_DST[^\r\n]+-Force' -and $install -notmatch 'if \(\$InstallAgents\)') {
+            Add-Result "supply-chain:installer-agents" "FAIL" "installer AGENTS write must be behind explicit -InstallAgents"
+        } else {
+            Add-Result "supply-chain:installer-agents" "PASS" "installer AGENTS write is explicit"
         }
     } catch {
         Add-Result "version:installer" "FAIL" $_.Exception.Message

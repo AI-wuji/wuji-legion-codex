@@ -1,108 +1,128 @@
-# 蒸馏师团 - 官方源核验 + 能力蒸馏 + 瘦身闸门
+# Distillation Mirror
 
-## 核心定位
+Mirror source: `kernel-source.json`
 
-蒸馏师团隶属进化部，执行入口是 `进化主帅`。
+## Goal
 
-目标不是装更多 skill，而是把外部有效机制拆出来，蒸馏进现有师团主帅的内置模式里。
+Distillation does not collect more named systems.
 
----
+It breaks sources into atoms, then decides:
 
-## 蒸馏流程
-
-```text
-source scan
--> latest check
--> source/code read
--> license check
--> failure-mode mapping
--> owner mapping
--> absorb/defer/reject
--> validation
--> changelog
-```
-
-## 裁决标准
-
-| 裁决 | 条件 |
-|---|---|
-| absorb | 明确解决失败模式，能落入现有主帅/模式，不显著增加 token 噪音 |
-| defer | 有价值但缺验证、缺许可证、缺适用场景或当前不急 |
-| reject | 只增加口号/重复入口/外部编制/上下文污染 |
-
-## 当前已核验来源
-
-| 来源 | 最新检查 | commit | 吸收点 |
-|---|---|---|---|
-| `openai/skills` | 2026-05-31 | `a8924c2` | skill 结构、按需加载、资源分层 |
-| `anthropics/skills` | 2026-05-31 | `da20c92` | skill 规范、轻上下文、工具资源分离 |
-| `addyosmani/agent-skills` | 2026-05-31 | `6ce0298` | 阶段识别、上下文工程、薄切片、五轴review |
-| `github/awesome-copilot` | 2026-05-31 | `9b74459` | 大规模技能索引、Rust/QA/安全细分规则、bundled assets |
-| `marketingskills` | 2026-05-31 | `7f4af1e` | 产品/受众/定位先行，营销技能互相关联但有主线 |
-| `humanizer` | 2026-05-31 | `a2ace14` | AI写作痕迹识别、作者声音匹配 |
-| `powerpoint-skill` | 2026-05-31 | `a39cd8c` | 视觉优先、密度边界、重叠检查、预览验证 |
-| `ppt-master` | 2026-05-31 | `232415d` | 真PPTX结构先行、可编辑交付；clone偏慢，保留为已知参考源 |
-| `AMAP-ML/SkillClaw` | 2026-05-31 | `1f96ec8` | 任务后进化、候选验证、版本轨迹 |
-| `cft0808/edict` | 2026-05-31 | `14a2075` | 前置封驳、状态审计、可观测协作 |
-| `vercel-labs/agent-skills` | 2026-05-31 | `1801156` | skill 组织和轻量安装参考 |
-| `DannyMac180/skills` | 2026-06-01 | `5695fa1` | 复杂任务的最小审计工件、切片回收、验证脚手架 |
-| `OpenAI Codex Use Cases` | 2026-06-03 | official docs | 持续目标、代码地图、内部完成判据、skill/CLI 沉淀、真实浏览器校验、证据化安全扫描 |
-| `chopratejas/headroom` | 2026-06-05 | docs + README | `CacheAligner`、`ContentRouter`、`IntelligentContext`、失败学习回写机制 |
-
-## 本轮蒸馏结论
-
-- `content`：多个写作专家压缩为 `内容主帅`，用内置模式覆盖小说、剧本、分镜、教程、计划书、营销方案、短内容和人味改稿。
-- `visual`：PPT、HTML、UI、图表、信息图压缩为 `视觉主帅`，以交付物类型选择模式。
-- `dev`：软件、Rust/Tauri、前端、小程序、ComfyUI插件、AI工程和自动化压缩为 `开发主帅`。
-- `security`、`qa`：不合并进执行者，保持安全、合规、白帽、质检、性能基准独立。
-- `staff`、`intel`、`evolve`、`expedition`、`archive`、`prompt`：均压缩为师团主帅 + 内置模式。
-- `nuwa`：不再重复整张主帅总表，只保留补位顺序、补位格式和补位禁区。
-- `mcp_plugins`、`plugins`：拆成“工具边界”和“插件台账”两层；已启用和候选分开，避免把市场清单写成默认可用。
-- `content`、`prompt`、`security`：来源裁决回收到本文件，本体文件只保留执行模式、硬规则和审查边界。
-- `dynamic execution trace`：不新增入口，只保留复杂 LEGION_TASK 必要的最小审计轨迹；参谋本部定目标，交付主帅管最小切片与结果回收，质检主帅按 verification 放行。
-- `OpenAI Codex Use Cases`：不按案例标题扩编入口，只吸收“持续目标 + 内部完成判据 + 改前先出代码地图 + 重复工作 skill/CLI 化 + 外部操作留证据 + 前端必须真实浏览器校验 + 安全扫描证据分级”这些低噪音高命中机制。
-- `Headroom`：不引入整套代理壳，只定向吸收四个机制：稳定前缀缓存对齐、按内容类型压缩路由、重要性优先的上下文装配、失败模式离线学习回写。
-
-## Headroom 会审结论
-
-白帽、进化主帅、执行底座联合裁决：
-
-- `absorb`
-  - `CacheAligner`：把日期、时间、session id、随机字段等动态内容尽量后移，稳定前缀，提高 provider cache 命中。
-  - `ContentRouter`：按 `json / code / logs / text / tool-output` 自动走不同压缩路径，不再用一种长提示硬压所有内容。
-  - `IntelligentContext`：按重要性装配上下文，优先保留高价值片段；压缩不是盲删，必要时要能追回原文或保留证据引用。
-  - `learn` 思路：把失败会话、纠偏记录和最终成功路径沉到离线候选层，再进入 `repeat-candidates / distill-queue / prompt-distill`，不靠人脑记忆。
-- `defer`
-  - Headroom 的完整 proxy / wrap / SDK 接入；有价值，但先不把外部运行层直接塞进无极默认主链。
-  - 自动把学习结果直接写回 `AGENTS.md / CLAUDE.md / MEMORY.md`；保留思路，不默认开放直写。
+- `resident`
+- `mount-on-demand`
+- `replace`
+- `retire`
 - `reject`
-  - 把 Headroom 当成新的默认总控层或新的“执行底座外壳”。
-  - 不经白帽和质检审查，就让 learn 结果自动改主规则、主 skill 或默认提示。
 
-## OpenAI Codex Use Cases 会审结论
+Evolution is the admission judge, not another runtime. Before any cleanup,
+merge, deletion, plugin enablement, or skill promotion, `evolution-profile`
+must decide whether the candidate fills a real gap, replaces a weaker atom, or
+only adds a new shell.
 
-白帽、安全、合规审计、参谋本部、女娲联合裁决：
+## Source pools
 
-- `absorb`
-  - 目标型执行：把复杂任务写成持续目标和内部完成判据，让系统自己一干到底；除非真实阻塞或必须用户拍板，不得中途停下来要用户输入“继续”。
-  - 代码地图优先：改代码前先产出请求流、依赖点、验证点和风险点，再进入编辑。
-  - 可复用沉淀：重复命令、重复检查、重复上下文优先沉成 skill 或 CLI，不重复讲故事。
-  - 证据化批处理：批量操作、自动化操作、外部系统操作必须留下逐项结果和验证工件。
-  - 真实浏览器校验：前端与 UI 改动默认以真实浏览器预览和对照为准，不拿静态想象图收口。
-  - 安全证据分级：安全扫描不只报“有风险”，还要给候选验证、攻击路径和证据级别。
-- `defer`
-  - 强依赖 Gmail、Slack、Calendar、跨 SaaS 自动化的协作流；有价值，但不进默认主链。
-  - Computer Use 深进入桌面类能力；保留为高风险补位，不作为日常默认路线。
-- `reject`
-  - 按官网 50+ 案例扩编新入口、新主帅或新路由标签。
-  - 把 showcase 文案直接复制成规则正文。
-  - 把“自动化可行”误写成“无审批自动执行”。
+- `old-wuji`
+- `opensquilla`
+- `headroom-style`
+- `reasonix-style`
+- `hermes-style`
+- `ecc-style`
+- `context7-mcp-style`
+- `research-mode-style`
+- `superpowers-style-approved-atoms`
+- `prior-art-rca-tooling-style`
+- `fault-localization-style`
+- `multi-agent-rca-style`
+- `patch-debt-cure-style`
+- `terminal-verification-style`
+- `refactor-recipe-style`
+- `agent-eval-style`
+- `github-trending-20260608-style`
 
-## 退回红线
+## Distilled atom kernel
 
-- 只看文章介绍，不看官方源或源码。
-- 没有版本/commit/许可证记录。
-- 不能说明吸收后解决哪个失败模式。
-- 复制外部大段文本或组织编制。
-- 把多个 skill 名字叠成路由噪音。
-- 改一个文件不改全局，形成补丁冲突。
+Mirror marker: `distilled_atom_kernel`.
+
+Keep exactly the existing 21 kernel atoms unless the user approves an explicit redesign. New source pools may only fill gaps, replace weaker behavior, or be rejected:
+
+- `assumption-ledger`
+- `claim-fact-check`
+- `reversible-evidence-handle`
+- `content-type-compression-router`
+- `version-doc-mcp`
+- `guarded-realtime-source-search`
+- `research-evidence-pack`
+- `skill-stocktake-daily-library`
+- `verified-learning-loop`
+- `disciplined-debug-loop`
+- `prior-art-solution-search`
+- `root-cause-radar`
+- `parallel-hypothesis-fanout`
+- `patch-debt-root-cure`
+- `terminal-real-run-verification`
+- `html-native-design-canvas`
+- `brand-asset-protocol`
+- `anti-ai-slop-visual-rules`
+- `design-direction-triad`
+- `html-deck-to-editable-pptx`
+- `motion-stage-sprite-engine`
+
+## GitHub 热榜蒸馏边界
+
+- `last30days`, `taste-skill`, `open-notebook`, `tolaria`, `turbovec-style`, `goose`, `pg_durable-style`, `opencv-style`, and `openai-plugins` are source-pool lessons only.
+- Useful parts must land in existing owners and atoms: intelligence, visual, data, execution-base, quality, guard-office, or evolution.
+- `GhostTrack`, `ChinaTextbook`, `AiToEarn`, `project-nomad`, plugin runtimes, and external agent shells are reject/guard signals unless a later task gives a narrow, reviewed, lawful use case.
+
+## Admission test
+
+An atom is kept only if it improves the fused kernel without creating split brain:
+
+- smaller stable prefix
+- better routing precision
+- lighter context assembly
+- fewer retries and less rework
+- equal or stronger evidence and discipline
+- a recipe, counterexample, and verification path exist for structural changes
+- an eval set or real-run evidence exists before promotion to resident behavior
+
+## Rejection test
+
+Reject atoms that mainly:
+
+- create a second entry
+- create a parallel routing shell
+- dump whole skill bodies into context
+- save tokens by removing necessary evidence
+- duplicate an existing stronger atom
+- turn a source pool into an active commander
+- preserve a temporary patch chain instead of replacing the weak atom
+
+## Prior-art first
+
+When solving a problem, search existing tools, papers, docs, issues, and open-source implementations before inventing a new mechanism.
+
+The output must be distilled into atoms, evidence handles, and local actions. Whole external systems must not become new commanders or route owners.
+
+## Evolution gates
+
+`进化主帅` uses these gates before later execution steps:
+
+- `source-pool-not-shell`: external systems stay source pools unless a task needs a
+  narrow local atom.
+- `refactor-recipe-gate`: structural cleanup needs target, match surface,
+  transform, counterexample, rollback path, and verification command.
+- `eval-set-before-upgrade`: recurring preferences or prompt changes need a
+  small comparison set before becoming resident rules.
+- `retire-after-replace`: a weaker skill, rule, route, or script is retired only
+  after its useful atom has a named owner.
+- `no-sensitive-learning`: evolution may keep hashes, counts, and strategy
+  signals, but never raw user secrets, accounts, sessions, addresses, or private
+  task text.
+
+## Record of truth
+
+Decision truth lives in:
+
+- `fusion-matrix.json`
+- `residual-entrypoints.json`
+- `acceptance-checklists.json`

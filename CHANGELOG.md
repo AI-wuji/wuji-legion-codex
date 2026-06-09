@@ -77,7 +77,7 @@
 
 - PPT、文档、图片、HTML演示稿、逐字稿、海报、课程材料等非代码成品任务，默认先直接生成成品。
 - 禁止开工前反复验证“能不能做”；只有遇到真实错误、缺文件、缺权限、乱码、模板损坏、路径冲突或可能覆盖参考原件时，才允许局部验证修复。
-- PPT 类任务顺序固定为：读取输入 -> 映射页型 -> 直接生成完整成品 -> 导出预览/QA -> 必要时局部修复。
+- PPT 类任务顺序固定为：读取输入 -> 映射页型 -> 直接生成完整成品 -> 导出预览/质量验收 -> 必要时局部修复。
 - 同一能力通过一次后不得重复验证；10 分钟没有主成品文件，必须切回主线生成或短报阻塞。
 
 ## 2026-06-01 v10.2
@@ -86,7 +86,7 @@
 
 - 源码级核验 `DannyMac180/skills`，checked commit `5695fa19b9d39b8270025e79633b49a8b863f9a2`，许可证 MIT。
 - 裁决为 `absorb`：吸收动态工作流工件、packet 切片、结果收集和验证脚手架；不新增外部入口，不照搬上游命名。
-- 复杂 `LEGION_TASK` 不能只口头说“参谋本部已接管”，必须留下目标、成功标准、任务切片、验证结果和最终收口。
+- 复杂 `LEGION_TASK` 不能只口头说“参谋运行时已接管”，必须留下目标、成功标准、任务切片、验证结果和最终收口。
 - 简单任务、普通生图、轻量问答、单文件小改不启用工作流工件，避免 token 噪音。
 - 新增 `scripts/wuji_workflow.py`，用于生成、切片、收集和验证无极工作流工件。
 
@@ -102,7 +102,7 @@
 
 ### LEGION_TASK 触发口径修正
 
-- 修正参谋本部接管条件：进入 `LEGION_TASK` 的首条回复必须使用接管格式。
+- 修正参谋运行时接管条件：进入 `LEGION_TASK` 的首条回复必须使用接管格式。
 - 不再只依赖用户明确喊“激活无极军团”；只要任务本身需要多能力协作，也必须进入 `LEGION_TASK`。
 - 典型场景：根据大纲参考旧 PPT，生成新 PPT 和逐字稿。
 
@@ -160,7 +160,7 @@
 - 视觉师团合并为 `视觉主帅`，内部覆盖真 PPTX、HTML 演示、UI 页面、数据可视化、视觉叙事和配图。
 - 开发师团合并为 `开发主帅`，内部覆盖 Go/Tauri、前端、小程序、ComfyUI 插件、AI 工程、自动化和原型。
 - 白帽、质检、安全、合规、性能基准保持独立，不并入执行主帅，避免自己写自己审。
-- 重写 `content`、`visual`、`dev`、`qa`、`security`、`intel`、`comfyui`、`nuwa`、`staff`、`prompt_engine`、`expedition`、`archive`、`auto_evolve`、`distillation` 规则文件，避免补丁式叠加。
+- 重写 `content`、`visual`、`dev`、`quality-inspection`、`security`、`intel`、`comfyui`、`nuwa`、`staff`、`prompt_engine`、`expedition`、`archive`、`auto_evolve`、`distillation` 规则文件，避免补丁式叠加。
 
 ### 本轮源码核验
 
@@ -177,7 +177,7 @@
 
 - 吸收官方 skill 规范的轻入口、按需加载、bundled resources 和上下文节省机制。
 - 吸收 Addy agent-skills 的阶段识别、上下文工程、薄切片、五轴 review 和安全门禁。
-- 吸收 GitHub awesome-copilot 的大规模技能索引、Rust/QA/安全细分规则和资源分层。
+- 吸收 GitHub awesome-copilot 的大规模技能索引、历史 Rust 经验、质检/安全细分规则和资源分层；Rust 不作为当前底座。
 - 吸收 marketingskills 的产品/受众/定位先行和营销技能互相关联机制。
 - 吸收 humanizer 的 AI 写作痕迹识别和作者声音匹配机制。
 - 吸收 powerpoint-skill 的视觉优先、密度边界、重叠检查和预览验证机制。
@@ -198,7 +198,7 @@
   - `Brand Guardian` / `UI Designer` / `UX Architect` 合并进 `impeccable引擎`
   - `Whimsy Injector` 合并进 `Visual Storyteller`
 - 全局规则新增铁律：专家不以量取胜；蒸馏不是叠加，新增入口前必须先判断能否合并进现有主责位。
-- 同步更新 `nuwa`、`content`、`visual`、`comfyui`、`dev`、`intel`、`security`、`qa` 的专家索引，避免旧专家名继续制造误触发。
+- 同步更新 `nuwa`、`content`、`visual`、`comfyui`、`dev`、`intel`、`security`、`quality-inspection` 的专家索引，避免旧专家名继续制造误触发。
 - 清理 ignored `output/` 生成产物，减少工作区占用。
 
 ## 2026-05-31 v9.3

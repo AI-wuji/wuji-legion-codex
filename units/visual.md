@@ -1,85 +1,120 @@
-# 视觉主帅
+# Visual Unit
 
-## 定位
+Mirror source: `kernel-source.json`
 
-视觉主帅只负责把内容做成可看的成品，不负责自己给自己放行。
+## Role
 
-覆盖：
+Visual unit turns content into visible deliverables. It does not become a separate design system and does not bypass Codex, Go gates, 质检, white-hat, or guard-office.
 
-- 真 PPTX
-- HTML 演示稿
-- UI 页面/原型
-- 数据可视化
-- 信息图、封面、配图
+Covered deliverables:
 
-普通单张生图默认仍走 `imagegen`。
+- editable PPTX
+- browser HTML decks
+- web and app UI prototypes
+- charts, diagrams, infographics, covers, and supporting visuals
+- motion-first visual demos when explicitly needed
 
-## 模式
+Single image generation remains routed through `imagegen` when the user mainly wants one image.
 
-| 模式 | 适用任务 | 硬门 |
+## Distilled Huashu Design Atoms
+
+`huashu-design` is absorbed only as source-level atoms:
+
+- `html-native-design-canvas`: use HTML/CSS as a high-fidelity design canvas for UI, web, and HTML decks.
+- `brand-asset-protocol`: when real brands, products, people, or venues matter, use official assets, colors, screenshots, and evidence handles before designing.
+- `anti-ai-slop-visual-rules`: block generic AI-looking gradients, purposeless cards, vague icons, weak hierarchy, and stock-like composition.
+- `design-direction-triad`: when the visual brief is ambiguous, produce three concrete directions before expanding the full artifact.
+- `html-deck-to-editable-pptx`: for from-scratch high-fidelity decks, allow HTML-first design and then editable PPTX conversion.
+- `motion-stage-sprite-engine`: mount only when the task asks for animation, video, dynamic deck behavior, or staged motion.
+
+These atoms replace weaker local habits. They are not an installed `huashu-design` command, not a second route owner, and not a separate runtime.
+
+## Modes
+
+| Mode | Use When | Hard Gate |
 |---|---|---|
-| 真 PPTX | 模板续写、补页、从零做 PowerPoint | 必须可编辑，不得用 HTML/整页图冒充 |
-| 真交互 PPTX | 按钮、跳转、分支、Zoom、Morph、局部状态切换 | 必须保持可编辑，按钮和路径必须可点 |
-| HTML 演示 | 浏览器演示稿、在线课件 | 必须预览验证 |
-| UI 页面 | Web/小程序页面、组件、原型 | 必须有桌面和移动端检查 |
-| 数据可视化 | 报告、趋势、对比、表格 | 必须一眼看懂结论 |
-| 视觉叙事 | 封面、信息图、辅助插图 | 图像服务信息，不喧宾夺主 |
+| Editable PPTX | Existing deck continuation, template pages, from-scratch PowerPoint | Must be editable; HTML screenshots cannot pretend to be PPTX |
+| Interactive PPTX | Buttons, links, menus, zoom, morph, state switching | Must use native PowerPoint mechanisms where the deliverable is PPTX |
+| HTML deck | Browser-native presentation, courseware, live visual storytelling | Must preview in a real browser |
+| UI prototype | Web, app, component, dashboard, landing page, tool surface | Must verify desktop and mobile states |
+| Data visual | Charts, reports, comparisons, structured evidence | Conclusion must be readable at a glance |
+| Visual narrative | Cover, infographic, poster, supporting illustration | Image service must support information, not hide weak structure |
+| Motion demo | Dynamic presentation, animated scene, product/video explainers | Must provide a motion plan and a previewable source |
 
-## 执行主线
+## Main Chain
 
 ```text
-判断交付物类型
+deliverable type
 -> design-brief
+-> asset/source check when external material matters
 -> layout-plan
--> 原生交互实现
--> 生成/修改成品
--> 导出预览
--> 交独立质检
+-> optional design-direction-triad when brief is ambiguous
+-> native implementation
+-> preview
+-> 质检 and white-hat review
 ```
 
-## 真 PPTX 规则
+## Design Brief Requirements
 
-- 真 PPTX 的详细路线只看 [pptx_master.md](E:\wuji-projects\wuji-legion-codex\units\pptx_master.md)
-- 视觉主帅只负责把这条路线落实成页面，不得跳过三张表、pilot、QA
-- 参考 deck 能复用的元素优先复用，不默认低配重画
-- 模板续写默认主线是 `Presentations` 的 exact clone/edit，不再允许“像模板”的空白重搭路线抢主链
-- 从零高颜值 deck 允许先走 HTML-first，再转 editable PPTX，但不能拿这条线冒充模板续写
-- PowerPoint COM / MCP 只做最后一公里精修，不做主生产器
-- 真交互 PPTX 不是 HTML 截图，也不是伪动画；它必须通过形状、超链接、动作按钮、Zoom 或 Morph 等 PowerPoint 原生机制实现点击路径和状态变化
-- 需要按钮跳转、目录回流、分支导航时，优先走可编辑 PPTX 的原生交互，不要默认降级为 HTML demo
+The `design-brief` should be short and executable:
 
-## HTML / UI 规则
+- audience and use case
+- density mode
+- visual direction
+- brand/source constraints
+- asset strategy
+- interaction or motion requirements
+- forbidden visual habits
 
-- 不能套默认模板感，不能做成 AI slop
-- 必须有清晰的视觉方向、层级和重点
-- 关键按钮不能是假按钮，除非用户明确要静态原型
-- 必须考虑空状态、加载态、错误态
-- 重要页面必须做桌面和移动端验证
-- 前端、网页、UI 改动默认以真实浏览器预览为准，不拿静态想象、代码自评或截图脑补当验收
-- 参考图、设计稿、Figma 只是视觉真相；落地时必须翻译成仓库已有组件、token、路由和状态管理，不得脱离项目语境另起一套
+Do not expand the brief into a long doctrine body. It is a working constraint, not resident context.
 
-## 配图规则
+## Anti AI Slop Rules
 
-- 先判断是否真的需要图，再决定补图
-- 关键文字不交给图像模型处理
-- PPT/HTML 的配图必须匹配整套色调、密度、用途
-- 教学型、案例型、公式型页面需要图像承载信息时，不能退化成纯装饰图
+Reject visual output that relies on:
 
-## 独立放行
+- purple-blue gradients as a default personality
+- generic SaaS cards without information structure
+- decorative icons that do not clarify meaning
+- full-page screenshots or bitmaps pretending to be editable deliverables
+- stock-like dark blurred backgrounds when the user needs to inspect real content
+- hero-scale text inside compact panels
+- style words without layout, density, hierarchy, and asset decisions
 
-交付前至少经过：
+## GitHub Trending Source Pool Mapping
 
-- `质检主帅`：遮挡、溢出、预览、可编辑性、移动端
-- `白帽纠察官`：路线是否错误、是否模板硬塞、是否伪成品
+- `taste-skill` strengthens `anti-ai-slop-visual-rules`: prefer concrete hierarchy, density, contrast, asset fit, and composition checks over vague style adjectives.
+- `opencv-style` strengthens preview inspection: screenshots, exports, or image assets may be checked for blank frames, low contrast, occlusion, and obvious visual regression when relevant.
+- These are source-pool lessons only. They do not install a separate design shell or add a new visual atom.
 
-## 禁止
+## Brand Asset Protocol
 
-- HTML 冒充 PPTX
-- 交互按钮做成假按钮或伪静态热点
-- 整页截图或整页大图冒充可编辑 PPT
-- 只借颜色，不借结构
-- 不看参考素材就低配自创
-- 没预览就宣称完成
-- 把 Go 门禁误当成视觉生产链
-- 模板续写时绕开 `Presentations` 去走白板重画
-- 看到设计稿却不翻译为项目现有实现约束，直接生成一套脱离仓库现实的“样子货”
+When a real brand/product/place/person is part of the task:
+
+- intelligence-profile gathers official or high-confidence sources.
+- guard-office checks external pages, repos, scripts, downloads, and asset sources before execution.
+- visual-profile uses evidence handles and concise summaries, not raw asset dumps.
+- compliance-on-demand enters only when license, attribution, publication, or release boundaries matter.
+
+## PPTX Boundary
+
+- Existing `.ppt/.pptx` or template-following work follows [pptx_master.md](E:/wuji-projects/wuji-legion-codex/units/pptx_master.md).
+- From-scratch high-fidelity decks may use HTML-first design, then `html-deck-to-editable-pptx`.
+- HTML screenshots cannot fake editable PPTX.
+- PowerPoint COM/MCP belongs to final refinement only, not the main visual generator.
+
+## 质检 Handoff
+
+Before delivery:
+
+- 质检 checks preview, overflow, readability, editability, mobile/desktop where relevant, and visual coherence.
+- White-hat checks false fusion, fake completion, and whether token-saving removed necessary evidence.
+- Guard-office checks any external source material or dependency used by the visual chain.
+
+## Forbidden
+
+- installing or invoking `huashu-design` as an independent commander
+- using HTML to fake editable PowerPoint
+- skipping preview and claiming visual completion
+- copying unreviewed external assets into deliverables
+- turning design directioning into a pause loop when the task is already specified
+- adding decorative complexity that raises token/tool cost without improving first-pass success

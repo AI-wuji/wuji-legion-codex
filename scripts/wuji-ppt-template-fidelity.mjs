@@ -24,7 +24,7 @@ const SKIP_SCAN_DIRS = new Set([
   "template-inspect",
   "template-starter-layout",
   "layout",
-  "qa",
+  "quality",
   "output",
 ]);
 
@@ -40,7 +40,7 @@ function usage() {
     "  --final-layout-dir <dir>      Final layout JSON directory.",
     "  --edit-dir <dir>              Scripts/logs directory to scan. Defaults to <workspace>.",
     "  --agent-log <path>            Additional child-agent log to scan.",
-    "  --no-report                   Validate without writing qa/template-fidelity-check.*.",
+    "  --no-report                   Validate without writing quality/template-fidelity-check.*.",
     "",
     "Checks final template-following decks for overlays, unresolved placeholders,",
     "fresh-slide rebuilds, and deck-affecting Python/OOXML bypasses.",
@@ -419,11 +419,11 @@ async function checkTemplateFidelity(options) {
   };
 
   if (writeReport) {
-    const qaDir = path.join(workspace, "qa");
-    await fs.mkdir(qaDir, { recursive: true });
-    await writeJson(path.join(qaDir, "template-fidelity-check.json"), report);
+    const qualityDir = path.join(workspace, "quality");
+    await fs.mkdir(qualityDir, { recursive: true });
+    await writeJson(path.join(qualityDir, "template-fidelity-check.json"), report);
     await fs.writeFile(
-      path.join(qaDir, "template-fidelity-check.txt"),
+      path.join(qualityDir, "template-fidelity-check.txt"),
       [
         `Template fidelity check: ${status}`,
         ...issues.map((item) =>

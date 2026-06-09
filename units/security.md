@@ -1,64 +1,81 @@
-# 安全与合规
+# Guard and Security Mirror
 
-## 定位
+Mirror source: `kernel-source.json`
 
-安全和合规保持独立，不并入开发主帅，也不替执行者自审放行。
+## Separation
 
-- `安全主帅`：威胁建模、漏洞验证、攻击面收敛、防御设计
-- `合规审计官`：许可证、来源、隐私、发布边界、引用归属
+These are distinct:
 
-## 安全主帅
+- `guard-office`: checks external material before it enters the chain
+- `security`: checks execution-side risk when the task itself is security-sensitive
+- `compliance-on-demand`: checks license, source, privacy, and release boundaries when needed
 
-### 内置模式
+## Guard-office
 
-| 模式 | 适用场景 |
-|---|---|
-| 威胁建模 | 新系统、权限、文件、网络、第三方接口 |
-| 漏洞验证 | 授权范围内验证漏洞是否真实 |
-| 供应链安全 | 新依赖、脚本、插件、模型下载 |
-| 发布安全 | 密钥、日志、权限、回滚、监控 |
+Guard-office is for:
 
-### 必查项
+- web pages
+- repos
+- scripts
+- plugins
+- MCP manifests
+- dependencies
+- install commands
 
-- 认证授权
-- 输入验证和输出编码
-- 文件路径和目录遍历
-- 密钥、token、日志泄露
-- 依赖来源和安装脚本
-- 用户数据和隐私
-- 回滚和事故处理
-- 风险证据级别与可复现条件
-- 候选问题是否已被验证，而不是只停留在“看起来可能有风险”
+Its purpose is to stop unsafe material from entering execution without review.
 
-### 输出要求
+## Security
 
-- 安全结论默认至少包含：问题点、触发条件、影响范围、验证情况、证据级别、修复建议。
-- 没有验证依据时，必须明确标成候选风险，不得包装成已确认漏洞。
-- 批量扫描、深度扫描、依赖扫描的结果必须去重分级，不把原始噪音整包倒给用户。
+Security is on-demand, not permanent resident context.
 
-### 红线
+Use it when the task needs:
 
-- 没有授权不做攻击
-- 不提供违法利用指导
-- 不破坏生产数据
-- 不让开发主帅自己给安全放行
+- threat modeling
+- vulnerability verification
+- attack-surface review
+- hardening advice
 
-## 合规审计官
+## Compliance
 
-### 内置模式
+Compliance is on-demand only.
 
-| 模式 | 适用场景 |
-|---|---|
-| 许可证模式 | 外部代码、skill、素材、依赖进入仓库 |
-| 来源归属模式 | README、仓库介绍、文档提到外部来源 |
-| 隐私模式 | 用户文件、密钥、日志、截图、输出产物 |
-| 发布模式 | 对外声明、分发包、GitHub 页面 |
+Use it when source, license, privacy, publication, or attribution boundaries are unclear.
 
-### 必查项
+## Privacy rule
 
-- 官方源优先，社区文章只做线索
-- 记录 commit、version、checked_at
-- 只吸收机制，不复制大段上游文字
-- 保留无极军团命名和组织，不照搬外部编制
-- 来源不清、不允许或许可证不明时，默认退回
-- 外部自动化、外部账号、跨 SaaS 协作流默认视为高边界能力；没授权、没审边界、没回退方案时，不进默认主链
+No account data, keys, addresses, cookies, tokens, or other sensitive user information may be retained in doctrine, memory, or feedback records.
+
+## GitHub Trending Risk Mapping
+
+Risk projects and patterns are handled as reject or guard signals, not active capability:
+
+- `GhostTrack`: privacy-invasive tracking surface.
+- `ChinaTextbook`: copyright-heavy dataset surface.
+- `AiToEarn`: monetization or hype playbook surface with weak core utility.
+- `project-nomad`: offline appliance or external-system shell surface.
+- `openai-plugins`: plugin runtime surface; candidate only after guard-office and main-chain admission.
+
+## Design Intake Rule
+
+`huashu-design` is treated as a source pool, not as an installed commander.
+
+Guard-office checks before visual execution when a design task uses:
+
+- external brand assets, logos, product screenshots, fonts, templates, or media
+- GitHub repositories, install instructions, scripts, npm packages, browser automation, or conversion tools
+- third-party design systems or scraped pages
+- any source that could include license, privacy, attribution, or malicious-content risk
+
+Allowed result shape:
+
+- concise source summary
+- evidence handle
+- risk notes
+- permission or license uncertainty
+
+Forbidden result shape:
+
+- raw user secrets or account material
+- unreviewed scripts copied into execution
+- external `huashu-design` runtime taking over task execution
+- brand assets stored as doctrine or feedback memory

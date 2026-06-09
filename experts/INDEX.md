@@ -1,77 +1,36 @@
-# 专家索引
+# 专家索引 / Expert Mirror
 
-本目录由 `scripts/gen_experts.py` 生成。专家库采用“高频前台主帅 + 按需触发入口 + 独立审查位”结构：高频任务域保留前台入口，低频能力和治理能力按需触发。
+Mirror source: `kernel-source.json`
 
-## 生成原则
+本索引只保留当前仍有效的 owner 归口，不再承担第二套运行时说明。
 
-- 压缩的是师团内部入口，不是把整个无极军团压成一个超级大脑。
-- 每个师团主帅只能管本师团范围，不能跨师团抢权。
-- 小说、剧本、教程、商业方案等能力进入内容主帅内置模式，不再拆成重复专家卡。
-- 白帽、质检、安全、合规审计保持独立，不并入执行主帅。
-- 执行底座只做无极执行底座，不替代开发主帅或判断层。
-- 外部 skill 只吸收源码验证后的机制，不照搬名称、组织编制或大段文本。
+## Frontline Owners
 
-## 当前专家
+- [内容主帅](E:/wuji-projects/wuji-legion-codex/experts/content/内容主帅.md)
+- [开发主帅](E:/wuji-projects/wuji-legion-codex/experts/dev/开发主帅.md)
+- [情报主帅](E:/wuji-projects/wuji-legion-codex/experts/intel/情报主帅.md)
+- [数据主帅](E:/wuji-projects/wuji-legion-codex/experts/data/数据主帅.md)
+- [视觉主帅](E:/wuji-projects/wuji-legion-codex/experts/visual/视觉主帅.md)
 
-## 前台高频入口
+## On-demand Owners
 
-### content
+- [执行底座主帅](E:/wuji-projects/wuji-legion-codex/experts/execution_base/执行底座主帅.md)
+- [进化主帅](E:/wuji-projects/wuji-legion-codex/experts/evolve/进化主帅.md)
+- [交付主帅](E:/wuji-projects/wuji-legion-codex/experts/expedition/交付主帅.md)
+- [提示词主帅](E:/wuji-projects/wuji-legion-codex/experts/prompt/提示词主帅.md)
+- [归档主帅](E:/wuji-projects/wuji-legion-codex/experts/archive/归档主帅.md)
+- [ComfyUI主帅](E:/wuji-projects/wuji-legion-codex/experts/comfyui/ComfyUI主帅.md)
 
-- [内容主帅](content/内容主帅.md): 小说、剧本、分镜、教程、计划书、营销方案和卖点提炼的全能写作入口
+## Independent Oversight
 
-### dev
+- [白帽纠察官](E:/wuji-projects/wuji-legion-codex/experts/oversight/白帽纠察官.md)
+- [根因雷达官](E:/wuji-projects/wuji-legion-codex/experts/oversight/根因雷达官.md)
+- [审计官](E:/wuji-projects/wuji-legion-codex/experts/oversight/审计官.md)
+- [质检官](E:/wuji-projects/wuji-legion-codex/experts/oversight/质检官.md)
+- [性能基准官](E:/wuji-projects/wuji-legion-codex/experts/oversight/性能基准官.md)
+- [保卫科](E:/wuji-projects/wuji-legion-codex/experts/security/保卫科.md)
+- [合规审计官](E:/wuji-projects/wuji-legion-codex/experts/security/合规审计官.md)
 
-- [开发主帅](dev/开发主帅.md): 软件、Go/Tauri、前端、小程序、ComfyUI插件、AI工程和自动化的开发入口
+## Mirror Rule
 
-### intel
-
-- [情报主帅](intel/情报主帅.md): 全网搜索、开源情报、趋势研判、用户研究和本地化证据链入口
-
-### qa
-
-- [白帽纠察官](qa/白帽纠察官.md): 前置反对意见、事实核查、路线否决和半成品拦截入口
-- [质检主帅](qa/质检主帅.md): 最终验收、可用性、可访问性、视觉/文档/代码交付质量的独立入口
-
-### visual
-
-- [视觉主帅](visual/视觉主帅.md): PPT、HTML演示、UI页面、信息图、图表和配图的视觉生产入口
-
-## 按需触发入口
-
-### archive
-
-- [归档主帅](archive/归档主帅.md): 知识归档、备份、来源保存、版本回滚和可恢复性入口
-
-### comfyui
-
-- [ComfyUI主帅](comfyui/ComfyUI主帅.md): ComfyUI流程、图像视频管线、插件节点和批量生成的专门入口
-
-### evolve
-
-- [进化主帅](evolve/进化主帅.md): 官方源核验、能力蒸馏、失败复盘、实验验证和规则整流入口
-
-### execution_base
-
-- [执行底座主帅](execution_base/执行底座主帅.md): 无极军团通用执行底座、wuji-cli、少而硬的 guard/audit 门禁、PPT 批量门禁和专项审计入口
-
-### expedition
-
-- [交付主帅](expedition/交付主帅.md): 复杂项目节奏、外派边界、进度控制和最终收口入口
-
-### prompt
-
-- [提示词主帅](prompt/提示词主帅.md): 图像、视频、分镜、工具调用和结构化prompt的统一入口
-
-### qa
-
-- [性能基准官](qa/性能基准官.md): 速度、成本、token、接口耗时和系统性能基准测试入口
-
-### security
-
-- [合规审计官](security/合规审计官.md): 许可证、开源来源、隐私、发布边界和引用归属的独立审计入口
-- [安全主帅](security/安全主帅.md): 威胁建模、漏洞验证、攻击面收敛和防御设计的独立安全入口
-
-### staff
-
-- [参谋主帅](staff/参谋主帅.md): 复杂判断、战略取舍、第一性拆解和多模型审视的参谋入口
-
+如果本索引与 `kernel-source.json`、`fusion-matrix.json`、`residual-entrypoints.json` 冲突，以结构化真相源为准。

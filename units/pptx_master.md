@@ -53,7 +53,7 @@
 
 - `asset-map`、`pptx-preflight`、`pptx-batch-gate`、`pptx-audit` 只负责门禁、审计和收口。
 - Go 门禁不负责“把 PPT 做漂亮”。
-- 默认主线先产出，再由 Go 负责锁路线、批量放行和收口 QA。
+- 默认主线先产出，再由 Go 负责锁路线、批量放行和收口质检。
 - `pptx-preflight` 保留为定向探针，只在新生成路线、可疑 generator 或白帽明确要求时触发；日常成熟主链默认不跑。
 
 ## 默认生产顺序
@@ -73,7 +73,7 @@ source
 -> preview
 -> full PPTX
 -> notes
--> QA
+-> 质检
 ```
 
 - 教程、课程、说明、方案类 PPT，默认先出 `outline`，再出逐页 `speaker-notes`，再进入页面生产。
@@ -167,7 +167,7 @@ source
 - 用户要求 `image2` / 截图风格页，结果静默降级成 generic 方框、低配示意图或自创丑元素
 - 用户明确要动态感或 HTML 演示体验，结果只交静态 PPT 却宣称“已实现动态”
 
-## QA 核心问题
+## 质检核心问题
 
 - 是否仍可在 PowerPoint 中编辑
 - 是否继承了参考 deck 的页型节奏和素材系统

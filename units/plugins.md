@@ -16,7 +16,7 @@
 |---|---|---|
 | Browser | 视觉主帅 / 开发主帅 | 网页打开、检查、交互测试、截图 |
 | Documents | 内容主帅 | Word/文档生成、整理、归档 |
-| Spreadsheets | 情报主帅 / 内容主帅 | 表格、结构化数据、分析交付 |
+| Spreadsheets | 数据主帅 / 情报主帅 / 内容主帅 / 性能基准官 | 表格、结构化数据、分析交付 |
 | Presentations | 视觉主帅 | 模板续写、补页、真 PPTX 导入编辑、导出预览 |
 
 ## 候选台账
@@ -37,6 +37,7 @@
 | html2pptx | defer | 需要先走 HTML-first，再转可编辑 PowerPoint 时 |
 | Marp | defer | 用户明确要 Markdown 快速预览型演示稿时 |
 | reveal.js | defer | 用户明确要 Web 演示稿而非真 PPTX 时 |
+| huashu-design | source-pool-only | 只作为设计方法来源蒸馏为视觉原子，不作为本机插件或独立入口安装 |
 
 ### PowerPoint 精修
 
@@ -76,3 +77,4 @@
 - 未确认安装或授权，不得说成可用。
 - 插件结果必须回到主帅收口，不绕过白帽、质检、安全、合规。
 - 成品型输出默认只保留两个入口：预览、文件路径。
+- `huashu-design` 不进入“已启用插件”，只保留 `html-native-design-canvas`、`brand-asset-protocol`、`anti-ai-slop-visual-rules`、`design-direction-triad`、`html-deck-to-editable-pptx`、`motion-stage-sprite-engine` 六个蒸馏原子。

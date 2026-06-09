@@ -1,0 +1,312 @@
+{
+  "version": "11.3",
+  "policy": "every current non-generated workspace file must match one non-retired entry; deleted legacy surfaces stay retired-deleted or excluded",
+  "entries": [
+    {
+      "path": "kernel-source.json",
+      "type": "truth-source",
+      "status": "main-chain",
+      "reason": "single structured kernel source"
+    },
+    {
+      "path": "config.json",
+      "type": "runtime-config",
+      "status": "main-chain",
+      "reason": "provider, cache, and sidecar policy overlay"
+    },
+    {
+      "path": "fusion-matrix.json",
+      "type": "governance-ledger",
+      "status": "main-chain",
+      "reason": "atom admission, replacement, rejection, and retirement decisions"
+    },
+    {
+      "path": "acceptance-checklists.json",
+      "type": "governance-ledger",
+      "status": "main-chain",
+      "reason": "multi-seat acceptance criteria"
+    },
+    {
+      "path": "purification-charter.json",
+      "type": "governance-ledger",
+      "status": "main-chain",
+      "reason": "cleanup and purity operating charter"
+    },
+    {
+      "path": "residual-entrypoints.json",
+      "type": "governance-ledger",
+      "status": "main-chain",
+      "reason": "current file inventory coverage ledger"
+    },
+    {
+      "path": "hotpath-manifest.json",
+      "type": "context-control-ledger",
+      "status": "main-chain",
+      "reason": "MoE sparse-context hotpath ledger for resident, on-demand, cold, and forbidden-resident surfaces"
+    },
+    {
+      "path": "tools/wuji_cli.go",
+      "type": "execution-base",
+      "status": "main-chain",
+      "reason": "Go deterministic execution base and hard gates"
+    },
+    {
+      "path": "tools/wuji_unzip.go",
+      "type": "execution-helper",
+      "status": "on-demand",
+      "reason": "bounded unzip helper, not doctrine or router"
+    },
+    {
+      "path": "scripts/build-wuji-cli.ps1",
+      "type": "build-script",
+      "status": "main-chain",
+      "reason": "rebuilds the Go execution base without recursive tool-cache discovery"
+    },
+    {
+      "path": "scripts/ensure-wuji-cli.ps1",
+      "type": "build-script",
+      "status": "main-chain",
+      "reason": "keeps the Go execution base current"
+    },
+    {
+      "path": "scripts/test-wuji-cli.ps1",
+      "type": "test-script",
+      "status": "main-chain",
+      "reason": "locks deterministic gate behavior and cleans its own fixtures"
+    },
+    {
+      "path": "scripts/wuji-quality-gate.ps1",
+      "type": "quality-script",
+      "status": "main-chain",
+      "reason": "repo quality gate with fixed tool lookup"
+    },
+    {
+      "path": "scripts/gen_experts.py",
+      "type": "generation-script",
+      "status": "on-demand",
+      "reason": "regenerates expert mirrors; not runtime doctrine"
+    },
+    {
+      "path": "scripts/beep.ps1",
+      "type": "notification-script",
+      "status": "on-demand",
+      "reason": "optional end-of-turn sound helper"
+    },
+    {
+      "path": "scripts/unzip.ps1",
+      "type": "utility-script",
+      "status": "on-demand",
+      "reason": "bounded local utility"
+    },
+    {
+      "path": "scripts/unzip.cmd",
+      "type": "utility-script",
+      "status": "on-demand",
+      "reason": "bounded local utility shim"
+    },
+    {
+      "path": "scripts/test-ppt-runtime.ps1",
+      "type": "test-script",
+      "status": "on-demand",
+      "reason": "PPT runtime verification only when PPT pipeline is used"
+    },
+    {
+      "path": "scripts/wuji-install.ps1",
+      "type": "ops-script",
+      "status": "on-demand",
+      "reason": "writes runtime mirrors; only for install/update tasks"
+    },
+    {
+      "path": "scripts/wuji-ppt*.ps1",
+      "type": "specialized-script-family",
+      "status": "on-demand",
+      "reason": "PPT helpers are task-specific tools under deterministic execution"
+    },
+    {
+      "path": "scripts/wuji-ppt*.mjs",
+      "type": "specialized-script-family",
+      "status": "on-demand",
+      "reason": "PPT helpers are task-specific tools under deterministic execution"
+    },
+    {
+      "path": "README.md",
+      "type": "mirror-doc",
+      "status": "on-demand",
+      "reason": "human orientation, not runtime truth"
+    },
+    {
+      "path": "SKILL.md",
+      "type": "mirror-doc",
+      "status": "on-demand",
+      "reason": "repo skill mirror points back to kernel-source.json"
+    },
+    {
+      "path": "GLOBAL_AGENTS.md",
+      "type": "mirror-doc",
+      "status": "on-demand",
+      "reason": "orientation mirror only; not a second doctrine source"
+    },
+    {
+      "path": "AGENTS.md",
+      "type": "legacy-agent-instruction-surface",
+      "status": "on-demand",
+      "reason": "legacy Feishu assistant instructions; must not act as Codex or Wuji runtime truth"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "type": "history-doc",
+      "status": "on-demand",
+      "reason": "history only, not active doctrine"
+    },
+    {
+      "path": ".gitignore",
+      "type": "repo-policy",
+      "status": "main-chain",
+      "reason": "prevents generated artifacts and sensitive files from entering repo state"
+    },
+    {
+      "path": "units/*.md",
+      "type": "unit-mirror-doc-family",
+      "status": "on-demand",
+      "reason": "owner explanations and task-specific orientation only"
+    },
+    {
+      "path": "units/*.json",
+      "type": "unit-catalog",
+      "status": "on-demand",
+      "reason": "structured candidate catalog, not a route owner"
+    },
+    {
+      "path": "experts/INDEX.md",
+      "type": "owner-index",
+      "status": "on-demand",
+      "reason": "owner lookup only"
+    },
+    {
+      "path": "experts/*/*.md",
+      "type": "expert-mirror-doc-family",
+      "status": "on-demand",
+      "reason": "role cards only; kernel-source.json remains truth source"
+    },
+    {
+      "path": "C:\\Users\\Administrator\\.agents\\skills\\wuji-legion\\SKILL.md",
+      "type": "runtime-skill",
+      "status": "main-chain",
+      "reason": "short Codex runtime mirror for Wuji Legion"
+    },
+    {
+      "path": "C:\\Users\\Administrator\\.agents\\skills\\_backup-wuji-legion-20260606-015130",
+      "type": "legacy-runtime-skill-backup",
+      "status": "retired-deleted",
+      "reason": "old Wuji Legion skill backup must not remain in active skills root; moved to skills-retired so it cannot be routed as a live skill"
+    },
+    {
+      "path": "C:\\Users\\Administrator\\.agents\\skills-retired\\_backup-wuji-legion-20260606-015130",
+      "type": "legacy-runtime-skill-backup",
+      "status": "excluded",
+      "reason": "retired archive only; outside active Codex skill discovery surface"
+    },
+    {
+      "path": "C:\\Users\\Administrator\\.codex\\skills\\opensquilla-commander",
+      "type": "legacy-skill-directory",
+      "status": "retired-deleted",
+      "reason": "OpenSquilla cannot remain a visible commander, gateway owner, or external executor"
+    },
+    {
+      "path": "C:\\Users\\Administrator\\.agents\\skills\\opensquilla-commander",
+      "type": "legacy-skill-directory",
+      "status": "retired-deleted",
+      "reason": "OpenSquilla atoms are fused into Wuji owner profiles and capability-mount"
+    },
+    {
+      "path": "C:\\Users\\Administrator\\.opensquilla",
+      "type": "private-external-state",
+      "status": "excluded",
+      "reason": "possible config, logs, memory, transcripts, and secrets; never enters Wuji outputs or backups"
+    },
+    {
+      "path": "scripts/wuji_workflow.py",
+      "type": "legacy-workflow-helper",
+      "status": "retired-deleted",
+      "reason": "workflow truth is fused into wuji-cli workflow/task gates"
+    },
+    {
+      "path": "scripts/errors_db.py",
+      "type": "legacy-rule-helper",
+      "status": "retired-deleted",
+      "reason": "error-repeat logic is fused into Go feedback and audit gates"
+    },
+    {
+      "path": "scripts/target_range.py",
+      "type": "legacy-rule-helper",
+      "status": "retired-deleted",
+      "reason": "security and permission checks are fused into Go gates and guard-office policy"
+    },
+    {
+      "path": "trae/commander/SKILL.md",
+      "type": "external-agent-compat",
+      "status": "retired-deleted",
+      "reason": "external-agent commander is not part of Codex-only default runtime"
+    },
+    {
+      "path": "scripts/test-trae-expedition.ps1",
+      "type": "external-agent-test",
+      "status": "retired-deleted",
+      "reason": "legacy expedition verification deleted"
+    },
+    {
+      "path": "scripts/wuji-backup.py",
+      "type": "backup-script",
+      "status": "retired-deleted",
+      "reason": "arbitrary backup conflicts with never-retain-sensitive-state policy"
+    },
+    {
+      "path": "scripts/wuji-e-backup.ps1",
+      "type": "backup-script",
+      "status": "retired-deleted",
+      "reason": "legacy external backup surface deleted"
+    },
+    {
+      "path": "scripts/wuji-e-sync.ps1",
+      "type": "sync-script",
+      "status": "retired-deleted",
+      "reason": "legacy external sync surface deleted"
+    },
+    {
+      "path": "scripts/wuji-restore.ps1",
+      "type": "restore-script",
+      "status": "retired-deleted",
+      "reason": "legacy restore surface deleted"
+    },
+    {
+      "path": "scripts/push-to-github.ps1",
+      "type": "publish-script",
+      "status": "retired-deleted",
+      "reason": "publishing requires explicit task intent and must not be a default script"
+    },
+    {
+      "path": "scripts/quick-imagegen.ps1",
+      "type": "media-helper",
+      "status": "retired-deleted",
+      "reason": "external image generation helper deleted"
+    },
+    {
+      "path": "feishu-setup-qr.png",
+      "type": "external-integration-asset",
+      "status": "retired-deleted",
+      "reason": "deleted external QR/attachment asset; setup artifacts must not remain in Codex-only Wuji runtime or context assembly"
+    },
+    {
+      "path": "outputs",
+      "type": "generated-artifact-directory",
+      "status": "delete-now-except-latest-evidence",
+      "reason": "large generated files must not pollute default scans or context assembly"
+    },
+    {
+      "path": ".wuji-tools",
+      "type": "generated-tool-cache",
+      "status": "delete-when-not-building",
+      "reason": "tool cache is budgeted by optimization-audit and excluded from context"
+    }
+  ]
+}

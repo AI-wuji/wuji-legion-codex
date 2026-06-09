@@ -50,14 +50,40 @@
   "routing_mode": "smart",
   "active_project": "wuji-legion-codex",
   "red_team_enabled": true,
-  "iron_rules_version": "10.8",
+  "iron_rules_version": "11.3",
+  "default_model_tier": "low",
+  "model_profiles": {
+    "low": {
+      "provider_id": "deepseek-web",
+      "model": "deepseek-chat",
+      "reasoning_effort": "low"
+    },
+    "standard": {
+      "provider_id": "deepseek-web",
+      "model": "deepseek-chat",
+      "reasoning_effort": "medium"
+    },
+    "high": {
+      "provider_id": "deepseek-web",
+      "model": "deepseek-chat",
+      "reasoning_effort": "high"
+    }
+  },
   "cache_config": {
     "target_hit_rate": 0.95,
     "auto_compact_threshold": 0.8,
     "tool_repair_enabled": true,
-    "parallel_dispatch_max": 3,
-    "storm_window_size": 5,
-    "flatten_threshold": 10
+    "parallel_dispatch_max": null,
+    "parallel_dispatch_policy": "need-driven-sidecar-no-wuji-artificial-cap",
+    "sidecar_lifecycle_policy": "close-immediately-after-result-merge",
+    "platform_limit_policy": "external-hard-cap-only",
+    "flatten_threshold": 10,
+    "stable_prefix_policy": "byte-stable-minimal-resident",
+    "mount_policy": "minimal-gap-first",
+    "tool_output_policy": "compress-before-reuse-preserve-evidence",
+    "evidence_retention_policy": "raw-handle-kept-summary-fed",
+    "optimization_objective": "smaller-stable-prefix-with-equal-or-better-hit-rate",
+    "concise_execution_policy": "gate-cached-fresh-output-uncached-total-cost"
   },
   "deepseek_session_path": null,
   "python_path": "python"

@@ -1316,7 +1316,7 @@ $routeReport = [ordered]@{
     refine_instructions = $refineInstructionsPath
     content_artifacts = [ordered]@{}
     pilot = [ordered]@{}
-    qa = [ordered]@{}
+    quality = [ordered]@{}
     steps = @()
 }
 
@@ -1420,7 +1420,7 @@ try {
             Invoke-WujiCli -Arguments @('pptx-batch-gate', '--workspace', $resolvedWorkspace)
             $routeReport.steps += 'pptx-batch-gate'
 
-            $qaTargetPath = $primaryOutputPath
+            $qualityTargetPath = $primaryOutputPath
             if ($routeUseComRefine) {
                 $refineArgs = @('ppt-com-refine', '--pptx', $primaryOutputPath, '--out', $finalOutputPath, '--report', (Join-Path $resolvedWorkspace 'com-refine-report.json'))
                 if ($routeRefineInstructionsPath) {
@@ -1428,15 +1428,15 @@ try {
                 }
                 Invoke-WujiCli -Arguments $refineArgs
                 $routeReport.steps += 'ppt-com-refine'
-                $qaTargetPath = $finalOutputPath
-                $routeReport.qa.com_refine_report = Join-Path $resolvedWorkspace 'com-refine-report.json'
+                $qualityTargetPath = $finalOutputPath
+                $routeReport.quality.com_refine_report = Join-Path $resolvedWorkspace 'com-refine-report.json'
             }
 
-            $auditReportPath = Join-Path $resolvedWorkspace 'qa\pptx-audit.json'
-            Invoke-WujiCli -Arguments @('pptx-audit', '--pptx', $qaTargetPath, '--report', $auditReportPath)
+            $auditReportPath = Join-Path $resolvedWorkspace 'quality\pptx-audit.json'
+            Invoke-WujiCli -Arguments @('pptx-audit', '--pptx', $qualityTargetPath, '--report', $auditReportPath)
             $routeReport.steps += 'pptx-audit'
-            $routeReport.final_pptx = $qaTargetPath
-            $routeReport.qa.audit_report = $auditReportPath
+            $routeReport.final_pptx = $qualityTargetPath
+            $routeReport.quality.audit_report = $auditReportPath
             Write-Utf8NoBom -Path $htmlReportPath -Content (($htmlReport | ConvertTo-Json -Depth 8) + "`n")
             $routeReport.htmlfirst_report = $htmlReportPath
         }
@@ -1596,7 +1596,7 @@ try {
                 appliedTargets = @($appliedTargets)
             })
 
-            $qaTargetPath = $primaryOutputPath
+            $qualityTargetPath = $primaryOutputPath
             if ($routeUseComRefine) {
                 $refineArgs = @('ppt-com-refine', '--pptx', $primaryOutputPath, '--out', $finalOutputPath, '--report', (Join-Path $resolvedWorkspace 'com-refine-report.json'))
                 if ($routeRefineInstructionsPath) {
@@ -1604,15 +1604,15 @@ try {
                 }
                 Invoke-WujiCli -Arguments $refineArgs
                 $routeReport.steps += 'ppt-com-refine'
-                $qaTargetPath = $finalOutputPath
-                $routeReport.qa.com_refine_report = Join-Path $resolvedWorkspace 'com-refine-report.json'
+                $qualityTargetPath = $finalOutputPath
+                $routeReport.quality.com_refine_report = Join-Path $resolvedWorkspace 'com-refine-report.json'
             }
             $routeReport.refine_instructions = $routeRefineInstructionsPath
 
             $fidelityArgs = @(
                 'ppt-template-fidelity',
                 '--workspace', $resolvedWorkspace,
-                '--final-pptx', $qaTargetPath,
+                '--final-pptx', $qualityTargetPath,
                     '--map', $workspaceMapPath,
                 '--starter-pptx', $starterPptxPath,
                 '--starter-layout-dir', $starterLayoutDir,
@@ -1622,15 +1622,15 @@ try {
             Invoke-WujiCli -Arguments $fidelityArgs
             $routeReport.steps += 'ppt-template-fidelity'
 
-            $auditReportPath = Join-Path $resolvedWorkspace 'qa\pptx-audit.json'
-            Invoke-WujiCli -Arguments @('pptx-audit', '--pptx', $qaTargetPath, '--report', $auditReportPath)
+            $auditReportPath = Join-Path $resolvedWorkspace 'quality\pptx-audit.json'
+            Invoke-WujiCli -Arguments @('pptx-audit', '--pptx', $qualityTargetPath, '--report', $auditReportPath)
             $routeReport.steps += 'pptx-audit'
 
-            $routeReport.final_pptx = $qaTargetPath
+            $routeReport.final_pptx = $qualityTargetPath
             $routeReport.inspect = $inspectNdjsonPath
             $routeReport.template_edit_report = $editReportPath
-            $routeReport.qa.fidelity_report = Join-Path $resolvedWorkspace 'qa\template-fidelity-check.json'
-            $routeReport.qa.audit_report = $auditReportPath
+            $routeReport.quality.fidelity_report = Join-Path $resolvedWorkspace 'quality\template-fidelity-check.json'
+            $routeReport.quality.audit_report = $auditReportPath
         }
     }
 }

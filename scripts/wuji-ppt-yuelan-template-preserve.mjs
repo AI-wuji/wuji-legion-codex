@@ -4,15 +4,14 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 
-const SOURCE = "C:/Users/Administrator/Desktop/【悦蓝学堂】L1-W3-2录播.pptx";
-const DEFAULT_OUT = "E:/wuji-projects/wuji-legion-codex/outputs/template-following-yuelan/yuelan-preserved-interactive.pptx";
+const DEFAULT_OUT = path.resolve("outputs/template-following-yuelan/yuelan-preserved-interactive.pptx");
 
 function usage() {
   return [
     "Usage:",
-    "  node scripts/wuji-ppt-yuelan-template-preserve.mjs --out <file.pptx>",
+    "  node scripts/wuji-ppt-yuelan-template-preserve.mjs --source <authorized-template.pptx> --source-authorized true [--out <file.pptx>]",
     "",
-    "Preserves the original template elements and remaps the template pages into a 4-slide interactive deck.",
+    "Preserves explicitly supplied, authorized template elements and remaps selected pages into a 4-slide interactive deck.",
   ].join("\n");
 }
 
@@ -104,11 +103,15 @@ async function main() {
     return;
   }
 
+  if (!args.source || args["source-authorized"] !== "true") {
+    throw new Error("Provide --source <authorized-template.pptx> and --source-authorized true. No personal or desktop file is used by default.");
+  }
+  const source = path.resolve(args.source);
   const out = args.out ? path.resolve(args.out) : DEFAULT_OUT;
   const require = createRequire(import.meta.url);
-  const JSZip = require("C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/.pnpm/jszip@3.10.1/node_modules/jszip");
+  const JSZip = process.env.WUJI_JSZIP_PATH ? require(process.env.WUJI_JSZIP_PATH) : require("jszip");
 
-  const sourceBytes = await fs.readFile(SOURCE);
+  const sourceBytes = await fs.readFile(source);
   const zip = await JSZip.loadAsync(sourceBytes);
 
   // Remap the presentation to only four slides, preserving the original template pages.

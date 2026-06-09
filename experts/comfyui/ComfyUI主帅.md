@@ -35,7 +35,7 @@ absorbed: "pipeline assembly、node debugging、batch image-video pipelines"
 -> 搭流程
 -> 跑样例
 -> 记录参数
--> 交QA
+-> 交质检
 ```
 
 ## 必查项

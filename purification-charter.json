@@ -1,0 +1,235 @@
+{
+  "version": "11.3",
+  "objective": "make Wuji Legion a clean Codex-only single kernel with lower total token volume, high first-pass hit rate, and preserved verification",
+  "review_seats": [
+    {
+      "seat": "white-hat",
+      "finding": "block fake fusion, split-brain routing, external OpenSquilla execution, and token cuts that weaken verification"
+    },
+    {
+      "seat": "guard-office",
+      "finding": "screen external material before execution and keep user secrets/private state out of Wuji outputs and backups"
+    },
+    {
+      "seat": "root-cause-officer",
+      "finding": "block symptom-only fixes, require same-class scan and regression evidence, and force patch debt toward deletion or root cure"
+    },
+    {
+      "seat": "audit",
+      "finding": "keep kernel-source, fusion-matrix, residual-entrypoints, acceptance-checklists, and this charter aligned"
+    },
+    {
+      "seat": "quality-inspection",
+      "finding": "completion requires evidence, current gates, and no hidden runtime split"
+    },
+    {
+      "seat": "performance-benchmark-on-demand",
+      "finding": "keep default context and scan surfaces within hard budgets while preserving hit rate"
+    },
+    {
+      "seat": "compliance-on-demand",
+      "finding": "enter on demand for source, license, privacy, attribution, and release boundaries without merging into security execution"
+    }
+  ],
+  "main_chain": [
+    {
+      "item": "kernel-source.json",
+      "reason": "single structured truth source"
+    },
+    {
+      "item": "task-routing",
+      "reason": "staff-runtime chooses one owner and oversight chain"
+    },
+    {
+      "item": "capability-mount",
+      "reason": "mount only the missing capability atoms needed by the task"
+    },
+    {
+      "item": "deterministic-execution",
+      "reason": "Go wuji-cli owns repeatable gates, audits, context packing, and benchmarks"
+    },
+    {
+      "item": "need-driven parallel sidecars with immediate retirement",
+      "reason": "independent agents may gather evidence or execute disjoint slices without a Wuji-imposed numeric cap; staff-runtime remains the only route owner and closes branches after merge"
+    },
+    {
+      "item": "runtime wuji-legion skill mirror",
+      "reason": "short Codex entry mirror pointing back to kernel-source.json"
+    }
+  ],
+  "keep_on_demand": [
+    {
+      "item": "units and experts docs",
+      "reason": "owner explanations and task-specific orientation, not resident doctrine"
+    },
+    {
+      "item": "PPT and media pipelines",
+      "reason": "specialized production tools under deterministic execution"
+    },
+    {
+      "item": "plugins and MCP",
+      "reason": "capability-mount candidates after owner need and guard review"
+    },
+    {
+      "item": "browser, documents, spreadsheets, presentations, GitHub, Vercel, and similar plugins",
+      "reason": "task-scoped tools, never default route owners"
+    },
+    {
+      "item": "performance-benchmark-on-demand",
+      "reason": "enters when cost, token, speed, or hit rate is disputed"
+    },
+    {
+      "item": "compliance-on-demand",
+      "reason": "enters when source, license, privacy, publication, or attribution is material"
+    }
+  ],
+  "fuse_into_kernel": [
+    {
+      "item": "OpenSquilla skill discovery filter",
+      "target": "staff-runtime+evolution-profile",
+      "reason": "find gaps without importing full skill bodies"
+    },
+    {
+      "item": "OpenSquilla MCP catalog/status awareness",
+      "target": "capability-mount+guard-office",
+      "reason": "read-only readiness and admission checks only"
+    },
+    {
+      "item": "OpenSquilla session and memory routines",
+      "target": "staff-runtime+evolution-profile",
+      "reason": "only non-sensitive distilled strategy signals survive"
+    },
+    {
+      "item": "OpenSquilla model/provider routing hints",
+      "target": "staff-runtime",
+      "reason": "activate only when expected to improve first-pass success or reduce total rework"
+    },
+    {
+      "item": "Headroom and Reasonix token strategies",
+      "target": "optimization kernel",
+      "reason": "stable prefix, dynamic tail, evidence summary, and anti-overoptimization gates"
+    },
+    {
+      "item": "legacy workflow and prompt optimization helpers",
+      "target": "go-execution-base",
+      "reason": "repeatable behavior belongs in deterministic gates instead of long resident text"
+    },
+    {
+      "item": "residual inventory coverage",
+      "target": "audit+go-execution-base",
+      "reason": "current files are audited by inventory instead of relying on user-discovered leftovers"
+    },
+    {
+      "item": "feedback hash-only distillation",
+      "target": "evolution-profile+guard-office",
+      "reason": "useful repeat signals survive without storing raw user tasks, notes, keys, accounts, addresses, tokens, or cookies"
+    },
+    {
+      "item": "supply-chain hash gates",
+      "target": "guard-office+go-execution-base",
+      "reason": "external bundles and executable caches are explicit, version pinned, and hash verified"
+    }
+  ],
+  "retire_and_label": [
+    {
+      "item": "Trae expedition commander",
+      "reason": "external-agent compatibility only, not Codex-only default runtime"
+    },
+    {
+      "item": "install, restore, sync, backup, publish helpers",
+      "reason": "ops surfaces that require explicit task intent"
+    },
+    {
+      "item": "legacy mirror docs with doctrine bodies",
+      "reason": "human reference only; cannot become a second truth source"
+    },
+    {
+      "item": "parallel router semantics",
+      "reason": "parallelism is need-driven sidecar-only; multiple route owners or competing completion authorities remain forbidden"
+    }
+  ],
+  "delete_now": [
+    {
+      "item": "C:\\Users\\Administrator\\.codex\\skills\\opensquilla-commander",
+      "reason": "deleted; reappearance is a fusion-audit failure"
+    },
+    {
+      "item": "C:\\Users\\Administrator\\.agents\\skills\\opensquilla-commander",
+      "reason": "deleted; reappearance is a fusion-audit failure"
+    },
+    {
+      "item": "C:\\Users\\Administrator\\.agents\\skills\\_backup-wuji-legion-20260606-015130",
+      "reason": "moved out of active skills root; reappearance is a fusion-audit failure"
+    },
+    {
+      "item": "C:\\Users\\Administrator\\.agents\\skills\\wuji-legion-codex",
+      "reason": "legacy full Codex skill cannot coexist with the short runtime mirror"
+    },
+    {
+      "item": "OpenSquilla gateway and MCP launcher scripts in Codex skill paths",
+      "reason": "deleted; external runtime launchers are forbidden"
+    },
+    {
+      "item": "stale context-pack.json beside context-pack-rich.json",
+      "reason": "single canonical context pack prevents drift"
+    },
+    {
+      "item": "large historical outputs",
+      "reason": "generated artifacts must not pollute default scans or context assembly"
+    },
+    {
+      "item": "wuji-cli-test-*.exe and duplicate Go archives/toolchains",
+      "reason": "generated build waste; one smoke binary and one Go toolchain path are enough"
+    }
+  ],
+  "hard_gates": [
+    {
+      "gate": "fusion-audit",
+      "must_check": "no OpenSquilla commander directory or external launcher exists in .codex or .agents skill paths"
+    },
+    {
+      "gate": "fusion-audit",
+      "must_check": "no legacy Wuji backup or wuji-legion-codex skill exists in active .agents/.codex skills roots"
+    },
+    {
+      "gate": "optimization-audit",
+      "must_check": "context-pack-rich.json <= 12288 bytes"
+    },
+    {
+      "gate": "optimization-audit",
+      "must_check": "stable prefix <= 16 fields"
+    },
+    {
+      "gate": "optimization-audit",
+      "must_check": "outputs <= 52428800 bytes and <= 500 files"
+    },
+    {
+      "gate": "optimization-audit",
+      "must_check": ".wuji-tools <= 314572800 bytes and <= 16000 files"
+    },
+    {
+      "gate": "optimization-audit",
+      "must_check": "no stale outputs/context-pack.json when rich pack exists"
+    },
+    {
+      "gate": "fusion-audit",
+      "must_check": "every current non-generated workspace file is covered by residual-entrypoints.json"
+    },
+    {
+      "gate": "fusion-audit",
+      "must_check": "route IDs and route keywords do not conflict"
+    },
+    {
+      "gate": "claim-guard",
+      "must_check": "success claims require current fusion-audit and optimization-audit pass reports from the same workspace"
+    },
+    {
+      "gate": "supply-chain",
+      "must_check": "downloaded JS bundles or executable caches must be opt-in and SHA256 verified"
+    },
+    {
+      "gate": "all",
+      "must_check": "no user secrets, accounts, keys, addresses, cookies, tokens, auth files, sessions, attachments, OpenSquilla private state, or Codex private state enter doctrine, memory, outputs, backups, or feedback"
+    }
+  ]
+}

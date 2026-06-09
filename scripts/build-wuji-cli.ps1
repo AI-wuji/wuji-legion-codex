@@ -18,23 +18,12 @@ function Find-Go {
         return $manual
     }
 
-    $portable = Get-ChildItem -LiteralPath $binDir -Recurse -Filter go.exe -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -like '*\go\bin\go.exe' } |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
-    if ($portable) { return $portable.FullName }
-
-    $zip = Get-ChildItem -LiteralPath $binDir -Filter 'go*.windows-amd64.zip' -File -ErrorAction SilentlyContinue |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
-    if ($zip) {
-        $dest = Join-Path $binDir ($zip.BaseName)
-        $expandedGo = Join-Path $dest 'go\bin\go.exe'
-        if (-not (Test-Path -LiteralPath $expandedGo)) {
-            Expand-Archive -LiteralPath $zip.FullName -DestinationPath $dest -Force
-        }
-        if (Test-Path -LiteralPath $expandedGo) {
-            return $expandedGo
+    foreach ($candidate in @(
+        (Join-Path $binDir 'go\bin\go.exe'),
+        (Join-Path $binDir 'go1.25.4.windows-amd64\go\bin\go.exe')
+    )) {
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
         }
     }
 
@@ -79,6 +68,10 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "go build failed with exit code $LASTEXITCODE"
     }
+    & $go clean -cache -testcache
+    if ($LASTEXITCODE -ne 0) {
+        throw "go clean cache failed with exit code $LASTEXITCODE"
+    }
 }
 finally {
     $env:GOCACHE = $previousGoCache
@@ -93,17 +86,28 @@ Write-Host "Built: $Output"
 
 if ([System.IO.Path]::GetFileName($Output) -eq 'wuji-exec-base.exe') {
     $shim = Join-Path ([System.IO.Path]::GetDirectoryName($Output)) 'wuji-cli.cmd'
-    $shimContent = "@echo off`r`n`"%~dp0wuji-exec-base.exe`" %*`r`n"
+    $shimContent = @"
+@echo off
+setlocal
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\ensure-wuji-cli.ps1" -RepoRoot "%~dp0.." -Quiet
+if errorlevel 1 exit /b %errorlevel%
+"%~dp0wuji-exec-base.exe" %*
+"@
     [System.IO.File]::WriteAllText($shim, $shimContent, [System.Text.ASCIIEncoding]::new())
     Write-Host "Shim: $shim"
 
     $psShim = Join-Path ([System.IO.Path]::GetDirectoryName($Output)) 'wuji-cli.ps1'
-    $psShimContent = @'
+$psShimContent = @'
 param(
     [Parameter(ValueFromRemainingArguments = $true)]
-    [string[]]$Args
+    [string[]]$WujiArgs
 )
-& "$PSScriptRoot\wuji-exec-base.exe" @Args
+$repoRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+& "$repoRoot\scripts\ensure-wuji-cli.ps1" -RepoRoot $repoRoot -Quiet
+if (-not $?) {
+    exit 1
+}
+& "$PSScriptRoot\wuji-exec-base.exe" @WujiArgs
 exit $LASTEXITCODE
 '@
     [System.IO.File]::WriteAllText($psShim, $psShimContent, [System.Text.UTF8Encoding]::new($false))

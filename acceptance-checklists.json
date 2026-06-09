@@ -1,0 +1,88 @@
+{
+  "version": "11.3",
+  "white_hat": [
+    "no second user-facing entry remains",
+    "no parallel total router remains",
+    "no external OpenSquilla executor remains",
+    "no OpenSquilla gateway or MCP launcher remains in Codex skill paths",
+    "OpenSquilla appears only as distilled atoms inside Wuji roles, gates, and capability mounting",
+    "source-pool examples do not expose nested SKILL.md files as duplicate active skills",
+    "Go canon and config do not recommend disabled providers",
+    "route IDs and route keywords have no machine-detected conflicts",
+    "no token optimization removes necessary evidence, boundaries, or discipline",
+    "assumption-ledger and claim-fact-check are present in quality-inspection and high-risk routes",
+    "root-cause-radar blocks symptom-only repair claims",
+    "patch-debt-root-cure rejects repeated local hotfix accumulation"
+  ],
+  "guard_office": [
+    "external repos, pages, scripts, plugins, and MCP manifests are screened before execution",
+    "OpenSquilla private state is not read, copied, printed, or stored by Wuji runtime",
+    "account data, keys, addresses, cookies, tokens, auth files, sessions, and attachments are excluded from outputs and backups",
+    "network, account, OAuth, publish, and write surfaces stay task-authorized and on-demand",
+    "downloaded bundles and executable caches are explicit, version pinned, and hash verified",
+    "feedback keeps hash-only task and note signals instead of raw user text",
+    "version-doc-mcp and guarded-realtime-source-search mount only after source and injection checks",
+    "prior-art-solution-search records safe sources, alternatives, and reuse-vs-build rationale before external code or tools influence execution"
+  ],
+  "root_cause_officer": [
+    "root-cause-radar report exists before bugfix completion when a diagnosable failure is repaired",
+    "symptom-only causes, missing same-class scans, and missing regression evidence are rejected",
+    "temporary patch, workaround, and bypass claims require a concrete patch-debt deletion or root-cure action",
+    "root cause reports keep hash-only text summaries and evidence references instead of raw user text"
+  ],
+  "evolution_profile": [
+    "cleanup, deletion, merge, plugin enablement, skill promotion, and rule promotion require an evolution-profile decision first",
+    "external frameworks remain source pools unless a narrow local atom has a named owner and verification path",
+    "structural cleanup uses a refactor recipe with target, match surface, transform, counterexample, rollback path, and verification",
+    "resident rule promotion requires an eval set or real-run evidence that improves token, rework, routing noise, or patch debt without weakening verification",
+    "evolution keeps hash-only strategy signals and never stores user secrets, accounts, addresses, sessions, or raw private task text"
+  ],
+  "audit": [
+    "kernel-source, config, and mirror versions align",
+    "all listed atoms have a fusion decision",
+    "all residual entrypoints have a labeled status",
+    "every current non-generated workspace file is covered by a non-retired residual entry",
+    "purification charter is present and machine-readable",
+    "fusion and optimization audits pass with current outputs",
+    "all distilled atoms have fusion-matrix decisions and route/context-pack visibility",
+    "parallel-hypothesis-fanout evidence merges back into one main-chain verdict",
+    "terminal-real-run-verification evidence is fresh, local, and tied to the delivered artifact or command",
+    "independent officers appear explicitly when triggered and then exit after their verdict is merged"
+  ],
+  "performance_benchmark_on_demand": [
+    "context-pack-rich.json is at or below 12288 bytes",
+    "stable prefix has at most 16 fields",
+    "outputs default scan set is at or below 52428800 bytes and 500 files",
+    ".wuji-tools cache is at or below 314572800 bytes and 16000 files",
+    "large artifacts are represented by handles or summaries, not replayed wholesale",
+    "text artifacts used as evidence are summarized, not handle-only, unless binary or unreadable for a documented reason",
+    "optimization preserves or improves first-pass hit rate and reduces total volume",
+    "Headroom-style compression atoms reduce total replay volume without dropping evidence handles",
+    "root-cause and terminal verification reduce total rework cost instead of only lowering one-turn token count",
+    "performance, benchmark, latency, token, cost, speed, hit-rate, or resource prompts trigger performance-benchmark-on-demand",
+    "high cache hit rate is rejected when cached_tokens_p95, reused_prefix_bytes_p95, input_tokens_p95, activated officers, loaded bytes, or largest context segment exceed budget",
+    "context-bloat-audit checks hotpath-manifest.json and the current bench-report before token optimization can be claimed",
+    "runtime-context-audit checks numeric-only runtime usage before token, cost, cache, backend usage, or outer-context claims can be accepted",
+    "bench-report binds measured workspace_key, command, generated_at, log_ref, and bench.jsonl hash; wrong-workspace or stale bench evidence is rejected"
+  ],
+  "compliance_on_demand": [
+    "third-party source pools are attribution-safe and not copied as hidden doctrine",
+    "license, source, privacy, and release boundaries are checked on demand before publishing or importing external assets",
+    "OpenSquilla and prior-art tooling remain source pools or atoms, not external execution systems",
+    "license, attribution, privacy, PII, SBOM, SPDX, CycloneDX, SLSA, provenance, publish, or release prompts trigger compliance-on-demand"
+  ],
+  "quality_inspection": [
+    "stable prefix is present, canonized, and within budget",
+    "typed assembly separates execution summaries and audit summaries",
+    "evidence handles are preserved without full replay",
+    "system can self-report drift without relying on user discovery",
+    "completion claims require current fusion-audit, optimization-audit, and context-bloat-audit pass; token/cost/cache/usage claims also require runtime-context-audit pass",
+    "completion claims cannot use stale, missing, or wrong-workspace audit reports",
+    "before final on non-trivial execution, a bounded high-yield residual/evidence/audit scan is clean or its findings were handled",
+    "passing one core test does not permit stopping while low-noise verification, residue cleanup, or current-audit refresh remains available",
+    "route-task reports distilled_atoms instead of hidden additive skill stacks",
+    "when real browser, local program, test command, export, or artifact inspection is available, completion is rejected without that evidence",
+    "execution-state work does not ask whether to continue while current-scope verification or repair remains available",
+    "quality-inspection is the canonical machine name; qa and 质检 are treated only as aliases"
+  ]
+}

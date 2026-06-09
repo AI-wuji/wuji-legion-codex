@@ -3,10 +3,12 @@
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const DOM_TO_PPTX_VERSION = "1.1.10";
+const DOM_TO_PPTX_SHA256 = "940f55fbd1f79b1c5b88d9f456ca1f3dfd7e81e704dabb0f35a5347a3b783643";
 const DEFAULT_VIEWPORT = { width: 1920, height: 1080 };
 
 const __filename = fileURLToPath(import.meta.url);
@@ -220,29 +222,43 @@ function loadMotionPresetCss() {
 }
 
 async function ensureDomToPptxBundle(repoRoot) {
+  const verifyBundle = async (bundlePath, expectedHash = DOM_TO_PPTX_SHA256) => {
+    const bytes = await fs.readFile(bundlePath);
+    const actualHash = createHash("sha256").update(bytes).digest("hex");
+    if (actualHash.toLowerCase() !== expectedHash.toLowerCase()) {
+      throw new Error(`dom-to-pptx bundle hash mismatch: ${bundlePath} sha256=${actualHash}`);
+    }
+    return path.resolve(bundlePath);
+  };
+
   const envBundle = process.env.WUJI_DOM_TO_PPTX_BUNDLE;
   if (envBundle && fsSync.existsSync(envBundle)) {
-    return path.resolve(envBundle);
+    const expectedHash = process.env.WUJI_DOM_TO_PPTX_SHA256 || DOM_TO_PPTX_SHA256;
+    return verifyBundle(path.resolve(envBundle), expectedHash);
   }
 
   const cachedBundle = path.join(repoRoot, ".wuji-tools", "dom-to-pptx-cache", "package", "dist", "dom-to-pptx.bundle.js");
   if (fsSync.existsSync(cachedBundle)) {
-    return cachedBundle;
+    return verifyBundle(cachedBundle);
   }
 
   const target = path.join(repoRoot, ".wuji-tools", "dom-to-pptx", DOM_TO_PPTX_VERSION, "dist", "dom-to-pptx.bundle.js");
   if (fsSync.existsSync(target)) {
-    return target;
+    return verifyBundle(target);
   }
 
+  if (process.env.WUJI_ALLOW_NETWORK_DOWNLOAD !== "1") {
+    throw new Error("dom-to-pptx bundle is missing. Provide WUJI_DOM_TO_PPTX_BUNDLE or set WUJI_ALLOW_NETWORK_DOWNLOAD=1 for a hash-verified one-time download.");
+  }
   const url = `https://cdn.jsdelivr.net/npm/dom-to-pptx@${DOM_TO_PPTX_VERSION}/dist/dom-to-pptx.bundle.js`;
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`Failed to download dom-to-pptx bundle from ${url}: ${response.status} ${response.statusText}`);
   }
+  const bytes = Buffer.from(await response.arrayBuffer());
   await fs.mkdir(path.dirname(target), { recursive: true });
-  await fs.writeFile(target, Buffer.from(await response.arrayBuffer()));
-  return target;
+  await fs.writeFile(target, bytes);
+  return verifyBundle(target);
 }
 
 function resolveBrowserExecutable() {

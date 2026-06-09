@@ -1,0 +1,84 @@
+{
+  "version": "11.3",
+  "policy": "MoE sparse context: keep only a tiny stable resident surface; load officers, skills, source files, and ledgers on demand; preserve evidence by handle instead of replay.",
+  "resident": [
+    {
+      "path": "config.json",
+      "max_bytes": 4096,
+      "reason": "small runtime overlay for cache and routing policy"
+    }
+  ],
+  "on_demand": [
+    {
+      "path": "tools/wuji_cli.go",
+      "max_loaded_bytes": 16384,
+      "default_mode": "symbol-or-range",
+      "reason": "Go deterministic base is loaded by symbol, range, or command need only"
+    },
+    {
+      "path": "scripts/test-wuji-cli.ps1",
+      "max_loaded_bytes": 8192,
+      "default_mode": "range",
+      "reason": "test evidence is loaded by failing block or named case"
+    },
+    {
+      "path": "units/*.md",
+      "max_loaded_bytes": 4096,
+      "default_mode": "owner-card",
+      "reason": "unit mirrors are orientation only"
+    },
+    {
+      "path": "experts/*/*.md",
+      "max_loaded_bytes": 4096,
+      "default_mode": "role-card",
+      "reason": "expert mirrors activate only after routing"
+    }
+  ],
+  "cold_ledger": [
+    {
+      "path": "kernel-source.json",
+      "default_mode": "handle-only",
+      "reason": "truth source is referenced by hash unless kernel editing is the task"
+    },
+    {
+      "path": "fusion-matrix.json",
+      "default_mode": "handle-only",
+      "reason": "atom decisions are queried by handle or key"
+    },
+    {
+      "path": "acceptance-checklists.json",
+      "default_mode": "handle-only",
+      "reason": "checklists enter only during audits and closeout"
+    },
+    {
+      "path": "residual-entrypoints.json",
+      "default_mode": "handle-only",
+      "reason": "inventory ledger enters only during cleanup/audit"
+    },
+    {
+      "path": "purification-charter.json",
+      "default_mode": "handle-only",
+      "reason": "cleanup charter enters only during fusion/purity work"
+    },
+    {
+      "path": "outputs/runtime-context-audit-report.json",
+      "default_mode": "handle-only",
+      "reason": "runtime token evidence enters only as hash, metrics, and pass/fail"
+    }
+  ],
+  "forbidden_resident": [
+    ".wuji-tools/**",
+    "outputs/**",
+    ".opensquilla/**",
+    ".codex/auth/**",
+    ".codex/sessions/**",
+    "outputs/runtime-usage.jsonl",
+    "raw prompts/messages/content",
+    "tools/wuji_cli.go:full-file",
+    "scripts/test-wuji-cli.ps1:full-file",
+    "GLOBAL_AGENTS.md:full-file",
+    "README.md:full-file",
+    "SKILL.md:full-file",
+    "active-skill-bodies-unless-triggered"
+  ]
+}

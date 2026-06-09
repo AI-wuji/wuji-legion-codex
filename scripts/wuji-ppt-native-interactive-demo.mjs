@@ -989,7 +989,7 @@ async function main() {
     accent: theme.accent2,
     kicker: "LINK",
     title: "外链、资料、系统页都可以接进来",
-    body: "对于产品演示、培训和发布会，这种状态页特别适合承接下一步动作。",
+    body: "对于产品演示、培训和发布会，这种状态页特别适合承接后续动作。",
   });
   addPillButton(slide3, theme, {
     x: 7.08,
@@ -1112,7 +1112,7 @@ async function main() {
     fill: { color: theme.bg, transparency: 0 },
     line: { color: theme.line, pt: 1 },
   });
-  slide4.addText("如果你要把它继续往“最高级”推，下一步就是把同样的结构接到真实业务内容里：产品页、培训页、汇报页、FAQ 页都能用这套交互骨架。", {
+  slide4.addText("如果要把它进一步推到“最高级”，就把同样的结构接到真实业务内容里：产品页、培训页、汇报页、FAQ 页都能用这套交互骨架。", {
     x: 1.24,
     y: 4.9,
     w: 10.88,
