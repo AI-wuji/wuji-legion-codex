@@ -49,3 +49,28 @@ daily feedback
 - 不把 runtime token 噪音包装成“提示词升级”。
 - 不允许候选里出现密钥、账号、cookie、token 或占位假话。
 - 未经过 `prompt-distill` 过线的候选，不得宣称“已蒸馏完成”。
+
+## 200k Cached Token Diagnosis
+
+If backend usage shows about 200k cached/blue-hit tokens per request, treat it as long-context bloat until proven otherwise.
+
+Likely causes:
+
+- The conversation/thread carries too much old history.
+- Stable prefix contains too many resident rules, role bodies, skill bodies, or repeated summaries.
+- Tool outputs, logs, search pages, transcripts, or README bodies were replayed instead of referenced by handle.
+- Too many officers/skills were mounted together.
+
+Fix path:
+
+```text
+runtime-context-audit
+-> locate cached/input/fresh/output p95
+-> split or reset unrelated long thread
+-> replace history with task-state summary
+-> keep evidence handles, not full replay
+-> mount one owner, one selected skill, triggered officers only
+-> verify cached_tokens_p95, input_tokens_p95, fresh_input_tokens_p95, output_tokens_p95 all fall together
+```
+
+Do not lower cached volume by increasing uncached input or verbose output. The target is high hit rate with smaller total volume.

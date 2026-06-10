@@ -593,7 +593,7 @@ $runtimeBloatRows = @(
 [System.IO.File]::WriteAllLines($runtimeBloatLog, ($runtimeBloatRows | ForEach-Object { $_ | ConvertTo-Json -Depth 12 -Compress }), [System.Text.UTF8Encoding]::new($false))
 Invoke-Case -Name 'runtime-context-audit-bloat-blocked' -ExpectedExit 1 -Arguments @('runtime-context-audit', '--workspace', $runtimeBloatWorkspace)
 $runtimeBloatReport = Read-JsonUtf8 -Path (Join-Path $runtimeBloatWorkspace 'outputs\runtime-context-audit-report.json')
-if ($runtimeBloatReport.status -ne 'fail' -or $runtimeBloatReport.volume_gate -ne 'fail' -or -not (($runtimeBloatReport.failures | Where-Object { $_ -like 'runtime_cached_tokens_p95_over_budget=*' }).Count -gt 0)) {
+if ($runtimeBloatReport.status -ne 'fail' -or $runtimeBloatReport.volume_gate -ne 'fail' -or $runtimeBloatReport.long_context_suspected -ne $true -or $runtimeBloatReport.diagnosis -ne 'cached-token-bloat-suspected-long-resident-or-outer-context' -or -not ($runtimeBloatReport.context_slimming_actions -contains 'replace-long-history-with-task-state-summary-and-evidence-handles') -or -not (($runtimeBloatReport.failures | Where-Object { $_ -like 'runtime_cached_tokens_p95_over_budget=*' }).Count -gt 0)) {
     throw "FAIL runtime-context-audit-bloat-blocked report=$($runtimeBloatReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 
@@ -976,6 +976,11 @@ Invoke-Case -Name 'route-task-context-cache-bloat-execution-base' -ExpectedExit 
 $contextCacheBloatReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-context-cache-bloat-report.json')
 if ($contextCacheBloatReport.matched_route.id -ne 'execution-base' -or -not ($contextCacheBloatReport.task_route.oversight_chain -contains 'performance-benchmark-on-demand') -or -not ($contextCacheBloatReport.deterministic_execution.command_candidates -contains 'bench-report') -or -not ($contextCacheBloatReport.deterministic_execution.command_candidates -contains 'runtime-context-audit') -or $contextCacheBloatReport.task_route.state -ne 'LEGION_TASK' -or $contextCacheBloatReport.execution_budget.id -ne 'STRUCTURAL_TASK') {
     throw "FAIL route-task context cache bloat should use execution-base report=$($contextCacheBloatReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-blue-hit-200k-context' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', '后台 token 每条 200k 蓝色命中 命中体量大 可能是上下文太长', '--report', (Join-Path $fixture 'route-blue-hit-200k-report.json'))
+$blueHitRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-blue-hit-200k-report.json')
+if ($blueHitRouteReport.matched_route.id -ne 'execution-base' -or -not ($blueHitRouteReport.task_route.oversight_chain -contains 'performance-benchmark-on-demand') -or -not ($blueHitRouteReport.deterministic_execution.command_candidates -contains 'runtime-context-audit')) {
+    throw "FAIL route-task blue hit 200k should use execution-base runtime-context-audit report=$($blueHitRouteReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 Invoke-Case -Name 'route-task-pure-performance-execution-base' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'latency p95 memory resource speed performance regression', '--report', (Join-Path $fixture 'route-pure-performance-report.json'))
 $purePerformanceReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-pure-performance-report.json')

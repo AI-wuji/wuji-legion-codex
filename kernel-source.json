@@ -39,7 +39,8 @@
     "context_bloat_gate": "context-bloat-audit",
     "runtime_context_gate": "runtime-context-audit",
     "runtime_context_policy": "token, cost, cache, backend usage, or outer-context claims require numeric-only runtime usage evidence; raw prompts, messages, content, secrets, and sessions are forbidden",
-    "cache_volume_policy": "high hit rate is not enough; cached_tokens_p95, fresh_input_tokens_p95, output_tokens_p95, uncached_tokens_p95, reused_prefix_bytes_p95, input_tokens_p95, activated officers, loaded bytes, and largest segment must stay under budget",
+    "cache_volume_policy": "high hit rate is not enough; a 200k cached/blue-hit line is usually long resident or outer context bloat; cached_tokens_p95, fresh_input_tokens_p95, output_tokens_p95, uncached_tokens_p95, reused_prefix_bytes_p95, input_tokens_p95, activated officers, loaded bytes, and largest segment must stay under budget",
+    "context_slimming_policy": "preserve high hit by keeping a small byte-stable prefix, but reduce total volume by replacing long history with task-state summaries, evidence handles, source cards, range reads, and on-demand owner/skill/officer mounts; never move savings into larger fresh input or verbose output",
     "concise_execution_policy": "short precise single-message execution; prior art before invention when uncertain; no verbose status padding; no shifting cost from cached prefix into uncached input or output",
     "execution_goal": "single-pass-success-over-short-answer",
     "pre_final_exhaustion_policy": "before final on non-trivial execution, run a bounded high-yield residual, evidence, and audit scan; continue without asking if actionable low-noise work remains",
@@ -110,7 +111,21 @@
     "refactor-recipe-style",
     "agent-eval-style",
     "terminal-verification-style",
-    "github-trending-20260608-style"
+    "github-trending-20260608-style",
+    "omx-style",
+    "baoyu-skills-style",
+    "khazix-skills-style",
+    "humanizer-zh-style",
+    "neat-freak-style",
+    "competitive-teardown-style",
+    "hv-analysis-style",
+    "ppt-keynote-style",
+    "ian-xiaohei-style",
+    "prompt-cache-block-control-style",
+    "llmlingua-style",
+    "memgpt-style",
+    "external-agent-shells",
+    "external-write-surfaces"
   ],
   "distilled_atom_kernel": {
     "policy": "gap-fill, replace weaker atoms, and fuse overlapping capabilities; never stack project shells; new source pools upgrade the existing 21 atoms unless explicitly expanded by user-approved design",
@@ -207,7 +222,9 @@
       "minimal-needed-context",
       "prior-art-before-invention-when-uncertain",
       "root-cause-before-patch",
-      "fresh-output-uncached-volume-gated"
+      "fresh-output-uncached-volume-gated",
+      "cached-volume-before-hit-rate-claim",
+      "stable-prefix-small-not-just-cacheable"
     ],
     "must_not_do": [
       "verbose-status-padding",
@@ -218,9 +235,11 @@
     ],
     "cost_vector": [
       "cached_tokens_p95",
+      "input_tokens_p95",
       "fresh_input_tokens_p95",
       "output_tokens_p95",
       "uncached_tokens_p95",
+      "cache_hit_rate",
       "tokens_per_success",
       "retries"
     ]

@@ -38,6 +38,20 @@ only adds a new shell.
 - `refactor-recipe-style`
 - `agent-eval-style`
 - `github-trending-20260608-style`
+- `omx-style`
+- `baoyu-skills-style`
+- `khazix-skills-style`
+- `humanizer-zh-style`
+- `neat-freak-style`
+- `competitive-teardown-style`
+- `hv-analysis-style`
+- `ppt-keynote-style`
+- `ian-xiaohei-style`
+- `prompt-cache-block-control-style`
+- `llmlingua-style`
+- `memgpt-style`
+- `external-agent-shells`
+- `external-write-surfaces`
 
 ## Distilled atom kernel
 
@@ -72,6 +86,20 @@ Keep exactly the existing 21 kernel atoms unless the user approves an explicit r
 - `last30days`, `taste-skill`, `open-notebook`, `tolaria`, `turbovec-style`, `goose`, `pg_durable-style`, `opencv-style`, and `openai-plugins` are source-pool lessons only.
 - Useful parts must land in existing owners and atoms: intelligence, visual, data, execution-base, quality, guard-office, or evolution.
 - `GhostTrack`, `ChinaTextbook`, `AiToEarn`, `project-nomad`, plugin runtimes, and external agent shells are reject/guard signals unless a later task gives a narrow, reviewed, lawful use case.
+
+## 2026-06-10 Source Pool Merge
+
+No new default atom is added. The new projects are source pools only:
+
+- `OMX`: keep hook, HUD, sidecar lifecycle, and plugin bridge lessons; reject the external runtime shell.
+- `Huashu Design 2.0`, `ppt-keynote`, `baoyu-article-illustrator`, `ian-xiaohei`: strengthen visual atoms, not a second design system.
+- `khazix-writer`, `wechat-toutiao-article-writer`, `humanizer-zh`: strengthen content-profile and quality-inspection writing checks.
+- `hv-analysis`, `competitive-teardown`: strengthen `research-evidence-pack` with historical and competitive analysis cards.
+- `baoyu-url-to-markdown`, `baoyu-youtube-transcript`: strengthen guarded search and evidence packs after guard-office screening.
+- `baoyu-post-to-x/wechat/weibo`, `baoyu-electron-extract`: reject as default runtimes; keep only draft formatting, explicit authorization, and safety checklists.
+- `neat-freak`: strengthens context/document cleanup by preferring deletion, consolidation, and evidence handles over more notes.
+
+Context-cache note: prompt caching is useful only when the stable prefix is small. A 200k cached/blue-hit line is treated as long-context bloat until `runtime-context-audit` proves otherwise.
 
 ## Admission test
 

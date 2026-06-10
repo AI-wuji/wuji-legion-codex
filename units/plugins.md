@@ -78,3 +78,15 @@
 - 插件结果必须回到主帅收口，不绕过白帽、质检、安全、合规。
 - 成品型输出默认只保留两个入口：预览、文件路径。
 - `huashu-design` 不进入“已启用插件”，只保留 `html-native-design-canvas`、`brand-asset-protocol`、`anti-ai-slop-visual-rules`、`design-direction-triad`、`html-deck-to-editable-pptx`、`motion-stage-sprite-engine` 六个蒸馏原子。
+
+## 2026-06-10 Candidate Boundary
+
+| Candidate | Decision | Boundary |
+|---|---|---|
+| OMX / oh-my-codex | source-pool-only | Keep hook, HUD, sidecar lifecycle, and plugin bridge lessons; no external runtime shell or second router. |
+| baoyu-url-to-markdown | defer | Guarded capture only; summarize selected sections and keep evidence handles. |
+| baoyu-youtube-transcript | defer | Timestamped evidence only; do not replay full transcripts by default. |
+| baoyu-electron-extract | high-risk-defer | Requires explicit user authorization for the target app and guard/compliance review. |
+| baoyu-post-to-x/wechat/weibo | high-risk-defer | Draft, checklist, and format adaptation only by default; no silent login, cookie/session retention, or posting without explicit confirmation. |
+| baoyu-image-gen | source-pool-only | Prompt batching and reference-image specification only; Codex `imagegen` remains the image route. |
+| dbs 商业工具箱 | source-pool-only | Only bottom-level business diagnosis recipes may be reviewed; no toolbox shell. |

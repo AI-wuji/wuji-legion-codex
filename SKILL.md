@@ -64,7 +64,7 @@ Optimization must satisfy all of these:
 - Use MoE-style sparse activation: only the owner profile, triggered officers, one selected skill, and evidence handles enter context.
 - `context-bloat-audit` must pass before token optimization or completion is claimed.
 - `runtime-context-audit` must pass before token, cost, cache, backend usage, or outer-context optimization is claimed.
-- High cache hit rate is not enough; cached token volume, fresh/uncached input, output tokens, reused prefix bytes, loaded file bytes, largest context segment, and activated officers/skills must stay under budget.
+- High cache hit rate is not enough; 200k cached/blue-hit means likely long-context bloat. Cached, fresh/uncached, output, loaded bytes, largest segment, and activated officers/skills must stay under budget.
 - `bench-report` must bind the measured workspace, command, generated_at, log_ref, and `bench.jsonl` hash; `context-bloat-audit` rejects wrong-workspace or stale bench evidence.
 - Runtime usage evidence is numeric-only; raw prompts, messages, content, secrets, auth, and sessions never enter reports or resident context.
 

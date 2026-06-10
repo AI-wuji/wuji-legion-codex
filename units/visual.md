@@ -86,6 +86,16 @@ Reject visual output that relies on:
 - `opencv-style` strengthens preview inspection: screenshots, exports, or image assets may be checked for blank frames, low contrast, occlusion, and obvious visual regression when relevant.
 - These are source-pool lessons only. They do not install a separate design shell or add a new visual atom.
 
+## 2026-06-10 Visual Source Pool Merge
+
+- `Huashu Design 2.0` strengthens `html-native-design-canvas`, `design-direction-triad`, `brand-asset-protocol`, and `motion-stage-sprite-engine`.
+- `baoyu-article-illustrator` strengthens article illustration planning: choose illustration type, style, palette, and placement before generating images.
+- `ian-xiaohei-illustrations` is a style preset for Chinese article illustrations only when that look fits the brief; it is not a default house style.
+- `baoyu-image-gen` strengthens prompt batching and reference-image specification, but does not replace Codex `imagegen`.
+- `ppt-keynote` strengthens HTML/Keynote-style visual exploration and `html-deck-to-editable-pptx`; it cannot be used to fake editable PPTX.
+
+All five are source pools. They may replace weak visual habits, but they cannot become a second design system, a resident prompt body, or an independent visual commander.
+
 ## Brand Asset Protocol
 
 When a real brand/product/place/person is part of the task:

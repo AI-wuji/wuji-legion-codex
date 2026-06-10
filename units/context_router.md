@@ -67,3 +67,25 @@ Mirror source: `kernel-source.json`
 - 验证不降级
 
 没有通过 `optimization-audit` 的装配策略，不得进入主链。
+
+## Long Context Slimming Rule
+
+High cache hit is not enough. If cached/blue-hit volume is large, especially around 200k tokens per request, the route must assume long-context bloat until `runtime-context-audit` proves otherwise.
+
+Assembly order:
+
+```text
+stable small canon
+-> owner profile
+-> one selected skill or plugin
+-> triggered officers only
+-> source cards / range reads / evidence handles
+-> concise final output
+```
+
+Forbidden as context slimming:
+
+- moving cached volume into larger fresh input
+- replaying full search pages, transcripts, logs, or README bodies
+- mounting all relevant officers or skills by default
+- using cache-hit percentage as the success metric without cached/input/output p95

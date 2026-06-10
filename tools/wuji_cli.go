@@ -5354,6 +5354,36 @@ func runtimeUsageRawPayloadFailures(record map[string]any, index int) []string {
 	return failures
 }
 
+func contextSlimmingRecommendations(longContextSuspected bool, inputP95 int, cachedP95 int, freshP95 int, outputP95 int, uncachedP95 int) []string {
+	actions := []string{}
+	if longContextSuspected {
+		actions = append(actions,
+			"split-or-reset-unrelated-long-thread",
+			"keep-only-small-stable-prefix-and-move-volatile-facts-late",
+			"replace-long-history-with-task-state-summary-and-evidence-handles",
+			"mount-one-owner-one-skill-and-triggered-officers-only",
+			"summarize-tool-outputs-before-reuse-never-replay-logs",
+		)
+	}
+	if inputP95 > maxInputTokensP95 || uncachedP95 > maxUncachedTokensP95 {
+		actions = append(actions,
+			"retrieve-key-ranges-instead-of-loading-whole-files",
+			"use-source-cards-first-deep-read-only-survivors",
+			"prefer-rag-or-handle-based-context-over-full-document-replay",
+		)
+	}
+	if freshP95 > maxFreshInputTokensP95 {
+		actions = append(actions, "move-repeated-instructions-into-stable-canon-or-delete-duplicates")
+	}
+	if outputP95 > maxOutputTokensP95 {
+		actions = append(actions, "return-decision-and-diff-summary-not-process-transcript")
+	}
+	if cachedP95 > 0 && cachedP95 <= int(maxCachedPrefixBytesP95) && inputP95 <= maxInputTokensP95 && outputP95 <= maxOutputTokensP95 {
+		actions = append(actions, "preserve-byte-stable-prefix-order-do-not-trade-cache-hit-for-larger-fresh-output")
+	}
+	return orderedUniqueStrings(actions)
+}
+
 func runtimeContextAuditCommand(args []string) int {
 	workspace, ok := argValue(args, "--workspace")
 	if !ok {
@@ -5469,6 +5499,7 @@ func runtimeContextAuditCommand(args []string) int {
 	freshP95 := percentileInt(freshValues, 0.95)
 	outputP95 := percentileInt(outputValues, 0.95)
 	uncachedP95 := percentileInt(uncachedValues, 0.95)
+	longContextSuspected := int64(cachedP95) > maxCachedPrefixBytesP95 || inputP95 > maxInputTokensP95
 	volumeTooLarge := int64(cachedP95) > maxCachedPrefixBytesP95 ||
 		inputP95 > maxInputTokensP95 ||
 		freshP95 > maxFreshInputTokensP95 ||
@@ -5511,13 +5542,16 @@ func runtimeContextAuditCommand(args []string) int {
 		"fresh_input_tokens_p95":     freshP95,
 		"output_tokens_p95":          outputP95,
 		"uncached_tokens_p95":        uncachedP95,
+		"long_context_suspected":     longContextSuspected,
+		"diagnosis":                  ternaryStatus(longContextSuspected, "cached-token-bloat-suspected-long-resident-or-outer-context", "no-long-context-bloat-signal"),
+		"context_slimming_actions":   contextSlimmingRecommendations(longContextSuspected, inputP95, cachedP95, freshP95, outputP95, uncachedP95),
 		"volume_gate":                ternaryStatus(!volumeTooLarge, "pass", "fail"),
 		"runtime_skill_bytes":        runtimeSkillBytes,
 		"repo_instruction_bytes":     repoInstructionBytes,
 		"runtime_mirror_bytes":       mirrorBytes,
 		"privacy_mode":               "numeric-usage-and-hash-only",
 		"outer_context_claim_policy": "token-cost-cache-usage-claims-require-runtime-usage-evidence",
-		"checks":                     []string{"runtime-skill-budget", "repo-instruction-budget", "runtime-mirror-budget", "outer-usage-volume", "raw-payload-forbidden"},
+		"checks":                     []string{"runtime-skill-budget", "repo-instruction-budget", "runtime-mirror-budget", "outer-usage-volume", "long-context-suspect", "raw-payload-forbidden"},
 		"budgets":                    jsonObject{"runtime_skill_bytes_max": maxRuntimeSkillBytes, "repo_instruction_bytes_max": maxRuntimeRepoInstructionBytes, "runtime_mirror_bytes_max": maxRuntimeMirrorBytes, "cached_prefix_tokens_p95_max": maxCachedPrefixBytesP95, "input_tokens_p95_max": maxInputTokensP95, "fresh_input_tokens_p95_max": maxFreshInputTokensP95, "output_tokens_p95_max": maxOutputTokensP95, "uncached_tokens_p95_max": maxUncachedTokensP95, "min_runtime_usage_observations": minRuntimeUsageObservations},
 		"warnings":                   warnings,
 		"status":                     ternaryStatus(len(failures) == 0, "pass", "fail"),
@@ -6616,6 +6650,8 @@ func performanceRouteMarkers() []string {
 		"performance", "benchmark", "bench", "bench-report", "latency", "throughput", "hit rate", "cache hit", "cache bloat",
 		"token", "token cost", "token volume", "cached tokens", "cost", "speed", "slow", "p95", "p99", "cpu", "memory", "resource",
 		"rework cost", "headroom", "prefix cache", "context-bloat", "context bloat", "context volume", "token optimization",
+		"long context", "large context", "context window", "cached token volume", "200k", "blue hit",
+		"上下文", "长上下文", "上下文太长", "蓝色命中", "命中体量", "后台token", "后台 token", "命中的数量",
 		"mtp", "tpm", "tq", "sageattention", "attention acceleration", "cache acceleration",
 	}
 }
@@ -6930,6 +6966,8 @@ func conciseExecutionContract() jsonObject {
 			"prior-art-before-invention-when-uncertain",
 			"root-cause-before-patch",
 			"fresh-output-uncached-volume-gated",
+			"cached-volume-before-hit-rate-claim",
+			"stable-prefix-small-not-just-cacheable",
 		},
 		"must_not_do": []string{
 			"verbose-status-padding",
@@ -6940,9 +6978,11 @@ func conciseExecutionContract() jsonObject {
 		},
 		"cost_vector": []string{
 			"cached_tokens_p95",
+			"input_tokens_p95",
 			"fresh_input_tokens_p95",
 			"output_tokens_p95",
 			"uncached_tokens_p95",
+			"cache_hit_rate",
 			"tokens_per_success",
 			"retries",
 		},
@@ -6955,35 +6995,35 @@ func executionBudgetContract() jsonObject {
 		"policy":    "use the smallest verification tier that preserves first-pass success, evidence, and user constraints",
 		"tiers": []jsonObject{
 			{
-				"id":                 "FAST_REPLY",
-				"scope":              "discussion, direct answer, or analysis with no requested file changes",
-				"officer_mode":       "perspective-only-when-named",
-				"verification":       "no tool gate unless factual, current, or local evidence is required",
-				"full_audit":         false,
+				"id":                  "FAST_REPLY",
+				"scope":               "discussion, direct answer, or analysis with no requested file changes",
+				"officer_mode":        "perspective-only-when-named",
+				"verification":        "no tool gate unless factual, current, or local evidence is required",
+				"full_audit":          false,
 				"full_suite_max_runs": 0,
 			},
 			{
-				"id":                 "LIGHT_TASK",
-				"scope":              "small scoped edit or single-owner task",
-				"officer_mode":       "only explicitly triggered officers, one concise verdict",
-				"verification":       "targeted command, artifact, or focused test",
-				"full_audit":         false,
+				"id":                  "LIGHT_TASK",
+				"scope":               "small scoped edit or single-owner task",
+				"officer_mode":        "only explicitly triggered officers, one concise verdict",
+				"verification":        "targeted command, artifact, or focused test",
+				"full_audit":          false,
 				"full_suite_max_runs": 0,
 			},
 			{
-				"id":                 "STRUCTURAL_TASK",
-				"scope":              "router, kernel, officer, gate, multi-file, or root-cause work",
-				"officer_mode":       "triggered officers may run in parallel, then exit after merge",
-				"verification":       "targeted gates during work, one full verification at final if touched surfaces require it",
-				"full_audit":         "final-only-when-surface-requires",
+				"id":                  "STRUCTURAL_TASK",
+				"scope":               "router, kernel, officer, gate, multi-file, or root-cause work",
+				"officer_mode":        "triggered officers may run in parallel, then exit after merge",
+				"verification":        "targeted gates during work, one full verification at final if touched surfaces require it",
+				"full_audit":          "final-only-when-surface-requires",
 				"full_suite_max_runs": 1,
 			},
 			{
-				"id":                 "RELEASE_TASK",
-				"scope":              "explicit full-legion scan, release, broad cleanup, or final completion claim",
-				"officer_mode":       "all relevant officers may review once under single main-chain merge",
-				"verification":       "full audit and real-run closeout once at final",
-				"full_audit":         true,
+				"id":                  "RELEASE_TASK",
+				"scope":               "explicit full-legion scan, release, broad cleanup, or final completion claim",
+				"officer_mode":        "all relevant officers may review once under single main-chain merge",
+				"verification":        "full audit and real-run closeout once at final",
+				"full_audit":          true,
 				"full_suite_max_runs": 1,
 			},
 		},

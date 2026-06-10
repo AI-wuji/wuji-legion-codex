@@ -87,6 +87,21 @@ next_gate:
 - 用二手文章冒充官方源、源码、issue、release 或实测。
 - 做非法入侵、社工、绕权限或未授权外部写操作。
 
+## 2026-06-10 Retrieval Source Pool Merge
+
+- `baoyu-url-to-markdown`: strengthens guarded webpage capture. Use source cards and selected sections, not whole-page replay.
+- `baoyu-youtube-transcript`: strengthens video evidence capture. Keep timestamped claims and chapter summaries, not whole transcripts by default.
+- `hv-analysis`: strengthens historical-vs-current comparison cards.
+- `competitive-teardown`: strengthens competitor teardown cards, SWOT, positioning, and action-risk summaries.
+- `baoyu-translate`: strengthens translation handoff with quick/normal/refined tiers and glossary notes.
+
+Rules:
+
+- Broad search surface stays broad; only the context payload is narrowed.
+- GitHub remains first-class for tools, plugins, skills, issues, and prior art.
+- URL/video/social capture must pass guard-office before any script, browser automation, download, or logged-in page handling.
+- The intelligence-profile returns candidate cards and evidence handles only; final analysis and adoption stay with the single main chain.
+
 ## 当前专家
 
 - `情报主帅`：唯一情报入口，只交广域候选、轻量元数据和证据句柄。

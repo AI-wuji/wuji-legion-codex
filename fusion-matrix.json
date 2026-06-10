@@ -20,7 +20,21 @@
     "agent-eval-style",
     "terminal-verification-style",
     "sensenova-skills-style",
-    "github-trending-20260608-style"
+    "github-trending-20260608-style",
+    "omx-style",
+    "baoyu-skills-style",
+    "khazix-skills-style",
+    "humanizer-zh-style",
+    "neat-freak-style",
+    "competitive-teardown-style",
+    "hv-analysis-style",
+    "ppt-keynote-style",
+    "ian-xiaohei-style",
+    "prompt-cache-block-control-style",
+    "llmlingua-style",
+    "memgpt-style",
+    "external-agent-shells",
+    "external-write-surfaces"
   ],
   "decisions": [
     {
@@ -46,31 +60,31 @@
     },
     {
       "atom": "context-minimization",
-      "source_pool": "opensquilla+headroom-style",
+      "source_pool": "opensquilla+headroom-style+prompt-cache-block-control-style+llmlingua-style+memgpt-style+neat-freak-style",
       "decision": "resident",
       "owner": "staff-runtime",
-      "reason": "stable prefix must remain small across tasks"
+      "reason": "stable prefix must remain small across tasks; long cached/blue-hit volume is treated as context bloat even when hit rate is high"
     },
     {
       "atom": "prefix-cache-discipline",
-      "source_pool": "reasonix-style+old-wuji",
+      "source_pool": "reasonix-style+old-wuji+prompt-cache-block-control-style",
       "decision": "resident",
       "owner": "staff-runtime+go-execution-base",
-      "reason": "byte-stable prefix improves cache economics without weakening verification"
+      "reason": "byte-stable prefix improves cache economics only when the prefix is small; cached_tokens_p95 must stay under budget"
     },
     {
       "atom": "tool-output-compression",
-      "source_pool": "headroom-style+old-wuji",
+      "source_pool": "headroom-style+old-wuji+llmlingua-style+neat-freak-style",
       "decision": "resident",
       "owner": "go-execution-base+quality-inspection",
-      "reason": "large outputs must be summarized before reuse while preserving evidence handles"
+      "reason": "large outputs must be summarized before reuse while preserving evidence handles and deleting redundant transcript replay"
     },
     {
       "atom": "stable-prefix-canon",
-      "source_pool": "old-wuji+headroom-style+reasonix-style",
+      "source_pool": "old-wuji+headroom-style+reasonix-style+prompt-cache-block-control-style",
       "decision": "resident",
       "owner": "staff-runtime+go-execution-base",
-      "reason": "stable field order and short canon reduce cache drift without removing required boundaries"
+      "reason": "stable field order and short canon reduce cache drift without turning the stable block into a 200k resident blob"
     },
     {
       "atom": "single-main-chain-closeout",
@@ -263,19 +277,19 @@
     },
     {
       "atom": "reversible-evidence-handle",
-      "source_pool": "headroom+old-wuji",
+      "source_pool": "headroom-style+old-wuji+neat-freak-style+memgpt-style",
       "decision": "resident",
       "owner": "go-execution-base+audit+quality-inspection",
-      "reason": "replace full replay with summaries, hashes, and evidence handles while preserving verification",
+      "reason": "replace full replay with summaries, hashes, evidence handles, and compact task-state memory while preserving verification",
       "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell"
     },
     {
       "atom": "content-type-compression-router",
-      "source_pool": "headroom+reasonix+old-wuji",
+      "source_pool": "headroom-style+reasonix-style+old-wuji+llmlingua-style+neat-freak-style",
       "decision": "resident",
       "owner": "go-execution-base+performance-benchmark-on-demand",
-      "reason": "choose compression policy by artifact kind instead of one-size-fits-all truncation",
-      "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell"
+      "reason": "choose compression policy by artifact kind instead of one-size-fits-all truncation; long context is compressed by source cards, key ranges, and evidence handles before reuse",
+      "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell; do not trade cached-token reduction for larger fresh input or verbose output"
     },
     {
       "atom": "assumption-ledger",
@@ -303,34 +317,34 @@
     },
     {
       "atom": "guarded-realtime-source-search",
-      "source_pool": "AnySearch+Agent-Reach+research-mode+last30days+github-trending-20260608-style",
+      "source_pool": "AnySearch+Agent-Reach+research-mode+last30days+github-trending-20260608-style+baoyu-skills-style",
       "decision": "mount-on-demand",
       "owner": "intelligence-profile+guard-office+audit",
-      "reason": "search web, GitHub, social, video, and forum sources behind guard-office source and injection checks; last30days-style trend sweep strengthens candidate recall without deep-read authority",
+      "reason": "search web, GitHub, social, video, forum, URL-to-markdown, and transcript sources behind guard-office source and injection checks; wide recall stays shallow until the main chain selects survivors",
       "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell"
     },
     {
       "atom": "research-evidence-pack",
-      "source_pool": "research-mode+last30days+open-notebook+tolaria",
+      "source_pool": "research-mode+last30days+open-notebook+tolaria+hv-analysis-style+competitive-teardown-style+baoyu-skills-style",
       "decision": "mount-on-demand",
       "owner": "intelligence-profile+audit+content-profile",
-      "reason": "return sources, dates, confidence, counter-evidence, local knowledge handles, and notebook-style evidence structure instead of raw search piles",
+      "reason": "return sources, dates, confidence, counter-evidence, local knowledge handles, historical-vs-competitive analysis cards, and notebook-style evidence structure instead of raw search piles",
       "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell"
     },
     {
       "atom": "skill-stocktake-daily-library",
-      "source_pool": "ECC+Hermes+opensquilla+github-trending-20260608-style+source-pool-not-shell",
+      "source_pool": "ECC+Hermes+opensquilla+github-trending-20260608-style+source-pool-not-shell+omx-style+baoyu-skills-style+khazix-skills-style+humanizer-zh-style+neat-freak-style",
       "decision": "mount-on-demand",
       "owner": "evolution-profile+audit+white-hat",
-      "reason": "classify skills and trending repos as resident, on-demand, candidate, retired, replace, or source-pool-only before distillation",
+      "reason": "classify skills, Codex shells, content tools, publishing tools, and trending repos as resident, on-demand, candidate, retired, replace, or source-pool-only before distillation",
       "fusion_policy": "gap-fill or replace weaker atoms; do not promote an external source pool into an active commander or route owner"
     },
     {
       "atom": "verified-learning-loop",
-      "source_pool": "Hermes+ECC+Superpowers+old-wuji+agent-eval-style",
+      "source_pool": "Hermes+ECC+Superpowers+old-wuji+agent-eval-style+omx-style+neat-freak-style",
       "decision": "replace",
       "owner": "evolution-profile+quality-inspection+go-execution-base+performance-benchmark-on-demand",
-      "reason": "promote only verified non-sensitive patterns into CLI or skill atoms after a comparison set or real-run evidence proves benefit",
+      "reason": "promote only verified non-sensitive patterns into CLI or skill atoms after a comparison set, cleanup result, or real-run evidence proves benefit",
       "fusion_policy": "keep hashes, counts, and strategy signals only; never retain raw user secrets, sessions, private task text, or unverified preferences"
     },
     {
@@ -383,47 +397,47 @@
     },
     {
       "atom": "html-native-design-canvas",
-      "source_pool": "huashu-design+visual-profile",
+      "source_pool": "huashu-design-style+visual-profile+baoyu-skills-style+ppt-keynote-style",
       "decision": "mount-on-demand",
       "owner": "visual-profile+quality-inspection",
-      "reason": "treat HTML as a high-fidelity design canvas for web, UI, and browser-presented decks when the deliverable genuinely benefits",
+      "reason": "treat HTML as a high-fidelity design canvas for web, UI, article visuals, Keynote-style decks, and browser-presented decks when the deliverable genuinely benefits",
       "fusion_policy": "distill canvas method only; do not import huashu-design as a separate skill shell"
     },
     {
       "atom": "brand-asset-protocol",
-      "source_pool": "huashu-design+intelligence-profile+guard-office",
+      "source_pool": "huashu-design-style+intelligence-profile+guard-office+baoyu-skills-style",
       "decision": "mount-on-demand",
       "owner": "visual-profile+intelligence-profile+guard-office",
-      "reason": "when real brands or products matter, fetch official assets, colors, screenshots, and evidence before designing",
+      "reason": "when real brands, articles, platforms, or products matter, fetch official assets, colors, screenshots, QR/media boundaries, and evidence before designing",
       "fusion_policy": "guard external assets first; keep evidence handles instead of raw asset dumps"
     },
     {
       "atom": "anti-ai-slop-visual-rules",
-      "source_pool": "huashu-design+taste-skill+opencv-style+white-hat+quality-inspection",
+      "source_pool": "huashu-design-style+taste-skill+opencv-style+white-hat+quality-inspection+humanizer-zh-style+ian-xiaohei-style+baoyu-skills-style",
       "decision": "mount-on-demand",
       "owner": "visual-profile+quality-inspection+white-hat",
-      "reason": "replace generic AI-looking visual habits with concrete composition, hierarchy, density, asset-fit, and image/preview inspection checks",
+      "reason": "replace generic AI-looking visual and Chinese-content habits with concrete composition, hierarchy, density, asset-fit, image/preview inspection, and natural-language checks",
       "fusion_policy": "replace weak style guidance with taste and visual-regression checks; no extra resident doctrine body"
     },
     {
       "atom": "design-direction-triad",
-      "source_pool": "huashu-design+staff-runtime+nuwa-preflight",
+      "source_pool": "huashu-design-style+staff-runtime+nuwa-preflight+baoyu-skills-style",
       "decision": "mount-on-demand",
       "owner": "staff-runtime+visual-profile+nuwa-preflight",
-      "reason": "for ambiguous visual tasks, produce three visible directions before expanding the full artifact",
+      "reason": "for ambiguous visual, article-illustration, or deck tasks, produce three visible directions before expanding the full artifact",
       "fusion_policy": "use only for design ambiguity; do not pause execution after directioning when the task is already specified"
     },
     {
       "atom": "html-deck-to-editable-pptx",
-      "source_pool": "huashu-design+html-ppt-skill+go-execution-base",
+      "source_pool": "huashu-design-style+html-ppt-skill+go-execution-base+ppt-keynote-style",
       "decision": "mount-on-demand",
       "owner": "visual-profile+go-execution-base+quality-inspection",
-      "reason": "HTML-first decks can become editable PPTX when the task is from-scratch and visual fidelity matters",
+      "reason": "HTML-first and Keynote-style decks can become editable PPTX when the task is from-scratch and visual fidelity matters",
       "fusion_policy": "never use HTML screenshots to fake editable PPTX or template-following work"
     },
     {
       "atom": "motion-stage-sprite-engine",
-      "source_pool": "huashu-design+visual-profile",
+      "source_pool": "huashu-design-style+visual-profile+ppt-keynote-style",
       "decision": "mount-on-demand",
       "owner": "visual-profile+performance-benchmark-on-demand",
       "reason": "stage/sprite/timeline motion is useful for animated design artifacts, but too heavy for resident context",
@@ -525,6 +539,22 @@
       "owner": "guard-office+compliance-on-demand+white-hat",
       "reason": "privacy-invasive tracking, copyright-heavy datasets, monetization playbooks, offline appliance shells, and plugin runtimes must not enter Wuji as active capabilities by hype alone",
       "fusion_policy": "use only as risk signal or source-pool lesson; no install, no commander, no resident context, no sensitive or copyrighted data ingestion"
+    },
+    {
+      "atom": "omx-external-runtime-shell",
+      "source_pool": "omx-style+external-agent-shells",
+      "decision": "reject",
+      "owner": "guard-office+white-hat+audit",
+      "reason": "OMX-style hook and sidecar ideas are useful, but an external runtime shell would recreate a second commander and long resident context",
+      "fusion_policy": "distill lifecycle atoms into existing routing, capability-mount, and runtime gates only; no .omx shell, no second router, no default resident plugin body"
+    },
+    {
+      "atom": "baoyu-account-publishing-runtime",
+      "source_pool": "baoyu-skills-style+external-write-surfaces",
+      "decision": "reject",
+      "owner": "guard-office+compliance-on-demand+audit",
+      "reason": "post-to-x, post-to-wechat, post-to-weibo, and Electron extraction touch accounts, cookies, local apps, or external write surfaces",
+      "fusion_policy": "keep only draft formatting, platform checklist, and explicit-authorization handoff; never retain accounts, cookies, tokens, sessions, or perform silent posting"
     }
   ]
 }
