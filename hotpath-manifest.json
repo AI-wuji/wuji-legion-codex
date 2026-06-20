@@ -64,10 +64,16 @@
       "path": "outputs/runtime-context-audit-report.json",
       "default_mode": "handle-only",
       "reason": "runtime token evidence enters only as hash, metrics, and pass/fail"
+    },
+    {
+      "path": "CONTEXT_RESET_HANDOFF.md",
+      "default_mode": "handle-only",
+      "reason": "fresh-thread seed is used only when current outer context is already bloated"
     }
   ],
   "forbidden_resident": [
     ".wuji-tools/**",
+    "output/**",
     "outputs/**",
     ".opensquilla/**",
     ".codex/auth/**",
@@ -79,6 +85,7 @@
     "GLOBAL_AGENTS.md:full-file",
     "README.md:full-file",
     "SKILL.md:full-file",
-    "active-skill-bodies-unless-triggered"
+    "active-skill-bodies-unless-triggered",
+    "cold-directories-in-default-search"
   ]
 }

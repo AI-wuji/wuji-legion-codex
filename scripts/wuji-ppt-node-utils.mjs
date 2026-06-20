@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import path from "node:path";
+import fs from "node:fs";
 import { createRequire } from "node:module";
 import { pathToFileURL } from "node:url";
 
@@ -12,7 +13,14 @@ export async function loadArtifactToolUtils() {
     if (!skillDir) {
       throw new Error("Missing WUJI_PRESENTATIONS_SKILL_DIR. Invoke this script via a wuji PPT PowerShell wrapper.");
     }
-    const modulePath = path.join(skillDir, "scripts", "artifact_tool_utils.mjs");
+    const candidates = [
+      path.join(skillDir, "container_tools", "artifact_tool_utils.mjs"),
+      path.join(skillDir, "scripts", "artifact_tool_utils.mjs"),
+    ];
+    const modulePath = candidates.find((candidate) => fs.existsSync(candidate));
+    if (!modulePath) {
+      throw new Error(`Could not locate artifact_tool_utils.mjs under ${skillDir}`);
+    }
     artifactToolUtilsPromise = import(pathToFileURL(modulePath).href).catch((error) => {
       throw new Error(`Failed to load artifact_tool_utils from ${modulePath}: ${error.message}`);
     });

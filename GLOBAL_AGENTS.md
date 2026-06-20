@@ -9,131 +9,83 @@ Mirror source: `kernel-source.json`
 - `kernel-source.json` is the structured truth source.
 - OpenSquilla appears only as distilled atoms.
 - Go `wuji-cli` is the deterministic execution base.
-- `nuwa-preflight` is an on-demand capability-gap lens, not an officer, router, or execution role.
+- Agnes falls back only to the default GPT route when unavailable, and an explicit user model/provider request overrides Agnes preference.
+- `distilled_atom_kernel` remains the canonical atom marker.
 
 ## Main Chain
 
-The main chain has exactly three layers:
+`task-routing` -> `capability-mount` -> `deterministic-execution`
 
-1. `task-routing`
-2. `capability-mount`
-3. `deterministic-execution`
+Only one main chain may write.
 
-## Independent Officers
+## Officers
 
-- `white-hat`: blocks fake fusion, split routing, weak evidence, and unsafe assumptions.
-- `guard-office`: screens external pages, repos, scripts, plugins, MCP manifests, dependencies, and assets.
-- `root-cause-officer`: gives independent verdicts for failures, low efficiency, rework, and patch debt.
-- 根因雷达官：故障、低效、返工和补丁债的独立根因裁决。
-- `audit`: checks process truth, current gates, and evidence chain.
-- `quality-inspection`: performs final acceptance with real evidence.
-- `performance-benchmark-on-demand`: measures token, hit rate, speed, cost, and resource impact when disputed.
-- `compliance-on-demand`: checks license, source, privacy, attribution, and publication boundaries when needed.
+`white-hat`, `guard-office`, `root-cause-officer` / `根因雷达官`, `audit`, `quality-inspection`, `performance-benchmark-on-demand`, `compliance-on-demand`
 
-Rules:
+Officers are explicit on-demand review seats and exit after merge.
 
-- Officers are explicit review seats, not simulated tones.
-- Officers may run in parallel, but the single main chain merges the verdict.
-- Officers are on-demand and exit after their verdict is merged.
-- Execution roles cannot self-certify as independent officers.
-- Officers may reject, return, or set release conditions, but they cannot directly edit files, enable tools, delete content, publish artifacts, or create a second command authority.
-
-## Nuwa Preflight
-
-`nuwa-preflight` is kept as a cold capability-design lens for fuzzy tasks, new skill candidates, plugin/MCP gaps, and owner ambiguity.
-
-It outputs only owner suggestions, missing-capability notes, candidate atoms/tools, and the next gate that must decide. Its recommendation always returns to `staff-runtime`; it never becomes a second staff headquarters or an independent officer.
-
-## Optimization Goal
-
-Global optimization must preserve:
+## Optimization
 
 - stable small prefix
 - precise routing
 - light context assembly
-- low rework execution
-- data-driven evolution
-- evidence, verification, and discipline
+- low rework
+- evidence and verification first
+- simplest effective path first
+- no guessing, blind trial, or wandering retries
+- YAGNI, smallest working change, delete-or-reuse before add, and prove need before abstraction
+- `claim-fact-check`, `prior-art-solution-search`, `root-cause-radar`, and `terminal-real-run-verification` stay on-demand.
 
-Any token-saving action that weakens hit rate, verification, evidence, or user constraints is failed optimization.
+## Source-Pool Boundary
 
-## Sparse Context Governor
+The current source-pool rulings are narrow by design:
 
-- `hotpath-manifest.json` defines resident, on-demand, cold-ledger, and forbidden-resident surfaces.
-- Use MoE-style sparse activation: only the owner profile, triggered officers, one selected skill, and evidence handles enter context.
-- `context-bloat-audit` must pass before token optimization or completion is claimed.
-- `runtime-context-audit` must pass before token, cost, cache, backend usage, or outer-context optimization is claimed.
-- High cache hit rate is not enough; 200k cached/blue-hit means likely long-context bloat. Cached, fresh/uncached, output, loaded bytes, largest segment, and activated officers/skills must stay under budget.
-- `bench-report` must bind the measured workspace, command, generated_at, log_ref, and `bench.jsonl` hash; `context-bloat-audit` rejects wrong-workspace or stale bench evidence.
-- Runtime usage evidence is numeric-only; raw prompts, messages, content, secrets, auth, and sessions never enter reports or resident context.
+- `codebase-memory-mcp`, `awesome-design-md`, `mattpocock/skills`,
+  `agentic coding skills`, and bounded `Claude loops` are source-pool-only.
+  They may upgrade existing atoms, but they do not become standalone systems,
+  default MCPs, or second workflows.
+- `Agent-Reach` is deferred as source-pool-only. Wide-source reach may help
+  candidate mapping, but no default crawler, cookies, accounts, or ToS-bypass
+  runtime is admitted.
+- `Ponytail`, `plane`, and `universal-android-debloater` are rejected.
+- All final object verdicts live in `fusion-matrix.json -> object_verdicts`.
 
-## Concise Execution Contract
+## Agnes Boundary
 
-`concise_execution_contract`: optimize total cost, not cache-hit percentage alone. Gate cached, fresh/uncached input, output, retries, and tokens per success. Use prior art before invention when uncertain. No verbose status padding, unneeded preflight loops, or shifting cost from cached prefix into uncached input/output.
+Prefer Agnes for chat, lightweight text work, broad shallow low-cost scouting, context packing, simple planning, simple evidence collection, and default image/video generation. If Agnes is unavailable, automatically fall back to the stronger default GPT route for text, image, and video. If the user explicitly names another provider or model, that explicit request wins over the Agnes default. Escalate back to the stronger default GPT route for deep reasoning, structural development judgment, and high-risk verification.
+Light scoped code, doc, and small-fix work should execute directly unless explicit planning, cross-file impact, or structural risk is present.
+Low tier alone must not trigger Agnes scouting or goal-boundary locking.
 
-## Execution Budget Contract
+## Execution Rule
 
-`execution_budget_contract`: use the smallest execution and verification tier that preserves first-pass success, evidence, and user constraints.
+When discussion becomes non-trivial execution, create a concrete goal and keep moving until the scoped work is complete or truly blocked.
+Before that goal starts, lock scope, target surface, finish line, out-of-scope exclusions, and completion evidence so execution does not drift for hours into unrelated detail.
 
-- `FAST_REPLY`: discussion or direct answer; no tool gate unless factual, current, or local evidence is required.
-- `LIGHT_TASK`: small scoped edit; targeted command, artifact, or focused test only.
-- `STRUCTURAL_TASK`: router, kernel, officer, gate, multi-file, or root-cause work; targeted gates during work and at most one full verification at final when required.
-- `RELEASE_TASK`: explicit full-legion scan, release, broad cleanup, or final completion claim; full audit once at final.
+There is no internal big-task mode.
 
-Small tasks must not escalate into full legion scans, officer sidecars, repeated full suites, or runtime usage audits unless the query actually makes a token, cost, cache, backend usage, or outer-context claim.
+- all non-chat execution work stays in the direct-task lane
+- route, kernel, fusion, root-cause, audit, and cleanup work are not allowed to auto-upshift into a separate large-task mode
+- officers remain explicit and on-demand only
+- broad full-legion closeout is allowed only when the user explicitly asks for that kind of review
 
-## Analysis Completeness Contract
+## Target Page Replacement
 
-`analysis_completeness_contract`: `complete-materials-before-architecture-analysis`. Architecture, system, route, design, and rule-fusion analysis must inventory materials, state coverage and gaps, ask for critical missing inputs, and separate fact, inference, and unknown. No final architecture conclusion may be made from incomplete evidence or guessing.
+For programming work, a requested page or screen change means the active target page must be replaced in place. Do not add a parallel v2 page, compatibility page, wrapper, duplicate route, or hidden old entry unless the user explicitly asks for a fallback. Migrate the real imports, route, tests, and assets; delete or retire superseded page files before completion; verify the actually opened route uses the new implementation. Canon markers: `target-page-in-place-replacement`, `active-route-entrypoint-verification`, `superseded-page-cleanup-before-completion`, `parallel-compat-page-for-requested-page-change`.
 
-## Distilled Atom Kernel
+## Context And Contracts
 
-Mirror marker: `distilled_atom_kernel`.
+- `hotpath-manifest.json`
+- `context-bloat-audit`
+- `runtime-context-audit`
+- `concise_execution_contract`
+- `execution_budget_contract`
+- `analysis_completeness_contract`
+- `complete-materials-before-architecture-analysis`
 
-Policy: gap-fill or replace weaker atoms; do not stack project shells.
+## Completion
 
-Resident light atoms:
-
-- `assumption-ledger`
-- `claim-fact-check`
-- `reversible-evidence-handle`
-- `content-type-compression-router`
-
-On-demand atoms:
-
-- `version-doc-mcp`
-- `guarded-realtime-source-search`
-- `research-evidence-pack`
-- `skill-stocktake-daily-library`
-- `verified-learning-loop`
-- `disciplined-debug-loop`
-- `prior-art-solution-search`
-- `root-cause-radar`
-- `parallel-hypothesis-fanout`
-- `patch-debt-root-cure`
-- `terminal-real-run-verification`
-- `html-native-design-canvas`
-- `brand-asset-protocol`
-- `anti-ai-slop-visual-rules`
-- `design-direction-triad`
-- `html-deck-to-editable-pptx`
-- `motion-stage-sprite-engine`
-
-## Root-Cause Efficiency And Closeout
-
-- Search prior art before building from scratch when prior art can reduce risk or speed diagnosis.
-- `intelligence-profile` searches wide and shallow, with GitHub as a first-class source for code, tools, plugins, skills, bugs, issues, and prior art. It returns only candidate cards and evidence handles; final analysis, deep extraction, distillation, adoption, installation, and execution stay with the single main chain.
-- Let `evolution-profile` decide cleanup, deletion, merge, plugin enablement, skill promotion, and rule promotion.
-- Use `root-cause-radar` before repairing diagnosable failures.
-- Use `parallel-hypothesis-fanout` as need-driven sidecar evidence under the single main chain.
-- Use `patch-debt-root-cure` to replace weak workaround chains.
-- Use `terminal-real-run-verification` before claiming completion when local proof is available.
-- Continue until the scoped task is done or truly blocked.
-
-## Completion Rule
-
-No completion claim is valid unless current `fusion-audit`, `optimization-audit`, and `context-bloat-audit` pass. Token/cost/cache/usage claims also require current `runtime-context-audit` pass.
+No completion claim is valid unless current `fusion-audit`, `optimization-audit`, and `context-bloat-audit` pass. Token/cost/cache/usage claims also require `runtime-context-audit`.
 
 ## Closeout Sound
 
-For non-FAST_REPLY work, attempt `scripts/beep.ps1 complete -SpawnDelayed -DelayMs 1200` before final response. Sound failure is non-blocking.
+Before final closeout on non-FAST_REPLY work, try `scripts/beep.ps1 complete -SpawnDelayed -DelayMs 1200`.

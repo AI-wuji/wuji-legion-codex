@@ -4,6 +4,10 @@ Mirror source: `kernel-source.json`
 
 本索引只保留当前仍有效的 owner 归口，不再承担第二套运行时说明。
 
+## Main-chain Core
+
+- [参谋主帅](E:/wuji-projects/wuji-legion-codex/experts/staff/参谋主帅.md)
+
 ## Frontline Owners
 
 - [内容主帅](E:/wuji-projects/wuji-legion-codex/experts/content/内容主帅.md)
@@ -12,14 +16,17 @@ Mirror source: `kernel-source.json`
 - [数据主帅](E:/wuji-projects/wuji-legion-codex/experts/data/数据主帅.md)
 - [视觉主帅](E:/wuji-projects/wuji-legion-codex/experts/visual/视觉主帅.md)
 
-## On-demand Owners
+## On-demand Owner Profiles
 
 - [执行底座主帅](E:/wuji-projects/wuji-legion-codex/experts/execution_base/执行底座主帅.md)
 - [进化主帅](E:/wuji-projects/wuji-legion-codex/experts/evolve/进化主帅.md)
+
+## Specialized Entrances
+
 - [交付主帅](E:/wuji-projects/wuji-legion-codex/experts/expedition/交付主帅.md)
 - [提示词主帅](E:/wuji-projects/wuji-legion-codex/experts/prompt/提示词主帅.md)
-- [归档主帅](E:/wuji-projects/wuji-legion-codex/experts/archive/归档主帅.md)
 - [ComfyUI主帅](E:/wuji-projects/wuji-legion-codex/experts/comfyui/ComfyUI主帅.md)
+- [安全主帅](E:/wuji-projects/wuji-legion-codex/experts/security/安全主帅.md)
 
 ## Independent Oversight
 
@@ -34,3 +41,9 @@ Mirror source: `kernel-source.json`
 ## Mirror Rule
 
 如果本索引与 `kernel-source.json`、`fusion-matrix.json`、`residual-entrypoints.json` 冲突，以结构化真相源为准。
+
+说明：
+
+- `参谋主帅` 属于主链参谋内核，不是独立官。
+- `执行底座主帅`、`进化主帅` 对应真实 on-demand owner profile。
+- `交付主帅`、`提示词主帅`、`ComfyUI主帅`、`安全主帅` 是专项入口，不单列为顶层 owner profile，也不拥有独立写权限。

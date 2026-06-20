@@ -1,92 +1,85 @@
-# 插件注册中心
+# 插件镜像
+
+Mirror source: `kernel-source.json`
 
 ## 定位
 
-本文件只记录三件事：
+本文件只保留三类真状态：
 
-- 本机已启用哪些插件
-- 哪些候选值得保留台账
-- 插件默认归谁调用
+- `宿主可用`：当前 Codex 宿主环境已经提供
+- `军团准入`：无极军团已经承认、可由主链按需挂载
+- `边界裁决`：已明确只作来源池、按需单案审查，或明确拒绝
 
-插件只做能力补位，不做新入口、不替代主帅，也不构成默认运行时主链。权限边界和门禁看 [mcp_plugins.md](mcp_plugins.md)。
+不再保留“先登记、以后再说”的候选台账。
 
-## 本机已启用
+插件只属于第二层 `capability-mount`，只做能力补位，不构成新入口、不替代主帅、不形成第二路由。
 
-| 插件 | 默认归口 | 用途 |
+## 宿主可用插件
+
+这些是当前 Codex 宿主已提供的插件能力，但“宿主可用”不等于“默认挂载”：
+
+| 插件 | 宿主状态 | 默认归口 | 用途 |
+|---|---|---|---|
+| Browser | available | `visual-profile` / `development-profile` / `intelligence-profile` / `quality-inspection` | 打开、检查、交互、测试、截图浏览器目标 |
+| Documents | available | `content-profile` / `intelligence-profile` / `audit` | 创建、编辑、整理文档工件 |
+| Spreadsheets | available | `data-profile` / `intelligence-profile` / `content-profile` / `performance-benchmark-on-demand` | 表格、结构化数据、分析交付 |
+| Presentations | available | `visual-profile` / `quality-inspection` | 创建、编辑、导出、预览 PPTX |
+| PDF | available | `content-profile` / `visual-profile` / `quality-inspection` | PDF 读取、生成、核验 |
+| Canva | available | `visual-profile` | 品牌演示稿、素材尺寸改写、设计翻译 |
+| Figma | available | `visual-profile` / `development-profile` | 设计稿、组件库、设计系统映射 |
+| HyperFrames by HeyGen | available | `visual-profile` | HTML/动画/视频合成与渲染 |
+| Remotion | available | `visual-profile` | React 程序化视频 |
+
+## 军团准入默认挂载面
+
+下列插件已经被无极军团正式承认为“可按需挂载”的主链能力面：
+
+| 插件 | 军团状态 | 规则 |
 |---|---|---|
-| Browser | 视觉主帅 / 开发主帅 | 网页打开、检查、交互测试、截图 |
-| Documents | 内容主帅 | Word/文档生成、整理、归档 |
-| Spreadsheets | 数据主帅 / 情报主帅 / 内容主帅 / 性能基准官 | 表格、结构化数据、分析交付 |
-| Presentations | 视觉主帅 | 模板续写、补页、真 PPTX 导入编辑、导出预览 |
+| Browser | admitted | 默认浏览器与前端验收能力，可由视觉/开发/情报/质检按需挂载 |
+| Documents | admitted | 默认文档工件能力，可由内容/情报/审计按需挂载 |
+| Spreadsheets | admitted | 默认结构化数据能力，可由数据/情报/内容/性能按需挂载 |
+| Presentations | admitted | 默认原生 PPTX 能力，可由视觉/质检按需挂载 |
 
-## 候选台账
+说明：
 
-候选只表示“值得保留观察”，不表示“已经纳入主链”。
-未安装、未授权、未验证时，一律按不可用处理。
+- “军团准入”表示已经进入当前主链默认插件集合。
+- 其余宿主可用插件，如果没有被列在这里，就代表“当前不是默认挂载面”，只能按单案评审。
 
-### 视觉与演示
+## 按需单案评审面
 
-| 候选 | 裁决 | 触发条件 |
+这些能力不是空候选，也不是默认挂载。它们的状态是：宿主或生态中有，但只有当任务真实缺口出现时，才允许由主链发起单案评审。
+
+| 能力面 | 当前状态 | 边界 |
 |---|---|---|
-| Figma | defer | 需要读取设计稿、组件库或设计系统时 |
-| OpenDesign | defer | PPT/HTML/UI 需要更强视觉探索、原型预览或设计抽取时 |
-| Canva | defer | 需要轻量素材补图或社媒图时 |
-| Remotion | defer | 需要把页面或脚本转成程序化视频时 |
-| PptxGenJS | targeted-absorb | 从零高颜值 PPTX 需要 JS 批量生成、可编辑转换或原生超链接/动作按钮交互时 |
-| dom-to-pptx | defer | HTML/CSS 已经做对，需要高保真转 editable PPTX 时 |
-| html2pptx | defer | 需要先走 HTML-first，再转可编辑 PowerPoint 时 |
-| Marp | defer | 用户明确要 Markdown 快速预览型演示稿时 |
-| reveal.js | defer | 用户明确要 Web 演示稿而非真 PPTX 时 |
-| huashu-design | source-pool-only | 只作为设计方法来源蒸馏为视觉原子，不作为本机插件或独立入口安装 |
+| Figma | restricted-boundary | 只在读取设计稿、组件库、Code Connect 或设计系统映射时启用 |
+| Canva | restricted-boundary | 只在品牌演示稿、社媒尺寸改写、设计翻译等明确场景启用 |
+| PDF | restricted-boundary | 只在 PDF 视觉核验、抽取、生成需求出现时启用 |
+| HyperFrames by HeyGen | restricted-boundary | 只在明确视频/动画/HTML 合成需求时启用；不得变成通用运行时 |
+| Remotion | restricted-boundary | 只在明确程序化视频需求时启用；不得变成默认视频主链 |
 
-### PowerPoint 精修
+## 来源池或拒绝边界
 
-| 候选 | 裁决 | 触发条件 |
+以下对象不再保留“候选台账”，结论已经固定：
+
+| 对象 | 裁决 | 边界 |
 |---|---|---|
-| ppt-mcp | defer | 基础 deck 已有，需要 Windows PowerPoint 精准修版时 |
-| mcp-server-ppt | defer | 需要最后一公里对齐、占位符处理、导出复核时 |
+| `huashu-design` | source-pool-only | 只蒸馏为视觉原子，不作为本机插件或独立入口安装 |
+| `OMX / oh-my-codex` | source-pool-only | 只保留 hook、HUD、sidecar 生命周期经验；拒绝外部 runtime shell |
+| `baoyu-image-gen` | source-pool-only | 只保留提示词批处理和参考图规范；默认生图仍走主链模型路由 |
+| `dbs-business-toolbox` | source-pool-only | 只保留商业诊断 recipe 碎片，归 content/intel/evolution 按需吸收；拒绝工具箱壳和第二业务分析运行时 |
+| `baoyu-url-to-markdown` | restricted-boundary | 仅限 guarded capture 和选段摘要，不回灌整页 |
+| `baoyu-youtube-transcript` | restricted-boundary | 仅限时间戳证据与章节摘要，不默认回放全文 |
+| `baoyu-electron-extract` | restricted-boundary | 需要明确授权目标应用，并先过保卫科/合规 |
+| `baoyu-post-to-x/wechat/weibo` | restricted-boundary | 只允许草稿、清单、格式适配；禁止静默登录、cookie/session 保留、自动发布 |
+| `GitHub` 外部插件面 | reject | 当前宿主未作为军团默认插件准入；GitHub 相关需求优先由 `intelligence-profile` 搜索与现有工具处理 |
+| `Supabase` / `Vercel` / `Sentry` / `Linear` / `Notion` / `Readwise` / `HeyGen` / `Cloudinary` / `Hugging Face` | reject | 当前不保留 standing 候选台账；未来如遇真实缺口，再做单案评审 |
+| `ppt-mcp` / `mcp-server-ppt` / `dom-to-pptx` / `html2pptx` / `Marp` / `reveal.js` | reject | 当前不作为默认或预备挂载面；PPT 主链已由 `native-pptx-master-route` 统管 |
 
-### 开发与交付
+## 调用规则
 
-| 候选 | 裁决 | 触发条件 |
-|---|---|---|
-| GitHub | defer | 需要 PR、Issue、CI、仓库协作时 |
-| Supabase | defer | 需要数据库、Auth、Storage 或 Edge Functions 时 |
-| Vercel | defer | 需要前端部署或在线 Agent 发布时 |
-| Sentry | defer | 需要线上报错或性能追踪时 |
-| Linear | defer | 需要外部任务排期和状态跟踪时 |
-
-### 内容与资料
-
-| 候选 | 裁决 | 触发条件 |
-|---|---|---|
-| Notion | defer | 需要知识库、Spec 或协作文档时 |
-| Readwise | defer | 需要研究摘录、阅读高亮整理时 |
-
-### 媒体与模型
-
-| 候选 | 裁决 | 触发条件 |
-|---|---|---|
-| HeyGen | defer | 需要数字人讲解或真人出镜补位时 |
-| Cloudinary | defer | 需要媒体资产管理、图片/视频分发时 |
-| Hugging Face | defer | 需要模型、数据集或公开资源检索时 |
-
-## 调用铁律
-
-- 插件不直接响应用户，由对应主帅按需调用。
-- 未确认安装或授权，不得说成可用。
-- 插件结果必须回到主帅收口，不绕过白帽、质检、安全、合规。
-- 成品型输出默认只保留两个入口：预览、文件路径。
-- `huashu-design` 不进入“已启用插件”，只保留 `html-native-design-canvas`、`brand-asset-protocol`、`anti-ai-slop-visual-rules`、`design-direction-triad`、`html-deck-to-editable-pptx`、`motion-stage-sprite-engine` 六个蒸馏原子。
-
-## 2026-06-10 Candidate Boundary
-
-| Candidate | Decision | Boundary |
-|---|---|---|
-| OMX / oh-my-codex | source-pool-only | Keep hook, HUD, sidecar lifecycle, and plugin bridge lessons; no external runtime shell or second router. |
-| baoyu-url-to-markdown | defer | Guarded capture only; summarize selected sections and keep evidence handles. |
-| baoyu-youtube-transcript | defer | Timestamped evidence only; do not replay full transcripts by default. |
-| baoyu-electron-extract | high-risk-defer | Requires explicit user authorization for the target app and guard/compliance review. |
-| baoyu-post-to-x/wechat/weibo | high-risk-defer | Draft, checklist, and format adaptation only by default; no silent login, cookie/session retention, or posting without explicit confirmation. |
-| baoyu-image-gen | source-pool-only | Prompt batching and reference-image specification only; Codex `imagegen` remains the image route. |
-| dbs 商业工具箱 | source-pool-only | Only bottom-level business diagnosis recipes may be reviewed; no toolbox shell. |
+- 插件不直接响应用户，必须回到单一主链收口。
+- 未被军团准入的宿主插件，不得在路由报告里冒充“默认挂载”。
+- 宿主可用但未准入的插件，只能在真实缺口出现后单案评审。
+- 插件结果不得绕过 `white-hat`、`guard-office`、`audit`、`quality-inspection` 的既有门禁。
+- `huashu-design` 永远不进入“已准入插件”；它只以视觉原子形式存在。

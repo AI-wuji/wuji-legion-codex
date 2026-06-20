@@ -1,91 +1,27 @@
-# 上下文路由与装配 / Routing Mirror
+# Routing Mirror
 
 Mirror source: `kernel-source.json`
-
-## Purpose
-
-本文件只镜像当前有效的三层主路由与上下文装配原则，不再承载第二套独立 doctrine。
 
 ## Three Layers
 
 1. `task-routing`
-   - 判定状态机
-   - 选择 owner
-   - 注入独立监督
-   - 定义收口标准
-
 2. `capability-mount`
-   - 最小缺口优先
-   - owner 确定后再挂载
-   - 只挂需要的 atoms / plugins / MCP
-
 3. `deterministic-execution`
-   - Go `wuji-cli`
-   - repeatable gates
-   - audit / bench / context-pack
 
-## Context Assembly
+A second router is forbidden, and a second doctrine body must not appear.
 
-### resident
+## Assembly Order
 
-- 入口规则
-- 状态机
-- 三层主路由
-- owner 归口
-- 独立监督边界
+`stable small canon -> owner profile -> one selected skill or plugin -> triggered officers -> source cards or evidence handles -> concise output`
 
-### mount-on-demand
+## Rules
 
-- distilled OpenSquilla atoms
-- fused Wuji `distilled_atoms`
-- approved MCP / plugins
-- specialized skill fragments
-- summarized large artifacts
+- `source_support_classes` are source hints only.
+- `distilled_atoms` are fused Wuji atoms only.
+- Do not mix the two namespaces.
+- Do not replay full logs, full pages, full transcripts, or full skill bodies by default.
+- High cache hit is not enough; large cached or blue-hit volume is treated as long-context bloat until `runtime-context-audit` proves otherwise.
 
-## Atom namespace rule
+## Truth Pointer
 
-- `source_lineage_atoms` are source-level capability hints only.
-- `distilled_atoms` are fused Wuji atoms after gap-fill, replacement, and audit.
-- These namespaces must not be mixed.
-
-### forbidden-as-resident
-
-- full skill bodies
-- full logs
-- full test output
-- whole external pages
-- one-off discussion noise
-- sensitive data
-
-## Optimization Rule
-
-上下文优化必须同时满足：
-
-- 稳定小前缀
-- 轻量装配
-- 证据保留
-- 验证不降级
-
-没有通过 `optimization-audit` 的装配策略，不得进入主链。
-
-## Long Context Slimming Rule
-
-High cache hit is not enough. If cached/blue-hit volume is large, especially around 200k tokens per request, the route must assume long-context bloat until `runtime-context-audit` proves otherwise.
-
-Assembly order:
-
-```text
-stable small canon
--> owner profile
--> one selected skill or plugin
--> triggered officers only
--> source cards / range reads / evidence handles
--> concise final output
-```
-
-Forbidden as context slimming:
-
-- moving cached volume into larger fresh input
-- replaying full search pages, transcripts, logs, or README bodies
-- mounting all relevant officers or skills by default
-- using cache-hit percentage as the success metric without cached/input/output p95
+Hot-path budget and sparse-context policy follow `hotpath-manifest.json` and `kernel-source.json`.

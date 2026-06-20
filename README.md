@@ -1,118 +1,123 @@
-# Wuji Legion for Codex / 无极军团 Codex 版
+# Wuji Legion for Codex / 无极军团
 
-> A Codex system-level meta-skill: it atomically distills the strongest parts of many skills, then routes, mounts, audits, and verifies them through one main chain.
+> A system-level Codex meta-skill that distills the strongest parts of many skills, agents, plugins, and workflows into small atoms, then routes, mounts, audits, and verifies them through one main chain.
 >
-> 无极军团是 Codex 的系统级总 skill：把众多 skill 的强项拆成原子后优胜劣汰、融合重组，再由唯一主链统一路由、按需挂载、审计验证和交付。
+> 一个面向 Codex 的系统级总 skill：把多来源能力拆成原子，只保留值得补缺、替换或增强的部分，再交给唯一主链统一路由、挂载、审计、验证和交付。
 
-Current version: `v11.3`
+Current version: `v11.3`  
 Truth source: `kernel-source.json`
 
-## Why Wuji Legion
+## What It Is / 它是什么
 
-无极军团不是“多角色聊天皮肤”，也不是把一堆 skill 叠在一起的合集。它是一套给 Codex 使用的系统级总 skill：把 OpenSquilla、Headroom、Reasonix、PPT、调研、审计、根因修复等来源的有效能力拆成原子，经过查漏补缺、优胜劣汰后，融合进唯一主链。执行时只按任务需要挂载能力，再用 Go 底座做确定性门禁和真实验证。目标很简单：少兜圈、少返工、少烧 token，但不牺牲命中率、证据链和交付质量。
+Wuji Legion is not a role-play prompt pack and not a pile of disconnected skills. It is a single-kernel Codex runtime mirror that absorbs useful atoms from OpenSquilla, Headroom, Reasonix, Superpowers, research tools, PPT systems, audit workflows, root-cause repair patterns, and visual design sources.
 
-Wuji Legion is not a role-play prompt pack, and it is not a pile of separate skills. It is a Codex system-level meta-skill: useful capabilities from OpenSquilla, Headroom, Reasonix, presentation work, research, audit, root-cause repair, and other sources are broken into atoms, filtered by gap-fill or replacement value, and fused into one main chain. At runtime, only the needed atoms are mounted, then deterministic Go gates and real-run checks verify the result. The goal is simple: fewer loops, less rework, lower total token cost, without weakening accuracy, evidence, or delivery quality.
+无极军团不是“多角色聊天皮肤”，也不是一堆 skill 的简单相加。它是一个单内核的 Codex 运行镜像：把 OpenSquilla、Headroom、Reasonix、Superpowers、调研工具、PPT 系统、审计流程、根因修复方法和视觉设计来源中的有效能力拆成原子，经过优胜劣汰后融入唯一主链。
 
 ## Core Selling Points / 核心卖点
 
-- **Single main chain / 单一主链**: one routing authority, one merge point, no competing agent headquarters.
-- **Codex-only execution / Codex 内执行**: OpenSquilla-style strengths are distilled into atoms, not kept as an external executor.
-- **MoE-style sparse activation / MoE 式稀疏激活**: only the owner profile, triggered officers, selected skill, and evidence handles enter context.
-- **Low total cost, not fake savings / 优化总成本而非假省 token**: `concise_execution_contract` gates cached, fresh, output, uncached tokens, retries, and tokens per success.
-- **Execution budget contract / 执行预算契约**: `FAST_REPLY`, `LIGHT_TASK`, `STRUCTURAL_TASK`, and `RELEASE_TASK` stop small tasks from expanding into full-system scans.
-- **Independent officers / 独立审查官**: white-hat, guard-office, root-cause officer, audit, quality-inspection, performance benchmark, and compliance stay separate and on-demand.
-- **Root-cause over patching / 根因修复优先**: `root-cause officer`, `root-cause-radar`, `parallel-hypothesis-fanout`, and `patch-debt-root-cure` target causes instead of stacking local patches.
-- **Deterministic Go gates / Go 确定性门禁**: `wuji-cli` provides repeatable audits, routing reports, context packing, benchmark checks, MCP guards, PPT gates, and closeout checks.
-- **Real-run closeout / 真实运行后收口**: completion claims require current evidence, not just explanations or plans.
+- **Single main chain / 唯一主链**: one route owner, one merge point, one write authority.
+- **Codex-only execution / 只在 Codex 内执行**: external projects may inspire atoms, but they do not become a second executor.
+- **Sparse activation / 稀疏激活**: only the owner profile, triggered officers, selected skill, and evidence handles enter context.
+- **Lower total cost / 降低总体成本**: optimize cached input, fresh input, output, retries, and tokens per success together.
+- **Root-cause first / 根因优先**: reduce patch debt instead of stacking local fixes.
+- **Prior-art first / 先找现成方案**: search proven tools, docs, issues, and implementations before inventing a mechanism when the answer is not obvious.
+- **Deterministic Go base / Go 确定性底座**: `wuji-cli` provides repeatable routing, audits, gates, and closeout checks.
+- **Real-run completion / 真实验收**: completion claims require current evidence, not just explanation.
 
 ## Architecture / 架构
 
 ```mermaid
 flowchart LR
-    A["User task / 用户任务"] --> B["task-routing"]
+    A["User task"] --> B["task-routing"]
     B --> C["capability-mount"]
     C --> D["deterministic-execution"]
-    C --> E["On-demand officers / 按需独立官"]
+    C --> E["On-demand officers"]
     E --> C
-    D --> F["Verified delivery / 验证后交付"]
+    D --> F["Verified delivery"]
 ```
 
-The fused kernel has exactly three layers:
+Main chain:
 
 1. `task-routing`
 2. `capability-mount`
 3. `deterministic-execution`
 
-无极军团只有这三层主链。它不允许第二套路由、第二个用户入口、第二套外部执行系统，或绕过主链的并行总控。
-
-Wuji Legion has only these three main-chain layers. It forbids a second router, a second user entry, an external execution system, or a parallel command authority.
-
-## What It Distills / 它吸收了什么
-
-Wuji Legion keeps useful ideas as atoms and rejects project-shell stacking.
-
-无极军团只吸收原子能力，不叠加外部系统外壳。
-
-- OpenSquilla-style task detection, capability gap detection, skill filtering, MCP awareness, and memory/session routines.
-- Headroom/Reasonix-style token and hit-rate discipline.
-- Prior-art search before invention.
-- Root-cause analysis, patch-debt cleanup, and parallel hypothesis fanout.
-- Context compression with evidence handles instead of replaying whole logs.
-- Guarded MCP/plugin intake and source/security/compliance checks.
-
-Marker: `distilled_atom_kernel`.
+A second router is forbidden. A second command authority is forbidden. An
+always-on shell or external executor is forbidden.
 
 ## Independent Officers / 独立官
 
-Independent officers are explicit review seats, not simulated tones:
+- `white-hat`
+- `guard-office`
+- `root-cause-officer`
+- `root-cause officer`
+- `audit`
+- `quality-inspection`
+- `performance-benchmark-on-demand`
+- `compliance-on-demand`
 
-独立官是真正的审查席位，不是语气模拟：
+They are explicit, on-demand review seats. They can reject, return, or set release conditions, but they do not directly edit files or become a second commander.
 
-- `white-hat`: challenge assumptions, catch fake fusion, check weak evidence.
-- `guard-office`: screen external pages, repos, MCP manifests, plugins, scripts, dependencies, and assets.
-- `root-cause-officer`: judge failure causes, low efficiency, rework, and patch debt.
-- `audit`: check process truth, gates, and evidence chain.
-- `quality-inspection`: final acceptance and real-run verification.
-- `performance-benchmark-on-demand`: token, hit-rate, speed, cost, and resource measurement.
-- `compliance-on-demand`: license, source, privacy, attribution, and release boundary.
+## Distilled Atoms / 蒸馏原子
 
-They can reject, return, or set release conditions. They do not directly edit files or become a second commander.
+Resident light atoms:
 
-## Token And Context System / Token 与上下文系统
+- `assumption-ledger`
+- `claim-fact-check`
+- `reversible-evidence-handle`
+- `content-type-compression-router`
 
-Wuji Legion is built around a sparse context governor:
+On-demand atoms include:
 
-无极军团的省 token 不是“少看证据”，而是稀疏装配：
+- `version-doc-mcp`
+- `guarded-realtime-source-search`
+- `research-evidence-pack`
+- `skill-stocktake-daily-library`
+- `verified-learning-loop`
+- `disciplined-debug-loop`
+- `prior-art-solution-search`
+- `root-cause-radar`
+- `parallel-hypothesis-fanout`
+- `patch-debt-root-cure`
+- `terminal-real-run-verification`
+- `native-pptx-master-route`
+- `motion-stage-sprite-engine`
 
-- `hotpath-manifest.json`: resident, on-demand, cold-ledger, and forbidden-resident surfaces.
-- `context-bloat-audit`: rejects high cache-hit runs when cached volume, fresh input, output, loaded bytes, or activated roles exceed budget.
-- `runtime-context-audit`: required only for token, cost, cache, backend usage, or outer-context claims.
-- `bench-report`: binds the measured workspace, command, timestamp, log reference, and usage hash.
-- Raw prompts, messages, content, secrets, sessions, keys, cookies, and tokens never enter resident reports.
+Marker: `distilled_atom_kernel`
 
-Optimization markers: `fusion-audit`, `optimization-audit`, `context-bloat-audit`, `runtime-context-audit`, `execution_budget_contract`, `analysis_completeness_contract`, `complete-materials-before-architecture-analysis`, `reversible-evidence-handle`.
+## Current Source-Pool Rulings / 当前候选池裁决
 
-## Typical Use Cases / 适合场景
+Object-level final verdicts are machine-tracked in `fusion-matrix.json -> object_verdicts`. This summary is only the readable mirror.
 
-- Codex workflows that keep getting slow, bloated, or over-routed.
-- AI coding tasks that need root-cause repair instead of another patch.
-- Research tasks that need GitHub/source evidence without unsafe external execution.
-- PPT, HTML, UI, visual, and document delivery that needs real QA gates.
-- MCP/plugin adoption where security, privacy, source, and license boundaries matter.
-- Teams that want AI agents to be auditable, sparse, and disciplined.
+- `Headroom`: `replace + landed` for compression and token discipline.
+- `Superpowers` is gap-fill-only in source-pool terms, and its landed value is limited to disciplined debugging, verification loops, parallel hypothesis fanout, and patch-debt repair atoms.
+- `AnySearch`: `gap-fill + landed` into guarded realtime source search.
+- `Ponytail`: `reject + rejected`; useful YAGNI and smallest-change lessons are already covered by existing concise execution and patch-debt atoms.
+- `Agent-Reach`: `defer + source-pool-only`; keep wide-source reach as candidate mapping only, with no default crawler, cookies, accounts, or ToS-bypass runtime.
+- `codebase-memory-mcp`: `gap-fill + source-pool-only`; may be tested only as a read-only, on-demand code-structure memory accelerator after source/build/hash, secret-filter, stale-index, and small-repo benchmark gates.
+- `awesome-design-md`: `gap-fill + source-pool-only`; keep only a cold design-prior-art index, never resident brand/IP doctrine.
+- `mattpocock/skills`: `gap-fill + source-pool-only`; keep examples-first, single-purpose skill-card patterns, reject the skill-pack shell.
+- `agentic coding skills`: `gap-fill + source-pool-only`; keep task-scoped routing, review, and verification patterns, reject generic agent shells.
+- `Claude loops`: `gap-fill + source-pool-only`; keep bounded-loop discipline only: budget, dedupe, stop condition, failure evidence, and real verification.
+- `penpot`: `defer + source-pool-only`; possible external design reference/export tool, not a kernel runtime.
+- `plane`: `reject + rejected`.
+- `universal-android-debloater`: `reject + rejected`.
+- `Agency Agents` is rejected.
+- `gstack`: `reject + rejected`.
 
-适合这些场景：
+## Default Model Mirror / 默认模型镜像
 
-- Codex 经常兜圈、跑偏、上下文膨胀的项目。
-- 修 bug 不想继续打补丁，而是要快速定位根因。
-- 调研需要 GitHub、源码、证据句柄，但不想接入外部执行系统。
-- PPT、HTML、UI、视觉、文档交付需要真实质检门禁。
-- MCP/插件接入需要安全、隐私、来源、许可审查。
-- 希望 AI agent 更可审计、更克制、更稳定的团队。
+- Low-cost search text route: `agnes-2.0-flash`
+- Default image route: `agnes-image-2.1-flash`
+- Default video route: `agnes-video-v2.0`
+- If Agnes fails or is unavailable, the only allowed fallback is the default GPT route.
+- If the user explicitly names another provider or model, that explicit request overrides the default Agnes preference.
+- Agnes text is only for guarded web search, broad shallow scouting, and simple external evidence collection.
+- Chat, drafting, planning, coding, docs, and high-risk verification stay on the stronger default GPT/developer path.
 
 ## Quick Start / 快速开始
 
-### Clone and verify / 克隆并验证
+### Clone and verify
 
 ```powershell
 git clone https://github.com/AI-wuji/wuji-legion-codex.git
@@ -121,17 +126,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\ensure-wuji-cli.ps1 
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\test-wuji-cli.ps1
 ```
 
-Expected result:
-
-```text
-RESULT: PASS - wuji-cli deterministic gates
-```
-
-### Install as a Codex skill / 安装为 Codex skill
-
-For supply-chain safety, the installer requires a pinned 40-character commit SHA.
-
-为了供应链安全，安装脚本要求使用固定的 40 位 commit SHA，而不是浮动分支或 tag。
+### Install as a Codex skill
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts\wuji-install.ps1 -Ref <40-char-commit-sha> -Bootstrap -InstallAgents
@@ -143,94 +138,46 @@ Install target:
 %USERPROFILE%\.agents\skills\wuji-legion
 ```
 
-## Go Execution Base / Go 执行底座
-
-`wuji-cli` is the deterministic base of Wuji Legion. It is intentionally boring: gates, audits, routing reports, benchmark reports, context packs, MCP guards, PPT checks, and closeout checks.
-
-`wuji-cli` 是无极军团的确定性底座。它不抢主链，只负责可重复的门禁、审计、路由报告、基准报告、上下文装配、MCP 检查、PPT 检查和收口检查。
-
-Common commands:
+## Common Commands / 常用命令
 
 ```powershell
-.\.wuji-tools\wuji-cli.ps1 canon-report --report outputs\canon-report.json
-.\.wuji-tools\wuji-cli.ps1 route-task --config config.json --query "fix bug" --report outputs\route-report.json
-.\.wuji-tools\wuji-cli.ps1 fusion-audit --workspace . --report outputs\fusion-audit-report.json
-.\.wuji-tools\wuji-cli.ps1 optimization-audit --workspace . --report outputs\optimization-audit-report.json
-.\.wuji-tools\wuji-cli.ps1 context-bloat-audit --workspace . --report outputs\context-bloat-audit-report.json
+$routeReport = Join-Path $env:TEMP ("wuji-route-" + [guid]::NewGuid().ToString('N') + ".json")
+.\.wuji-tools\wuji-cli.ps1 route-task --config config.json --query "fix bug" --report $routeReport
+.\.wuji-tools\wuji-cli.ps1 fusion-audit --workspace .
+.\.wuji-tools\wuji-cli.ps1 optimization-audit --workspace .
+.\.wuji-tools\wuji-cli.ps1 context-bloat-audit --workspace .
 ```
-
-`Closeout Sound`: non-fast tasks may schedule `scripts\beep.ps1 complete -SpawnDelayed -DelayMs 1200` before the final response. Sound failure is non-blocking.
-
-## Repository Map / 仓库结构
-
-```text
-kernel-source.json          structured truth source
-SKILL.md                    Codex skill mirror
-GLOBAL_AGENTS.md            global runtime mirror
-config.json                 routing and provider overlay, no secrets
-tools/wuji_cli.go           Go deterministic execution base
-scripts/test-wuji-cli.ps1   full deterministic gate test suite
-units/                      unit mirrors
-experts/                    owner and officer cards
-hotpath-manifest.json       sparse context and hot-path budget policy
-fusion-matrix.json          distilled atom decision ledger
-```
-
-## What Wuji Legion Is Not / 它不是什么
-
-- Not a second AI agent platform.
-- Not an external OpenSquilla runner.
-- Not a prompt pack that relies on long resident context.
-- Not a swarm where every role speaks all the time.
-- Not a tool that stores your accounts, keys, tokens, cookies, addresses, or private sessions.
-
-它不是：
-
-- 第二套 AI agent 平台。
-- 外部 OpenSquilla 执行器。
-- 靠超长常驻提示词维持质量的 prompt 包。
-- 每个角色都常驻发言的群聊式 swarm。
-- 保存账号、key、token、cookie、地址或私有会话的工具。
 
 ## Release Discipline / 发布纪律
 
-A completion claim is valid only after current gates pass:
+- Uncertain tasks scout wide and shallow first, with Agnes handling low-cost broad search before deep implementation begins; simple scoped work does not scout by default.
+- Non-trivial goals lock scope, target surface, finish line, out-of-scope exclusions, and completion evidence before long execution starts.
+- All non-chat execution work stays in the direct-task lane by default; planning and officers are mounted only when explicitly needed.
+- Page or screen redesigns replace the active target surface in place: no parallel v2 page, compatibility wrapper, duplicate route, or hidden old entry unless explicitly requested.
 
-发布或完成声明必须有当前门禁结果：
+Completion claims require current:
 
 - `fusion-audit`
 - `optimization-audit`
 - `context-bloat-audit`
 
-Token, cost, cache, backend usage, and outer-context claims also require `runtime-context-audit` with numeric-only usage evidence.
+Token, cost, cache, backend usage, and outer-context claims also require `runtime-context-audit`.
 
-## Contributing / 参与贡献
+Context skeleton and contracts:
 
-Useful contributions are welcome, especially:
+- `hotpath-manifest.json`
+- `concise_execution_contract`
+- `execution_budget_contract`
+- `analysis_completeness_contract`
+- `complete-materials-before-architecture-analysis`
+- `target-page-in-place-replacement`
+- `parallel-compat-page-for-requested-page-change`
 
-- smaller hot-path context
-- better deterministic gates
-- safer MCP/plugin intake
-- stronger root-cause workflows
-- better bilingual docs
-- reproducible benchmark evidence
+## Closeout Sound / 收口提醒
 
-欢迎贡献，尤其是：
+Non-FAST_REPLY work should try `scripts/beep.ps1 complete -SpawnDelayed -DelayMs 1200` before the final response. Sound failure is non-blocking.
 
-- 更小的常驻上下文
-- 更强的确定性门禁
-- 更安全的 MCP/插件接入
-- 更好的根因修复流程
-- 更好的中英双语文档
-- 可复现的基准证据
-
-## License / 许可证
-
-See repository license if present. Third-party source pools and distilled ideas must keep their own license, source, privacy, and attribution boundaries.
-
-如仓库包含许可证，请以仓库许可证为准。外部 source pool 和被蒸馏能力必须保留各自的许可、来源、隐私和归属边界。
-
-## Support / 支持一下
+## Support / 支持
 
 If Wuji Legion helps your Codex workflow, a small donation keeps the project moving.
 

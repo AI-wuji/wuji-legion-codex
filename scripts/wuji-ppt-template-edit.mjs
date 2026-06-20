@@ -2,7 +2,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+import { loadArtifactToolUtils } from "./wuji-ppt-node-utils.mjs";
 
 function usage() {
   return [
@@ -34,20 +34,6 @@ async function readJson(filePath) {
 async function writeJson(filePath, value) {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-}
-
-async function loadArtifactToolUtils() {
-  const skillDir = process.env.WUJI_PRESENTATIONS_SKILL_DIR;
-  if (!skillDir) {
-    throw new Error("Missing WUJI_PRESENTATIONS_SKILL_DIR. Invoke this script via wuji-ppt-template-edit.ps1.");
-  }
-
-  const modulePath = path.join(skillDir, "scripts", "artifact_tool_utils.mjs");
-  try {
-    return await import(pathToFileURL(modulePath).href);
-  } catch (error) {
-    throw new Error(`Failed to load artifact_tool_utils from ${modulePath}: ${error.message}`);
-  }
 }
 
 function slidesFromPresentation(presentation) {

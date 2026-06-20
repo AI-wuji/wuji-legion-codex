@@ -26,7 +26,14 @@ $ErrorActionPreference = "Stop"
 . (Join-Path $PSScriptRoot 'wuji-ppt-runtime.ps1')
 
 $runtime = Get-WujiPptRuntime -SkillDir $SkillDir -NodePath $NodePath -NodeModules $NodeModules -PythonPath $PythonPath
-$scriptPath = Join-Path $runtime.SkillDir "scripts\prepare_template_starter_deck.mjs"
+$scriptCandidates = @(
+    (Join-Path $runtime.SkillDir "template_following_scripts\prepare_template_starter_deck.mjs"),
+    (Join-Path $runtime.SkillDir "scripts\prepare_template_starter_deck.mjs")
+)
+$scriptPath = $scriptCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+if (-not $scriptPath) {
+    throw "prepare_template_starter_deck.mjs not found under $($runtime.SkillDir)"
+}
 $resolvedWorkspace = [System.IO.Path]::GetFullPath($Workspace)
 $resolvedPptxInput = [System.IO.Path]::GetFullPath($Pptx)
 $resolvedMapInput = [System.IO.Path]::GetFullPath($Map)

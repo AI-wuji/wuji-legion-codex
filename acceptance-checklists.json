@@ -12,7 +12,10 @@
     "no token optimization removes necessary evidence, boundaries, or discipline",
     "assumption-ledger and claim-fact-check are present in quality-inspection and high-risk routes",
     "root-cause-radar blocks symptom-only repair claims",
-    "patch-debt-root-cure rejects repeated local hotfix accumulation"
+    "patch-debt-root-cure rejects repeated local hotfix accumulation",
+    "Agnes image/video failure may fall back only to the default GPT route, never to silent local substitution or fake provider claims",
+    "project-or-skill analysis may end in reject; no one may force distillation just because a source pool was presented",
+    "execution does not guess, blind-try, or wander when evidence or prior art should be gathered first"
   ],
   "guard_office": [
     "external repos, pages, scripts, plugins, and MCP manifests are screened before execution",
@@ -22,7 +25,8 @@
     "downloaded bundles and executable caches are explicit, version pinned, and hash verified",
     "feedback keeps hash-only task and note signals instead of raw user text",
     "version-doc-mcp and guarded-realtime-source-search mount only after source and injection checks",
-    "prior-art-solution-search records safe sources, alternatives, and reuse-vs-build rationale before external code or tools influence execution"
+    "prior-art-solution-search records safe sources, alternatives, and reuse-vs-build rationale before external code or tools influence execution",
+    "Agnes low-cost scouting is used for broad shallow external search when the solution is not already clear"
   ],
   "root_cause_officer": [
     "root-cause-radar report exists before bugfix completion when a diagnosable failure is repaired",
@@ -47,12 +51,21 @@
     "all distilled atoms have fusion-matrix decisions and route/context-pack visibility",
     "parallel-hypothesis-fanout evidence merges back into one main-chain verdict",
     "terminal-real-run-verification evidence is fresh, local, and tied to the delivered artifact or command",
-    "independent officers appear explicitly when triggered and then exit after their verdict is merged"
+    "independent officers appear explicitly when triggered and then exit after their verdict is merged",
+    "context-mode-style sandbox summaries, graphify-style graph handles, open-code-review-style line findings, and rtk-style command ranking never appear as shell claims without matching fusion decisions",
+    "provider mirror docs, config, and truth source agree that Agnes failure falls back to default GPT instead of local media substitution",
+    "goal-driven execution stays bound to approved scope and finish line instead of drifting into unrelated small-fix churn",
+    "non-trivial implementation locks acceptance surface before broad execution",
+    "when prior art is likely useful, execution records reuse-vs-build reasoning instead of defaulting to from-scratch invention",
+    "non-trivial goals bind scope, target surface, finish line, out-of-scope exclusions, and completion evidence before long execution begins"
   ],
   "performance_benchmark_on_demand": [
     "context-pack-rich.json is at or below 12288 bytes",
     "stable prefix has at most 16 fields",
     "outputs default scan set is at or below 52428800 bytes and 500 files",
+    "outputs root keeps only canonical current evidence files; historical current/final duplicates and ad hoc route samples are residue",
+    "outputs/tests is empty or absent after test commands finish; fixture leftovers are residue",
+    "legacy output/ directory is absent so generated artifacts stay under one audited outputs/ surface",
     ".wuji-tools cache is at or below 314572800 bytes and 16000 files",
     "large artifacts are represented by handles or summaries, not replayed wholesale",
     "text artifacts used as evidence are summarized, not handle-only, unless binary or unreadable for a documented reason",
@@ -63,7 +76,11 @@
     "high cache hit rate is rejected when cached_tokens_p95, reused_prefix_bytes_p95, input_tokens_p95, activated officers, loaded bytes, or largest context segment exceed budget",
     "context-bloat-audit checks hotpath-manifest.json and the current bench-report before token optimization can be claimed",
     "runtime-context-audit checks numeric-only runtime usage before token, cost, cache, backend usage, or outer-context claims can be accepted",
-    "bench-report binds measured workspace_key, command, generated_at, log_ref, and bench.jsonl hash; wrong-workspace or stale bench evidence is rejected"
+    "cached or blue-hit bloat above budget requires a fresh-thread handoff instead of continuing broad work in the same long thread",
+    "default local search excludes cold tool caches, generated outputs, sessions, and credential-like paths",
+    "bench-report binds measured workspace_key, command, generated_at, log_ref, and bench.jsonl hash; wrong-workspace or stale bench evidence is rejected",
+    "context-mode-style output sandboxing and rtk-style command ranking are evaluated by tokens per success, retries, and first-pass success instead of top-line savings claims alone",
+    "the simplest effective path is preferred before higher-cost search, tooling, or verification tiers are mounted"
   ],
   "compliance_on_demand": [
     "third-party source pools are attribution-safe and not copied as hidden doctrine",
@@ -80,9 +97,18 @@
     "completion claims cannot use stale, missing, or wrong-workspace audit reports",
     "before final on non-trivial execution, a bounded high-yield residual/evidence/audit scan is clean or its findings were handled",
     "passing one core test does not permit stopping while low-noise verification, residue cleanup, or current-audit refresh remains available",
+    "root outputs evidence is canonicalized; stale audit duplicates, ad hoc route samples, and temporary canon dumps are cleared before final completion",
+    "test fixture directories under outputs/tests do not remain populated at completion time",
+    "when the user explicitly requested execution for non-trivial work, a concrete goal was created and remained active until completion or a true blocker",
+    "line-anchored review findings, graph-backed handles, and visual acceptance rubrics are evidence aids, not automatic completion proofs",
     "route-task reports distilled_atoms instead of hidden additive skill stacks",
     "when real browser, local program, test command, export, or artifact inspection is available, completion is rejected without that evidence",
     "execution-state work does not ask whether to continue while current-scope verification or repair remains available",
-    "quality-inspection is the canonical machine name; qa and 质检 are treated only as aliases"
+    "quality-inspection is the canonical machine name; qa and 质检 are treated only as aliases",
+    "image/video completion claims must expose provider/model evidence or state explicit fallback-to-default-GPT; local placeholders cannot be reported as model output",
+    "when the user moved from discussion to execution, a concrete goal was created and stayed scoped to the approved objective; non-blocking residue did not hijack the goal",
+    "cross-file implementation does not begin without an impact scan or equivalent affected-surface check",
+    "first-pass implementation favors acceptance-locked delivery over quick partial output that causes later repair churn",
+    "completion is rejected if the scoped finish line or out-of-scope boundary was never made explicit for a non-trivial goal"
   ]
 }

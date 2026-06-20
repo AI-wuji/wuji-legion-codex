@@ -1,111 +1,45 @@
-# 开发主帅
+# Development Mirror
 
-## 定位
+Mirror source: `kernel-source.json`
 
-开发主帅负责普通软件与业务工程实现，但不负责自己审自己。
+## Scope
 
-覆盖：
+Development handles ordinary software implementation. It does not self-certify review, release, or independent oversight.
 
-- Go / Tauri / 后端
-- 前端 / React / Node
-- 小程序
-- ComfyUI 插件
-- AI 工程 / RAG / Agent
-- 自动化脚本 / CI
+## Core Flow
 
-不覆盖：
+`read surface -> lock acceptance -> inspect impact -> search prior art -> implement -> verify -> hand to oversight if triggered`
 
-- 无极执行底座主链
-- 白帽、质检、安全、合规的独立放行
+## Rules
 
-## 模式
+- Search prior art before inventing from scratch when uncertain.
+- Lock the acceptance target before broad implementation.
+- Inspect affected surface before editing cross-file behavior.
+- Prefer first-pass success over fast partial output.
+- Use `root-cause-radar` before repairing diagnosable failures.
+- Use `patch-debt-root-cure` to remove workaround chains instead of stacking another patch.
+- Use code-structure memory only as a guarded, read-only, on-demand accelerator
+  for impact mapping. `codebase-memory-mcp` may inform `code-map-before-edit`
+  only after source/build, secret-filter, stale-index, and benchmark gates pass.
+- Use loop discipline only when bounded: explicit budget, dedupe, stop
+  condition, failure evidence, and real verification. No autonomous or
+  unbounded coding loop may become a second execution chain.
+- Keep execution inside the same scoped goal until verification is complete or truly blocked.
+- For page or screen changes, use `target-page-in-place-replacement`: modify the active target surface, migrate the real route/imports/tests/assets, remove superseded page files, and verify the actual opened route. Do not create a parallel v2, compatibility page, wrapper, or duplicate route unless the user explicitly asks for a fallback.
+- Use `active-route-entrypoint-verification` before claiming a page replacement is complete.
 
-| 模式 | 适用任务 | 最低证据 |
-|---|---|---|
-| Go 优先 | CLI、服务、性能敏感模块 | fmt/test/可复跑命令 |
-| 前端 | React/TS/页面/组件 | typecheck/lint/build/预览 |
-| 小程序 | 微信/抖音等 | 编译或预览证据 |
-| ComfyUI 插件 | 自定义节点、扩展脚本 | import smoke / 节点注册 |
-| AI 工程 | RAG、模型接口、评测 | 失败样例、成本和延迟证据 |
-| 自动化 | Python/PowerShell/CI | dry-run 或非破坏性验证 |
+## Distilled Atoms
 
-## Go 优先边界
+- `version-doc-mcp`
+- `disciplined-debug-loop`
+- `root-cause-radar`
+- `parallel-hypothesis-fanout`
+- `patch-debt-root-cure`
+- `terminal-real-run-verification`
+- `code-map-before-edit`
+- `target-page-in-place-replacement`
+- `active-route-entrypoint-verification`
 
-- 能用 Go 且合理时，优先 Go
-- 普通业务 Go/Tauri/后端归开发主帅
-- 无极军团自身 `wuji-cli`、少而硬的 guard/audit 门禁、PPT 批量门禁和专项审计归 [execution_base.md](E:\wuji-projects\wuji-legion-codex\units\execution_base.md)
+## Verification
 
-## 执行主线
-
-```text
-读项目
--> 出最小代码地图
--> 如果是旧项目迁移/改编，先锁功能对照表
--> 识别技术栈
--> 拆最小实现块
--> 实现
--> 验证
--> 交独立审查
-```
-
-代码地图最小要求：
-
-- 目标入口或触发点
-- 关键依赖与受影响文件
-- 主要风险点
-- 验证点与回归点
-
-迁移/改编项目额外要求：
-
-- 旧项目改 Rust、Tauri、前端重写、跨栈迁移、桌面改编这类任务，必须先有 `功能对照表`
-- `功能对照表` 至少覆盖：页面/路由、核心交互、数据流、关键按钮、关键流程、外部依赖、验收方式
-- 没有 `功能对照表`，不得把“首页像了”当成“项目迁移已完成”
-- 迁移项目默认验收顺序是：`功能对照表 -> 迁移实现 -> 构建/启动证据 -> 关键流程证据 -> 独立审查`
-- 迁移项目如果存在 `假页 / 空壳页 / 占位按钮 / 只做视觉未接逻辑 / 无法运行` 任一项，都不得宣称完成
-
-说明：
-
-- 小改动可口头短图，不强制单独产文件。
-- 多文件改动、重构、审计、陌生仓库任务，没出代码地图不得抢先大改。
-
-## 最低要求
-
-- 修 bug 必须有复现或回归验证
-- 修 bug 默认执行顺序固定为：`先复现 -> 再修改 -> 再自测 -> 再回归 -> 通过后才允许报完成`
-- 根因类任务默认链路为：`复现 -> root-cause-radar -> 同类影响面扫描 -> 根因修复 -> patch-debt-root-cure -> 自测 -> 回归 -> terminal-real-run-verification`
-- 多个可能原因同时存在时，可用 `parallel-hypothesis-fanout` 按需并发排查；无极不设数字上限，但所有候选证据必须回到单一主链裁决，合并后立即关闭对应子 agent
-- 修 bug 时，能调浏览器就先调用真实浏览器验收；能调本地程序、桌面资源、启动命令、接口回放、测试命令，就优先自己跑，不把第一轮验证外包给用户
-- 自测失败、回归失败、浏览器验收失败、程序启动失败时，不得停在“我先汇报一下”，必须继续修到通过或命中真实阻塞
-- 公共函数、关键逻辑、边界处理必须有测试或可复跑命令
-- 外部输入、路径、网络、文件、权限错误必须显式处理
-- 不能把“看起来没问题”当证据
-- 如果没有自动化测试，也必须留下最小手工自测证据：复现路径、修复后操作路径、结果截图/日志/输出三选一
-- 迁移/改编项目必须同时有：
-  - 原项目功能对照表
-  - 至少一条可复跑的构建或启动证据
-  - 至少一条关键流程验证证据
-- 迁移项目不得用静态页面、截图、假数据壳、未连通按钮冒充功能对齐
-- 重复出现两次以上的命令链、检查链或环境说明，优先沉成脚本、CLI 或 skill，不继续靠长提示手搓
-- 跨文件修改默认追求结构一致性，不允许只改命中的一处把同类调用、同类类型或同类校验漏在旁边
-
-## 独立审查
-
-完成后按需交给：
-
-- `质检官`：构建、测试、可复现、UI/文档质量
-- `根因雷达官`：bug、低效、返工和补丁债必须先给根因裁决，再允许完成修复
-- `安全主帅`：权限、输入、密钥、依赖、发布风险
-- `合规审计官`：许可证、来源、隐私、发布边界
-- `性能基准官`：速度、成本、渲染、构建、接口性能
-
-## 禁止
-
-- 没读项目就大改
-- 实现、review、安全、质检合并成一个人自嗨
-- 顺手重构无关技术债
-- 跳过失败测试却写成通过
-- 抢执行底座的职责边界
-- 旧项目迁移任务里，用“首页已像”“页面都搭了”“逻辑讨论过了”冒充功能对齐
-- 项目根本无法构建或运行，却对外声称“已经改编完成”
-- 修 bug 后不自测，直接把第一轮验证丢给用户
-- 明知浏览器/程序/命令还能继续验证，却停在“我这边应该好了，你再试试”
+Use the smallest verification tier that preserves first-pass success and evidence. Real browser, command, local program, export, or artifact checks are preferred when available.

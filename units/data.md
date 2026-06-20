@@ -18,6 +18,14 @@
 - `open-notebook` / `tolaria` 只补强本地知识和多文档证据台账，不替代 `Spreadsheets` 插件，也不把整表整库回灌。
 - 触发条件必须是真实大文件、多表、向量检索、OCR 表格或本地知识缺口；普通 CSV/XLSX 仍走既有数据链。
 
+## 2026-06-14 Distilled Follow-through
+
+- large-sheet, OCR-table, and vector-index gaps fold into
+  `content-type-compression-router` plus `reversible-evidence-handle`
+- dimension-style synthesis folds into `research-evidence-pack`
+- large data-output slimming folds into `content-type-compression-router` and
+  `reversible-evidence-handle`
+
 ## 调用条件
 
 - 用户给出表格、CSV、XLSX、台账、数据清单或要求分析结构化数据时

@@ -16,6 +16,8 @@ absorbed: "pipeline assembly、node debugging、batch image-video pipelines"
 
 负责 ComfyUI 生态内的流程、节点、批量出图和视频动效，不处理普通生图，也不替开发主帅做通用软件工程。
 
+它是主链按需显性的专项入口，不是独立官，不是顶层 owner profile，也没有独立写权限。
+
 ## 内置模式
 
 - 流程模式：模型、节点、输入输出、参数和种子记录。

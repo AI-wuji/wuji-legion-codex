@@ -1,15 +1,60 @@
-param()
+﻿param()
 
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
 $binDir = Join-Path $root '.wuji-tools'
 $bin = Join-Path $binDir 'wuji-cli-smoke.exe'
-$fixture = Join-Path $root 'outputs\tests\wuji-cli'
+$fixture = Join-Path $env:TEMP ("wuji-cli-fixture-" + [guid]::NewGuid().ToString('N'))
 $latestLog = Join-Path $root 'outputs\test-wuji-cli-latest.log'
-$ExecutionBudgetContractJson = '{"objective":"scoped-fast-real-completion","must_do":["bind-current-scope-before-expansion","run-targeted-verification-before-full-suite","keep-officers-on-demand-and-exit-after-merge","treat-runtime-context-audit-as-token-cost-cache-claim-only","finish-current-scope-without-reopen-ceremony"],"must_not_do":["escalate-small-task-to-full-legion-scan","spawn-sidecars-for-officer-perspectives","repeat-full-suite-after-small-edits","block-non-token-work-on-missing-runtime-usage-log","continue-low-value-sweep-outside-current-scope"]}'
-$KernelSourceFixtureJson = '{"kernel_version":"11.3","identity":{"execution_surface":"Codex-only"},"optimization_kernel":{"runtime_context_gate":"runtime-context-audit","runtime_context_policy":"numeric-only runtime usage evidence required; raw prompts messages content forbidden"},"required_audits":["runtime-context-audit-for-token-cost-cache-usage-claims"],"execution_budget_contract":' + $ExecutionBudgetContractJson + ',"analysis_completeness_contract":{"objective":"complete-materials-before-architecture-analysis","must_do":["collect-material-inventory","state-coverage-and-gaps","ask-user-for-missing-materials-when-critical","separate-fact-inference-and-unknown","no-final-conclusion-from-incomplete-evidence"],"must_not_do":["guess-architecture-from-partial-materials","treat-sample-as-whole-system","hide-coverage-gaps","promote-uncertain-claim-to-fact"]}}'
-$ContextPackRichFixtureJson = '{"stable_prefix":{"stable_prefix_policy":"byte-stable-minimal-resident"},"stable_prefix_canon":{"canon_hash":"fixture"},"concise_execution_contract":{"objective":"short-precise-high-hit-low-total-cost"},"execution_budget_contract":' + $ExecutionBudgetContractJson + ',"route_summary":{"execution_budget":{"id":"LIGHT_TASK","full_suite_max_runs":0}},"dynamic_context":{"distilled_atoms":["fixture"],"execution_summaries":[],"audit_summaries":[]},"review_gates":["fixture"],"artifact_summaries":[{"path":"fixture.txt","kind":"text","summary_mode":"summary","evidence_handle":"fixture"}],"optimization_policy":{"objective":"fixture","concise_execution":"gate-cached-fresh-output-uncached-total-cost"}}'
+$ExecutionBudgetContractJson = '{"objective":"all-work-direct-small-task-execution","must_do":["bind-current-scope-before-expansion","bind-finish-line-and-out-of-scope-before-goal-start","keep-direct-code-work-on-a-minimal-first-pass-guard","run-targeted-verification-before-any-full-suite","all-non-chat-work-stays-direct-task-by-default","keep-officers-on-demand-and-exit-after-merge","treat-runtime-context-audit-as-token-cost-cache-claim-only","finish-current-scope-without-reopen-ceremony","avoid-automatic-task-upshift"],"must_not_do":["auto-create-big-task-mode","auto-upshift-to-structural-or-release-mode","add-agnes-scout-or-planning-sidecar-to-light-task-by-tier-alone","treat-officers-as-perspectives-or-tones","repeat-full-suite-after-small-edits","block-non-token-work-on-missing-runtime-usage-log","start-goal-without-clear-finish-line","continue-low-value-sweep-outside-current-scope"]}'
+$KernelSourceFixtureJson = '{"kernel_version":"11.3","identity":{"execution_surface":"Codex-only"},"optimization_kernel":{"runtime_context_gate":"runtime-context-audit","runtime_context_policy":"numeric-only runtime usage evidence required; raw prompts messages content forbidden"},"required_audits":["runtime-context-audit-for-token-cost-cache-usage-claims"],"intelligence_profile_contract":{"role":"candidate-scout-not-research-system","search_scope":"wide-recall-shallow-first","search_method":"wide-shallow-scout-first-then-deepen-only-on-promising-candidates","may_do":["search","candidate-metadata","dedupe-cluster","evidence-handle"],"must_not_do":["final-analysis","deep-extract-by-default","distillation-decision","adoption-decision","install-or-execute"]},"concise_execution_contract":{"objective":"short-precise-high-hit-low-total-cost","must_do":["simplest-effective-path-first","single-message-precision","minimal-needed-context","agnes-search-only-before-uncertain-build-when-web-search-is-explicitly-needed","prior-art-before-invention-when-uncertain","first-pass-acceptance-and-impact-lock-before-edit","prove-need-before-abstraction","delete-or-reuse-before-add","target-page-in-place-replacement","active-route-entrypoint-verification","superseded-page-cleanup-before-completion","smallest-working-change-first","fresh-output-uncached-volume-gated"],"must_not_do":["verbose-status-padding","unneeded-preflight-loop","guess-without-evidence","blind-trial-and-error-when-prior-art-is-available","context-shift-from-cached-to-uncached","from-scratch-tooling-when-existing-solution-fits","clever-overengineering-without-proven-need","new-abstraction-before-duplication-or-gap-is-proven","parallel-compat-page-for-requested-page-change","leave-old-page-reachable-after-replacement"],"cost_vector":["cached_tokens_p95","fresh_input_tokens_p95","output_tokens_p95","uncached_tokens_p95","tokens_per_success","retries"]},"execution_budget_contract":' + $ExecutionBudgetContractJson + ',"analysis_completeness_contract":{"objective":"complete-materials-before-architecture-analysis","must_do":["collect-material-inventory","state-coverage-and-gaps","ask-user-for-missing-materials-when-critical","separate-fact-inference-and-unknown","no-final-conclusion-from-incomplete-evidence"],"must_not_do":["guess-architecture-from-partial-materials","treat-sample-as-whole-system","hide-coverage-gaps","promote-uncertain-claim-to-fact"]}}'
+function New-ContextPackRichFixtureJson {
+    param([string]$Workspace)
+
+    $configHash = Get-Sha256Lower -Path (Join-Path $Workspace 'config.json')
+    $toolHash = Get-Sha256Lower -Path (Join-Path $Workspace 'tools\wuji_cli.go')
+    return ([ordered]@{
+        command = 'context-pack'
+        generated_at = (Get-Date).ToUniversalTime().ToString('o')
+        wuji_version = '11.3'
+        tool_source_hash = $toolHash
+        input_hashes = [ordered]@{
+            'config.json' = $configHash
+            'tools/wuji_cli.go' = $toolHash
+        }
+        stable_prefix = [ordered]@{ stable_prefix_policy = 'byte-stable-minimal-resident' }
+        stable_prefix_canon = [ordered]@{ canon_hash = 'fixture' }
+        concise_execution_contract = [ordered]@{ objective = 'short-precise-high-hit-low-total-cost' }
+        execution_budget_contract = $ExecutionBudgetContractJson | ConvertFrom-Json
+        route_summary = [ordered]@{
+            execution_budget = [ordered]@{ id = 'DIRECT_TASK'; full_suite_max_runs = 0 }
+            distilled_atom_evidence_count = 1
+            current_audit_evidence_count = 3
+            query_key = 'fixture'
+        }
+        dynamic_context = [ordered]@{
+            distilled_atoms = @('fixture')
+            distilled_atom_evidence = @([ordered]@{ atom = 'fixture'; decision = 'resident'; evidence_visible = $true })
+            current_audit_evidence = @(
+                [ordered]@{ path_ref = 'outputs/fusion-audit-report.json' },
+                [ordered]@{ path_ref = 'outputs/optimization-audit-report.json' },
+                [ordered]@{ path_ref = 'outputs/context-bloat-audit-report.json' }
+            )
+            execution_summaries = @()
+            audit_summaries = @()
+            model_tier = 'standard'
+        }
+        review_gates = @('fixture')
+        artifact_summaries = @(
+            [ordered]@{ path_ref = 'fixture.txt'; kind = 'text'; summary_mode = 'summary'; evidence_handle = 'fixture' }
+        )
+        optimization_policy = [ordered]@{
+            objective = 'fixture'
+            concise_execution = 'gate-cached-fresh-output-uncached-total-cost'
+        }
+    }) | ConvertTo-Json -Depth 12
+}
 
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $latestLog) | Out-Null
 Set-Content -LiteralPath $latestLog -Value ("START test-wuji-cli " + (Get-Date).ToUniversalTime().ToString('o')) -Encoding UTF8
@@ -29,6 +74,7 @@ trap {
 
 if (Test-Path $fixture) { Remove-Item -LiteralPath $fixture -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $binDir, $fixture | Out-Null
+try {
 $buildOutput = & (Join-Path $PSScriptRoot 'build-wuji-cli.ps1') -Output $bin 2>&1
 foreach ($line in $buildOutput) {
     Add-Content -LiteralPath $latestLog -Value ([string]$line) -Encoding UTF8
@@ -95,6 +141,9 @@ function New-FusionAuditFixture {
     Get-ChildItem -LiteralPath (Join-Path $root 'units') -Filter '*.md' | ForEach-Object {
         Copy-RepoFile -Workspace $workspace -RelPath ('units/' + $_.Name)
     }
+    Get-ChildItem -LiteralPath (Join-Path $root 'units') -Filter '*.json' | ForEach-Object {
+        Copy-RepoFile -Workspace $workspace -RelPath ('units/' + $_.Name)
+    }
     Copy-RepoFile -Workspace $workspace -RelPath 'experts/INDEX.md'
     Get-ChildItem -LiteralPath (Join-Path $root 'experts') -Recurse -Filter '*.md' | ForEach-Object {
         $rootFull = [System.IO.Path]::GetFullPath($root).TrimEnd('\', '/')
@@ -119,6 +168,7 @@ function New-FusionAuditFixture {
             @{ path = 'scripts/beep.ps1'; status = 'on-demand'; type = 'notification-script' },
             @{ path = 'tools/wuji_cli.go'; status = 'main-chain'; type = 'execution-base' },
             @{ path = 'units/*.md'; status = 'on-demand'; type = 'unit-mirror-doc-family' },
+            @{ path = 'units/*.json'; status = 'on-demand'; type = 'unit-catalog' },
             @{ path = 'experts/INDEX.md'; status = 'on-demand'; type = 'owner-index' },
             @{ path = 'experts/*/*.md'; status = 'on-demand'; type = 'expert-mirror-doc-family' }
         )
@@ -156,6 +206,7 @@ function Get-PrivacyHash {
 function Write-CurrentAuditReports {
     param([string]$Workspace)
 
+    New-Item -ItemType Directory -Force -Path $Workspace | Out-Null
     $outputs = Join-Path $Workspace 'outputs'
     New-Item -ItemType Directory -Force -Path $outputs, (Join-Path $Workspace 'tools') | Out-Null
 
@@ -167,18 +218,18 @@ function Write-CurrentAuditReports {
         'acceptance-checklists.json' = '{"white_hat":["fixture"],"guard_office":["fixture"],"root_cause_officer":["fixture"],"audit":["fixture"],"quality_inspection":["fixture runtime-context-audit"],"performance_benchmark_on_demand":["fixture runtime-context-audit"],"compliance_on_demand":["fixture"]}'
         'purification-charter.json' = '{"version":"11.3","hard_gates":[]}'
         'hotpath-manifest.json' = '{"resident":[{"path":"kernel-source.json","max_bytes":8192}],"on_demand":[{"path":"tools/wuji_cli.go","max_loaded_bytes":8192}],"cold_ledger":[{"path":"fusion-matrix.json","default_mode":"handle-only"},{"path":"outputs/runtime-context-audit-report.json","default_mode":"handle-only"}],"forbidden_resident":["outputs/**",".wuji-tools/**","outputs/runtime-usage.jsonl","raw prompts/messages/content","full transcripts"]}'
-        'README.md' = '# fixture readme hotpath-manifest.json context-bloat-audit runtime-context-audit concise_execution_contract execution_budget_contract analysis_completeness_contract complete-materials-before-architecture-analysis'
+        'README.md' = '# fixture readme hotpath-manifest.json context-bloat-audit runtime-context-audit concise_execution_contract execution_budget_contract analysis_completeness_contract complete-materials-before-architecture-analysis target-page-in-place-replacement parallel-compat-page-for-requested-page-change'
         'AGENTS.md' = '# fixture agents instruction runtime-context-audit'
-        'SKILL.md' = '# fixture skill hotpath-manifest.json context-bloat-audit runtime-context-audit concise_execution_contract execution_budget_contract'
-        'GLOBAL_AGENTS.md' = '# fixture global hotpath-manifest.json context-bloat-audit runtime-context-audit concise_execution_contract execution_budget_contract'
+        'SKILL.md' = '# fixture skill hotpath-manifest.json context-bloat-audit runtime-context-audit concise_execution_contract execution_budget_contract target-page-in-place-replacement parallel-compat-page-for-requested-page-change'
+        'GLOBAL_AGENTS.md' = '# fixture global hotpath-manifest.json context-bloat-audit runtime-context-audit concise_execution_contract execution_budget_contract target-page-in-place-replacement parallel-compat-page-for-requested-page-change'
         'tools/wuji_cli.go' = 'package main // fixture source used only for audit hash freshness'
-        'outputs/context-pack-rich.json' = $ContextPackRichFixtureJson
     }
 
     foreach ($entry in $seedFiles.GetEnumerator()) {
         $path = Join-Path $Workspace ($entry.Key -replace '/', '\')
         Write-Fixture $path $entry.Value
     }
+    Write-Fixture (Join-Path $Workspace 'outputs\context-pack-rich.json') (New-ContextPackRichFixtureJson -Workspace $Workspace)
 
     $workspaceKey = Get-PrivacyHash -Value $Workspace
     $benchLog = Join-Path $outputs 'bench.jsonl'
@@ -190,8 +241,8 @@ function Write-CurrentAuditReports {
 
     $runtimeUsageLog = Join-Path $outputs 'runtime-usage.jsonl'
     $runtimeUsageRows = @(
-        [ordered]@{ timestamp = '2026-06-03T00:00:00Z'; workspace_key = $workspaceKey; usage = [ordered]@{ input_tokens = 12000; output_tokens = 400; cached_tokens = 8000; fresh_input_tokens = 4000 } }
-        [ordered]@{ timestamp = '2026-06-03T00:01:00Z'; workspace_key = $workspaceKey; usage = [ordered]@{ prompt_tokens = 11000; completion_tokens = 500; prompt_tokens_details = [ordered]@{ cached_tokens = 7800 }; uncached_input_tokens = 3200 } }
+        [ordered]@{ timestamp = '2026-06-03T00:00:00Z'; usage = [ordered]@{ input_tokens = 12000; output_tokens = 400; cached_tokens = 8000; fresh_input_tokens = 4000 } }
+        [ordered]@{ timestamp = '2026-06-03T00:01:00Z'; usage = [ordered]@{ prompt_tokens = 11000; completion_tokens = 500; prompt_tokens_details = [ordered]@{ cached_tokens = 7800 }; uncached_input_tokens = 3200 } }
     )
     [System.IO.File]::WriteAllLines($runtimeUsageLog, ($runtimeUsageRows | ForEach-Object { $_ | ConvertTo-Json -Depth 12 -Compress }), [System.Text.UTF8Encoding]::new($false))
 
@@ -387,7 +438,7 @@ $artifact = Join-Path $fixture 'artifact.txt'
 $sourceArtifact = Join-Path $fixture 'artifact-source.go'
 $metaReportArtifact = Join-Path $fixture 'meta-report.json'
 Write-Fixture $reference
-Write-Fixture $evidence
+Write-Fixture $evidence 'fixture evidence content with enough bytes for claim verification and audit linkage'
 Write-Fixture $artifact
 Write-Fixture $sourceArtifact 'package main
 
@@ -431,7 +482,7 @@ $fusionExtraMatrixPath = Join-Path $fusionExtraAtomWorkspace 'fusion-matrix.json
 $fusionExtraMatrix = Read-JsonUtf8 -Path $fusionExtraMatrixPath
 $fusionExtraMatrix.decisions += [pscustomobject]@{
     atom = 'github-trending-new-runtime-atom'
-    source_pool = 'github-trending-20260608-style'
+    source_refs = 'github-trending-20260608-style'
     decision = 'mount-on-demand'
     owner = 'intelligence-profile'
     reason = 'bad additive runtime atom'
@@ -445,11 +496,50 @@ $fusionUnknownPoolWorkspace = New-FusionAuditFixture -Name 'fusion-audit-unknown
 $fusionUnknownMatrixPath = Join-Path $fusionUnknownPoolWorkspace 'fusion-matrix.json'
 $fusionUnknownMatrix = Read-JsonUtf8 -Path $fusionUnknownMatrixPath
 $unknownDecision = $fusionUnknownMatrix.decisions | Where-Object { $_.atom -eq 'guarded-realtime-source-search' } | Select-Object -First 1
-$unknownDecision.source_pool = 'AnySearch+not-in-source-pools'
+$unknownDecision.source_refs = 'AnySearch+not-in-source-pools'
 Write-JsonUtf8 -Path $fusionUnknownMatrixPath -Value $fusionUnknownMatrix
 $fusionUnknownReport = Join-Path $fusionUnknownPoolWorkspace 'fusion-unknown-report.json'
 Invoke-Case -Name 'fusion-audit-unknown-source-pool-blocked' -ExpectedExit 1 -Arguments @('fusion-audit', '--workspace', $fusionUnknownPoolWorkspace, '--report', $fusionUnknownReport)
-Assert-ReportFailureContains -ReportPath $fusionUnknownReport -Marker 'fusion_matrix_unknown_source_pool=guarded-realtime-source-search:not-in-source-pools'
+Assert-ReportFailureContains -ReportPath $fusionUnknownReport -Marker 'fusion_matrix_unknown_source_refs=guarded-realtime-source-search:not-in-source-pools'
+
+$fusionRejectWorkspace = New-FusionAuditFixture -Name 'fusion-audit-object-verdict-reject-drift'
+$fusionRejectMatrixPath = Join-Path $fusionRejectWorkspace 'fusion-matrix.json'
+$fusionRejectMatrix = Read-JsonUtf8 -Path $fusionRejectMatrixPath
+$agencyVerdict = $fusionRejectMatrix.object_verdicts | Where-Object { $_.object -eq 'Agency Agents' } | Select-Object -First 1
+$agencyVerdict.runtime_status = 'landed'
+$agencyVerdict.landed_surfaces = @('guarded-realtime-source-search')
+Write-JsonUtf8 -Path $fusionRejectMatrixPath -Value $fusionRejectMatrix
+$fusionRejectReport = Join-Path $fusionRejectWorkspace 'fusion-reject-drift-report.json'
+Invoke-Case -Name 'fusion-audit-object-verdict-reject-drift-blocked' -ExpectedExit 1 -Arguments @('fusion-audit', '--workspace', $fusionRejectWorkspace, '--report', $fusionRejectReport)
+Assert-ReportFailureContains -ReportPath $fusionRejectReport -Marker 'fusion_matrix_object_verdict_required_status_drift=Agency Agents'
+
+$fusionSurfaceWorkspace = New-FusionAuditFixture -Name 'fusion-audit-object-verdict-surface-drift'
+$fusionSurfaceMatrixPath = Join-Path $fusionSurfaceWorkspace 'fusion-matrix.json'
+$fusionSurfaceMatrix = Read-JsonUtf8 -Path $fusionSurfaceMatrixPath
+$agnesVerdict = $fusionSurfaceMatrix.object_verdicts | Where-Object { $_.object -eq 'Agnes AI' } | Select-Object -First 1
+$agnesVerdict.landed_surfaces += 'hyperframes-runtime-shell'
+Write-JsonUtf8 -Path $fusionSurfaceMatrixPath -Value $fusionSurfaceMatrix
+$fusionSurfaceReport = Join-Path $fusionSurfaceWorkspace 'fusion-surface-drift-report.json'
+Invoke-Case -Name 'fusion-audit-object-verdict-surface-drift-blocked' -ExpectedExit 1 -Arguments @('fusion-audit', '--workspace', $fusionSurfaceWorkspace, '--report', $fusionSurfaceReport)
+Assert-ReportFailureContains -ReportPath $fusionSurfaceReport -Marker 'fusion_matrix_object_verdict_unknown_surface=Agnes AI:hyperframes-runtime-shell'
+
+$fusionPresenceWorkspace = New-FusionAuditFixture -Name 'fusion-audit-object-verdict-required-presence'
+$fusionPresenceMatrixPath = Join-Path $fusionPresenceWorkspace 'fusion-matrix.json'
+$fusionPresenceMatrix = Read-JsonUtf8 -Path $fusionPresenceMatrixPath
+$fusionPresenceMatrix.object_verdicts = @($fusionPresenceMatrix.object_verdicts | Where-Object { $_.object -ne 'Reasonix' })
+Write-JsonUtf8 -Path $fusionPresenceMatrixPath -Value $fusionPresenceMatrix
+$fusionPresenceReport = Join-Path $fusionPresenceWorkspace 'fusion-presence-drift-report.json'
+Invoke-Case -Name 'fusion-audit-object-verdict-required-presence-blocked' -ExpectedExit 1 -Arguments @('fusion-audit', '--workspace', $fusionPresenceWorkspace, '--report', $fusionPresenceReport)
+Assert-ReportFailureContains -ReportPath $fusionPresenceReport -Marker 'fusion_matrix_object_verdict_required_missing=Reasonix'
+
+$fusionDocCoverageWorkspace = New-FusionAuditFixture -Name 'fusion-audit-doc-object-without-verdict'
+$fusionDocCoverageMatrixPath = Join-Path $fusionDocCoverageWorkspace 'fusion-matrix.json'
+$fusionDocCoverageMatrix = Read-JsonUtf8 -Path $fusionDocCoverageMatrixPath
+$fusionDocCoverageMatrix.object_verdicts = @($fusionDocCoverageMatrix.object_verdicts | Where-Object { $_.object -ne 'dbs-business-toolbox' })
+Write-JsonUtf8 -Path $fusionDocCoverageMatrixPath -Value $fusionDocCoverageMatrix
+$fusionDocCoverageReport = Join-Path $fusionDocCoverageWorkspace 'fusion-doc-coverage-report.json'
+Invoke-Case -Name 'fusion-audit-doc-object-without-verdict-blocked' -ExpectedExit 1 -Arguments @('fusion-audit', '--workspace', $fusionDocCoverageWorkspace, '--report', $fusionDocCoverageReport)
+Assert-ReportFailureContains -ReportPath $fusionDocCoverageReport -Marker 'doc_object_without_verdict=plugins.md:dbs-business-toolbox'
 
 $fusionRiskWorkspace = New-FusionAuditFixture -Name 'fusion-audit-risk-not-reject'
 $fusionRiskMatrixPath = Join-Path $fusionRiskWorkspace 'fusion-matrix.json'
@@ -493,7 +583,7 @@ Invoke-Case -Name 'bench-log-cache-second' -ExpectedExit 0 -Arguments @('bench',
 $benchReportCacheTwoPath = Join-Path $fixture 'bench-report-cache-two.json'
 Invoke-Case -Name 'bench-report-cache-two-observations' -ExpectedExit 0 -Arguments @('bench-report', '--workspace', $benchWorkspace, '--report', $benchReportCacheTwoPath)
 $benchReportCacheTwo = Read-JsonUtf8 -Path $benchReportCacheTwoPath
-if ($benchReportCacheTwo.decision -ne 'absorb' -or $benchReportCacheTwo.evidence_level -ne 'verified' -or $benchReportCacheTwo.cache_observations -ne 2 -or $benchReportCacheTwo.volume_gate -ne 'pass' -or -not ($benchReportCacheTwo.PSObject.Properties.Name -contains 'output_tokens_p95') -or -not ($benchReportCacheTwo.PSObject.Properties.Name -contains 'fresh_input_tokens_p95') -or -not ($benchReportCacheTwo.PSObject.Properties.Name -contains 'uncached_tokens_p95') -or $benchReportCacheTwo.output_tokens_p95 -gt 4000 -or $benchReportCacheTwo.fresh_input_tokens_p95 -gt 12000 -or $benchReportCacheTwo.uncached_tokens_p95 -gt 14000) {
+if ($benchReportCacheTwo.decision -ne 'absorb' -or $benchReportCacheTwo.evidence_level -ne 'verified' -or $benchReportCacheTwo.cache_observations -ne 2 -or $benchReportCacheTwo.volume_gate -ne 'pass' -or -not ($benchReportCacheTwo.PSObject.Properties.Name -contains 'output_tokens_p95') -or -not ($benchReportCacheTwo.PSObject.Properties.Name -contains 'fresh_input_tokens_p95') -or -not ($benchReportCacheTwo.PSObject.Properties.Name -contains 'uncached_tokens_p95') -or -not ($benchReportCacheTwo.PSObject.Properties.Name -contains 'effective_input_units_p95') -or $benchReportCacheTwo.cached_input_cost_weight_bps -ne 1000 -or $benchReportCacheTwo.output_tokens_p95 -gt 4000 -or $benchReportCacheTwo.fresh_input_tokens_p95 -gt 12000 -or $benchReportCacheTwo.uncached_tokens_p95 -gt 14000) {
     throw "FAIL bench-report-cache-two-observations report=$($benchReportCacheTwo | ConvertTo-Json -Depth 6 -Compress)"
 }
 $benchBloatWorkspace = Join-Path $fixture 'bench-bloat'
@@ -508,8 +598,9 @@ if ($benchBloatReport.cache_hit_rate -ne 1 -or $benchBloatReport.decision -ne 'r
 }
 $contextAuditWorkspace = Join-Path $fixture 'context-bloat-pass'
 Write-Fixture (Join-Path $contextAuditWorkspace 'resident.md') 'small resident prompt'
+Write-Fixture (Join-Path $contextAuditWorkspace 'config.json') '{"iron_rules_version":"11.3","cache_config":{"stable_prefix_policy":"byte-stable-minimal-resident","optimization_objective":"smaller-stable-prefix-with-equal-or-better-hit-rate","concise_execution_policy":"gate-cached-fresh-output-uncached-total-cost"}}'
 Write-Fixture (Join-Path $contextAuditWorkspace 'tools\wuji_cli.go') 'package main // fixture'
-Write-Fixture (Join-Path $contextAuditWorkspace 'outputs\context-pack-rich.json') $ContextPackRichFixtureJson
+Write-Fixture (Join-Path $contextAuditWorkspace 'outputs\context-pack-rich.json') (New-ContextPackRichFixtureJson -Workspace $contextAuditWorkspace)
 Write-JsonUtf8 -Path (Join-Path $contextAuditWorkspace 'hotpath-manifest.json') -Value ([ordered]@{
     resident = @(@{ path = 'resident.md'; max_bytes = 8192 })
     on_demand = @(@{ path = 'cold.md'; max_loaded_bytes = 1024 })
@@ -575,11 +666,45 @@ if ($contextAuditHighOutput.status -ne 'fail' -or -not (($contextAuditHighOutput
     throw "FAIL context-bloat-audit-high-output-blocked report=$($contextAuditHighOutput | ConvertTo-Json -Depth 8 -Compress)"
 }
 
+$legacyOutputWorkspace = Join-Path $fixture 'optimization-audit-legacy-output'
+Write-CurrentAuditReports -Workspace $legacyOutputWorkspace
+New-Item -ItemType Directory -Force -Path (Join-Path $legacyOutputWorkspace 'output') | Out-Null
+Write-Fixture (Join-Path $legacyOutputWorkspace 'output\legacy-artifact.txt') 'legacy output residue'
+$legacyOutputReportPath = Join-Path $legacyOutputWorkspace 'optimization-audit-legacy-output.json'
+Invoke-Case -Name 'optimization-audit-legacy-output-blocked' -ExpectedExit 1 -Arguments @('optimization-audit', '--workspace', $legacyOutputWorkspace, '--report', $legacyOutputReportPath)
+$legacyOutputReport = Read-JsonUtf8 -Path $legacyOutputReportPath
+if ($legacyOutputReport.status -ne 'fail' -or -not (($legacyOutputReport.failures | Where-Object { $_ -like 'legacy_output_directory_present=*' }).Count -gt 0) -or $legacyOutputReport.budgets.legacy_output_directory_forbidden -ne $true) {
+    throw "FAIL optimization-audit-legacy-output-blocked report=$($legacyOutputReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+
+$nonCanonicalOutputsWorkspace = Join-Path $fixture 'optimization-audit-noncanonical-outputs'
+Write-CurrentAuditReports -Workspace $nonCanonicalOutputsWorkspace
+Write-Fixture (Join-Path $nonCanonicalOutputsWorkspace 'outputs\chat-route.json') '{"route":"legacy-root-residue"}'
+$nonCanonicalOutputsReportPath = Join-Path $nonCanonicalOutputsWorkspace 'optimization-audit-noncanonical-outputs.json'
+Invoke-Case -Name 'optimization-audit-noncanonical-root-outputs-blocked' -ExpectedExit 1 -Arguments @('optimization-audit', '--workspace', $nonCanonicalOutputsWorkspace, '--report', $nonCanonicalOutputsReportPath)
+$nonCanonicalOutputsReport = Read-JsonUtf8 -Path $nonCanonicalOutputsReportPath
+if ($nonCanonicalOutputsReport.status -ne 'fail' -or -not (($nonCanonicalOutputsReport.failures | Where-Object { $_ -like 'outputs_noncanonical_root_residue=*chat-route.json*' }).Count -gt 0) -or $nonCanonicalOutputsReport.budgets.outputs_root_policy -ne 'canonical-current-evidence-only') {
+    throw "FAIL optimization-audit-noncanonical-root-outputs-blocked report=$($nonCanonicalOutputsReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+
+$testResidueWorkspace = Join-Path $fixture 'optimization-audit-test-residue'
+Write-CurrentAuditReports -Workspace $testResidueWorkspace
+Write-Fixture (Join-Path $testResidueWorkspace 'outputs\tests\leftover\artifact.txt') 'leftover test residue'
+$testResidueReportPath = Join-Path $testResidueWorkspace 'optimization-audit-test-residue.json'
+Invoke-Case -Name 'optimization-audit-test-residue-blocked' -ExpectedExit 1 -Arguments @('optimization-audit', '--workspace', $testResidueWorkspace, '--report', $testResidueReportPath)
+$testResidueReport = Read-JsonUtf8 -Path $testResidueReportPath
+if ($testResidueReport.status -ne 'fail' -or -not (($testResidueReport.failures | Where-Object { $_ -like 'outputs_tests_residue_present=*outputs*tests*' }).Count -gt 0) -or $testResidueReport.budgets.outputs_tests_policy -ne 'empty-or-absent') {
+    throw "FAIL optimization-audit-test-residue-blocked report=$($testResidueReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+
 $runtimeAuditWorkspace = Join-Path $fixture 'runtime-context-audit'
 Write-CurrentAuditReports -Workspace $runtimeAuditWorkspace
 $runtimeAuditPass = Read-JsonUtf8 -Path (Join-Path $runtimeAuditWorkspace 'outputs\runtime-context-audit-report.json')
-if ($runtimeAuditPass.status -ne 'pass' -or $runtimeAuditPass.command -ne 'runtime-context-audit' -or $runtimeAuditPass.usage_observations -lt 2 -or $runtimeAuditPass.volume_gate -ne 'pass' -or $runtimeAuditPass.privacy_mode -ne 'numeric-usage-and-hash-only') {
+if ($runtimeAuditPass.status -ne 'pass' -or $runtimeAuditPass.command -ne 'runtime-context-audit' -or $runtimeAuditPass.usage_observations -lt 2 -or $runtimeAuditPass.volume_gate -ne 'pass' -or $runtimeAuditPass.privacy_mode -ne 'numeric-usage-and-hash-only' -or -not ($runtimeAuditPass.PSObject.Properties.Name -contains 'effective_input_units_p95') -or $runtimeAuditPass.cached_input_cost_weight_bps -ne 1000) {
     throw "FAIL runtime-context-audit-pass report=$($runtimeAuditPass | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($runtimeAuditPass.thread_reset_required -ne $false -or $runtimeAuditPass.thread_emergency -ne $false -or $runtimeAuditPass.same_thread_policy -ne 'same-thread-allowed') {
+    throw "FAIL runtime-context-audit-pass same-thread policy report=$($runtimeAuditPass | ConvertTo-Json -Depth 8 -Compress)"
 }
 
 $runtimeBloatWorkspace = Join-Path $fixture 'runtime-context-audit-bloat'
@@ -593,8 +718,26 @@ $runtimeBloatRows = @(
 [System.IO.File]::WriteAllLines($runtimeBloatLog, ($runtimeBloatRows | ForEach-Object { $_ | ConvertTo-Json -Depth 12 -Compress }), [System.Text.UTF8Encoding]::new($false))
 Invoke-Case -Name 'runtime-context-audit-bloat-blocked' -ExpectedExit 1 -Arguments @('runtime-context-audit', '--workspace', $runtimeBloatWorkspace)
 $runtimeBloatReport = Read-JsonUtf8 -Path (Join-Path $runtimeBloatWorkspace 'outputs\runtime-context-audit-report.json')
-if ($runtimeBloatReport.status -ne 'fail' -or $runtimeBloatReport.volume_gate -ne 'fail' -or $runtimeBloatReport.long_context_suspected -ne $true -or $runtimeBloatReport.diagnosis -ne 'cached-token-bloat-suspected-long-resident-or-outer-context' -or -not ($runtimeBloatReport.context_slimming_actions -contains 'replace-long-history-with-task-state-summary-and-evidence-handles') -or -not (($runtimeBloatReport.failures | Where-Object { $_ -like 'runtime_cached_tokens_p95_over_budget=*' }).Count -gt 0)) {
+if ($runtimeBloatReport.status -ne 'fail' -or $runtimeBloatReport.volume_gate -ne 'fail' -or $runtimeBloatReport.long_context_suspected -ne $true -or $runtimeBloatReport.diagnosis -ne 'cached-token-bloat-suspected-long-resident-or-outer-context' -or -not ($runtimeBloatReport.context_slimming_actions -contains 'replace-long-history-with-task-state-summary-and-evidence-handles') -or -not ($runtimeBloatReport.context_slimming_actions -contains 'create-fresh-thread-from-context-reset-handoff') -or -not (($runtimeBloatReport.failures | Where-Object { $_ -like 'runtime_cached_tokens_p95_over_budget=*' }).Count -gt 0)) {
     throw "FAIL runtime-context-audit-bloat-blocked report=$($runtimeBloatReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($runtimeBloatReport.thread_reset_required -ne $true -or $runtimeBloatReport.thread_emergency -ne $false -or $runtimeBloatReport.same_thread_policy -ne 'stop-broad-work-refresh-handoff' -or -not ($runtimeBloatReport.failures -contains 'runtime_same_thread_context_reset_required') -or (($runtimeBloatReport.failures | Where-Object { $_ -like 'runtime_same_thread_emergency_stop_required=*' }).Count -gt 0)) {
+    throw "FAIL runtime-context-audit-bloat-reset-policy report=$($runtimeBloatReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+
+$runtimeEmergencyWorkspace = Join-Path $fixture 'runtime-context-audit-emergency'
+Write-CurrentAuditReports -Workspace $runtimeEmergencyWorkspace
+$runtimeEmergencyKey = Get-PrivacyHash -Value $runtimeEmergencyWorkspace
+$runtimeEmergencyLog = Join-Path $runtimeEmergencyWorkspace 'outputs\runtime-usage.jsonl'
+$runtimeEmergencyRows = @(
+    [ordered]@{ timestamp = '2026-06-03T00:00:00Z'; workspace_key = $runtimeEmergencyKey; usage = [ordered]@{ input_tokens = 270000; output_tokens = 900; cached_tokens = 250000; fresh_input_tokens = 20000 } }
+    [ordered]@{ timestamp = '2026-06-03T00:01:00Z'; workspace_key = $runtimeEmergencyKey; usage = [ordered]@{ input_tokens = 265000; output_tokens = 950; cached_tokens = 248000; fresh_input_tokens = 17000 } }
+)
+[System.IO.File]::WriteAllLines($runtimeEmergencyLog, ($runtimeEmergencyRows | ForEach-Object { $_ | ConvertTo-Json -Depth 12 -Compress }), [System.Text.UTF8Encoding]::new($false))
+Invoke-Case -Name 'runtime-context-audit-emergency-blocked' -ExpectedExit 1 -Arguments @('runtime-context-audit', '--workspace', $runtimeEmergencyWorkspace)
+$runtimeEmergencyReport = Read-JsonUtf8 -Path (Join-Path $runtimeEmergencyWorkspace 'outputs\runtime-context-audit-report.json')
+if ($runtimeEmergencyReport.status -ne 'fail' -or $runtimeEmergencyReport.volume_gate -ne 'fail' -or $runtimeEmergencyReport.thread_reset_required -ne $true -or $runtimeEmergencyReport.thread_emergency -ne $true -or $runtimeEmergencyReport.same_thread_policy -ne 'emergency-stop-refresh-handoff' -or -not ($runtimeEmergencyReport.failures -contains 'runtime_same_thread_context_reset_required') -or -not (($runtimeEmergencyReport.failures | Where-Object { $_ -like 'runtime_same_thread_emergency_stop_required=*' }).Count -gt 0)) {
+    throw "FAIL runtime-context-audit-emergency-policy report=$($runtimeEmergencyReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 
 $runtimeRawWorkspace = Join-Path $fixture 'runtime-context-audit-raw'
@@ -781,7 +924,126 @@ Invoke-Case -Name 'task-end-done-next-step-blocked' -ExpectedExit 1 -Arguments @
 
 $routeConfig = Join-Path $fixture 'route-config.json'
 [System.IO.File]::WriteAllText($routeConfig, (@{
-    iron_rules_version = '10.8'
+    iron_rules_version = '11.3'
+    providers = @(
+        @{
+            id = 'agnes-openai-free'
+            name = 'Agnes AI (Current Free Tier)'
+            provider_type = 'openai'
+            api_key = $null
+            base_url = 'https://apihub.agnes-ai.com'
+            currency = 'USD'
+            enabled = $true
+            priority = 1
+            model = 'agnes-2.0-flash'
+            api_key_env = 'AGNES_API_KEY'
+            free_tier_status = 'current-free'
+            notes = 'Mirror only. Keep key outside repo and use only while official current price remains 0.'
+        }
+        @{
+            id = 'deepseek-web'
+            name = 'DeepSeek (免费网页)'
+            provider_type = 'deepseek_web'
+            api_key = $null
+            base_url = $null
+            currency = 'CNY'
+            enabled = $true
+            priority = 0
+            model = 'deepseek-chat'
+        }
+    )
+    default_model_tier = 'standard'
+    model_profiles = @{
+        low = @{
+            provider_id = 'deepseek-web'
+            model = 'deepseek-chat'
+            reasoning_effort = 'low'
+        }
+        standard = @{
+            provider_id = 'deepseek-web'
+            model = 'deepseek-chat'
+            reasoning_effort = 'medium'
+        }
+        high = @{
+            provider_id = 'deepseek-web'
+            model = 'deepseek-chat'
+            reasoning_effort = 'high'
+        }
+    }
+    routing_rules = @(
+        @{
+            id = 'imagegen'
+            provider_id = 'agnes-openai-free'
+            model = 'agnes-image-2.1-flash'
+        }
+        @{
+            id = 'video'
+            provider_id = 'agnes-openai-free'
+            model = 'agnes-video-v2.0'
+        }
+    )
+    cache_config = @{ target_hit_rate = 0.95; flatten_threshold = 10 }
+} | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+$routeConfigAgnesDisabled = Join-Path $fixture 'route-config-agnes-disabled.json'
+[System.IO.File]::WriteAllText($routeConfigAgnesDisabled, (@{
+    iron_rules_version = '11.3'
+    providers = @(
+        @{
+            id = 'agnes-openai-free'
+            name = 'Agnes AI (Current Free Tier)'
+            provider_type = 'openai'
+            api_key = $null
+            base_url = 'https://apihub.agnes-ai.com'
+            currency = 'USD'
+            enabled = $false
+            priority = 1
+            model = 'agnes-2.0-flash'
+            api_key_env = 'AGNES_API_KEY'
+            free_tier_status = 'current-free'
+            notes = 'Mirror only. Keep key outside repo and use only while official current price remains 0.'
+        }
+        @{
+            id = 'deepseek-web'
+            name = 'DeepSeek (免费网页)'
+            provider_type = 'deepseek_web'
+            api_key = $null
+            base_url = $null
+            currency = 'CNY'
+            enabled = $true
+            priority = 0
+            model = 'deepseek-chat'
+        }
+    )
+    default_model_tier = 'standard'
+    model_profiles = @{
+        low = @{
+            provider_id = 'deepseek-web'
+            model = 'deepseek-chat'
+            reasoning_effort = 'low'
+        }
+        standard = @{
+            provider_id = 'deepseek-web'
+            model = 'deepseek-chat'
+            reasoning_effort = 'medium'
+        }
+        high = @{
+            provider_id = 'deepseek-web'
+            model = 'deepseek-chat'
+            reasoning_effort = 'high'
+        }
+    }
+    routing_rules = @(
+        @{
+            id = 'imagegen'
+            provider_id = 'agnes-openai-free'
+            model = 'agnes-image-2.1-flash'
+        }
+        @{
+            id = 'video'
+            provider_id = 'agnes-openai-free'
+            model = 'agnes-video-v2.0'
+        }
+    )
     cache_config = @{ target_hit_rate = 0.95; flatten_threshold = 10 }
 } | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
 $canonReport = Join-Path $fixture 'canon-report.json'
@@ -790,14 +1052,24 @@ if (-not (Test-Path -LiteralPath $canonReport)) {
     throw "FAIL canon-report missing report=$canonReport"
 }
 $canon = Read-JsonUtf8 -Path $canonReport
-if ($canon.default_model_tier -ne 'low') {
+if ($canon.default_model_tier -ne 'standard') {
     throw "FAIL canon-report wrong default tier=$($canon.default_model_tier)"
 }
 if ($canon.model_profiles.low.model -ne 'deepseek-chat' -or $canon.model_profiles.standard.model -ne 'deepseek-chat' -or $canon.model_profiles.high.model -ne 'deepseek-chat') {
     throw "FAIL canon-report wrong model profiles"
 }
-if ($canon.built_in_plugins.Count -lt 4) {
-    throw "FAIL canon-report missing built-in plugins"
+if ($canon.host_available_plugins.Count -lt 4) {
+    throw "FAIL canon-report missing host-available plugins"
+}
+foreach ($pluginName in @('Browser', 'Documents', 'Spreadsheets', 'Presentations')) {
+    if (-not ($canon.host_available_plugins | Where-Object { $_.plugin -eq $pluginName })) {
+        throw "FAIL canon-report missing host-available plugin mirror $pluginName report=$($canon.host_available_plugins | ConvertTo-Json -Depth 8 -Compress)"
+    }
+}
+foreach ($pluginName in @('Browser', 'Documents', 'Spreadsheets', 'Presentations')) {
+    if (-not ($canon.admitted_plugins | Where-Object { $_.plugin -eq $pluginName })) {
+        throw "FAIL canon-report missing admitted plugin $pluginName report=$($canon.admitted_plugins | ConvertTo-Json -Depth 8 -Compress)"
+    }
 }
 if (-not $canon.distilled_atom_kernel -or -not ($canon.distilled_atom_kernel.resident_light_atoms -contains 'assumption-ledger') -or -not ($canon.distilled_atom_kernel.on_demand_atoms -contains 'version-doc-mcp')) {
     throw "FAIL canon-report missing distilled atom kernel report=$($canon | ConvertTo-Json -Depth 8 -Compress)"
@@ -815,6 +1087,9 @@ if ($canon.distilled_atom_kernel.owner_map.'content-type-compression-router' -no
 if ($canon.intelligence_profile_contract.role -ne 'candidate-scout-not-research-system' -or $canon.intelligence_profile_contract.search_scope -ne 'wide-recall-shallow-first') {
     throw "FAIL canon-report intelligence profile contract role/scope drift report=$($canon.intelligence_profile_contract | ConvertTo-Json -Depth 8 -Compress)"
 }
+if ($canon.intelligence_profile_contract.search_method -ne 'wide-shallow-scout-first-then-deepen-only-on-promising-candidates') {
+    throw "FAIL canon-report intelligence profile search method drift report=$($canon.intelligence_profile_contract | ConvertTo-Json -Depth 8 -Compress)"
+}
 if (-not ($canon.intelligence_profile_contract.may_do -contains 'candidate-metadata') -or -not ($canon.intelligence_profile_contract.may_do -contains 'evidence-handle')) {
     throw "FAIL canon-report intelligence profile missing allowed scout outputs report=$($canon.intelligence_profile_contract | ConvertTo-Json -Depth 8 -Compress)"
 }
@@ -824,22 +1099,22 @@ if (-not ($canon.intelligence_profile_contract.must_not_do -contains 'final-anal
 if ($canon.concise_execution_contract.objective -ne 'short-precise-high-hit-low-total-cost') {
     throw "FAIL canon-report concise execution objective drift report=$($canon.concise_execution_contract | ConvertTo-Json -Depth 8 -Compress)"
 }
-if (-not ($canon.concise_execution_contract.must_do -contains 'single-message-precision') -or -not ($canon.concise_execution_contract.must_do -contains 'prior-art-before-invention-when-uncertain') -or -not ($canon.concise_execution_contract.must_do -contains 'fresh-output-uncached-volume-gated')) {
+if (-not ($canon.concise_execution_contract.must_do -contains 'simplest-effective-path-first') -or -not ($canon.concise_execution_contract.must_do -contains 'agnes-search-only-before-uncertain-build-when-web-search-is-explicitly-needed') -or -not ($canon.concise_execution_contract.must_do -contains 'single-message-precision') -or -not ($canon.concise_execution_contract.must_do -contains 'prior-art-before-invention-when-uncertain') -or -not ($canon.concise_execution_contract.must_do -contains 'first-pass-acceptance-and-impact-lock-before-edit') -or -not ($canon.concise_execution_contract.must_do -contains 'prove-need-before-abstraction') -or -not ($canon.concise_execution_contract.must_do -contains 'delete-or-reuse-before-add') -or -not ($canon.concise_execution_contract.must_do -contains 'target-page-in-place-replacement') -or -not ($canon.concise_execution_contract.must_do -contains 'active-route-entrypoint-verification') -or -not ($canon.concise_execution_contract.must_do -contains 'superseded-page-cleanup-before-completion') -or -not ($canon.concise_execution_contract.must_do -contains 'smallest-working-change-first') -or -not ($canon.concise_execution_contract.must_do -contains 'fresh-output-uncached-volume-gated')) {
     throw "FAIL canon-report concise execution missing must_do report=$($canon.concise_execution_contract | ConvertTo-Json -Depth 8 -Compress)"
 }
-if (-not ($canon.concise_execution_contract.must_not_do -contains 'verbose-status-padding') -or -not ($canon.concise_execution_contract.must_not_do -contains 'unneeded-preflight-loop') -or -not ($canon.concise_execution_contract.must_not_do -contains 'context-shift-from-cached-to-uncached') -or -not ($canon.concise_execution_contract.must_not_do -contains 'from-scratch-tooling-when-existing-solution-fits')) {
+if (-not ($canon.concise_execution_contract.must_not_do -contains 'verbose-status-padding') -or -not ($canon.concise_execution_contract.must_not_do -contains 'unneeded-preflight-loop') -or -not ($canon.concise_execution_contract.must_not_do -contains 'guess-without-evidence') -or -not ($canon.concise_execution_contract.must_not_do -contains 'blind-trial-and-error-when-prior-art-is-available') -or -not ($canon.concise_execution_contract.must_not_do -contains 'context-shift-from-cached-to-uncached') -or -not ($canon.concise_execution_contract.must_not_do -contains 'from-scratch-tooling-when-existing-solution-fits') -or -not ($canon.concise_execution_contract.must_not_do -contains 'clever-overengineering-without-proven-need') -or -not ($canon.concise_execution_contract.must_not_do -contains 'new-abstraction-before-duplication-or-gap-is-proven') -or -not ($canon.concise_execution_contract.must_not_do -contains 'parallel-compat-page-for-requested-page-change') -or -not ($canon.concise_execution_contract.must_not_do -contains 'leave-old-page-reachable-after-replacement')) {
     throw "FAIL canon-report concise execution missing must_not_do report=$($canon.concise_execution_contract | ConvertTo-Json -Depth 8 -Compress)"
 }
 if (-not ($canon.concise_execution_contract.cost_vector -contains 'fresh_input_tokens_p95') -or -not ($canon.concise_execution_contract.cost_vector -contains 'output_tokens_p95') -or -not ($canon.concise_execution_contract.cost_vector -contains 'uncached_tokens_p95') -or -not ($canon.concise_execution_contract.cost_vector -contains 'tokens_per_success')) {
     throw "FAIL canon-report concise execution missing cost vector report=$($canon.concise_execution_contract | ConvertTo-Json -Depth 8 -Compress)"
 }
-if ($canon.execution_budget_contract.objective -ne 'scoped-fast-real-completion') {
+if ($canon.execution_budget_contract.objective -ne 'all-work-direct-small-task-execution') {
     throw "FAIL canon-report execution budget objective drift report=$($canon.execution_budget_contract | ConvertTo-Json -Depth 8 -Compress)"
 }
-if (-not ($canon.execution_budget_contract.must_do -contains 'run-targeted-verification-before-full-suite') -or -not ($canon.execution_budget_contract.must_do -contains 'keep-officers-on-demand-and-exit-after-merge')) {
+if (-not ($canon.execution_budget_contract.must_do -contains 'bind-finish-line-and-out-of-scope-before-goal-start') -or -not ($canon.execution_budget_contract.must_do -contains 'keep-direct-code-work-on-a-minimal-first-pass-guard') -or -not ($canon.execution_budget_contract.must_do -contains 'all-non-chat-work-stays-direct-task-by-default') -or -not ($canon.execution_budget_contract.must_do -contains 'run-targeted-verification-before-any-full-suite') -or -not ($canon.execution_budget_contract.must_do -contains 'keep-officers-on-demand-and-exit-after-merge')) {
     throw "FAIL canon-report execution budget missing must_do report=$($canon.execution_budget_contract | ConvertTo-Json -Depth 8 -Compress)"
 }
-if (-not ($canon.execution_budget_contract.must_not_do -contains 'escalate-small-task-to-full-legion-scan') -or -not ($canon.execution_budget_contract.must_not_do -contains 'repeat-full-suite-after-small-edits') -or -not ($canon.execution_budget_contract.must_not_do -contains 'block-non-token-work-on-missing-runtime-usage-log')) {
+if (-not ($canon.execution_budget_contract.must_not_do -contains 'auto-create-big-task-mode') -or -not ($canon.execution_budget_contract.must_not_do -contains 'repeat-full-suite-after-small-edits') -or -not ($canon.execution_budget_contract.must_not_do -contains 'block-non-token-work-on-missing-runtime-usage-log') -or -not ($canon.execution_budget_contract.must_not_do -contains 'start-goal-without-clear-finish-line')) {
     throw "FAIL canon-report execution budget missing must_not_do report=$($canon.execution_budget_contract | ConvertTo-Json -Depth 8 -Compress)"
 }
 if ($canon.analysis_completeness_contract.objective -ne 'complete-materials-before-architecture-analysis') {
@@ -859,17 +1134,33 @@ if ($routeReport.matched_route.id -ne 'visual' -or $routeReport.recommended_tier
 if ($routeReport.concise_execution_contract.objective -ne 'short-precise-high-hit-low-total-cost') {
     throw "FAIL route-task missing concise execution contract report=$($routeReport | ConvertTo-Json -Depth 8 -Compress)"
 }
-if ($routeReport.execution_budget_contract.objective -ne 'scoped-fast-real-completion' -or $routeReport.execution_budget.id -ne 'LIGHT_TASK' -or $routeReport.execution_budget.full_suite_max_runs -ne 0) {
+if ($routeReport.execution_budget_contract.objective -ne 'all-work-direct-small-task-execution' -or $routeReport.execution_budget.id -ne 'DIRECT_TASK' -or $routeReport.execution_budget.full_suite_max_runs -ne 0) {
     throw "FAIL route-task execution budget should stay light for scoped visual work report=$($routeReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($routeReport.simplest_effective_path_required -ne $true -or $routeReport.agnes_scout_preferred -ne $false -or $routeReport.goal_boundary_lock_required -ne $false) {
+    throw "FAIL route-task scoped visual work should stay light without forced scout or goal boundary lock report=$($routeReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($null -ne $routeReport.goal_boundary_required_fields) {
+    throw "FAIL route-task light visual work should not emit goal boundary required fields report=$($routeReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 if (-not ($routeReport.capability_mounts.distilled_atoms -contains 'content-type-compression-router') -or -not ($routeReport.capability_mounts.distilled_atoms -contains 'reversible-evidence-handle')) {
     throw "FAIL route-task missing visual distilled atoms report=$($routeReport | ConvertTo-Json -Depth 8 -Compress)"
 }
-if (-not ($routeReport.capability_mounts.distilled_atoms -contains 'html-native-design-canvas') -or -not ($routeReport.capability_mounts.distilled_atoms -contains 'anti-ai-slop-visual-rules') -or -not ($routeReport.capability_mounts.distilled_atoms -contains 'html-deck-to-editable-pptx')) {
+if (-not ($routeReport.capability_mounts.distilled_atoms -contains 'brand-asset-protocol') -or -not ($routeReport.capability_mounts.distilled_atoms -contains 'anti-ai-slop-visual-rules') -or -not ($routeReport.capability_mounts.distilled_atoms -contains 'native-pptx-master-route')) {
     throw "FAIL route-task missing huashu-design distilled atoms report=$($routeReport | ConvertTo-Json -Depth 8 -Compress)"
 }
-if ($routeReport.capability_mounts.source_lineage_atoms -contains 'content-type-compression-router' -or $routeReport.capability_mounts.source_lineage_atoms -contains 'reversible-evidence-handle') {
+if ($routeReport.capability_mounts.source_support_classes -contains 'content-type-compression-router' -or $routeReport.capability_mounts.source_support_classes -contains 'reversible-evidence-handle') {
     throw "FAIL route-task mixed distilled atoms into source lineage atoms report=$($routeReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-chat-default-strong' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'just chat casually with me', '--report', (Join-Path $fixture 'route-chat-agnes-report.json'))
+$chatAgnesReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-chat-agnes-report.json')
+if ($chatAgnesReport.matched_route.id -ne 'chat' -or $chatAgnesReport.matched_route.provider_id -ne 'deepseek-web' -or $chatAgnesReport.matched_route.model -ne 'deepseek-chat' -or $chatAgnesReport.recommended_profile.provider_id -ne 'deepseek-web' -or $chatAgnesReport.recommended_profile.model -ne 'deepseek-chat') {
+    throw "FAIL route-task chat should route to default strong provider report=$($chatAgnesReport | ConvertTo-Json -Depth 6 -Compress)"
+}
+Invoke-Case -Name 'route-task-chat-fallback-when-agnes-disabled' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfigAgnesDisabled, '--query', 'just chat casually with me', '--report', (Join-Path $fixture 'route-chat-agnes-disabled-report.json'))
+$chatAgnesDisabledReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-chat-agnes-disabled-report.json')
+if ($chatAgnesDisabledReport.matched_route.id -ne 'chat' -or $chatAgnesDisabledReport.matched_route.provider_id -ne 'deepseek-web' -or $chatAgnesDisabledReport.matched_route.model -ne 'deepseek-chat' -or $chatAgnesDisabledReport.recommended_profile.provider_id -ne 'deepseek-web' -or $chatAgnesDisabledReport.recommended_profile.model -ne 'deepseek-chat' -or $chatAgnesDisabledReport.provider_fallback_applied -eq $true) {
+    throw "FAIL route-task chat should stay on default strong provider even when Agnes is disabled report=$($chatAgnesDisabledReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 Invoke-Case -Name 'route-task-analysis-completeness' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'analyze architecture with incomplete docs and unknown modules before making system conclusions', '--report', (Join-Path $fixture 'route-analysis-completeness-report.json'))
 $routeAnalysisReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-analysis-completeness-report.json')
@@ -887,13 +1178,50 @@ $routeCodeReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-code-report.js
 if ($routeCodeReport.matched_route.id -ne 'code' -or $routeCodeReport.code_map_required -ne $true -or $routeCodeReport.next_required_artifact -ne 'code-map') {
     throw "FAIL route-task code-map report=$($routeCodeReport | ConvertTo-Json -Depth 6 -Compress)"
 }
+if ($routeCodeReport.task_route.execution_contract -ne 'developer-plan-then-execution' -or $routeCodeReport.task_route.planning_profile.provider_id -ne 'deepseek-web' -or $routeCodeReport.task_route.planning_profile.model -ne 'deepseek-chat') {
+    throw "FAIL route-task code should plan with default strong provider report=$($routeCodeReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-code-plan-fallback-when-agnes-disabled' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfigAgnesDisabled, '--query', 'please refactor a Rust plugin and fix code across multiple files', '--report', (Join-Path $fixture 'route-code-agnes-disabled-report.json'))
+$routeCodeAgnesDisabledReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-code-agnes-disabled-report.json')
+if ($routeCodeAgnesDisabledReport.task_route.execution_contract -ne 'developer-plan-then-execution' -or $routeCodeAgnesDisabledReport.task_route.planning_profile.provider_id -ne 'deepseek-web' -or $routeCodeAgnesDisabledReport.task_route.planning_profile.model -ne 'deepseek-chat') {
+    throw "FAIL route-task code planning should remain on default strong provider when Agnes is disabled report=$($routeCodeAgnesDisabledReport | ConvertTo-Json -Depth 8 -Compress)"
+}
 if (-not ($routeCodeReport.capability_mounts.distilled_atoms -contains 'version-doc-mcp') -or -not ($routeCodeReport.capability_mounts.distilled_atoms -contains 'disciplined-debug-loop')) {
     throw "FAIL route-task code missing distilled atoms report=$($routeCodeReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 Invoke-Case -Name 'route-task-simple-code-low-cost' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'fix bug', '--report', (Join-Path $fixture 'route-simple-code-report.json'))
 $routeSimpleCodeReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-simple-code-report.json')
-if ($routeSimpleCodeReport.matched_route.id -ne 'code' -or $routeSimpleCodeReport.recommended_tier -ne 'low' -or $routeSimpleCodeReport.code_map_required -ne $false -or ($routeSimpleCodeReport.task_route.oversight_chain -contains 'root-cause-officer') -or ($routeSimpleCodeReport.capability_mounts.distilled_atoms -contains 'root-cause-radar') -or ($routeSimpleCodeReport.capability_mounts.distilled_atoms -contains 'prior-art-solution-search') -or $routeSimpleCodeReport.deterministic_execution.required -ne $false -or $routeSimpleCodeReport.execution_budget.id -ne 'LIGHT_TASK' -or $routeSimpleCodeReport.execution_budget.full_suite_max_runs -ne 0) {
+if ($routeSimpleCodeReport.matched_route.id -ne 'code' -or $routeSimpleCodeReport.recommended_tier -ne 'low' -or $routeSimpleCodeReport.code_map_required -ne $false -or ($routeSimpleCodeReport.task_route.oversight_chain -contains 'root-cause-officer') -or ($routeSimpleCodeReport.capability_mounts.distilled_atoms -contains 'root-cause-radar') -or ($routeSimpleCodeReport.capability_mounts.distilled_atoms -contains 'prior-art-solution-search') -or $routeSimpleCodeReport.deterministic_execution.required -ne $false -or $routeSimpleCodeReport.execution_budget.id -ne 'DIRECT_TASK' -or $routeSimpleCodeReport.execution_budget.full_suite_max_runs -ne 0) {
     throw "FAIL route-task simple code should stay low-cost report=$($routeSimpleCodeReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($routeSimpleCodeReport.task_route.execution_contract -ne 'developer-direct-execution' -or $routeSimpleCodeReport.goal_boundary_lock_required -ne $false -or $routeSimpleCodeReport.agnes_scout_preferred -ne $false -or $null -ne $routeSimpleCodeReport.task_route.planning_profile) {
+    throw "FAIL route-task simple code should skip Agnes planning and goal boundary lock report=$($routeSimpleCodeReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($routeSimpleCodeReport.first_pass_guard_required -ne $true -or -not $routeSimpleCodeReport.first_pass_guard_fields -or -not ($routeSimpleCodeReport.first_pass_guard_fields -contains 'acceptance_signal') -or -not $routeSimpleCodeReport.task_route.direct_execution_guard -or $routeSimpleCodeReport.task_route.direct_execution_guard.mode -ne 'first-pass-minimal-lock') {
+    throw "FAIL route-task simple code should carry first-pass minimal lock report=$($routeSimpleCodeReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-simple-doc-light' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'small doc update for one section', '--report', (Join-Path $fixture 'route-simple-doc-report.json'))
+$routeSimpleDocReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-simple-doc-report.json')
+if ($routeSimpleDocReport.matched_route.id -ne 'content' -or $routeSimpleDocReport.task_route.state -ne 'LIGHT_EXECUTION' -or $routeSimpleDocReport.execution_budget.id -ne 'DIRECT_TASK' -or $routeSimpleDocReport.goal_boundary_lock_required -ne $false -or $routeSimpleDocReport.agnes_scout_preferred -ne $false) {
+    throw "FAIL route-task simple doc should stay on the light path report=$($routeSimpleDocReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-simple-code-chinese-light' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', '修一个按钮点击没反应的小 bug', '--report', (Join-Path $fixture 'route-simple-code-chinese-report.json'))
+$routeSimpleCodeChineseReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-simple-code-chinese-report.json')
+if ($routeSimpleCodeChineseReport.matched_route.id -ne 'code' -or $routeSimpleCodeChineseReport.task_route.state -ne 'LIGHT_EXECUTION' -or $routeSimpleCodeChineseReport.execution_budget.id -ne 'DIRECT_TASK' -or $routeSimpleCodeChineseReport.task_route.execution_contract -ne 'developer-direct-execution' -or $routeSimpleCodeChineseReport.matched_route.provider_id -ne 'deepseek-web' -or $routeSimpleCodeChineseReport.agnes_scout_preferred -ne $false) {
+    throw "FAIL route-task chinese simple code should stay on direct strong light path report=$($routeSimpleCodeChineseReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($routeSimpleCodeChineseReport.first_pass_guard_required -ne $true -or $routeSimpleCodeChineseReport.task_route.direct_execution_guard.mode -ne 'first-pass-minimal-lock') {
+    throw "FAIL route-task chinese simple code should carry first-pass minimal lock report=$($routeSimpleCodeChineseReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-visual-page-design-not-code' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', '改一个落地页页面设计和界面版式', '--report', (Join-Path $fixture 'route-visual-page-design-report.json'))
+$visualPageDesignReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-visual-page-design-report.json')
+if ($visualPageDesignReport.matched_route.id -ne 'visual' -or ($visualPageDesignReport.capability_mounts.distilled_atoms -contains 'disciplined-debug-loop')) {
+    throw "FAIL route-task visual page design should prefer visual route over code report=$($visualPageDesignReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-search-chinese-agnes' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', '全网搜索一下类似的开源解决方案', '--report', (Join-Path $fixture 'route-search-chinese-agnes-report.json'))
+$routeSearchChineseAgnesReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-search-chinese-agnes-report.json')
+if ($routeSearchChineseAgnesReport.matched_route.id -ne 'search' -or $routeSearchChineseAgnesReport.matched_route.provider_id -ne 'agnes-openai-free' -or $routeSearchChineseAgnesReport.matched_route.model -ne 'agnes-2.0-flash' -or $routeSearchChineseAgnesReport.recommended_profile.provider_id -ne 'agnes-openai-free') {
+    throw "FAIL route-task chinese search should be the only Agnes text path report=$($routeSearchChineseAgnesReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 Invoke-Case -Name 'route-task-prior-art-solution-search' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'solve this bug by searching existing open source tools and root cause approaches before building from scratch', '--report', (Join-Path $fixture 'route-prior-art-report.json'))
 $routePriorArtReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-prior-art-report.json')
@@ -923,6 +1251,11 @@ $routePatchDebtReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-patch-deb
 if (-not ($routePatchDebtReport.capability_mounts.distilled_atoms -contains 'patch-debt-root-cure')) {
     throw "FAIL route-task missing patch debt root cure atom report=$($routePatchDebtReport | ConvertTo-Json -Depth 8 -Compress)"
 }
+Invoke-Case -Name 'route-task-ponytail-restraint-atoms' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'fix code with YAGNI, smallest working change, delete before add, and avoid overengineering or premature abstraction', '--report', (Join-Path $fixture 'route-ponytail-restraint-report.json'))
+$routePonytailReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-ponytail-restraint-report.json')
+if (-not ($routePonytailReport.capability_mounts.distilled_atoms -contains 'disciplined-debug-loop') -or -not ($routePonytailReport.capability_mounts.distilled_atoms -contains 'patch-debt-root-cure')) {
+    throw "FAIL route-task Ponytail restraint did not map to existing atoms report=$($routePonytailReport | ConvertTo-Json -Depth 8 -Compress)"
+}
 Invoke-Case -Name 'route-task-terminal-real-run-verification' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'finish a code fix only after final real run verification with browser test command evidence', '--report', (Join-Path $fixture 'route-terminal-verification-report.json'))
 $routeTerminalVerificationReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-terminal-verification-report.json')
 if (-not ($routeTerminalVerificationReport.capability_mounts.distilled_atoms -contains 'terminal-real-run-verification')) {
@@ -933,16 +1266,24 @@ $routeResearchReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-research-r
 if ($routeResearchReport.matched_route.id -ne 'search' -or -not ($routeResearchReport.capability_mounts.distilled_atoms -contains 'guarded-realtime-source-search') -or -not ($routeResearchReport.capability_mounts.distilled_atoms -contains 'research-evidence-pack') -or -not ($routeResearchReport.capability_mounts.distilled_atoms -contains 'claim-fact-check')) {
     throw "FAIL route-task research missing distilled atoms report=$($routeResearchReport | ConvertTo-Json -Depth 8 -Compress)"
 }
-if ($routeResearchReport.intelligence_profile_contract.role -ne 'candidate-scout-not-research-system' -or -not ($routeResearchReport.capability_mounts.plugin_candidates -contains 'GitHub') -or -not ($routeResearchReport.intelligence_profile_contract.must_not_do -contains 'final-analysis') -or -not ($routeResearchReport.intelligence_profile_contract.must_not_do -contains 'install-or-execute')) {
-    throw "FAIL route-task research should expose GitHub-first scout contract report=$($routeResearchReport | ConvertTo-Json -Depth 8 -Compress)"
+if ($routeResearchReport.intelligence_profile_contract.role -ne 'candidate-scout-not-research-system' -or -not ($routeResearchReport.capability_mounts.plugin_candidates -contains 'Browser') -or ($routeResearchReport.capability_mounts.plugin_candidates -contains 'GitHub') -or -not ($routeResearchReport.intelligence_profile_contract.must_not_do -contains 'final-analysis') -or -not ($routeResearchReport.intelligence_profile_contract.must_not_do -contains 'install-or-execute')) {
+    throw "FAIL route-task research should expose GitHub-first scout contract without fake GitHub plugin admission report=$($routeResearchReport | ConvertTo-Json -Depth 8 -Compress)"
 }
-if ($routeResearchReport.capability_mounts.source_lineage_atoms -contains 'guarded-realtime-source-search' -or $routeResearchReport.capability_mounts.source_lineage_atoms -contains 'research-evidence-pack') {
+if ($routeResearchReport.capability_mounts.source_support_classes -contains 'guarded-realtime-source-search' -or $routeResearchReport.capability_mounts.source_support_classes -contains 'research-evidence-pack') {
     throw "FAIL route-task research mixed distilled atoms into source lineage atoms report=$($routeResearchReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 Invoke-Case -Name 'route-task-imagegen' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'please generate a neon teaching illustration poster cover image', '--report', (Join-Path $fixture 'route-image-report.json'))
 $imageRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-image-report.json')
 if ($imageRouteReport.matched_route.id -ne 'imagegen' -or $imageRouteReport.recommended_tier -ne 'low' -or $imageRouteReport.reasoning_effort -ne 'low') {
     throw "FAIL route-task imagegen report=$($imageRouteReport | ConvertTo-Json -Depth 6 -Compress)"
+}
+if ($imageRouteReport.matched_route.provider_id -ne 'agnes-openai-free' -or $imageRouteReport.matched_route.model -ne 'agnes-image-2.1-flash') {
+    throw "FAIL route-task imagegen not routed to Agnes report=$($imageRouteReport | ConvertTo-Json -Depth 6 -Compress)"
+}
+Invoke-Case -Name 'route-task-imagegen-fallback-when-agnes-disabled' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfigAgnesDisabled, '--query', 'please generate a neon teaching illustration poster cover image', '--report', (Join-Path $fixture 'route-image-agnes-disabled-report.json'))
+$imageAgnesDisabledReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-image-agnes-disabled-report.json')
+if ($imageAgnesDisabledReport.matched_route.id -ne 'imagegen' -or $imageAgnesDisabledReport.matched_route.provider_id -ne 'deepseek-web' -or $imageAgnesDisabledReport.matched_route.model -ne 'deepseek-chat' -or $imageAgnesDisabledReport.recommended_profile.provider_id -ne 'deepseek-web' -or $imageAgnesDisabledReport.provider_fallback_applied -ne $true) {
+    throw "FAIL route-task imagegen should fallback when Agnes is disabled report=$($imageAgnesDisabledReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 if (-not ($imageRouteReport.capability_mounts.distilled_atoms -contains 'brand-asset-protocol') -or -not ($imageRouteReport.capability_mounts.distilled_atoms -contains 'anti-ai-slop-visual-rules')) {
     throw "FAIL route-task imagegen missing huashu-design distilled atoms report=$($imageRouteReport | ConvertTo-Json -Depth 8 -Compress)"
@@ -952,15 +1293,46 @@ $videoRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-video-report.
 if ($videoRouteReport.matched_route.id -ne 'video' -or -not ($videoRouteReport.capability_mounts.distilled_atoms -contains 'motion-stage-sprite-engine') -or -not ($videoRouteReport.capability_mounts.distilled_atoms -contains 'anti-ai-slop-visual-rules')) {
     throw "FAIL route-task video missing motion distilled atoms report=$($videoRouteReport | ConvertTo-Json -Depth 8 -Compress)"
 }
+if ($videoRouteReport.matched_route.provider_id -ne 'agnes-openai-free' -or $videoRouteReport.matched_route.model -ne 'agnes-video-v2.0') {
+    throw "FAIL route-task video not routed to Agnes report=$($videoRouteReport | ConvertTo-Json -Depth 6 -Compress)"
+}
+if ($videoRouteReport.recommended_profile.provider_id -ne 'agnes-openai-free' -or $videoRouteReport.recommended_profile.model -ne 'agnes-video-v2.0' -or $videoRouteReport.recommended_tier -ne 'low' -or $videoRouteReport.reasoning_effort -ne 'low') {
+    throw "FAIL route-task video should stay on Agnes video route report=$($videoRouteReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-video-fallback-when-agnes-disabled' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfigAgnesDisabled, '--query', 'create an animated motion stage sprite product demo video', '--report', (Join-Path $fixture 'route-video-agnes-disabled-report.json'))
+$videoAgnesDisabledReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-video-agnes-disabled-report.json')
+if ($videoAgnesDisabledReport.matched_route.id -ne 'video' -or $videoAgnesDisabledReport.matched_route.provider_id -ne 'deepseek-web' -or $videoAgnesDisabledReport.matched_route.model -ne 'deepseek-chat' -or $videoAgnesDisabledReport.recommended_profile.provider_id -ne 'deepseek-web' -or $videoAgnesDisabledReport.provider_fallback_applied -ne $true) {
+    throw "FAIL route-task video should fallback when Agnes is disabled report=$($videoAgnesDisabledReport | ConvertTo-Json -Depth 8 -Compress)"
+}
 Invoke-Case -Name 'route-task-visual-motion-hybrid' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'make a motion animated html deck presentation with product demo video and editable pptx', '--report', (Join-Path $fixture 'route-visual-motion-report.json'))
 $visualMotionRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-visual-motion-report.json')
-if ($visualMotionRouteReport.matched_route.id -ne 'visual' -or -not ($visualMotionRouteReport.capability_mounts.distilled_atoms -contains 'html-native-design-canvas') -or -not ($visualMotionRouteReport.capability_mounts.distilled_atoms -contains 'html-deck-to-editable-pptx') -or -not ($visualMotionRouteReport.capability_mounts.distilled_atoms -contains 'motion-stage-sprite-engine')) {
+if ($visualMotionRouteReport.matched_route.id -ne 'visual' -or -not ($visualMotionRouteReport.capability_mounts.distilled_atoms -contains 'native-pptx-master-route') -or -not ($visualMotionRouteReport.capability_mounts.distilled_atoms -contains 'brand-asset-protocol') -or -not ($visualMotionRouteReport.capability_mounts.distilled_atoms -contains 'motion-stage-sprite-engine')) {
     throw "FAIL route-task visual motion hybrid wrong route or missing atoms report=$($visualMotionRouteReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 Invoke-Case -Name 'route-task-comfyui' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'build a ComfyUI workflow node plugin for batch generation', '--report', (Join-Path $fixture 'route-comfyui-report.json'))
 $comfyRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-comfyui-report.json')
-if ($comfyRouteReport.matched_route.id -ne 'comfyui') {
+if ($comfyRouteReport.matched_route.id -ne 'comfyui' -or -not ($comfyRouteReport.task_route.specialized_entrypoints -contains 'ComfyUI主帅')) {
     throw "FAIL route-task comfyui report=$($comfyRouteReport | ConvertTo-Json -Depth 6 -Compress)"
+}
+Invoke-Case -Name 'route-task-prompt-specialist' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'rewrite prompt into storyboard-spec and image-spec for an illustration workflow', '--report', (Join-Path $fixture 'route-prompt-report.json'))
+$promptRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-prompt-report.json')
+if ($promptRouteReport.matched_route.id -ne 'prompt' -or -not ($promptRouteReport.task_route.specialized_entrypoints -contains '提示词主帅')) {
+    throw "FAIL route-task prompt specialist report=$($promptRouteReport | ConvertTo-Json -Depth 6 -Compress)"
+}
+Invoke-Case -Name 'route-task-security-specialist' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'perform threat model and dependency risk review for this plugin secret handling flow', '--report', (Join-Path $fixture 'route-security-report.json'))
+$securityRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-security-report.json')
+if ($securityRouteReport.matched_route.id -ne 'code' -or -not ($securityRouteReport.task_route.specialized_entrypoints -contains '安全主帅') -or -not ($securityRouteReport.task_route.oversight_chain -contains 'guard-office')) {
+    throw "FAIL route-task security specialist report=$($securityRouteReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-staff-specialist' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'analyze architecture tradeoffs and system design route with complete materials before conclusion', '--report', (Join-Path $fixture 'route-staff-specialist-report.json'))
+$staffSpecialistReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-staff-specialist-report.json')
+if (-not ($staffSpecialistReport.task_route.specialized_entrypoints -contains '参谋主帅')) {
+    throw "FAIL route-task staff specialist report=$($staffSpecialistReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-expedition-specialist' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'run closeout-check for broad cleanup across multiple files with parallel work slices handoff merge results and final closeout', '--report', (Join-Path $fixture 'route-expedition-specialist-report.json'))
+$expeditionSpecialistReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-expedition-specialist-report.json')
+if ($expeditionSpecialistReport.matched_route.id -ne 'execution-base' -or $expeditionSpecialistReport.task_route.state -ne 'LIGHT_EXECUTION' -or ($expeditionSpecialistReport.task_route.specialized_entrypoints -contains '交付主帅')) {
+    throw "FAIL route-task expedition specialist report=$($expeditionSpecialistReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 Invoke-Case -Name 'route-task-evolve-atoms' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'distill skills and evolve rules through fusion', '--report', (Join-Path $fixture 'route-evolve-report.json'))
 $evolveRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-evolve-report.json')
@@ -974,7 +1346,7 @@ if ($performanceOfficerReport.matched_route.id -ne 'execution-base' -or $perform
 }
 Invoke-Case -Name 'route-task-context-cache-bloat-execution-base' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'analyze token cost hit rate context cache bloat and reduce total volume without hurting one pass success', '--report', (Join-Path $fixture 'route-context-cache-bloat-report.json'))
 $contextCacheBloatReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-context-cache-bloat-report.json')
-if ($contextCacheBloatReport.matched_route.id -ne 'execution-base' -or -not ($contextCacheBloatReport.task_route.oversight_chain -contains 'performance-benchmark-on-demand') -or -not ($contextCacheBloatReport.deterministic_execution.command_candidates -contains 'bench-report') -or -not ($contextCacheBloatReport.deterministic_execution.command_candidates -contains 'runtime-context-audit') -or $contextCacheBloatReport.task_route.state -ne 'LEGION_TASK' -or $contextCacheBloatReport.execution_budget.id -ne 'STRUCTURAL_TASK') {
+if ($contextCacheBloatReport.matched_route.id -ne 'execution-base' -or -not ($contextCacheBloatReport.task_route.oversight_chain -contains 'performance-benchmark-on-demand') -or -not ($contextCacheBloatReport.deterministic_execution.command_candidates -contains 'bench-report') -or -not ($contextCacheBloatReport.deterministic_execution.command_candidates -contains 'runtime-context-audit') -or $contextCacheBloatReport.task_route.state -ne 'LIGHT_EXECUTION' -or $contextCacheBloatReport.execution_budget.id -ne 'DIRECT_TASK') {
     throw "FAIL route-task context cache bloat should use execution-base report=$($contextCacheBloatReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 Invoke-Case -Name 'route-task-blue-hit-200k-context' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', '后台 token 每条 200k 蓝色命中 命中体量大 可能是上下文太长', '--report', (Join-Path $fixture 'route-blue-hit-200k-report.json'))
@@ -984,12 +1356,12 @@ if ($blueHitRouteReport.matched_route.id -ne 'execution-base' -or -not ($blueHit
 }
 Invoke-Case -Name 'route-task-pure-performance-execution-base' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'latency p95 memory resource speed performance regression', '--report', (Join-Path $fixture 'route-pure-performance-report.json'))
 $purePerformanceReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-pure-performance-report.json')
-if ($purePerformanceReport.matched_route.id -ne 'execution-base' -or -not ($purePerformanceReport.task_route.oversight_chain -contains 'performance-benchmark-on-demand') -or ($purePerformanceReport.task_route.oversight_chain -contains 'quality-inspection') -or ($purePerformanceReport.task_route.oversight_chain -contains 'root-cause-officer') -or ($purePerformanceReport.capability_mounts.distilled_atoms -contains 'root-cause-radar') -or ($purePerformanceReport.deterministic_execution.command_candidates -contains 'root-cause-radar') -or ($purePerformanceReport.deterministic_execution.command_candidates -contains 'runtime-context-audit') -or $purePerformanceReport.execution_budget.id -ne 'STRUCTURAL_TASK') {
+if ($purePerformanceReport.matched_route.id -ne 'execution-base' -or -not ($purePerformanceReport.task_route.oversight_chain -contains 'performance-benchmark-on-demand') -or ($purePerformanceReport.task_route.oversight_chain -contains 'quality-inspection') -or ($purePerformanceReport.task_route.oversight_chain -contains 'root-cause-officer') -or ($purePerformanceReport.capability_mounts.distilled_atoms -contains 'root-cause-radar') -or ($purePerformanceReport.deterministic_execution.command_candidates -contains 'root-cause-radar') -or ($purePerformanceReport.deterministic_execution.command_candidates -contains 'runtime-context-audit') -or $purePerformanceReport.execution_budget.id -ne 'DIRECT_TASK') {
     throw "FAIL route-task pure performance should use execution-base without root-cause or runtime-context audit report=$($purePerformanceReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 Invoke-Case -Name 'route-task-pure-token-execution-base' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'reduce token and cost with headroom without hurting hit rate', '--report', (Join-Path $fixture 'route-pure-token-report.json'))
 $pureTokenReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-pure-token-report.json')
-if ($pureTokenReport.matched_route.id -ne 'execution-base' -or -not ($pureTokenReport.task_route.oversight_chain -contains 'performance-benchmark-on-demand') -or -not ($pureTokenReport.deterministic_execution.command_candidates -contains 'runtime-context-audit') -or $pureTokenReport.execution_budget.id -ne 'STRUCTURAL_TASK') {
+if ($pureTokenReport.matched_route.id -ne 'execution-base' -or -not ($pureTokenReport.task_route.oversight_chain -contains 'performance-benchmark-on-demand') -or -not ($pureTokenReport.deterministic_execution.command_candidates -contains 'runtime-context-audit') -or $pureTokenReport.execution_budget.id -ne 'DIRECT_TASK') {
     throw "FAIL route-task pure token should use execution-base report=$($pureTokenReport | ConvertTo-Json -Depth 8 -Compress)"
 }
 Invoke-Case -Name 'route-task-quality-officer-not-owner' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'white-hat review quality acceptance check', '--report', (Join-Path $fixture 'route-quality-officer-report.json'))
@@ -1007,23 +1379,68 @@ $complianceOfficerReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-compli
 if (-not ($complianceOfficerReport.task_route.oversight_chain -contains 'compliance-on-demand') -or -not ($complianceOfficerReport.capability_mounts.distilled_atoms -contains 'claim-fact-check') -or -not ($complianceOfficerReport.capability_mounts.distilled_atoms -contains 'research-evidence-pack')) {
     throw "FAIL route-task missing compliance officer report=$($complianceOfficerReport | ConvertTo-Json -Depth 8 -Compress)"
 }
+Invoke-Case -Name 'route-task-all-independent-officers-explicit' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'all independent officers joint review full legion whole system analysis', '--report', (Join-Path $fixture 'route-all-officers-report.json'))
+$allOfficersReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-all-officers-report.json')
+$expectedOfficers = @('white-hat','guard-office','root-cause-officer','audit','quality-inspection','performance-benchmark-on-demand','compliance-on-demand')
+foreach ($seat in $expectedOfficers) {
+    if (-not ($allOfficersReport.task_route.oversight_chain -contains $seat)) {
+        throw "FAIL route-task all officers missing seat=$seat report=$($allOfficersReport | ConvertTo-Json -Depth 8 -Compress)"
+    }
+}
+if ($allOfficersReport.execution_budget.id -ne 'DIRECT_TASK' -or $allOfficersReport.execution_budget.sidecar_mode -ne 'all-relevant-once' -or $allOfficersReport.task_route.explicit_officer_activation.mode -ne 'all-independent-officers-explicit' -or $allOfficersReport.task_route.explicit_officer_activation.all_officers_requested -ne $true -or $allOfficersReport.task_route.explicit_officer_activation.subagent_substitute_forbidden -ne $true) {
+    throw "FAIL route-task all officers explicit activation report=$($allOfficersReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+$officerLedger = $allOfficersReport.task_route.officer_activation_ledger
+if (-not $officerLedger -or $allOfficersReport.task_route.single_write_authority -ne 'main-chain-only' -or $officerLedger.merge_owner -ne 'staff-runtime' -or $officerLedger.single_write_authority -ne 'main-chain-only' -or $officerLedger.seat_count -ne 7) {
+    throw "FAIL route-task all officers ledger report=$($allOfficersReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ($allOfficersReport.capability_mounts.distilled_atom_evidence.Count -lt 1 -or $allOfficersReport.capability_mounts.current_audit_evidence.Count -lt 3) {
+    throw "FAIL route-task all officers missing evidence handles report=$($allOfficersReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+foreach ($seat in $expectedOfficers) {
+    $seatEntry = @($officerLedger.seats | Where-Object { $_.seat -eq $seat }) | Select-Object -First 1
+    if (-not $seatEntry -or $seatEntry.write_authority -ne 'none' -or $seatEntry.merge_target -ne 'staff-runtime' -or $seatEntry.substitute_forbidden -ne $true) {
+        throw "FAIL route-task all officers seat ledger seat=$seat report=$($allOfficersReport | ConvertTo-Json -Depth 8 -Compress)"
+    }
+}
 Invoke-Case -Name 'route-task-fallback-chat' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'just chat casually with me', '--report', (Join-Path $fixture 'route-chat-report.json'))
 $chatRouteReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-chat-report.json')
 if ($chatRouteReport.matched_route.id -ne 'chat' -or $chatRouteReport.recommended_tier -ne 'low' -or $chatRouteReport.task_route.oversight_chain.Count -ne 0) {
     throw "FAIL route-task fallback chat report=$($chatRouteReport | ConvertTo-Json -Depth 6 -Compress)"
 }
+Invoke-Case -Name 'route-task-explicit-default-model-override' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'just chat casually with me but use default model', '--report', (Join-Path $fixture 'route-chat-explicit-default-report.json'))
+$chatExplicitDefaultReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-chat-explicit-default-report.json')
+if ($chatExplicitDefaultReport.matched_route.id -ne 'chat' -or $chatExplicitDefaultReport.matched_route.provider_id -ne 'deepseek-web' -or $chatExplicitDefaultReport.matched_route.model -ne 'deepseek-chat' -or $chatExplicitDefaultReport.provider_override_applied -ne $true -or $chatExplicitDefaultReport.provider_override_source -ne 'default model') {
+    throw "FAIL route-task explicit default model override report=$($chatExplicitDefaultReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-explicit-deepseek-override-image' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'please generate a neon teaching illustration poster cover image and use deepseek', '--report', (Join-Path $fixture 'route-image-explicit-deepseek-report.json'))
+$imageExplicitDeepseekReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-image-explicit-deepseek-report.json')
+if ($imageExplicitDeepseekReport.matched_route.id -ne 'imagegen' -or $imageExplicitDeepseekReport.matched_route.provider_id -ne 'deepseek-web' -or $imageExplicitDeepseekReport.matched_route.model -ne 'deepseek-chat' -or $imageExplicitDeepseekReport.provider_override_applied -ne $true -or $imageExplicitDeepseekReport.provider_override_source -ne 'deepseek') {
+    throw "FAIL route-task explicit deepseek override on image route report=$($imageExplicitDeepseekReport | ConvertTo-Json -Depth 8 -Compress)"
+}
+Invoke-Case -Name 'route-task-explicit-agnes-override-code' -ExpectedExit 0 -Arguments @('route-task', '--config', $routeConfig, '--query', 'fix bug and use agnes', '--report', (Join-Path $fixture 'route-code-explicit-agnes-report.json'))
+$codeExplicitAgnesReport = Read-JsonUtf8 -Path (Join-Path $fixture 'route-code-explicit-agnes-report.json')
+if ($codeExplicitAgnesReport.matched_route.id -ne 'code' -or $codeExplicitAgnesReport.matched_route.provider_id -ne 'agnes-openai-free' -or $codeExplicitAgnesReport.provider_override_applied -ne $true -or $codeExplicitAgnesReport.provider_override_source -ne 'agnes') {
+    throw "FAIL route-task explicit Agnes override on code route report=$($codeExplicitAgnesReport | ConvertTo-Json -Depth 8 -Compress)"
+}
 Invoke-Case -Name 'context-pack' -ExpectedExit 0 -Arguments @('context-pack', '--config', $routeConfig, '--workspace', $fixture, '--query', 'please build a ppt ui design', '--artifact', $artifact, '--report', (Join-Path $fixture 'context-pack.json'))
 $contextPack = Read-JsonUtf8 -Path (Join-Path $fixture 'context-pack.json')
-if ($contextPack.stable_prefix.iron_rules_version -ne '10.8' -or $contextPack.dynamic_context.model_tier -ne 'standard' -or $contextPack.route_report -or -not $contextPack.route_summary.query_key) {
+if ($contextPack.stable_prefix.iron_rules_version -ne '11.3' -or $contextPack.dynamic_context.model_tier -ne 'standard' -or $contextPack.route_report -or -not $contextPack.route_summary.query_key) {
     throw "FAIL context-pack wrong stable prefix"
+}
+if ($contextPack.command -ne 'context-pack' -or -not $contextPack.generated_at -or $contextPack.wuji_version -ne '11.3' -or -not $contextPack.tool_source_hash -or -not $contextPack.input_hashes.'config.json' -or -not $contextPack.input_hashes.'tools/wuji_cli.go') {
+    throw "FAIL context-pack freshness metadata missing report=$($contextPack | ConvertTo-Json -Depth 8 -Compress)"
 }
 if (-not ($contextPack.dynamic_context.distilled_atoms -contains 'content-type-compression-router') -or -not ($contextPack.dynamic_context.distilled_atoms -contains 'reversible-evidence-handle')) {
     throw "FAIL context-pack missing distilled atoms report=$($contextPack | ConvertTo-Json -Depth 8 -Compress)"
 }
+if ($contextPack.dynamic_context.distilled_atom_evidence.Count -lt 1 -or $contextPack.dynamic_context.current_audit_evidence.Count -lt 3 -or $contextPack.route_summary.distilled_atom_evidence_count -lt 1 -or $contextPack.route_summary.current_audit_evidence_count -lt 3) {
+    throw "FAIL context-pack missing current audit evidence report=$($contextPack | ConvertTo-Json -Depth 8 -Compress)"
+}
 if ($contextPack.concise_execution_contract.objective -ne 'short-precise-high-hit-low-total-cost') {
     throw "FAIL context-pack missing concise execution contract report=$($contextPack | ConvertTo-Json -Depth 8 -Compress)"
 }
-if ($contextPack.execution_budget_contract.objective -ne 'scoped-fast-real-completion' -or $contextPack.route_summary.execution_budget.id -ne 'LIGHT_TASK') {
+if ($contextPack.execution_budget_contract.objective -ne 'all-work-direct-small-task-execution' -or $contextPack.route_summary.execution_budget.id -ne 'DIRECT_TASK') {
     throw "FAIL context-pack missing execution budget contract or route summary report=$($contextPack | ConvertTo-Json -Depth 8 -Compress)"
 }
 if ($contextPack.PSObject.Properties.Name -contains 'analysis_completeness_contract') {
@@ -1651,6 +2068,18 @@ $mcpHighRiskDistill = Read-JsonUtf8 -Path $mcpHighRiskReport
 if (-not ($mcpHighRiskDistill.decisions | Where-Object { $_.name -eq 'write-all-secrets-tool' -and $_.decision -eq 'reject' -and $_.evidence_level -eq 'checked' })) {
     throw "FAIL mcp-distill high-risk candidate should reject report=$($mcpHighRiskDistill | ConvertTo-Json -Depth 8 -Compress)"
 }
+$mcpEmptyCatalog = Join-Path $fixture 'mcp-empty-catalog.json'
+$mcpEmptyReport = Join-Path $fixture 'mcp-empty-report.json'
+[System.IO.File]::WriteAllText($mcpEmptyCatalog, (@{
+    checked_at = '2026-06-16'
+    principle = 'task-scoped MCP review only'
+    candidates = @()
+} | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+Invoke-Case -Name 'mcp-distill-empty-standing-backlog' -ExpectedExit 0 -Arguments @('mcp-distill', '--catalog', $mcpEmptyCatalog, '--report', $mcpEmptyReport)
+$mcpEmptyDistill = Read-JsonUtf8 -Path $mcpEmptyReport
+if ($mcpEmptyDistill.standing_backlog -ne 'empty' -or $mcpEmptyDistill.decision_mode -ne 'task-scoped-ad-hoc-only' -or $mcpEmptyDistill.decisions.Count -ne 0) {
+    throw "FAIL mcp-distill empty backlog report=$($mcpEmptyDistill | ConvertTo-Json -Depth 8 -Compress)"
+}
 
 $baselinePrompt = Join-Path $fixture 'baseline-prompt.json'
 $candidatePrompt = Join-Path $fixture 'candidate-prompt.json'
@@ -1762,5 +2191,12 @@ Invoke-Case -Name 'preview-dispatch' -ExpectedExit 0 -Arguments @('preview', '--
 
 Write-RunLog 'RESULT: PASS - wuji-cli deterministic gates'
 Write-RunLog ("END test-wuji-cli " + (Get-Date).ToUniversalTime().ToString('o'))
+}
+finally {
 Remove-Item -LiteralPath $bin -Force -ErrorAction SilentlyContinue
 Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue
+    $testsRoot = Join-Path $root 'outputs\tests'
+    if ((Test-Path -LiteralPath $testsRoot) -and -not (Get-ChildItem -LiteralPath $testsRoot -Force | Select-Object -First 1)) {
+        Remove-Item -LiteralPath $testsRoot -Force -ErrorAction SilentlyContinue
+    }
+}

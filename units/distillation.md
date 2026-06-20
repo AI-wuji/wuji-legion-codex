@@ -6,7 +6,7 @@ Mirror source: `kernel-source.json`
 
 Distillation does not collect more named systems.
 
-It breaks sources into atoms, then decides:
+It breaks source pools into atoms, then decides:
 
 - `resident`
 - `mount-on-demand`
@@ -14,50 +14,18 @@ It breaks sources into atoms, then decides:
 - `retire`
 - `reject`
 
-Evolution is the admission judge, not another runtime. Before any cleanup,
-merge, deletion, plugin enablement, or skill promotion, `evolution-profile`
-must decide whether the candidate fills a real gap, replaces a weaker atom, or
-only adds a new shell.
+Evolution is the admission judge, not another runtime. New source pools may
+upgrade existing owners or atoms, replace weaker behavior, remain source-pool
+only, or be rejected outright.
 
-## Source pools
-
-- `old-wuji`
-- `opensquilla`
-- `headroom-style`
-- `reasonix-style`
-- `hermes-style`
-- `ecc-style`
-- `context7-mcp-style`
-- `research-mode-style`
-- `superpowers-style-approved-atoms`
-- `prior-art-rca-tooling-style`
-- `fault-localization-style`
-- `multi-agent-rca-style`
-- `patch-debt-cure-style`
-- `terminal-verification-style`
-- `refactor-recipe-style`
-- `agent-eval-style`
-- `github-trending-20260608-style`
-- `omx-style`
-- `baoyu-skills-style`
-- `khazix-skills-style`
-- `humanizer-zh-style`
-- `neat-freak-style`
-- `competitive-teardown-style`
-- `hv-analysis-style`
-- `ppt-keynote-style`
-- `ian-xiaohei-style`
-- `prompt-cache-block-control-style`
-- `llmlingua-style`
-- `memgpt-style`
-- `external-agent-shells`
-- `external-write-surfaces`
+Object-level machine truth lives in `fusion-matrix.json -> object_verdicts`.
+That ledger is the final verdict surface. Prose here must follow it.
 
 ## Distilled atom kernel
 
 Mirror marker: `distilled_atom_kernel`.
 
-Keep exactly the existing 21 kernel atoms unless the user approves an explicit redesign. New source pools may only fill gaps, replace weaker behavior, or be rejected:
+Keep exactly the existing 21 kernel atoms unless the user approves a redesign:
 
 - `assumption-ledger`
 - `claim-fact-check`
@@ -78,32 +46,209 @@ Keep exactly the existing 21 kernel atoms unless the user approves an explicit r
 - `brand-asset-protocol`
 - `anti-ai-slop-visual-rules`
 - `design-direction-triad`
-- `html-deck-to-editable-pptx`
+- `native-pptx-master-route`
 - `motion-stage-sprite-engine`
 
-## GitHub 热榜蒸馏边界
+## Source-pool rule
 
-- `last30days`, `taste-skill`, `open-notebook`, `tolaria`, `turbovec-style`, `goose`, `pg_durable-style`, `opencv-style`, and `openai-plugins` are source-pool lessons only.
-- Useful parts must land in existing owners and atoms: intelligence, visual, data, execution-base, quality, guard-office, or evolution.
-- `GhostTrack`, `ChinaTextbook`, `AiToEarn`, `project-nomad`, plugin runtimes, and external agent shells are reject/guard signals unless a later task gives a narrow, reviewed, lawful use case.
+- `github-trending-20260608-style` remains a source lineage marker, not a hotlist runtime.
+- Distillation is optional. `reject` is valid.
+- No source pool may become a second commander, second router, second runtime,
+  or standing shell.
+- Useful parts must land in existing owners and atoms: intelligence, content,
+  visual, data, execution-base, quality, guard-office, audit, white-hat, or
+  evolution.
+- `opencv-style` and `llama.cpp` remain source-support classes only. They are
+  not admitted object verdicts.
 
-## 2026-06-10 Source Pool Merge
+## Officer review rule
 
-No new default atom is added. The new projects are source pools only:
+Any source-pool, plugin, skill, MCP, repo, framework, or shell candidate under
+distillation review must go through explicit review seats. At minimum:
 
-- `OMX`: keep hook, HUD, sidecar lifecycle, and plugin bridge lessons; reject the external runtime shell.
-- `Huashu Design 2.0`, `ppt-keynote`, `baoyu-article-illustrator`, `ian-xiaohei`: strengthen visual atoms, not a second design system.
-- `khazix-writer`, `wechat-toutiao-article-writer`, `humanizer-zh`: strengthen content-profile and quality-inspection writing checks.
-- `hv-analysis`, `competitive-teardown`: strengthen `research-evidence-pack` with historical and competitive analysis cards.
-- `baoyu-url-to-markdown`, `baoyu-youtube-transcript`: strengthen guarded search and evidence packs after guard-office screening.
-- `baoyu-post-to-x/wechat/weibo`, `baoyu-electron-extract`: reject as default runtimes; keep only draft formatting, explicit authorization, and safety checklists.
-- `neat-freak`: strengthens context/document cleanup by preferring deletion, consolidation, and evidence handles over more notes.
+- `white-hat`
+- `guard-office`
+- `audit`
 
-Context-cache note: prompt caching is useful only when the stable prefix is small. A 200k cached/blue-hit line is treated as long-context bloat until `runtime-context-audit` proves otherwise.
+Add `quality-inspection`, `performance-benchmark-on-demand`,
+`compliance-on-demand`, or `root-cause-officer` when the surface touches their
+boundaries.
+
+## Locked verdict groups
+
+### Main chain, routing, and optimization
+
+- `Headroom`: replace-level source for compression and token discipline.
+  `replace + landed` into `content-type-compression-router`,
+  `reversible-evidence-handle`, and `optimization-kernel`.
+- `Reasonix`: `gap-fill + landed` into
+  `content-type-compression-router` and `optimization-kernel`.
+- `prompt-cache-block-control`: `gap-fill + landed` into
+  `content-type-compression-router` and `optimization-kernel`.
+- `LLMLingua`: `gap-fill + landed` into
+  `content-type-compression-router` and `optimization-kernel`.
+- `MemGPT`: `gap-fill + landed` into
+  `reversible-evidence-handle` and `optimization-kernel`.
+- `mempalace`: `defer + source-pool-only`. Keep memory-benchmark and
+  drawer-pattern lessons only; reject an external memory authority.
+- `ECC`: `gap-fill + landed` into
+  `skill-stocktake-daily-library` and `verified-learning-loop`.
+- `Hermes`: `gap-fill + landed` into
+  `skill-stocktake-daily-library` and `verified-learning-loop`.
+- `Superpowers`: `gap-fill + landed` into
+  `verified-learning-loop`, `disciplined-debug-loop`,
+  `parallel-hypothesis-fanout`, and `patch-debt-root-cure`.
+- `mattpocock/skills`: `gap-fill + source-pool-only`. Keep examples-first
+  and focused single-purpose skill-card patterns inside
+  `skill-stocktake-daily-library`; reject its installer and skill-pack shell.
+- `agentic coding skills`: `gap-fill + source-pool-only`. Keep only
+  task-scoped skill routing, review, and verification patterns; reject generic
+  agent shells, second routers, and always-on subagent doctrine.
+- `Claude loops`: `gap-fill + source-pool-only`. Keep bounded-loop discipline
+  for `disciplined-debug-loop` and `terminal-real-run-verification`: budget,
+  dedupe, stop condition, failure evidence, and real verification. Reject
+  autonomous or unbounded loops.
+- `Ponytail`: `reject + rejected`. The useful YAGNI, smallest-change, and
+  delete-or-reuse lessons are already covered by current concise execution and
+  patch-debt atoms; reject the plugin shell and unverifiable project identity.
+- `Agency Agents`: `reject + rejected`.
+- `gstack`: `reject + rejected`.
+- `gstack`: reject as a fusion shell. Keep only generic process lessons already
+  covered by current review, QA, and closeout gates.
+
+### Intelligence and research
+
+- `AnySearch`: `gap-fill + landed` into `guarded-realtime-source-search`.
+- `Agent-Reach`: `defer + source-pool-only`. Keep wide-source reach as a
+  guarded candidate map only; no default crawler, cookies, accounts,
+  ToS-bypassing scraper, or source shell enters the runtime.
+- `codebase-memory-mcp`: `gap-fill + source-pool-only`. Promising only as a
+  read-only, on-demand code-structure memory accelerator for
+  `code-map-before-edit`, `version-doc-mcp`, `reversible-evidence-handle`, and
+  `content-type-compression-router`. It must pass guard-office source/build or
+  pinned-binary hash, secret filtering, stale-index detection, and a small-repo
+  benchmark before any MCP trial.
+- `last30days`: `gap-fill + landed` into
+  `guarded-realtime-source-search`.
+- `research-mode`: `gap-fill + landed` into
+  `guarded-realtime-source-search` and `research-evidence-pack`.
+- `context7-mcp`: `gap-fill + landed` into `version-doc-mcp`.
+- `assumption-checker`: `gap-fill + landed` into `assumption-ledger`.
+- `hallucination-detector`: `gap-fill + landed` into `claim-fact-check`.
+- `open-notebook`: `gap-fill + landed` into
+  `research-evidence-pack` and `data-profile`.
+- `tolaria`: `gap-fill + landed` into
+  `research-evidence-pack` and `data-profile`.
+- `competitive-teardown`: `gap-fill + landed` into
+  `research-evidence-pack`.
+- `hv-analysis`: `gap-fill + landed` into `research-evidence-pack`.
+- `PaddleOCR`: `gap-fill + landed` into
+  `research-evidence-pack` and `data-profile`.
+- `baoyu-url-to-markdown`: `defer + restricted-boundary` into
+  `guarded-realtime-source-search` and `research-evidence-pack`.
+- `baoyu-youtube-transcript`: `defer + restricted-boundary` into
+  `guarded-realtime-source-search` and `research-evidence-pack`.
+- `baoyu-translate`: `gap-fill + landed` into
+  `research-evidence-pack` and `content-profile`.
+- `openai-plugins`: `defer + restricted-boundary`. Keep prior-art and boundary
+  lessons only; plugin runtime is not admitted by default.
+
+### Content
+
+- `khazix-writer`: `gap-fill + landed` into
+  `content-profile` and `quality-inspection`.
+- `wechat-toutiao-article-writer`: `gap-fill + landed` into
+  `content-profile` and `quality-inspection`.
+- `humanizer-zh`: `gap-fill + landed` into
+  `content-profile` and `quality-inspection`.
+- `neat-freak`: `gap-fill + landed` into
+  `content-type-compression-router`, `reversible-evidence-handle`, and
+  `skill-stocktake-daily-library`.
+- `dbs-business-toolbox`: `defer + source-pool-only`. Keep recipe fragments only;
+  reject the toolbox shell.
+
+### Visual and PPT
+
+- `CopilotKit`: `gap-fill + landed` into
+  `html-native-design-canvas` and `design-direction-triad`.
+- `awesome-design-md`: `gap-fill + source-pool-only`. Keep a cold
+  design-prior-art index for `design-direction-triad`, `brand-asset-protocol`,
+  and `anti-ai-slop-visual-rules`; third-party brand/IP material stays as
+  attributed evidence handles, not resident doctrine.
+- `huashu-design`: `gap-fill + landed` into
+  `html-native-design-canvas`, `brand-asset-protocol`,
+  `anti-ai-slop-visual-rules`, `design-direction-triad`,
+  `native-pptx-master-route`, and `motion-stage-sprite-engine`.
+- `ppt-master`: `gap-fill + landed` into
+  `native-pptx-master-route` and `quality-inspection`.
+- `ppt-keynote`: `gap-fill + landed` into
+  `html-native-design-canvas`, `native-pptx-master-route`, and
+  `motion-stage-sprite-engine`.
+- `hyperframes`: `gap-fill + landed` into
+  `html-native-design-canvas`, `motion-stage-sprite-engine`,
+  `anti-ai-slop-visual-rules`, and `native-pptx-master-route`.
+- `taste-skill`: `gap-fill + landed` into
+  `anti-ai-slop-visual-rules` and `quality-inspection`.
+- `baoyu-article-illustrator`: `gap-fill + landed` into
+  `html-native-design-canvas` and `brand-asset-protocol`.
+- `baoyu-image-gen`: `defer + source-pool-only`. Keep prompt batching and
+  reference-image conventions only; route stays on the main chain.
+- `ian-xiaohei-illustrations`: `defer + restricted-boundary` into
+  `html-native-design-canvas` as an optional preset only; never default house
+  style.
+
+### Data and execution base
+
+- `storage-analyzer`: `gap-fill + landed` into
+  `content-type-compression-router` and `optimization-kernel`.
+- `turbovec`: `gap-fill + landed` into
+  `data-profile` and `research-evidence-pack`.
+- `goose`: `gap-fill + landed` into
+  `prior-art-solution-search`, `terminal-real-run-verification`, and
+  `execution-base-profile`.
+- `pg_durable`: `gap-fill + landed` into
+  `terminal-real-run-verification` and `execution-base-profile`.
+- `trivy`: `gap-fill + landed` into
+  `terminal-real-run-verification` and `compliance-on-demand`.
+
+### Restricted boundary and source-pool only shells
+
+- `baoyu-skills`: `defer + source-pool-only`.
+- `OMX / oh-my-codex`: `defer + source-pool-only`.
+- `SenseNova-Skills`: `defer + source-pool-only`.
+- `pi`: `defer + source-pool-only`.
+- `baoyu-electron-extract`: `defer + restricted-boundary`.
+- `baoyu-post-to-x/wechat/weibo`: `defer + restricted-boundary`.
+- `penpot`: `defer + source-pool-only`. It may be considered as an external
+  design export/reference tool, but no self-hosted platform, account state, or
+  design runtime enters the kernel.
+
+### Rejected risk or shell surfaces
+
+- `universal-android-debloater`: `reject + rejected`.
+- `plane`: `reject + rejected`.
+- `cosmos`: `reject + rejected`.
+- `MiroFish`: `reject + rejected`.
+- `flue`: `reject + rejected`.
+- `coding-interview-university`: `reject + rejected`.
+- `openclaw-windows-node`: `reject + rejected`.
+- `GhostTrack`: `reject + rejected`.
+- `ChinaTextbook`: `reject + rejected`.
+- `AiToEarn`: `reject + rejected`.
+- `project-nomad`: `reject + rejected`.
+
+## Agnes mirror
+
+- `Agnes AI`: `defer + provider-mirror-only`.
+- Prefer `agnes-2.0-flash` for low-cost text, `agnes-image-2.1-flash` for
+  default image generation, and `agnes-video-v2.0` for default video
+  generation while current-free conditions hold.
+- If Agnes fails, the only allowed fallback is the default GPT route.
 
 ## Admission test
 
-An atom is kept only if it improves the fused kernel without creating split brain:
+An atom is kept only if it improves the fused kernel without creating split
+brain:
 
 - smaller stable prefix
 - better routing precision
@@ -127,25 +272,11 @@ Reject atoms that mainly:
 
 ## Prior-art first
 
-When solving a problem, search existing tools, papers, docs, issues, and open-source implementations before inventing a new mechanism.
+When solving a problem, search existing tools, papers, docs, issues, and
+open-source implementations before inventing a new mechanism.
 
-The output must be distilled into atoms, evidence handles, and local actions. Whole external systems must not become new commanders or route owners.
-
-## Evolution gates
-
-`进化主帅` uses these gates before later execution steps:
-
-- `source-pool-not-shell`: external systems stay source pools unless a task needs a
-  narrow local atom.
-- `refactor-recipe-gate`: structural cleanup needs target, match surface,
-  transform, counterexample, rollback path, and verification command.
-- `eval-set-before-upgrade`: recurring preferences or prompt changes need a
-  small comparison set before becoming resident rules.
-- `retire-after-replace`: a weaker skill, rule, route, or script is retired only
-  after its useful atom has a named owner.
-- `no-sensitive-learning`: evolution may keep hashes, counts, and strategy
-  signals, but never raw user secrets, accounts, sessions, addresses, or private
-  task text.
+The output must be distilled into atoms, evidence handles, and local actions.
+Whole external systems must not become new commanders or route owners.
 
 ## Record of truth
 

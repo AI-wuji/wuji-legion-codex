@@ -178,6 +178,14 @@
       "reason": "generated artifacts must not pollute default scans or context assembly"
     },
     {
+      "item": "root outputs duplicate audit copies and ad hoc route samples",
+      "reason": "root outputs keeps one canonical current evidence set; historical current/final mirrors and one-off route dumps create drift and bloat"
+    },
+    {
+      "item": "outputs/tests fixture residue",
+      "reason": "test fixtures are transient evidence scaffolding; they must be removed after test completion instead of lingering as repository residue"
+    },
+    {
       "item": "wuji-cli-test-*.exe and duplicate Go archives/toolchains",
       "reason": "generated build waste; one smoke binary and one Go toolchain path are enough"
     }
@@ -202,6 +210,18 @@
     {
       "gate": "optimization-audit",
       "must_check": "outputs <= 52428800 bytes and <= 500 files"
+    },
+    {
+      "gate": "optimization-audit",
+      "must_check": "outputs root keeps only canonical current evidence files; no root current/final duplicates, ad hoc route samples, or temporary canon dumps remain"
+    },
+    {
+      "gate": "optimization-audit",
+      "must_check": "outputs/tests is empty or absent after tests finish"
+    },
+    {
+      "gate": "optimization-audit",
+      "must_check": "legacy output/ directory is absent so generated artifacts stay under one audited outputs/ surface"
     },
     {
       "gate": "optimization-audit",

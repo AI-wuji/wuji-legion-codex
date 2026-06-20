@@ -29,9 +29,8 @@ Main-chain execution base duties:
 
 `execution_budget_contract` controls gate cost:
 
-- `LIGHT_TASK` runs targeted verification only and must not repeat a full suite after small edits.
-- `STRUCTURAL_TASK` may run targeted gates during work and at most one full verification at final when the touched surface requires it.
-- `RELEASE_TASK` runs full audit once at final.
+- `DIRECT_TASK` is the default for all non-chat execution work and keeps verification targeted.
+- A one-time broad final review is allowed only when the user explicitly asks for an all-officer final closeout.
 - `runtime-context-audit` is only for token, cost, cache, backend usage, or outer-context claims.
 
 The execution base must prefer targeted verification before full-suite verification.

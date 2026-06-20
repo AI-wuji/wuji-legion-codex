@@ -1,352 +1,489 @@
-{
-  "kernel_version": "11.3",
-  "identity": {
-    "name": "wuji-legion-codex",
-    "entrypoint": "aji",
-    "execution_surface": "Codex-only",
-    "objective": "single-kernel low-total-token high-first-pass preserved-verification"
-  },
-  "routing_kernel": {
-    "version": "three-layer-v1",
-    "layers": [
-      {
-        "id": "task-routing",
-        "owner": "staff-runtime",
-        "purpose": "state, owner profile, oversight chain, and closeout policy"
-      },
-      {
-        "id": "capability-mount",
-        "owner": "staff-runtime+owner-profile",
-        "purpose": "minimal-gap-first capability mounting"
-      },
-      {
-        "id": "deterministic-execution",
-        "owner": "go-execution-base",
-        "purpose": "repeatable gates, audits, context packing, and benchmarks"
-      }
-    ]
-  },
-  "optimization_kernel": {
-    "resident_policy": "minimal-stable-skeleton-only",
-    "resident_semantics": "resident means short canon atom, never full doctrine body",
-    "mount_policy": "minimal-gap-first",
-    "tool_output_policy": "compress-before-reuse-preserve-evidence",
-    "evidence_retention_policy": "raw-handle-kept-summary-fed",
-    "prefix_cache_discipline": "byte-stable-prefix-volatile-facts-late",
-    "prefix_canon_policy": "ordered-fields-short-canon-no-duplicate-phrasing",
-    "sparse_context_policy": "MoE-style top-k activation: only the owner profile, triggered officers, selected skill, and evidence handles enter context",
-    "hotpath_manifest": "hotpath-manifest.json",
-    "context_bloat_gate": "context-bloat-audit",
-    "runtime_context_gate": "runtime-context-audit",
-    "runtime_context_policy": "token, cost, cache, backend usage, or outer-context claims require numeric-only runtime usage evidence; raw prompts, messages, content, secrets, and sessions are forbidden",
-    "cache_volume_policy": "high hit rate is not enough; a 200k cached/blue-hit line is usually long resident or outer context bloat; cached_tokens_p95, fresh_input_tokens_p95, output_tokens_p95, uncached_tokens_p95, reused_prefix_bytes_p95, input_tokens_p95, activated officers, loaded bytes, and largest segment must stay under budget",
-    "context_slimming_policy": "preserve high hit by keeping a small byte-stable prefix, but reduce total volume by replacing long history with task-state summaries, evidence handles, source cards, range reads, and on-demand owner/skill/officer mounts; never move savings into larger fresh input or verbose output",
-    "concise_execution_policy": "short precise single-message execution; prior art before invention when uncertain; no verbose status padding; no shifting cost from cached prefix into uncached input or output",
-    "execution_goal": "single-pass-success-over-short-answer",
-    "pre_final_exhaustion_policy": "before final on non-trivial execution, run a bounded high-yield residual, evidence, and audit scan; continue without asking if actionable low-noise work remains",
-    "premature_stop_policy": "passing a core test is not completion when fresh low-cost verification, residue cleanup, or current-audit refresh remains available",
-    "objective": "smaller-stable-prefix-with-equal-or-better-hit-rate"
-  },
-  "purity_budgets": {
-    "context_pack_max_bytes": 12288,
-    "stable_prefix_max_fields": 16,
-    "outputs_max_bytes": 52428800,
-    "outputs_max_files": 500,
-    "wuji_tools_max_bytes": 314572800,
-    "wuji_tools_max_files": 16000,
-    "stale_context_pack_forbidden": true,
-    "default_large_artifact_policy": "handle-or-summary-only"
-  },
-  "owners": [
-    "staff-runtime",
-    "nuwa-preflight",
-    "content-profile",
-    "visual-profile",
-    "development-profile",
-    "intelligence-profile",
-    "data-profile",
-    "execution-base-profile",
-    "evolution-profile"
-  ],
-  "independent_oversight": [
-    "white-hat",
-    "guard-office",
-    "root-cause-officer",
-    "audit",
-    "quality-inspection",
-    "performance-benchmark-on-demand",
-    "compliance-on-demand"
-  ],
-  "independent_oversight_lifecycle": {
-    "mode": "explicit-on-demand-sidecars",
-    "canonical_quality_name": "quality-inspection",
-    "aliases": {
-      "qa": "quality-inspection",
-      "质检": "quality-inspection"
-    },
-    "flow": [
-      "trigger",
-      "explicit-officer-report",
-      "main-chain-merge",
-      "repair-or-verify-if-needed",
-      "exit"
-    ],
-    "parallel_policy": "need-driven parallel sidecars are allowed; one main chain merges verdicts and no second router is created"
-  },
-  "source_pools": [
-    "old-wuji",
-    "opensquilla",
-    "headroom-style",
-    "reasonix-style",
-    "hermes-style",
-    "ecc-style",
-    "context7-mcp-style",
-    "research-mode-style",
-    "superpowers-style-approved-atoms",
-    "huashu-design-style",
-    "prior-art-rca-tooling-style",
-    "fault-localization-style",
-    "multi-agent-rca-style",
-    "patch-debt-cure-style",
-    "refactor-recipe-style",
-    "agent-eval-style",
-    "terminal-verification-style",
-    "github-trending-20260608-style",
-    "omx-style",
-    "baoyu-skills-style",
-    "khazix-skills-style",
-    "humanizer-zh-style",
-    "neat-freak-style",
-    "competitive-teardown-style",
-    "hv-analysis-style",
-    "ppt-keynote-style",
-    "ian-xiaohei-style",
-    "prompt-cache-block-control-style",
-    "llmlingua-style",
-    "memgpt-style",
-    "external-agent-shells",
-    "external-write-surfaces"
-  ],
-  "distilled_atom_kernel": {
-    "policy": "gap-fill, replace weaker atoms, and fuse overlapping capabilities; never stack project shells; new source pools upgrade the existing 21 atoms unless explicitly expanded by user-approved design",
-    "resident_light_atoms": [
-      "assumption-ledger",
-      "claim-fact-check",
-      "reversible-evidence-handle",
-      "content-type-compression-router"
-    ],
-    "on_demand_atoms": [
-      "version-doc-mcp",
-      "guarded-realtime-source-search",
-      "research-evidence-pack",
-      "skill-stocktake-daily-library",
-      "verified-learning-loop",
-      "disciplined-debug-loop",
-      "prior-art-solution-search",
-      "root-cause-radar",
-      "parallel-hypothesis-fanout",
-      "patch-debt-root-cure",
-      "terminal-real-run-verification",
-      "html-native-design-canvas",
-      "brand-asset-protocol",
-      "anti-ai-slop-visual-rules",
-      "design-direction-triad",
-      "html-deck-to-editable-pptx",
-      "motion-stage-sprite-engine"
-    ],
-    "forbidden": [
-      "external agent shell takeover",
-      "second router",
-      "raw memory retention",
-      "full document replay by default"
-    ],
-    "owner_map": {
-      "reversible-evidence-handle": "go-execution-base+audit+quality-inspection",
-      "content-type-compression-router": "go-execution-base+performance-benchmark-on-demand",
-      "assumption-ledger": "white-hat+quality-inspection+audit",
-      "claim-fact-check": "white-hat+audit+intelligence-profile",
-      "version-doc-mcp": "development-profile+intelligence-profile+guard-office",
-      "guarded-realtime-source-search": "intelligence-profile+guard-office+audit",
-      "research-evidence-pack": "intelligence-profile+audit+content-profile",
-      "skill-stocktake-daily-library": "evolution-profile+audit+white-hat",
-      "verified-learning-loop": "evolution-profile+quality-inspection+go-execution-base+performance-benchmark-on-demand",
-      "disciplined-debug-loop": "development-profile+quality-inspection",
-      "prior-art-solution-search": "intelligence-profile+owner-profile+guard-office",
-      "root-cause-radar": "root-cause-officer+development-profile+quality-inspection+white-hat",
-      "parallel-hypothesis-fanout": "staff-runtime+quality-inspection",
-      "patch-debt-root-cure": "evolution-profile+root-cause-officer+audit+performance-benchmark-on-demand",
-      "terminal-real-run-verification": "quality-inspection+audit+go-execution-base",
-      "html-native-design-canvas": "visual-profile+quality-inspection",
-      "brand-asset-protocol": "visual-profile+intelligence-profile+guard-office",
-      "anti-ai-slop-visual-rules": "visual-profile+quality-inspection+white-hat",
-      "design-direction-triad": "staff-runtime+visual-profile+nuwa-preflight",
-      "html-deck-to-editable-pptx": "visual-profile+go-execution-base+quality-inspection",
-      "motion-stage-sprite-engine": "visual-profile+performance-benchmark-on-demand"
-    }
-  },
-  "intelligence_profile_contract": {
-    "role": "candidate-scout-not-research-system",
-    "search_scope": "wide-recall-shallow-first",
-    "github_status": "first-class-source-for-code-tool-plugin-skill-bug-prior-art",
-    "may_do": [
-      "search",
-      "candidate-metadata",
-      "dedupe-cluster",
-      "evidence-handle"
-    ],
-    "must_not_do": [
-      "final-analysis",
-      "deep-extract-by-default",
-      "distillation-decision",
-      "adoption-decision",
-      "install-or-execute"
-    ],
-    "candidate_fields": [
-      "title",
-      "url",
-      "source_type",
-      "snippet",
-      "updated_at",
-      "stars_or_activity",
-      "license",
-      "suspected_use",
-      "risk_signal",
-      "next_gate"
-    ],
-    "handoff": "main-chain-assigns-deep-read-analysis-distillation-execution"
-  },
-  "concise_execution_contract": {
-    "objective": "short-precise-high-hit-low-total-cost",
-    "must_do": [
-      "single-message-precision",
-      "minimal-needed-context",
-      "prior-art-before-invention-when-uncertain",
-      "root-cause-before-patch",
-      "fresh-output-uncached-volume-gated",
-      "cached-volume-before-hit-rate-claim",
-      "stable-prefix-small-not-just-cacheable"
-    ],
-    "must_not_do": [
-      "verbose-status-padding",
-      "unneeded-preflight-loop",
-      "context-shift-from-cached-to-uncached",
-      "from-scratch-tooling-when-existing-solution-fits",
-      "short-answer-that-causes-rework"
-    ],
-    "cost_vector": [
-      "cached_tokens_p95",
-      "input_tokens_p95",
-      "fresh_input_tokens_p95",
-      "output_tokens_p95",
-      "uncached_tokens_p95",
-      "cache_hit_rate",
-      "tokens_per_success",
-      "retries"
-    ]
-  },
-  "execution_budget_contract": {
-    "objective": "scoped-fast-real-completion",
-    "policy": "use the smallest verification tier that preserves first-pass success, evidence, and user constraints",
-    "tiers": [
-      {
-        "id": "FAST_REPLY",
-        "scope": "discussion, direct answer, or analysis with no requested file changes",
-        "officer_mode": "perspective-only-when-named",
-        "verification": "no tool gate unless factual, current, or local evidence is required",
-        "full_audit": false,
-        "full_suite_max_runs": 0
-      },
-      {
-        "id": "LIGHT_TASK",
-        "scope": "small scoped edit or single-owner task",
-        "officer_mode": "only explicitly triggered officers, one concise verdict",
-        "verification": "targeted command, artifact, or focused test",
-        "full_audit": false,
-        "full_suite_max_runs": 0
-      },
-      {
-        "id": "STRUCTURAL_TASK",
-        "scope": "router, kernel, officer, gate, multi-file, or root-cause work",
-        "officer_mode": "triggered officers may run in parallel, then exit after merge",
-        "verification": "targeted gates during work, one full verification at final if touched surfaces require it",
-        "full_audit": "final-only-when-surface-requires",
-        "full_suite_max_runs": 1
-      },
-      {
-        "id": "RELEASE_TASK",
-        "scope": "explicit full-legion scan, release, broad cleanup, or final completion claim",
-        "officer_mode": "all relevant officers may review once under single main-chain merge",
-        "verification": "full audit and real-run closeout once at final",
-        "full_audit": true,
-        "full_suite_max_runs": 1
-      }
-    ],
-    "must_do": [
-      "bind-current-scope-before-expansion",
-      "run-targeted-verification-before-full-suite",
-      "keep-officers-on-demand-and-exit-after-merge",
-      "treat-runtime-context-audit-as-token-cost-cache-claim-only",
-      "finish-current-scope-without-reopen-ceremony"
-    ],
-    "must_not_do": [
-      "escalate-small-task-to-full-legion-scan",
-      "spawn-sidecars-for-officer-perspectives",
-      "repeat-full-suite-after-small-edits",
-      "block-non-token-work-on-missing-runtime-usage-log",
-      "continue-low-value-sweep-outside-current-scope"
-    ]
-  },
-  "analysis_completeness_contract": {
-    "objective": "complete-materials-before-architecture-analysis",
-    "applies_to": [
-      "architecture-analysis",
-      "system-analysis",
-      "rule-fusion",
-      "route-review",
-      "design-review"
-    ],
-    "must_do": [
-      "collect-material-inventory",
-      "state-coverage-and-gaps",
-      "ask-user-for-missing-materials-when-critical",
-      "separate-fact-inference-and-unknown",
-      "no-final-conclusion-from-incomplete-evidence"
-    ],
-    "must_not_do": [
-      "guess-architecture-from-partial-materials",
-      "treat-sample-as-whole-system",
-      "hide-coverage-gaps",
-      "promote-uncertain-claim-to-fact"
-    ],
-    "outputs": [
-      "material_inventory",
-      "coverage_gaps",
-      "confidence_level",
-      "missing_material_request"
-    ],
-    "handoff": "main-chain-may-answer-only-with-evidence-bound-scope-until-critical-materials-arrive"
-  },
-  "residual_shell_policy": {
-    "opensquilla_commander": "retired-deleted",
-    "external_opensquilla_execution": "forbidden",
-    "opensquilla_gateway_launcher": "forbidden",
-    "opensquilla_mcp_bridge_launcher": "forbidden",
-    "parallel_router": "forbidden",
-    "parallel_dispatch_policy": "need-driven-sidecar-no-wuji-artificial-cap",
-    "sidecar_lifecycle_policy": "close-immediately-after-result-merge",
-    "platform_limit_policy": "external-hard-cap-only",
-    "legacy_shells": "retire-or-on-demand-only"
-  },
-  "sensitive_state_policy": {
-    "user_secrets": "never-retain",
-    "accounts_keys_addresses_tokens_cookies": "never-copy-never-print-never-store",
-    "opensquilla_private_state": "excluded-from-wuji-runtime-outputs-and-backups",
-    "codex_auth_sessions_attachments": "excluded-from-wuji-runtime-outputs-and-backups"
-  },
-  "required_audits": [
-    "fusion-audit",
-    "optimization-audit",
-    "context-bloat-audit",
-    "runtime-context-audit-for-token-cost-cache-usage-claims"
-  ]
+﻿{
+    "kernel_version":  "11.3",
+    "identity":  {
+                     "name":  "wuji-legion-codex",
+                     "entrypoint":  "aji",
+                     "execution_surface":  "Codex-only",
+                     "objective":  "single-kernel low-total-token high-first-pass preserved-verification"
+                 },
+    "routing_kernel":  {
+                           "version":  "three-layer-v1",
+                           "layers":  [
+                                          {
+                                              "id":  "task-routing",
+                                              "owner":  "staff-runtime",
+                                              "purpose":  "state, owner profile, oversight chain, and closeout policy"
+                                          },
+                                          {
+                                              "id":  "capability-mount",
+                                              "owner":  "staff-runtime+owner-profile",
+                                              "purpose":  "minimal-gap-first capability mounting"
+                                          },
+                                          {
+                                              "id":  "deterministic-execution",
+                                              "owner":  "go-execution-base",
+                                              "purpose":  "repeatable gates, audits, context packing, and benchmarks"
+                                          }
+                                      ]
+                       },
+    "optimization_kernel":  {
+                                "resident_policy":  "minimal-stable-skeleton-only",
+                                "resident_semantics":  "resident means short canon atom, never full doctrine body",
+                                "mount_policy":  "minimal-gap-first",
+                                "tool_output_policy":  "compress-before-reuse-preserve-evidence",
+                                "evidence_retention_policy":  "raw-handle-kept-summary-fed",
+                                "prefix_cache_discipline":  "byte-stable-prefix-volatile-facts-late",
+                                "prefix_canon_policy":  "ordered-fields-short-canon-no-duplicate-phrasing",
+                                "sparse_context_policy":  "MoE-style top-k activation: only the owner profile, triggered officers, selected skill, and evidence handles enter context",
+                                "hotpath_manifest":  "hotpath-manifest.json",
+                                "context_bloat_gate":  "context-bloat-audit",
+                                "runtime_context_gate":  "runtime-context-audit",
+                                "runtime_context_policy":  "token, cost, cache, backend usage, or outer-context claims require numeric-only runtime usage evidence; raw prompts, messages, content, secrets, and sessions are forbidden",
+                                "cache_volume_policy":  "high hit rate is not enough; a 200k cached/blue-hit line is usually long resident or outer context bloat; cached_tokens_p95, fresh_input_tokens_p95, output_tokens_p95, uncached_tokens_p95, reused_prefix_bytes_p95, input_tokens_p95, activated officers, loaded bytes, and largest segment must stay under budget",
+                                "context_slimming_policy":  "preserve high hit by keeping a small byte-stable prefix, but reduce total volume by replacing long history with task-state summaries, evidence handles, source cards, range reads, and on-demand owner/skill/officer mounts; never move savings into larger fresh input or verbose output",
+                                "concise_execution_policy":  "short precise single-message execution; prior art before invention when uncertain; no verbose status padding; no shifting cost from cached prefix into uncached input or output",
+                                "target_page_replacement_policy":  "when the user asks to modify or redesign a specific page or screen, replace the active target surface in place; do not add a parallel v2, compatibility page, wrapper, or duplicate route unless explicitly requested; migrate imports, routes, tests, and assets; delete or retire superseded page files before completion; verify the actually opened route resolves to the new implementation",
+                                "execution_goal":  "single-pass-success-over-short-answer",
+                                "pre_final_exhaustion_policy":  "before final on direct execution with meaningful edits or review claims, run one bounded high-yield residual, evidence, and audit scan inside the approved scope; light tasks must not expand into broad residue sweeps by default",
+                                "premature_stop_policy":  "passing a core test is not completion when fresh low-cost verification, residue cleanup, or current-audit refresh remains available",
+                                "objective":  "smaller-stable-prefix-with-equal-or-better-hit-rate"
+                            },
+    "purity_budgets":  {
+                           "context_pack_max_bytes":  12288,
+                           "stable_prefix_max_fields":  16,
+                           "outputs_max_bytes":  52428800,
+                           "outputs_max_files":  500,
+                           "wuji_tools_max_bytes":  314572800,
+                           "wuji_tools_max_files":  16000,
+                           "stale_context_pack_forbidden":  true,
+                           "default_large_artifact_policy":  "handle-or-summary-only"
+                       },
+    "owners":  [
+                   "staff-runtime",
+                   "nuwa-preflight",
+                   "content-profile",
+                   "visual-profile",
+                   "development-profile",
+                   "intelligence-profile",
+                   "data-profile",
+                   "execution-base-profile",
+                   "evolution-profile"
+               ],
+    "independent_oversight":  [
+                                  "white-hat",
+                                  "guard-office",
+                                  "root-cause-officer",
+                                  "audit",
+                                  "quality-inspection",
+                                  "performance-benchmark-on-demand",
+                                  "compliance-on-demand"
+                              ],
+    "independent_oversight_lifecycle":  {
+                                            "mode":  "explicit-on-demand-sidecars",
+                                            "canonical_quality_name":  "quality-inspection",
+                                            "aliases":  {
+                                                            "qa":  "quality-inspection",
+                                                            "quality-inspection-cn":  "quality-inspection"
+                                                        },
+                                            "flow":  [
+                                                         "trigger",
+                                                         "explicit-officer-report",
+                                                         "main-chain-merge",
+                                                         "repair-or-verify-if-needed",
+                                                         "exit"
+                                                     ],
+                                            "parallel_policy":  "need-driven parallel sidecars are allowed; one main chain merges verdicts and no second router is created"
+                                        },
+    "distilled_atom_kernel":  {
+                                  "policy":  "gap-fill, replace weaker atoms, and fuse overlapping capabilities; never stack project shells; new source pools upgrade the existing 21 atoms unless explicitly expanded by user-approved design",
+                                  "resident_light_atoms":  [
+                                                               "assumption-ledger",
+                                                               "claim-fact-check",
+                                                               "reversible-evidence-handle",
+                                                               "content-type-compression-router"
+                                                           ],
+                                  "on_demand_atoms":  [
+                                                          "version-doc-mcp",
+                                                          "guarded-realtime-source-search",
+                                                          "research-evidence-pack",
+                                                          "skill-stocktake-daily-library",
+                                                          "verified-learning-loop",
+                                                          "disciplined-debug-loop",
+                                                          "prior-art-solution-search",
+                                                          "root-cause-radar",
+                                                          "parallel-hypothesis-fanout",
+                                                          "patch-debt-root-cure",
+                                                          "terminal-real-run-verification",
+                                                          "html-native-design-canvas",
+                                                          "brand-asset-protocol",
+                                                          "anti-ai-slop-visual-rules",
+                                                          "design-direction-triad",
+                                                          "native-pptx-master-route",
+                                                          "motion-stage-sprite-engine"
+                                                      ],
+                                  "source_pool_atoms":  {
+                                                            "codebase-memory-mcp":  {
+                                                                                       "status":  "gap-fill-isolation-candidate",
+                                                                                       "surfaces":  [
+                                                                                                        "code-map-before-edit",
+                                                                                                        "version-doc-mcp",
+                                                                                                        "reversible-evidence-handle",
+                                                                                                        "content-type-compression-router"
+                                                                                                    ],
+                                                                                       "boundary":  "read-only, on-demand, no persistent raw memory, no second truth source, no default MCP install",
+                                                                                       "admission_gate":  "guard-office source build or pinned binary hash, secret filter, small-repo benchmark, stale-index detection"
+                                                                                   },
+                                                            "awesome-design-md":  {
+                                                                                      "status":  "gap-fill-cold-ledger",
+                                                                                      "surfaces":  [
+                                                                                                       "design-direction-triad",
+                                                                                                       "brand-asset-protocol",
+                                                                                                       "anti-ai-slop-visual-rules"
+                                                                                                   ],
+                                                                                      "boundary":  "design prior-art index only; third-party brand/IP material remains evidence handles, not resident doctrine"
+                                                                                  },
+                                                            "mattpocock-skills":  {
+                                                                                       "status":  "gap-fill-pattern-cards",
+                                                                                       "surfaces":  [
+                                                                                                        "skill-stocktake-daily-library",
+                                                                                                        "disciplined-debug-loop",
+                                                                                                        "verified-learning-loop"
+                                                                                                    ],
+                                                                                       "boundary":  "single-purpose skill-card patterns only; no installer, no skill shell, no second workflow"
+                                                                                   },
+                                                            "agentic-coding-skills":  {
+                                                                                           "status":  "gap-fill-pattern-cards",
+                                                                                           "surfaces":  [
+                                                                                                            "skill-stocktake-daily-library",
+                                                                                                            "parallel-hypothesis-fanout",
+                                                                                                            "terminal-real-run-verification"
+                                                                                                        ],
+                                                                                           "boundary":  "task-scoped skill patterns only; no generic agentic-coding shell"
+                                                                                       },
+                                                            "claude-loops":  {
+                                                                                 "status":  "gap-fill-bounded-loop-only",
+                                                                                 "surfaces":  [
+                                                                                                  "disciplined-debug-loop",
+                                                                                                  "verified-learning-loop",
+                                                                                                  "terminal-real-run-verification"
+                                                                                              ],
+                                                                                 "boundary":  "bounded loop with budget, dedupe, stop condition, and real verification only; no autonomous infinite loop"
+                                                                             }
+                                                        },
+                                  "forbidden":  [
+                                                    "external agent shell takeover",
+                                                    "second router",
+                                                    "raw memory retention",
+                                                    "full document replay by default",
+                                                    "unbounded agent loop",
+                                                    "default external crawler",
+                                                    "persistent raw codebase memory"
+                                                ],
+                                  "owner_map":  {
+                                                    "reversible-evidence-handle":  "go-execution-base+audit+quality-inspection",
+                                                    "content-type-compression-router":  "go-execution-base+performance-benchmark-on-demand",
+                                                    "assumption-ledger":  "white-hat+quality-inspection+audit",
+                                                    "claim-fact-check":  "white-hat+audit+intelligence-profile",
+                                                    "version-doc-mcp":  "development-profile+intelligence-profile+guard-office",
+                                                    "guarded-realtime-source-search":  "intelligence-profile+guard-office+audit",
+                                                    "research-evidence-pack":  "intelligence-profile+audit+content-profile",
+                                                    "skill-stocktake-daily-library":  "evolution-profile+audit+white-hat",
+                                                    "verified-learning-loop":  "evolution-profile+quality-inspection+go-execution-base+performance-benchmark-on-demand",
+                                                    "disciplined-debug-loop":  "development-profile+quality-inspection",
+                                                    "prior-art-solution-search":  "intelligence-profile+owner-profile+guard-office",
+                                                    "root-cause-radar":  "root-cause-officer+development-profile+quality-inspection+white-hat",
+                                                    "parallel-hypothesis-fanout":  "staff-runtime+quality-inspection",
+                                                    "patch-debt-root-cure":  "evolution-profile+root-cause-officer+audit+performance-benchmark-on-demand",
+                                                    "terminal-real-run-verification":  "quality-inspection+audit+go-execution-base",
+                                                    "html-native-design-canvas":  "visual-profile+quality-inspection",
+                                                    "brand-asset-protocol":  "visual-profile+intelligence-profile+guard-office",
+                                                    "anti-ai-slop-visual-rules":  "visual-profile+quality-inspection+white-hat",
+                                                    "design-direction-triad":  "staff-runtime+visual-profile+nuwa-preflight",
+                                                    "native-pptx-master-route":  "visual-profile+go-execution-base+quality-inspection",
+                                                    "motion-stage-sprite-engine":  "visual-profile+performance-benchmark-on-demand"
+                                                }
+                              },
+     "intelligence_profile_contract":  {
+                                           "role":  "candidate-scout-not-research-system",
+                                           "search_scope":  "wide-recall-shallow-first",
+                                           "github_status":  "first-class-source-for-code-tool-plugin-skill-bug-prior-art",
+                                           "search_method":  "wide-shallow-scout-first-then-deepen-only-on-promising-candidates",
+                                           "may_do":  [
+                                                          "search",
+                                                          "candidate-metadata",
+                                                          "dedupe-cluster",
+                                                          "evidence-handle"
+                                                     ],
+                                          "must_not_do":  [
+                                                              "final-analysis",
+                                                              "deep-extract-by-default",
+                                                              "distillation-decision",
+                                                              "adoption-decision",
+                                                              "install-or-execute"
+                                                          ],
+                                          "candidate_fields":  [
+                                                                   "title",
+                                                                   "url",
+                                                                   "source_type",
+                                                                   "snippet",
+                                                                   "updated_at",
+                                                                   "stars_or_activity",
+                                                                   "license",
+                                                                   "suspected_use",
+                                                                   "risk_signal",
+                                                                   "next_gate"
+                                                               ],
+                                          "handoff":  "main-chain-assigns-deep-read-analysis-distillation-execution"
+                                      },
+     "concise_execution_contract":  {
+                                        "objective":  "short-precise-high-hit-low-total-cost",
+                                        "must_do":  [
+                                                        "simplest-effective-path-first",
+                                                        "single-message-precision",
+                                                        "minimal-needed-context",
+                                                        "agnes-search-only-before-uncertain-build-when-web-search-is-explicitly-needed",
+                                                        "prior-art-before-invention-when-uncertain",
+                                                        "first-pass-acceptance-and-impact-lock-before-edit",
+                                                        "acceptance-lock-before-broad-implementation",
+                                                        "impact-scan-before-cross-file-change",
+                                                        "root-cause-before-patch",
+                                                        "prove-need-before-abstraction",
+                                                        "delete-or-reuse-before-add",
+                                                        "target-page-in-place-replacement",
+                                                        "active-route-entrypoint-verification",
+                                                        "superseded-page-cleanup-before-completion",
+                                                        "smallest-working-change-first",
+                                                        "fresh-output-uncached-volume-gated",
+                                                        "cached-volume-before-hit-rate-claim",
+                                                        "stable-prefix-small-not-just-cacheable"
+                                                    ],
+                                        "must_not_do":  [
+                                                            "verbose-status-padding",
+                                                            "unneeded-preflight-loop",
+                                                            "guess-without-evidence",
+                                                            "blind-trial-and-error-when-prior-art-is-available",
+                                                            "context-shift-from-cached-to-uncached",
+                                                            "from-scratch-tooling-when-existing-solution-fits",
+                                                            "clever-overengineering-without-proven-need",
+                                                            "new-abstraction-before-duplication-or-gap-is-proven",
+                                                            "parallel-compat-page-for-requested-page-change",
+                                                            "leave-old-page-reachable-after-replacement",
+                                                            "broad-implementation-before-acceptance-is-locked",
+                                                            "cross-file-edits-without-impact-scan",
+                                                            "short-answer-that-causes-rework"
+                                                        ],
+                                       "cost_vector":  [
+                                                           "cached_tokens_p95",
+                                                           "input_tokens_p95",
+                                                           "fresh_input_tokens_p95",
+                                                           "output_tokens_p95",
+                                                           "uncached_tokens_p95",
+                                                           "cache_hit_rate",
+                                                           "tokens_per_success",
+                                                           "retries"
+                                                       ]
+                                   },
+    "execution_budget_contract":  {
+                                      "objective":  "all-work-direct-small-task-execution",
+                                      "policy":  "treat every non-chat request as direct small-task execution; keep officers explicit and on-demand, and use targeted verification unless the user explicitly asks for a broad final review",
+                                      "tiers":  [
+                                                     {
+                                                         "id":  "FAST_REPLY",
+                                                         "scope":  "discussion, direct answer, or analysis with no requested file changes",
+                                                         "officer_mode":  "no-officer-seat-unless-explicitly-triggered",
+                                                         "verification":  "no tool gate unless factual, current, or local evidence is required",
+                                                         "full_audit":  false,
+                                                         "full_suite_max_runs":  0
+                                                     },
+                                                    {
+                                                        "id":  "DIRECT_TASK",
+                                                        "scope":  "all non-chat execution work, including code, docs, routing, kernel, root-cause, fusion, and cleanup tasks",
+                                                        "officer_mode":  "only explicitly triggered officers or clearly required specialist seats, merged once then exited",
+                                                        "verification":  "targeted command, artifact, focused test, or one necessary final proof only",
+                                                        "full_audit":  false,
+                                                        "full_suite_max_runs":  0
+                                                    }
+                                                ],
+                                       "must_do":  [
+                                                       "bind-current-scope-before-expansion",
+                                                       "bind-finish-line-and-out-of-scope-before-goal-start",
+                                                       "keep-direct-code-work-on-a-minimal-first-pass-guard",
+                                                       "run-targeted-verification-before-any-full-suite",
+                                                       "all-non-chat-work-stays-direct-task-by-default",
+                                                       "keep-officers-on-demand-and-exit-after-merge",
+                                                       "treat-runtime-context-audit-as-token-cost-cache-claim-only",
+                                                       "finish-current-scope-without-reopen-ceremony",
+                                                       "avoid-automatic-task-upshift"
+                                                   ],
+                                       "must_not_do":  [
+                                                           "auto-create-big-task-mode",
+                                                           "auto-upshift-to-structural-or-release-mode",
+                                                           "add-goal-boundary-lock-without-explicit-signal",
+                                                        "add-agnes-scout-or-planning-sidecar-to-non-search-task-by-tier-alone",
+                                                           "treat-officers-as-perspectives-or-tones",
+                                                           "repeat-full-suite-after-small-edits",
+                                                           "block-non-token-work-on-missing-runtime-usage-log",
+                                                           "start-goal-without-clear-finish-line",
+                                                           "continue-low-value-sweep-outside-current-scope"
+                                                       ]
+                                   },
+    "analysis_completeness_contract":  {
+                                           "objective":  "complete-materials-before-architecture-analysis",
+                                           "applies_to":  [
+                                                              "architecture-analysis",
+                                                              "system-analysis",
+                                                              "rule-fusion",
+                                                              "route-review",
+                                                              "design-review"
+                                                          ],
+                                           "must_do":  [
+                                                           "collect-material-inventory",
+                                                           "state-coverage-and-gaps",
+                                                           "ask-user-for-missing-materials-when-critical",
+                                                           "separate-fact-inference-and-unknown",
+                                                           "no-final-conclusion-from-incomplete-evidence"
+                                                       ],
+                                           "must_not_do":  [
+                                                               "guess-architecture-from-partial-materials",
+                                                               "treat-sample-as-whole-system",
+                                                               "hide-coverage-gaps",
+                                                               "promote-uncertain-claim-to-fact"
+                                                           ],
+                                           "outputs":  [
+                                                           "material_inventory",
+                                                           "coverage_gaps",
+                                                           "confidence_level",
+                                                           "missing_material_request"
+                                                       ],
+                                           "handoff":  "main-chain-may-answer-only-with-evidence-bound-scope-until-critical-materials-arrive"
+                                       },
+    "residual_shell_policy":  {
+                                  "opensquilla_commander":  "retired-deleted",
+                                  "external_opensquilla_execution":  "forbidden",
+                                  "opensquilla_gateway_launcher":  "forbidden",
+                                  "opensquilla_mcp_bridge_launcher":  "forbidden",
+                                  "parallel_router":  "forbidden",
+                                  "parallel_dispatch_policy":  "need-driven-sidecar-no-wuji-artificial-cap",
+                                  "sidecar_lifecycle_policy":  "close-immediately-after-result-merge",
+                                  "platform_limit_policy":  "external-hard-cap-only",
+                                  "legacy_shells":  "retire-or-on-demand-only"
+                              },
+    "sensitive_state_policy":  {
+                                   "user_secrets":  "never-retain",
+                                   "accounts_keys_addresses_tokens_cookies":  "never-copy-never-print-never-store",
+                                   "opensquilla_private_state":  "excluded-from-wuji-runtime-outputs-and-backups",
+                                   "codex_auth_sessions_attachments":  "excluded-from-wuji-runtime-outputs-and-backups"
+                               },
+    "required_audits":  [
+                            "fusion-audit",
+                            "optimization-audit",
+                            "context-bloat-audit",
+                            "runtime-context-audit-for-token-cost-cache-usage-claims"
+                        ],
+    "source_catalog_ids":  [
+                               "old-wuji",
+                               "opensquilla",
+                               "headroom-style",
+                               "reasonix-style",
+                               "hermes-style",
+                               "ecc-style",
+                               "context7-mcp-style",
+                               "research-mode-style",
+                               "superpowers-style-approved-atoms",
+                               "huashu-design-style",
+                               "prior-art-rca-tooling-style",
+                               "fault-localization-style",
+                               "multi-agent-rca-style",
+                               "patch-debt-cure-style",
+                               "refactor-recipe-style",
+                               "agent-eval-style",
+                               "terminal-verification-style",
+                               "github-trending-20260608-style",
+                               "omx-style",
+                               "baoyu-skills-style",
+                               "khazix-skills-style",
+                               "humanizer-zh-style",
+                               "neat-freak-style",
+                               "competitive-teardown-style",
+                               "hv-analysis-style",
+                               "ppt-keynote-style",
+                               "ian-xiaohei-style",
+                               "prompt-cache-block-control-style",
+                               "llmlingua-style",
+                               "memgpt-style",
+                               "external-agent-shells",
+                               "external-write-surfaces",
+                               "codex-runtime-style",
+                               "audit-trace-style",
+                               "guard-office",
+                               "audit",
+                               "quality-inspection",
+                               "go-execution-base",
+                               "codex-plugins",
+                               "assumption-checker",
+                               "white-hat",
+                               "hallucination-detector",
+                               "context7-mcp",
+                               "AnySearch",
+                               "Agent-Reach",
+                               "research-mode",
+                               "last30days",
+                               "open-notebook",
+                               "tolaria",
+                               "ECC",
+                               "Hermes",
+                               "source-pool-not-shell",
+                               "Superpowers",
+                               "development-profile",
+                               "fault-localization",
+                               "delta-debugging",
+                               "multi-agent-rca",
+                               "web-search-rag",
+                               "goose",
+                               "llama.cpp",
+                               "openai-plugins",
+                               "pg_durable",
+                               "trace-analysis",
+                               "parallel-sidecar-execution",
+                               "codex-subagents",
+                               "verified-learning-loop",
+                               "codex-runtime",
+                               "goose-style",
+                               "pg_durable-style",
+                               "visual-profile",
+                               "intelligence-profile",
+                               "taste-skill",
+                               "opencv-style",
+                               "staff-runtime",
+                               "nuwa-preflight",
+                               "html-ppt-skill",
+                               "sensenova-skills-style",
+                               "huashu-design",
+                               "spreadsheet-profile",
+                               "turbovec-style",
+                               "research-evidence-pack",
+                               "GhostTrack",
+                               "ChinaTextbook",
+                               "AiToEarn",
+                               "project-nomad",
+                               "CopilotKit",
+                               "cosmos",
+                               "MiroFish",
+                               "PaddleOCR",
+                               "mempalace",
+                               "flue",
+                               "coding-interview-university",
+                               "trivy",
+                               "openclaw-windows-node",
+                               "storage-analyzer"
+                               ,
+                               "codebase-memory-mcp",
+                               "awesome-design-md",
+                               "mattpocock-skills",
+                               "agentic-coding-skills",
+                               "claude-loops",
+                               "penpot",
+                               "plane",
+                               "universal-android-debloater"
+                           ]
 }

@@ -70,6 +70,7 @@ try {
 
     Write-Host "[2/4] Install skill mirror..." -ForegroundColor Yellow
     Copy-CleanTree -Source $temp -Destination $SKILL_DIR
+    Write-Host "Installed provider mirror rule: Agnes failures fall back to default GPT only; silent local substitution is forbidden." -ForegroundColor DarkGray
 
     Write-Host "[3/4] Optional AGENTS.md install..." -ForegroundColor Yellow
     if ($InstallAgents) {

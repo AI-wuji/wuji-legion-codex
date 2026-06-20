@@ -28,12 +28,24 @@ Its purpose is to stop unsafe material from entering execution without review.
 
 Security is on-demand, not permanent resident context.
 
+It is a specialized execution-side support entrance under the single main
+chain. It is not an independent officer, not a top-level owner profile, and
+not a second route owner.
+
 Use it when the task needs:
 
 - threat modeling
 - vulnerability verification
 - attack-surface review
 - hardening advice
+- dependency, secret, permission, or release-risk review inside real implementation work
+
+Mount shape:
+
+- matched owner keeps write authority
+- `安全主帅` contributes threat-model or hardening review scope only
+- final verdict still returns to the main chain and, when needed, to quality,
+  audit, guard, or compliance seats
 
 ## Compliance
 

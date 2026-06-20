@@ -36,8 +36,33 @@ function parseSlideSelection(value) {
   return selected.size > 0 ? selected : null;
 }
 
-function isWithin(child, parent) {
-  const relative = path.relative(parent, child);
+async function canonicalPath(targetPath) {
+  const resolved = path.resolve(targetPath);
+  const missingSegments = [];
+  let probe = resolved;
+
+  while (true) {
+    try {
+      const real = await fs.realpath(probe);
+      return path.join(real, ...missingSegments.reverse());
+    } catch {
+      const parent = path.dirname(probe);
+      if (parent === probe) {
+        return resolved;
+      }
+      missingSegments.push(path.basename(probe));
+      probe = parent;
+    }
+  }
+}
+
+async function isWithin(child, parent) {
+  const [canonicalChild, canonicalParent] = await Promise.all([
+    canonicalPath(child),
+    canonicalPath(parent),
+  ]);
+  const normalizeForCompare = (value) => path.normalize(value).replace(/[\\\/]+$/, "").toLowerCase();
+  const relative = path.relative(normalizeForCompare(canonicalParent), normalizeForCompare(canonicalChild));
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
@@ -154,7 +179,7 @@ async function main() {
   const outDir = args["out-dir"]
     ? path.resolve(workspaceDir, args["out-dir"])
     : path.join(workspaceDir, "template-inspect");
-  if (!isWithin(outDir, workspaceDir)) {
+  if (!(await isWithin(outDir, workspaceDir))) {
     throw new Error(`Refusing to write template inspection outside workspace: ${outDir}`);
   }
   if (path.resolve(outDir) === workspaceDir) {

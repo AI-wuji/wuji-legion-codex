@@ -1,560 +1,1813 @@
 {
-  "version": "11.3",
-  "objective": "single-kernel fusion with lower total token cost, higher first-pass hit rate, and preserved verification",
-  "source_pools": [
-    "old-wuji",
-    "opensquilla",
-    "headroom-style",
-    "reasonix-style",
-    "hermes-style",
-    "ecc-style",
-    "context7-mcp-style",
-    "research-mode-style",
-    "superpowers-style-approved-atoms",
-    "huashu-design-style",
-    "prior-art-rca-tooling-style",
-    "fault-localization-style",
-    "multi-agent-rca-style",
-    "patch-debt-cure-style",
-    "refactor-recipe-style",
-    "agent-eval-style",
-    "terminal-verification-style",
-    "sensenova-skills-style",
-    "github-trending-20260608-style",
-    "omx-style",
-    "baoyu-skills-style",
-    "khazix-skills-style",
-    "humanizer-zh-style",
-    "neat-freak-style",
-    "competitive-teardown-style",
-    "hv-analysis-style",
-    "ppt-keynote-style",
-    "ian-xiaohei-style",
-    "prompt-cache-block-control-style",
-    "llmlingua-style",
-    "memgpt-style",
-    "external-agent-shells",
-    "external-write-surfaces"
-  ],
-  "decisions": [
-    {
-      "atom": "task-routing",
-      "source_pool": "old-wuji+opensquilla",
-      "decision": "resident",
-      "owner": "staff-runtime",
-      "reason": "single main chain and owner selection must stay resident"
-    },
-    {
-      "atom": "capability-mount",
-      "source_pool": "old-wuji+opensquilla",
-      "decision": "resident",
-      "owner": "staff-runtime+owner-profile",
-      "reason": "minimal-gap-first mounting is core runtime behavior"
-    },
-    {
-      "atom": "deterministic-execution",
-      "source_pool": "old-wuji",
-      "decision": "resident",
-      "owner": "go-execution-base",
-      "reason": "repeatable gates and audits belong in the execution base"
-    },
-    {
-      "atom": "context-minimization",
-      "source_pool": "opensquilla+headroom-style+prompt-cache-block-control-style+llmlingua-style+memgpt-style+neat-freak-style",
-      "decision": "resident",
-      "owner": "staff-runtime",
-      "reason": "stable prefix must remain small across tasks; long cached/blue-hit volume is treated as context bloat even when hit rate is high"
-    },
-    {
-      "atom": "prefix-cache-discipline",
-      "source_pool": "reasonix-style+old-wuji+prompt-cache-block-control-style",
-      "decision": "resident",
-      "owner": "staff-runtime+go-execution-base",
-      "reason": "byte-stable prefix improves cache economics only when the prefix is small; cached_tokens_p95 must stay under budget"
-    },
-    {
-      "atom": "tool-output-compression",
-      "source_pool": "headroom-style+old-wuji+llmlingua-style+neat-freak-style",
-      "decision": "resident",
-      "owner": "go-execution-base+quality-inspection",
-      "reason": "large outputs must be summarized before reuse while preserving evidence handles and deleting redundant transcript replay"
-    },
-    {
-      "atom": "stable-prefix-canon",
-      "source_pool": "old-wuji+headroom-style+reasonix-style+prompt-cache-block-control-style",
-      "decision": "resident",
-      "owner": "staff-runtime+go-execution-base",
-      "reason": "stable field order and short canon reduce cache drift without turning the stable block into a 200k resident blob"
-    },
-    {
-      "atom": "single-main-chain-closeout",
-      "source_pool": "old-wuji+codex-runtime-style",
-      "decision": "resident",
-      "owner": "staff-runtime+quality-inspection",
-      "reason": "completion must favor single-pass success and reject premature handoff"
-    },
-    {
-      "atom": "independent-officer-lifecycle",
-      "source_pool": "old-wuji+opensquilla+audit-trace-style",
-      "decision": "resident",
-      "owner": "staff-runtime+audit+quality-inspection",
-      "reason": "white-hat, guard-office, root-cause, audit, quality, performance, and compliance stay explicit on-demand sidecars; verdicts merge back into one main chain and officers exit"
-    },
-    {
-      "atom": "evidence-layer-separation",
-      "source_pool": "old-wuji+headroom-style",
-      "decision": "resident",
-      "owner": "audit+quality-inspection+go-execution-base",
-      "reason": "execution summaries and audit summaries must stay distinct to lower replay cost without losing traceability"
-    },
-    {
-      "atom": "external-material-safety-gate",
-      "source_pool": "old-wuji+opensquilla",
-      "decision": "resident",
-      "owner": "guard-office",
-      "reason": "repos, pages, scripts, plugins, MCP manifests, and dependencies must be checked before entering execution"
-    },
-    {
-      "atom": "white-hat-anti-fake-fusion",
-      "source_pool": "old-wuji",
-      "decision": "resident",
-      "owner": "white-hat",
-      "reason": "structural changes must be screened for split-brain routing, fake completion, and verification loss"
-    },
-    {
-      "atom": "sensitive-state-non-retention",
-      "source_pool": "old-wuji+guard-office",
-      "decision": "resident",
-      "owner": "guard-office+audit",
-      "reason": "user secrets, accounts, keys, addresses, cookies, tokens, sessions, and private state must never enter doctrine, memory, outputs, or feedback"
-    },
-    {
-      "atom": "skill-discovery-filter",
-      "source_pool": "opensquilla",
-      "decision": "mount-on-demand",
-      "owner": "staff-runtime+evolution-profile",
-      "reason": "find capability gaps without importing whole skill bodies into context"
-    },
-    {
-      "atom": "mcp-capability-catalog",
-      "source_pool": "opensquilla",
-      "decision": "mount-on-demand",
-      "owner": "staff-runtime+guard-office+owner-profile",
-      "reason": "MCP candidates are useful when a real task gap remains, but never become a route owner"
-    },
-    {
-      "atom": "mcp-gateway-status-awareness",
-      "source_pool": "opensquilla",
-      "decision": "mount-on-demand",
-      "owner": "staff-runtime+guard-office",
-      "reason": "status awareness is useful only as a read-only readiness check"
-    },
-    {
-      "atom": "session-routine",
-      "source_pool": "opensquilla",
-      "decision": "mount-on-demand",
-      "owner": "staff-runtime+automation-runtime",
-      "reason": "session routines help long tasks but must not retain sensitive user data"
-    },
-    {
-      "atom": "memory-routine",
-      "source_pool": "opensquilla",
-      "decision": "mount-on-demand",
-      "owner": "staff-runtime+evolution-profile",
-      "reason": "only distilled non-sensitive strategy signals may feed evolution"
-    },
-    {
-      "atom": "model-provider-routing-hint",
-      "source_pool": "opensquilla",
-      "decision": "mount-on-demand",
-      "owner": "staff-runtime",
-      "reason": "activate only when it improves first-pass success or lowers total rework cost"
-    },
-    {
-      "atom": "parallel-sidecar-execution",
-      "source_pool": "old-wuji+codex-runtime-style",
-      "decision": "mount-on-demand",
-      "owner": "staff-runtime+quality-inspection",
-      "reason": "parallel work is allowed whenever needed as sidecar evidence gathering or disjoint execution, never as a second router; branches must retire immediately after merge"
-    },
-    {
-      "atom": "residual-inventory-coverage",
-      "source_pool": "old-wuji+audit",
-      "decision": "resident",
-      "owner": "audit+go-execution-base",
-      "reason": "every current non-generated workspace file must be covered by the residual ledger"
-    },
-    {
-      "atom": "claim-current-dual-audit-gate",
-      "source_pool": "old-wuji+quality-inspection",
-      "decision": "resident",
-      "owner": "quality-inspection+go-execution-base",
-      "reason": "success claims require current fusion-audit and optimization-audit pass reports from the active workspace"
-    },
-    {
-      "atom": "feedback-hash-only-distillation",
-      "source_pool": "old-wuji+reasonix-style",
-      "decision": "replace",
-      "owner": "evolution-profile+guard-office+go-execution-base",
-      "reason": "feedback may keep compact strategy signals but not raw user task or note text"
-    },
-    {
-      "atom": "supply-chain-hash-gate",
-      "source_pool": "guard-office+codex-runtime-style",
-      "decision": "resident",
-      "owner": "guard-office+go-execution-base",
-      "reason": "downloaded executable or JS bundle surfaces must be explicit, version pinned, and hash verified"
-    },
-    {
-      "atom": "route-conflict-machine-gate",
-      "source_pool": "old-wuji+opensquilla",
-      "decision": "resident",
-      "owner": "staff-runtime+audit+go-execution-base",
-      "reason": "single-main-chain routing requires machine failure on duplicate route IDs and shared keywords"
-    },
-    {
-      "atom": "go-config-aligned-canon",
-      "source_pool": "old-wuji+go-execution-base",
-      "decision": "resident",
-      "owner": "go-execution-base+audit",
-      "reason": "Go defaults may provide deterministic fallback but must align with enabled provider policy and never recommend disabled providers"
-    },
-    {
-      "atom": "plugin-admission-filter",
-      "source_pool": "opensquilla+codex-plugins",
-      "decision": "mount-on-demand",
-      "owner": "guard-office+owner-profile",
-      "reason": "plugins are mounted by owner need and guard review, never by availability alone"
-    },
-    {
-      "atom": "code-map-before-edit",
-      "source_pool": "codex-runtime-style",
-      "decision": "mount-on-demand",
-      "owner": "development-profile+go-execution-base",
-      "reason": "high-risk code changes benefit from impact mapping before edits"
-    },
-    {
-      "atom": "root-cause-before-retry",
-      "source_pool": "superpowers-style-approved-atoms+reasonix-style",
-      "decision": "mount-on-demand",
-      "owner": "development-profile+quality-inspection",
-      "reason": "bug work should prefer fewer retries and deeper fixes instead of noisy iterative repair"
-    },
-    {
-      "atom": "browser-proof-verification",
-      "source_pool": "codex-runtime-style",
-      "decision": "mount-on-demand",
-      "owner": "quality-inspection+visual-profile+development-profile",
-      "reason": "frontend or UI changes should use real browser proof when relevant"
-    },
-    {
-      "atom": "performance-benchmark-dispute-mode",
-      "source_pool": "old-wuji",
-      "decision": "mount-on-demand",
-      "owner": "performance-benchmark-on-demand",
-      "reason": "cost and hit-rate claims need comparative measurement when disputed"
-    },
-    {
-      "atom": "compliance-license-source-check",
-      "source_pool": "old-wuji",
-      "decision": "mount-on-demand",
-      "owner": "compliance-on-demand",
-      "reason": "source, license, privacy, release, and attribution review stays cold unless needed"
-    },
-    {
-      "atom": "prompt-feedback-distillation",
-      "source_pool": "old-wuji+headroom-style+reasonix-style",
-      "decision": "replace",
-      "owner": "go-execution-base+evolution-profile",
-      "reason": "repeat signals should become compact CLI/skill atoms instead of long resident guidance"
-    },
-    {
-      "atom": "workflow-trace-checking",
-      "source_pool": "old-wuji",
-      "decision": "replace",
-      "owner": "go-execution-base+audit",
-      "reason": "legacy workflow helpers should collapse into deterministic Go gates"
-    },
-    {
-      "atom": "reversible-evidence-handle",
-      "source_pool": "headroom-style+old-wuji+neat-freak-style+memgpt-style",
-      "decision": "resident",
-      "owner": "go-execution-base+audit+quality-inspection",
-      "reason": "replace full replay with summaries, hashes, evidence handles, and compact task-state memory while preserving verification",
-      "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell"
-    },
-    {
-      "atom": "content-type-compression-router",
-      "source_pool": "headroom-style+reasonix-style+old-wuji+llmlingua-style+neat-freak-style",
-      "decision": "resident",
-      "owner": "go-execution-base+performance-benchmark-on-demand",
-      "reason": "choose compression policy by artifact kind instead of one-size-fits-all truncation; long context is compressed by source cards, key ranges, and evidence handles before reuse",
-      "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell; do not trade cached-token reduction for larger fresh input or verbose output"
-    },
-    {
-      "atom": "assumption-ledger",
-      "source_pool": "assumption-checker+white-hat",
-      "decision": "resident",
-      "owner": "white-hat+quality-inspection+audit",
-      "reason": "separate facts, assumptions, inferences, and unverified claims before high-risk conclusions",
-      "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell"
-    },
-    {
-      "atom": "claim-fact-check",
-      "source_pool": "hallucination-detector+white-hat",
-      "decision": "resident",
-      "owner": "white-hat+audit+intelligence-profile",
-      "reason": "require evidence for latest facts, capability claims, and completion statements",
-      "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell"
-    },
-    {
-      "atom": "version-doc-mcp",
-      "source_pool": "context7-mcp+opensquilla",
-      "decision": "mount-on-demand",
-      "owner": "development-profile+intelligence-profile+guard-office",
-      "reason": "mount current version documentation only when a real code, API, or library gap exists",
-      "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell"
-    },
-    {
-      "atom": "guarded-realtime-source-search",
-      "source_pool": "AnySearch+Agent-Reach+research-mode+last30days+github-trending-20260608-style+baoyu-skills-style",
-      "decision": "mount-on-demand",
-      "owner": "intelligence-profile+guard-office+audit",
-      "reason": "search web, GitHub, social, video, forum, URL-to-markdown, and transcript sources behind guard-office source and injection checks; wide recall stays shallow until the main chain selects survivors",
-      "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell"
-    },
-    {
-      "atom": "research-evidence-pack",
-      "source_pool": "research-mode+last30days+open-notebook+tolaria+hv-analysis-style+competitive-teardown-style+baoyu-skills-style",
-      "decision": "mount-on-demand",
-      "owner": "intelligence-profile+audit+content-profile",
-      "reason": "return sources, dates, confidence, counter-evidence, local knowledge handles, historical-vs-competitive analysis cards, and notebook-style evidence structure instead of raw search piles",
-      "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell"
-    },
-    {
-      "atom": "skill-stocktake-daily-library",
-      "source_pool": "ECC+Hermes+opensquilla+github-trending-20260608-style+source-pool-not-shell+omx-style+baoyu-skills-style+khazix-skills-style+humanizer-zh-style+neat-freak-style",
-      "decision": "mount-on-demand",
-      "owner": "evolution-profile+audit+white-hat",
-      "reason": "classify skills, Codex shells, content tools, publishing tools, and trending repos as resident, on-demand, candidate, retired, replace, or source-pool-only before distillation",
-      "fusion_policy": "gap-fill or replace weaker atoms; do not promote an external source pool into an active commander or route owner"
-    },
-    {
-      "atom": "verified-learning-loop",
-      "source_pool": "Hermes+ECC+Superpowers+old-wuji+agent-eval-style+omx-style+neat-freak-style",
-      "decision": "replace",
-      "owner": "evolution-profile+quality-inspection+go-execution-base+performance-benchmark-on-demand",
-      "reason": "promote only verified non-sensitive patterns into CLI or skill atoms after a comparison set, cleanup result, or real-run evidence proves benefit",
-      "fusion_policy": "keep hashes, counts, and strategy signals only; never retain raw user secrets, sessions, private task text, or unverified preferences"
-    },
-    {
-      "atom": "disciplined-debug-loop",
-      "source_pool": "Superpowers+development-profile",
-      "decision": "replace",
-      "owner": "development-profile+quality-inspection",
-      "reason": "debug through reproduce, hypothesis, minimal verification, fix, and regression test",
-      "fusion_policy": "gap-fill or replace weaker atoms; no additive project shell"
-    },
-    {
-      "atom": "prior-art-solution-search",
-      "source_pool": "fault-localization+delta-debugging+multi-agent-rca+web-search-rag+goose+llama.cpp+openai-plugins+pg_durable",
-      "decision": "mount-on-demand",
-      "owner": "intelligence-profile+owner-profile+guard-office",
-      "reason": "when solving a problem, search existing tools, papers, issues, docs, plugins, local runtimes, and open-source implementations before inventing from scratch",
-      "fusion_policy": "distill reusable solution patterns and tool choices; do not create a new external commander or dump raw search piles"
-    },
-    {
-      "atom": "root-cause-radar",
-      "source_pool": "fault-localization-style+delta-debugging+trace-analysis+old-wuji",
-      "decision": "mount-on-demand",
-      "owner": "root-cause-officer+development-profile+quality-inspection+white-hat",
-      "reason": "failure work must identify symptom, reproduction path, likely cause, affected surface, same-class scan, patch-debt action, and proof before repairing",
-      "fusion_policy": "root-cause-officer gives the independent verdict; development repairs the cause, quality-inspection verifies, and white-hat challenges symptom-only claims"
-    },
-    {
-      "atom": "parallel-hypothesis-fanout",
-      "source_pool": "multi-agent-rca-style+parallel-sidecar-execution+codex-subagents",
-      "decision": "mount-on-demand",
-      "owner": "staff-runtime+quality-inspection",
-      "reason": "when several likely causes or work slices exist, inspect them concurrently as need-driven sidecars under one main route",
-      "fusion_policy": "parallel branches collect evidence and candidate fixes only; staff-runtime keeps final route, merge, and closeout authority; each branch closes immediately after its result is merged"
-    },
-    {
-      "atom": "patch-debt-root-cure",
-      "source_pool": "patch-debt-cure-style+refactor-recipe-style+old-wuji+verified-learning-loop",
-      "decision": "replace",
-      "owner": "evolution-profile+root-cause-officer+audit+performance-benchmark-on-demand",
-      "reason": "repeated local fixes, bloated rules, and workaround chains must be converted to a recipe, then collapsed into the underlying stronger atom or removed",
-      "fusion_policy": "prefer replacement and deletion of weaker atoms over additive hotfixes; require target, match surface, transform, counterexample, rollback path, and verification before structural cleanup"
-    },
-    {
-      "atom": "terminal-real-run-verification",
-      "source_pool": "terminal-verification-style+codex-runtime+old-wuji+goose-style+pg_durable-style",
-      "decision": "mount-on-demand",
-      "owner": "quality-inspection+audit+go-execution-base",
-      "reason": "completion claims require fresh command, browser, program, export, durable checkpoint, or artifact evidence when that verification is available",
-      "fusion_policy": "close execution only after real-run proof or a true blocker; keep durable task state local and do not outsource first verification back to the user"
-    },
-    {
-      "atom": "html-native-design-canvas",
-      "source_pool": "huashu-design-style+visual-profile+baoyu-skills-style+ppt-keynote-style",
-      "decision": "mount-on-demand",
-      "owner": "visual-profile+quality-inspection",
-      "reason": "treat HTML as a high-fidelity design canvas for web, UI, article visuals, Keynote-style decks, and browser-presented decks when the deliverable genuinely benefits",
-      "fusion_policy": "distill canvas method only; do not import huashu-design as a separate skill shell"
-    },
-    {
-      "atom": "brand-asset-protocol",
-      "source_pool": "huashu-design-style+intelligence-profile+guard-office+baoyu-skills-style",
-      "decision": "mount-on-demand",
-      "owner": "visual-profile+intelligence-profile+guard-office",
-      "reason": "when real brands, articles, platforms, or products matter, fetch official assets, colors, screenshots, QR/media boundaries, and evidence before designing",
-      "fusion_policy": "guard external assets first; keep evidence handles instead of raw asset dumps"
-    },
-    {
-      "atom": "anti-ai-slop-visual-rules",
-      "source_pool": "huashu-design-style+taste-skill+opencv-style+white-hat+quality-inspection+humanizer-zh-style+ian-xiaohei-style+baoyu-skills-style",
-      "decision": "mount-on-demand",
-      "owner": "visual-profile+quality-inspection+white-hat",
-      "reason": "replace generic AI-looking visual and Chinese-content habits with concrete composition, hierarchy, density, asset-fit, image/preview inspection, and natural-language checks",
-      "fusion_policy": "replace weak style guidance with taste and visual-regression checks; no extra resident doctrine body"
-    },
-    {
-      "atom": "design-direction-triad",
-      "source_pool": "huashu-design-style+staff-runtime+nuwa-preflight+baoyu-skills-style",
-      "decision": "mount-on-demand",
-      "owner": "staff-runtime+visual-profile+nuwa-preflight",
-      "reason": "for ambiguous visual, article-illustration, or deck tasks, produce three visible directions before expanding the full artifact",
-      "fusion_policy": "use only for design ambiguity; do not pause execution after directioning when the task is already specified"
-    },
-    {
-      "atom": "html-deck-to-editable-pptx",
-      "source_pool": "huashu-design-style+html-ppt-skill+go-execution-base+ppt-keynote-style",
-      "decision": "mount-on-demand",
-      "owner": "visual-profile+go-execution-base+quality-inspection",
-      "reason": "HTML-first and Keynote-style decks can become editable PPTX when the task is from-scratch and visual fidelity matters",
-      "fusion_policy": "never use HTML screenshots to fake editable PPTX or template-following work"
-    },
-    {
-      "atom": "motion-stage-sprite-engine",
-      "source_pool": "huashu-design-style+visual-profile+ppt-keynote-style",
-      "decision": "mount-on-demand",
-      "owner": "visual-profile+performance-benchmark-on-demand",
-      "reason": "stage/sprite/timeline motion is useful for animated design artifacts, but too heavy for resident context",
-      "fusion_policy": "mount only for explicit motion, video, or animated presentation requirements"
-    },
-    {
-      "atom": "opensquilla-external-executor",
-      "source_pool": "opensquilla",
-      "decision": "retire",
-      "owner": "none",
-      "reason": "external task execution is forbidden in the fused Codex-only runtime"
-    },
-    {
-      "atom": "opensquilla-commander-skill",
-      "source_pool": "opensquilla",
-      "decision": "retire",
-      "owner": "none",
-      "reason": "commander identity reintroduces a second visible system"
-    },
-    {
-      "atom": "opensquilla-gateway-launcher",
-      "source_pool": "opensquilla",
-      "decision": "retire",
-      "owner": "none",
-      "reason": "gateway start, stop, restart, and MCP launch scripts are external runtime surfaces"
-    },
-    {
-      "atom": "parallel-router-shell",
-      "source_pool": "old-wuji+opensquilla",
-      "decision": "retire",
-      "owner": "none",
-      "reason": "parallel routing surfaces reintroduce split-brain and false completion risk"
-    },
-    {
-      "atom": "multi-doctrine-mirror-bodies",
-      "source_pool": "old-wuji+opensquilla",
-      "decision": "retire",
-      "owner": "none",
-      "reason": "large mirror docs behaving like second truth sources recreate drift and token waste"
-    },
-    {
-      "atom": "full-skill-dump-context",
-      "source_pool": "old-wuji+opensquilla",
-      "decision": "retire",
-      "owner": "none",
-      "reason": "full skill bodies inflate stable context and lower efficiency"
-    },
-    {
-      "atom": "secret-retention-in-feedback",
-      "source_pool": "old-wuji+opensquilla",
-      "decision": "reject",
-      "owner": "none",
-      "reason": "sensitive user information must never be preserved in doctrine, memory, outputs, backups, or feedback artifacts"
-    },
-    {
-      "atom": "sensenova-ppt-skill-shell",
-      "source_pool": "sensenova-skills-style",
-      "decision": "retire",
-      "owner": "none",
-      "reason": "SenseNova PPT skill is a duplicate shell beside the existing visual and PPTX pipeline",
-      "fusion_policy": "do not stack another PPT system; compare substeps and admit only stronger atoms into current visual, PPTX, or quality-inspection roles"
-    },
-    {
-      "atom": "office-visual-quality-ranking",
-      "source_pool": "sensenova-skills-style+huashu-design+quality-inspection",
-      "decision": "mount-on-demand",
-      "owner": "visual-profile+quality-inspection+white-hat",
-      "reason": "candidate ranking and visual review can strengthen existing visual quality-inspection when multiple design outputs exist",
-      "fusion_policy": "gap-fill only; if current anti-ai-slop or visual quality-inspection already covers the check better, keep the current atom and reject duplication"
-    },
-    {
-      "atom": "data-large-file-workflow",
-      "source_pool": "sensenova-skills-style+spreadsheet-profile+turbovec-style+open-notebook+tolaria",
-      "decision": "mount-on-demand",
-      "owner": "data-profile+go-execution-base+quality-inspection",
-      "reason": "large spreadsheet, multi-sheet, vector evidence index, and chart-to-data work can benefit from chunking, structured intermediate formats, and handle-based local knowledge lookup",
-      "fusion_policy": "mount only for real large-file, vector-search, local knowledge, or OCR-table gaps; do not replace the existing spreadsheet plugin path when it already works"
-    },
-    {
-      "atom": "research-dimension-synthesis-check",
-      "source_pool": "sensenova-skills-style+research-evidence-pack",
-      "decision": "mount-on-demand",
-      "owner": "intelligence-profile+audit+quality-inspection",
-      "reason": "dimension-by-dimension research synthesis may improve report structure without importing a new research runtime",
-      "fusion_policy": "merge only the checklist shape into research-evidence-pack; keep source dates, confidence, and counter-evidence requirements"
-    },
-    {
-      "atom": "sensenova-external-runtime",
-      "source_pool": "sensenova-skills-style",
-      "decision": "retire",
-      "owner": "none",
-      "reason": "OpenClaw, hermes-agent, SenseNova API binding, Raccoon, env/key setup, and cookie-based surfaces must not become Wuji runtime authorities",
-      "fusion_policy": "SenseNova remains a source pool only; no external executor, no second commander, no key retention"
-    },
-    {
-      "atom": "github-trending-risk-surfaces",
-      "source_pool": "GhostTrack+ChinaTextbook+AiToEarn+project-nomad+openai-plugins+external-agent-shells",
-      "decision": "reject",
-      "owner": "guard-office+compliance-on-demand+white-hat",
-      "reason": "privacy-invasive tracking, copyright-heavy datasets, monetization playbooks, offline appliance shells, and plugin runtimes must not enter Wuji as active capabilities by hype alone",
-      "fusion_policy": "use only as risk signal or source-pool lesson; no install, no commander, no resident context, no sensitive or copyrighted data ingestion"
-    },
-    {
-      "atom": "omx-external-runtime-shell",
-      "source_pool": "omx-style+external-agent-shells",
-      "decision": "reject",
-      "owner": "guard-office+white-hat+audit",
-      "reason": "OMX-style hook and sidecar ideas are useful, but an external runtime shell would recreate a second commander and long resident context",
-      "fusion_policy": "distill lifecycle atoms into existing routing, capability-mount, and runtime gates only; no .omx shell, no second router, no default resident plugin body"
-    },
-    {
-      "atom": "baoyu-account-publishing-runtime",
-      "source_pool": "baoyu-skills-style+external-write-surfaces",
-      "decision": "reject",
-      "owner": "guard-office+compliance-on-demand+audit",
-      "reason": "post-to-x, post-to-wechat, post-to-weibo, and Electron extraction touch accounts, cookies, local apps, or external write surfaces",
-      "fusion_policy": "keep only draft formatting, platform checklist, and explicit-authorization handoff; never retain accounts, cookies, tokens, sessions, or perform silent posting"
-    }
-  ]
+    "version":  "11.3",
+    "objective":  "single-kernel fusion with lower total token cost, higher first-pass hit rate, and preserved verification",
+    "decisions":  [
+                      {
+                          "atom":  "task-routing",
+                          "decision":  "resident",
+                          "owner":  "staff-runtime",
+                          "reason":  "single main chain and owner selection must stay resident",
+                          "source_refs":  "old-wuji+opensquilla"
+                      },
+                      {
+                          "atom":  "capability-mount",
+                          "decision":  "resident",
+                          "owner":  "staff-runtime+owner-profile",
+                          "reason":  "minimal-gap-first mounting is core runtime behavior",
+                          "source_refs":  "old-wuji+opensquilla"
+                      },
+                      {
+                          "atom":  "deterministic-execution",
+                          "decision":  "resident",
+                          "owner":  "go-execution-base",
+                          "reason":  "repeatable gates and audits belong in the execution base",
+                          "source_refs":  "old-wuji"
+                      },
+                      {
+                          "atom":  "context-minimization",
+                          "decision":  "resident",
+                          "owner":  "staff-runtime",
+                          "reason":  "stable prefix must remain small across tasks; long cached/blue-hit volume is treated as context bloat even when hit rate is high",
+                          "source_refs":  "opensquilla+headroom-style+prompt-cache-block-control-style+llmlingua-style+memgpt-style+neat-freak-style"
+                      },
+                      {
+                          "atom":  "prefix-cache-discipline",
+                          "decision":  "resident",
+                          "owner":  "staff-runtime+go-execution-base",
+                          "reason":  "byte-stable prefix improves cache economics only when the prefix is small; cached_tokens_p95 must stay under budget",
+                          "source_refs":  "reasonix-style+old-wuji+prompt-cache-block-control-style"
+                      },
+                      {
+                          "atom":  "tool-output-compression",
+                          "decision":  "resident",
+                          "owner":  "go-execution-base+quality-inspection",
+                          "reason":  "large outputs must be summarized before reuse while preserving evidence handles and deleting redundant transcript replay",
+                          "source_refs":  "headroom-style+old-wuji+llmlingua-style+neat-freak-style"
+                      },
+                      {
+                          "atom":  "stable-prefix-canon",
+                          "decision":  "resident",
+                          "owner":  "staff-runtime+go-execution-base",
+                          "reason":  "stable field order and short canon reduce cache drift without turning the stable block into a 200k resident blob",
+                          "source_refs":  "old-wuji+headroom-style+reasonix-style+prompt-cache-block-control-style"
+                      },
+                      {
+                          "atom":  "single-main-chain-closeout",
+                          "decision":  "resident",
+                          "owner":  "staff-runtime+quality-inspection",
+                          "reason":  "completion must favor single-pass success and reject premature handoff",
+                          "source_refs":  "old-wuji+codex-runtime-style"
+                      },
+                      {
+                          "atom":  "independent-officer-lifecycle",
+                          "decision":  "resident",
+                          "owner":  "staff-runtime+audit+quality-inspection",
+                          "reason":  "white-hat, guard-office, root-cause, audit, quality, performance, and compliance stay explicit on-demand sidecars; verdicts merge back into one main chain and officers exit",
+                          "source_refs":  "old-wuji+opensquilla+audit-trace-style"
+                      },
+                      {
+                          "atom":  "evidence-layer-separation",
+                          "decision":  "resident",
+                          "owner":  "audit+quality-inspection+go-execution-base",
+                          "reason":  "execution summaries and audit summaries must stay distinct to lower replay cost without losing traceability",
+                          "source_refs":  "old-wuji+headroom-style"
+                      },
+                      {
+                          "atom":  "external-material-safety-gate",
+                          "decision":  "resident",
+                          "owner":  "guard-office",
+                          "reason":  "repos, pages, scripts, plugins, MCP manifests, and dependencies must be checked before entering execution",
+                          "source_refs":  "old-wuji+opensquilla"
+                      },
+                      {
+                          "atom":  "white-hat-anti-fake-fusion",
+                          "decision":  "resident",
+                          "owner":  "white-hat",
+                          "reason":  "structural changes must be screened for split-brain routing, fake completion, and verification loss",
+                          "source_refs":  "old-wuji"
+                      },
+                      {
+                          "atom":  "sensitive-state-non-retention",
+                          "decision":  "resident",
+                          "owner":  "guard-office+audit",
+                          "reason":  "user secrets, accounts, keys, addresses, cookies, tokens, sessions, and private state must never enter doctrine, memory, outputs, or feedback",
+                          "source_refs":  "old-wuji+guard-office"
+                      },
+                      {
+                          "atom":  "skill-discovery-filter",
+                          "decision":  "mount-on-demand",
+                          "owner":  "staff-runtime+evolution-profile",
+                          "reason":  "find capability gaps without importing whole skill bodies into context",
+                          "source_refs":  "opensquilla"
+                      },
+                      {
+                          "atom":  "mcp-capability-catalog",
+                          "decision":  "mount-on-demand",
+                          "owner":  "staff-runtime+guard-office+owner-profile",
+                          "reason":  "MCP candidates are useful when a real task gap remains, but never become a route owner",
+                          "source_refs":  "opensquilla"
+                      },
+                      {
+                          "atom":  "mcp-gateway-status-awareness",
+                          "decision":  "mount-on-demand",
+                          "owner":  "staff-runtime+guard-office",
+                          "reason":  "status awareness is useful only as a read-only readiness check",
+                          "source_refs":  "opensquilla"
+                      },
+                      {
+                          "atom":  "session-routine",
+                          "decision":  "mount-on-demand",
+                          "owner":  "staff-runtime+automation-runtime",
+                          "reason":  "session routines help long tasks but must not retain sensitive user data",
+                          "source_refs":  "opensquilla"
+                      },
+                      {
+                          "atom":  "memory-routine",
+                          "decision":  "mount-on-demand",
+                          "owner":  "staff-runtime+evolution-profile",
+                          "reason":  "only distilled non-sensitive strategy signals may feed evolution",
+                          "source_refs":  "opensquilla"
+                      },
+                      {
+                          "atom":  "model-provider-routing-hint",
+                          "decision":  "mount-on-demand",
+                          "owner":  "staff-runtime",
+                          "reason":  "activate only when it improves first-pass success or lowers total rework cost",
+                          "source_refs":  "opensquilla"
+                      },
+                      {
+                          "atom":  "parallel-sidecar-execution",
+                          "decision":  "mount-on-demand",
+                          "owner":  "staff-runtime+quality-inspection",
+                          "reason":  "parallel work is allowed whenever needed as sidecar evidence gathering or disjoint execution, never as a second router; branches must retire immediately after merge",
+                          "source_refs":  "old-wuji+codex-runtime-style"
+                      },
+                      {
+                          "atom":  "residual-inventory-coverage",
+                          "decision":  "resident",
+                          "owner":  "audit+go-execution-base",
+                          "reason":  "every current non-generated workspace file must be covered by the residual ledger",
+                          "source_refs":  "old-wuji+audit"
+                      },
+                      {
+                          "atom":  "claim-current-dual-audit-gate",
+                          "decision":  "resident",
+                          "owner":  "quality-inspection+go-execution-base",
+                          "reason":  "success claims require current fusion-audit and optimization-audit pass reports from the active workspace",
+                          "source_refs":  "old-wuji+quality-inspection"
+                      },
+                      {
+                          "atom":  "feedback-hash-only-distillation",
+                          "decision":  "replace",
+                          "owner":  "evolution-profile+guard-office+go-execution-base",
+                          "reason":  "feedback may keep compact strategy signals but not raw user task or note text",
+                          "source_refs":  "old-wuji+reasonix-style"
+                      },
+                      {
+                          "atom":  "supply-chain-hash-gate",
+                          "decision":  "resident",
+                          "owner":  "guard-office+go-execution-base",
+                          "reason":  "downloaded executable or JS bundle surfaces must be explicit, version pinned, and hash verified",
+                          "source_refs":  "guard-office+codex-runtime-style"
+                      },
+                      {
+                          "atom":  "route-conflict-machine-gate",
+                          "decision":  "resident",
+                          "owner":  "staff-runtime+audit+go-execution-base",
+                          "reason":  "single-main-chain routing requires machine failure on duplicate route IDs and shared keywords",
+                          "source_refs":  "old-wuji+opensquilla"
+                      },
+                      {
+                          "atom":  "go-config-aligned-canon",
+                          "decision":  "resident",
+                          "owner":  "go-execution-base+audit",
+                          "reason":  "Go defaults may provide deterministic fallback but must align with enabled provider policy and never recommend disabled providers",
+                          "source_refs":  "old-wuji+go-execution-base"
+                      },
+                      {
+                          "atom":  "plugin-admission-filter",
+                          "decision":  "mount-on-demand",
+                          "owner":  "guard-office+owner-profile",
+                          "reason":  "plugins are mounted by owner need and guard review, never by availability alone",
+                          "source_refs":  "opensquilla+codex-plugins"
+                      },
+                      {
+                          "atom":  "code-map-before-edit",
+                          "decision":  "mount-on-demand",
+                          "owner":  "development-profile+go-execution-base",
+                          "reason":  "high-risk code changes benefit from impact mapping before edits; codebase-memory-mcp-style structure memory may be tested only as a read-only, on-demand, benchmarked code-map accelerator",
+                          "source_refs":  "codex-runtime-style+codebase-memory-mcp"
+                      },
+                      {
+                          "atom":  "root-cause-before-retry",
+                          "decision":  "mount-on-demand",
+                          "owner":  "development-profile+quality-inspection",
+                          "reason":  "bug work should prefer fewer retries and deeper fixes instead of noisy iterative repair",
+                          "source_refs":  "superpowers-style-approved-atoms+reasonix-style"
+                      },
+                      {
+                          "atom":  "browser-proof-verification",
+                          "decision":  "mount-on-demand",
+                          "owner":  "quality-inspection+visual-profile+development-profile",
+                          "reason":  "frontend or UI changes should use real browser proof when relevant",
+                          "source_refs":  "codex-runtime-style"
+                      },
+                      {
+                          "atom":  "performance-benchmark-dispute-mode",
+                          "decision":  "mount-on-demand",
+                          "owner":  "performance-benchmark-on-demand",
+                          "reason":  "cost and hit-rate claims need comparative measurement when disputed",
+                          "source_refs":  "old-wuji"
+                      },
+                      {
+                          "atom":  "compliance-license-source-check",
+                          "decision":  "mount-on-demand",
+                          "owner":  "compliance-on-demand",
+                          "reason":  "source, license, privacy, release, and attribution review stays cold unless needed",
+                          "source_refs":  "old-wuji"
+                      },
+                      {
+                          "atom":  "prompt-feedback-distillation",
+                          "decision":  "replace",
+                          "owner":  "go-execution-base+evolution-profile",
+                          "reason":  "repeat signals should become compact CLI/skill atoms instead of long resident guidance",
+                          "source_refs":  "old-wuji+headroom-style+reasonix-style"
+                      },
+                      {
+                          "atom":  "workflow-trace-checking",
+                          "decision":  "replace",
+                          "owner":  "go-execution-base+audit",
+                          "reason":  "legacy workflow helpers should collapse into deterministic Go gates",
+                          "source_refs":  "old-wuji"
+                      },
+                      {
+                          "atom":  "reversible-evidence-handle",
+                          "decision":  "resident",
+                          "owner":  "go-execution-base+audit+quality-inspection",
+                          "reason":  "replace full replay with summaries, hashes, evidence handles, and compact task-state memory while preserving verification",
+                          "fusion_policy":  "gap-fill or replace weaker atoms; no additive project shell",
+                          "source_refs":  "headroom-style+old-wuji+neat-freak-style+memgpt-style"
+                      },
+                      {
+                          "atom":  "content-type-compression-router",
+                          "decision":  "resident",
+                          "owner":  "go-execution-base+performance-benchmark-on-demand",
+                          "reason":  "choose compression policy by artifact kind instead of one-size-fits-all truncation; long context is compressed by source cards, key ranges, and evidence handles before reuse",
+                          "fusion_policy":  "gap-fill or replace weaker atoms; no additive project shell; do not trade cached-token reduction for larger fresh input or verbose output",
+                          "source_refs":  "headroom-style+reasonix-style+old-wuji+llmlingua-style+neat-freak-style"
+                      },
+                      {
+                          "atom":  "assumption-ledger",
+                          "decision":  "resident",
+                          "owner":  "white-hat+quality-inspection+audit",
+                          "reason":  "separate facts, assumptions, inferences, and unverified claims before high-risk conclusions",
+                          "fusion_policy":  "gap-fill or replace weaker atoms; no additive project shell",
+                          "source_refs":  "assumption-checker+white-hat"
+                      },
+                      {
+                          "atom":  "claim-fact-check",
+                          "decision":  "resident",
+                          "owner":  "white-hat+audit+intelligence-profile",
+                          "reason":  "require evidence for latest facts, capability claims, and completion statements",
+                          "fusion_policy":  "gap-fill or replace weaker atoms; no additive project shell",
+                          "source_refs":  "hallucination-detector+white-hat"
+                      },
+                      {
+                          "atom":  "version-doc-mcp",
+                          "decision":  "mount-on-demand",
+                          "owner":  "development-profile+intelligence-profile+guard-office",
+                          "reason":  "mount current version documentation only when a real code, API, or library gap exists",
+                          "fusion_policy":  "gap-fill or replace weaker atoms; no additive project shell",
+                          "source_refs":  "context7-mcp+opensquilla"
+                      },
+                      {
+                          "atom":  "guarded-realtime-source-search",
+                          "decision":  "mount-on-demand",
+                          "owner":  "intelligence-profile+guard-office+audit",
+                          "reason":  "search web, GitHub, social, video, forum, URL-to-markdown, and transcript sources behind guard-office source and injection checks; wide recall stays shallow until the main chain selects survivors",
+                          "fusion_policy":  "gap-fill or replace weaker atoms; no additive project shell",
+                          "source_refs":  "AnySearch+Agent-Reach+research-mode+last30days+github-trending-20260608-style+baoyu-skills-style"
+                      },
+                      {
+                          "atom":  "research-evidence-pack",
+                          "decision":  "mount-on-demand",
+                          "owner":  "intelligence-profile+audit+content-profile",
+                          "reason":  "return sources, dates, confidence, counter-evidence, local knowledge handles, historical-vs-competitive analysis cards, and notebook-style evidence structure instead of raw search piles",
+                          "fusion_policy":  "gap-fill or replace weaker atoms; no additive project shell",
+                          "source_refs":  "research-mode+last30days+open-notebook+tolaria+hv-analysis-style+competitive-teardown-style+baoyu-skills-style"
+                      },
+                      {
+                          "atom":  "skill-stocktake-daily-library",
+                          "decision":  "mount-on-demand",
+                          "owner":  "evolution-profile+audit+white-hat",
+                          "reason":  "classify skills, Codex shells, content tools, publishing tools, and trending repos as resident, on-demand, candidate, retired, replace, or source-pool-only before distillation; mattpocock-skills and agentic-coding-skills enter only as single-purpose pattern cards",
+                          "fusion_policy":  "gap-fill or replace weaker atoms; do not promote an external source pool into an active commander or route owner",
+                          "source_refs":  "ECC+Hermes+opensquilla+github-trending-20260608-style+source-pool-not-shell+omx-style+baoyu-skills-style+khazix-skills-style+humanizer-zh-style+neat-freak-style+mattpocock-skills+agentic-coding-skills"
+                      },
+                      {
+                          "atom":  "verified-learning-loop",
+                          "decision":  "replace",
+                          "owner":  "evolution-profile+quality-inspection+go-execution-base+performance-benchmark-on-demand",
+                          "reason":  "promote only verified non-sensitive patterns into CLI or skill atoms after a comparison set, cleanup result, or real-run evidence proves benefit",
+                          "fusion_policy":  "keep hashes, counts, and strategy signals only; never retain raw user secrets, sessions, private task text, or unverified preferences",
+                          "source_refs":  "Hermes+ECC+Superpowers+old-wuji+agent-eval-style+omx-style+neat-freak-style"
+                      },
+                      {
+                          "atom":  "disciplined-debug-loop",
+                          "decision":  "replace",
+                          "owner":  "development-profile+quality-inspection",
+                          "reason":  "debug through reproduce, hypothesis, minimal verification, fix, and regression test; loop-style repair is allowed only with budget, dedupe, stop condition, and real verification",
+                          "fusion_policy":  "gap-fill or replace weaker atoms; no additive project shell; no unbounded agent loop",
+                          "source_refs":  "Superpowers+development-profile+claude-loops"
+                      },
+                      {
+                          "atom":  "prior-art-solution-search",
+                          "decision":  "mount-on-demand",
+                          "owner":  "intelligence-profile+owner-profile+guard-office",
+                          "reason":  "when solving a problem, search existing tools, papers, issues, docs, plugins, local runtimes, and open-source implementations before inventing from scratch",
+                          "fusion_policy":  "distill reusable solution patterns and tool choices; do not create a new external commander or dump raw search piles",
+                          "source_refs":  "fault-localization+delta-debugging+multi-agent-rca+web-search-rag+goose+llama.cpp+openai-plugins+pg_durable"
+                      },
+                      {
+                          "atom":  "root-cause-radar",
+                          "decision":  "mount-on-demand",
+                          "owner":  "root-cause-officer+development-profile+quality-inspection+white-hat",
+                          "reason":  "failure work must identify symptom, reproduction path, likely cause, affected surface, same-class scan, patch-debt action, and proof before repairing",
+                          "fusion_policy":  "root-cause-officer gives the independent verdict; development repairs the cause, quality-inspection verifies, and white-hat challenges symptom-only claims",
+                          "source_refs":  "fault-localization-style+delta-debugging+trace-analysis+old-wuji"
+                      },
+                      {
+                          "atom":  "parallel-hypothesis-fanout",
+                          "decision":  "mount-on-demand",
+                          "owner":  "staff-runtime+quality-inspection",
+                          "reason":  "when several likely causes or work slices exist, inspect them concurrently as need-driven sidecars under one main route",
+                          "fusion_policy":  "parallel branches collect evidence and candidate fixes only; staff-runtime keeps final route, merge, and closeout authority; each branch closes immediately after its result is merged",
+                          "source_refs":  "multi-agent-rca-style+parallel-sidecar-execution+codex-subagents"
+                      },
+                      {
+                          "atom":  "patch-debt-root-cure",
+                          "decision":  "replace",
+                          "owner":  "evolution-profile+root-cause-officer+audit+performance-benchmark-on-demand",
+                          "reason":  "repeated local fixes, bloated rules, and workaround chains must be converted to a recipe, then collapsed into the underlying stronger atom or removed",
+                          "fusion_policy":  "prefer replacement and deletion of weaker atoms over additive hotfixes; require target, match surface, transform, counterexample, rollback path, and verification before structural cleanup",
+                          "source_refs":  "patch-debt-cure-style+refactor-recipe-style+old-wuji+verified-learning-loop"
+                      },
+                      {
+                          "atom":  "terminal-real-run-verification",
+                          "decision":  "mount-on-demand",
+                          "owner":  "quality-inspection+audit+go-execution-base",
+                          "reason":  "completion claims require fresh command, browser, program, export, durable checkpoint, or artifact evidence when that verification is available",
+                          "fusion_policy":  "close execution only after real-run proof or a true blocker; keep durable task state local and do not outsource first verification back to the user",
+                          "source_refs":  "terminal-verification-style+codex-runtime+old-wuji+goose-style+pg_durable-style"
+                      },
+                      {
+                          "atom":  "html-native-design-canvas",
+                          "decision":  "mount-on-demand",
+                          "owner":  "visual-profile+quality-inspection",
+                          "reason":  "treat HTML as a high-fidelity design canvas for web, UI, article visuals, Keynote-style decks, and browser-presented decks when the deliverable genuinely benefits",
+                          "fusion_policy":  "distill canvas method only; do not import huashu-design as a separate skill shell",
+                          "source_refs":  "huashu-design-style+visual-profile+baoyu-skills-style+ppt-keynote-style"
+                      },
+                      {
+                          "atom":  "brand-asset-protocol",
+                          "decision":  "mount-on-demand",
+                          "owner":  "visual-profile+intelligence-profile+guard-office",
+                          "reason":  "when real brands, articles, platforms, or products matter, fetch official assets, colors, screenshots, QR/media boundaries, and evidence before designing",
+                          "fusion_policy":  "guard external assets first; keep evidence handles instead of raw asset dumps",
+                          "source_refs":  "huashu-design-style+intelligence-profile+guard-office+baoyu-skills-style"
+                      },
+                      {
+                          "atom":  "anti-ai-slop-visual-rules",
+                          "decision":  "mount-on-demand",
+                          "owner":  "visual-profile+quality-inspection+white-hat",
+                          "reason":  "replace generic AI-looking visual and Chinese-content habits with concrete composition, hierarchy, density, asset-fit, image/preview inspection, and natural-language checks",
+                          "fusion_policy":  "replace weak style guidance with taste and visual-regression checks; no extra resident doctrine body",
+                          "source_refs":  "huashu-design-style+taste-skill+opencv-style+white-hat+quality-inspection+humanizer-zh-style+ian-xiaohei-style+baoyu-skills-style"
+                      },
+                      {
+                          "atom":  "design-direction-triad",
+                          "decision":  "mount-on-demand",
+                          "owner":  "staff-runtime+visual-profile+nuwa-preflight",
+                          "reason":  "for ambiguous visual, article-illustration, or deck tasks, produce three visible directions before expanding the full artifact",
+                          "fusion_policy":  "use only for design ambiguity; do not pause execution after directioning when the task is already specified",
+                          "source_refs":  "huashu-design-style+staff-runtime+nuwa-preflight+baoyu-skills-style"
+                      },
+                      {
+                          "atom":  "native-pptx-master-route",
+                          "decision":  "mount-on-demand",
+                          "owner":  "visual-profile+go-execution-base+quality-inspection",
+                          "reason":  "HTML-first and Keynote-style decks can become editable PPTX when the task is from-scratch and visual fidelity matters",
+                          "fusion_policy":  "never use HTML screenshots to fake editable PPTX or template-following work",
+                          "source_refs":  "huashu-design-style+html-ppt-skill+go-execution-base+ppt-keynote-style"
+                      },
+                      {
+                          "atom":  "motion-stage-sprite-engine",
+                          "decision":  "mount-on-demand",
+                          "owner":  "visual-profile+performance-benchmark-on-demand",
+                          "reason":  "stage/sprite/timeline motion is useful for animated design artifacts, but too heavy for resident context",
+                          "fusion_policy":  "mount only for explicit motion, video, or animated presentation requirements",
+                          "source_refs":  "huashu-design-style+visual-profile+ppt-keynote-style"
+                      },
+                      {
+                          "atom":  "opensquilla-external-executor",
+                          "decision":  "retire",
+                          "owner":  "none",
+                          "reason":  "external task execution is forbidden in the fused Codex-only runtime",
+                          "source_refs":  "opensquilla"
+                      },
+                      {
+                          "atom":  "opensquilla-commander-skill",
+                          "decision":  "retire",
+                          "owner":  "none",
+                          "reason":  "commander identity reintroduces a second visible system",
+                          "source_refs":  "opensquilla"
+                      },
+                      {
+                          "atom":  "opensquilla-gateway-launcher",
+                          "decision":  "retire",
+                          "owner":  "none",
+                          "reason":  "gateway start, stop, restart, and MCP launch scripts are external runtime surfaces",
+                          "source_refs":  "opensquilla"
+                      },
+                      {
+                          "atom":  "parallel-router-shell",
+                          "decision":  "retire",
+                          "owner":  "none",
+                          "reason":  "parallel routing surfaces reintroduce split-brain and false completion risk",
+                          "source_refs":  "old-wuji+opensquilla"
+                      },
+                      {
+                          "atom":  "multi-doctrine-mirror-bodies",
+                          "decision":  "retire",
+                          "owner":  "none",
+                          "reason":  "large mirror docs behaving like second truth sources recreate drift and token waste",
+                          "source_refs":  "old-wuji+opensquilla"
+                      },
+                      {
+                          "atom":  "full-skill-dump-context",
+                          "decision":  "retire",
+                          "owner":  "none",
+                          "reason":  "full skill bodies inflate stable context and lower efficiency",
+                          "source_refs":  "old-wuji+opensquilla"
+                      },
+                      {
+                          "atom":  "secret-retention-in-feedback",
+                          "decision":  "reject",
+                          "owner":  "none",
+                          "reason":  "sensitive user information must never be preserved in doctrine, memory, outputs, backups, or feedback artifacts",
+                          "source_refs":  "old-wuji+opensquilla"
+                      },
+                      {
+                          "atom":  "sensenova-ppt-skill-shell",
+                          "decision":  "retire",
+                          "owner":  "none",
+                          "reason":  "SenseNova PPT skill is a duplicate shell beside the existing visual and PPTX pipeline",
+                          "fusion_policy":  "do not stack another PPT system; compare substeps and admit only stronger atoms into current visual, PPTX, or quality-inspection roles",
+                          "source_refs":  "sensenova-skills-style"
+                      },
+                      {
+                          "atom":  "office-visual-quality-ranking",
+                          "decision":  "mount-on-demand",
+                          "owner":  "visual-profile+quality-inspection+white-hat",
+                          "reason":  "candidate ranking and visual review can strengthen existing visual quality-inspection when multiple design outputs exist",
+                          "fusion_policy":  "gap-fill only; if current anti-ai-slop or visual quality-inspection already covers the check better, keep the current atom and reject duplication",
+                          "source_refs":  "sensenova-skills-style+huashu-design+quality-inspection"
+                      },
+                      {
+                          "atom":  "data-large-file-workflow",
+                          "decision":  "mount-on-demand",
+                          "owner":  "data-profile+go-execution-base+quality-inspection",
+                          "reason":  "large spreadsheet, multi-sheet, vector evidence index, and chart-to-data work can benefit from chunking, structured intermediate formats, and handle-based local knowledge lookup",
+                          "fusion_policy":  "mount only for real large-file, vector-search, local knowledge, or OCR-table gaps; do not replace the existing spreadsheet plugin path when it already works",
+                          "source_refs":  "sensenova-skills-style+spreadsheet-profile+turbovec-style+open-notebook+tolaria"
+                      },
+                      {
+                          "atom":  "research-dimension-synthesis-check",
+                          "decision":  "mount-on-demand",
+                          "owner":  "intelligence-profile+audit+quality-inspection",
+                          "reason":  "dimension-by-dimension research synthesis may improve report structure without importing a new research runtime",
+                          "fusion_policy":  "merge only the checklist shape into research-evidence-pack; keep source dates, confidence, and counter-evidence requirements",
+                          "source_refs":  "sensenova-skills-style+research-evidence-pack"
+                      },
+                      {
+                          "atom":  "sensenova-external-runtime",
+                          "decision":  "retire",
+                          "owner":  "none",
+                          "reason":  "OpenClaw, hermes-agent, SenseNova API binding, Raccoon, env/key setup, and cookie-based surfaces must not become Wuji runtime authorities",
+                          "fusion_policy":  "SenseNova remains a source pool only; no external executor, no second commander, no key retention",
+                          "source_refs":  "sensenova-skills-style"
+                      },
+                      {
+                          "atom":  "github-trending-risk-surfaces",
+                          "decision":  "reject",
+                          "owner":  "guard-office+compliance-on-demand+white-hat",
+                          "reason":  "privacy-invasive tracking, copyright-heavy datasets, monetization playbooks, offline appliance shells, and plugin runtimes must not enter Wuji as active capabilities by hype alone",
+                          "fusion_policy":  "use only as risk signal or source-pool lesson; no install, no commander, no resident context, no sensitive or copyrighted data ingestion",
+                          "source_refs":  "GhostTrack+ChinaTextbook+AiToEarn+project-nomad+openai-plugins+external-agent-shells"
+                      },
+                      {
+                          "atom":  "omx-external-runtime-shell",
+                          "decision":  "reject",
+                          "owner":  "guard-office+white-hat+audit",
+                          "reason":  "OMX-style hook and sidecar ideas are useful, but an external runtime shell would recreate a second commander and long resident context",
+                          "fusion_policy":  "distill lifecycle atoms into existing routing, capability-mount, and runtime gates only; no .omx shell, no second router, no default resident plugin body",
+                          "source_refs":  "omx-style+external-agent-shells"
+                      },
+                      {
+                          "atom":  "baoyu-account-publishing-runtime",
+                          "decision":  "reject",
+                          "owner":  "guard-office+compliance-on-demand+audit",
+                          "reason":  "post-to-x, post-to-wechat, post-to-weibo, and Electron extraction touch accounts, cookies, local apps, or external write surfaces",
+                          "fusion_policy":  "keep only draft formatting, platform checklist, and explicit-authorization handoff; never retain accounts, cookies, tokens, sessions, or perform silent posting",
+                          "source_refs":  "baoyu-skills-style+external-write-surfaces"
+                      }
+                  ],
+    "object_verdicts":  [
+                            {
+                                "object":  "AnySearch",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "guarded-realtime-source-search"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "guard-office",
+                                               "audit"
+                                           ],
+                                "boundary":  "no standalone shell or route-visible source name",
+                                "reason":  "broad search scouting was distilled into guarded realtime search"
+                            },
+                            {
+                                "object":  "Agent-Reach",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "guard-office",
+                                               "audit"
+                                           ],
+                                "boundary":  "wide-source reach is only a guarded candidate map; no default crawler, no cookies, no accounts, no ToS-bypassing scraper, and no route-visible shell",
+                                "reason":  "the latest officer review found useful search-surface ideas but too much privacy, ToS, and injection risk for default landed use"
+                            },
+                            {
+                                "object":  "Headroom",
+                                "fusion_mode":  "replace",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "content-type-compression-router",
+                                                        "reversible-evidence-handle",
+                                                        "optimization-kernel"
+                                                    ],
+                                "owners":  [
+                                               "go-execution-base",
+                                               "performance-benchmark-on-demand",
+                                               "audit",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "replace weaker compression behaviors instead of stacking a new shell",
+                                "reason":  "its strongest context compression and total-cost discipline replaced weaker local behavior"
+                            },
+                            {
+                                "object":  "Superpowers",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "verified-learning-loop",
+                                                        "disciplined-debug-loop",
+                                                        "parallel-hypothesis-fanout",
+                                                        "patch-debt-root-cure"
+                                                    ],
+                                "owners":  [
+                                               "evolution-profile",
+                                               "development-profile",
+                                               "quality-inspection",
+                                               "staff-runtime"
+                                           ],
+                                "boundary":  "reject the full methodology shell and second runtime doctrine",
+                                "reason":  "TDD discipline, task slicing, debugging, and subagent review lessons were absorbed into existing atoms"
+                            },
+                            {
+                                "object":  "Ponytail",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "development-profile",
+                                               "evolution-profile",
+                                               "white-hat",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "reject the plugin shell, multi-host wrapper, long rule replay, and unverifiable project identity; existing concise execution already covers the useful YAGNI lessons",
+                                "reason":  "the latest officer review could not verify a distinct, stronger atom beyond existing concise execution and patch-debt discipline"
+                            },
+                            {
+                                "object":  "codebase-memory-mcp",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "development-profile",
+                                               "guard-office",
+                                               "audit",
+                                               "performance-benchmark-on-demand"
+                                           ],
+                                "boundary":  "read-only isolated trial only; no persistent raw memory, no second truth source, no default MCP install, and no full-repo replay into context",
+                                "reason":  "promising code-structure memory and token-saving claims must first pass supply-chain, secret-filter, stale-index, and small-repo benchmark gates"
+                            },
+                            {
+                                "object":  "awesome-design-md",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "visual-profile",
+                                               "guard-office",
+                                               "quality-inspection",
+                                               "compliance-on-demand"
+                                           ],
+                                "boundary":  "cold design prior-art index only; third-party brand and design-system material must remain attributed evidence handles, not resident doctrine",
+                                "reason":  "useful DESIGN.md pattern source, but IP and brand-similarity risk prevents default landed use"
+                            },
+                            {
+                                "object":  "mattpocock/skills",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "evolution-profile",
+                                               "development-profile",
+                                               "audit",
+                                               "white-hat"
+                                           ],
+                                "boundary":  "single-purpose skill-card patterns only; no installer, no skill pack shell, and no second workflow authority",
+                                "reason":  "examples-first and focused-skill writing patterns may improve existing stocktake without importing an external skill system"
+                            },
+                            {
+                                "object":  "agentic coding skills",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "evolution-profile",
+                                               "development-profile",
+                                               "quality-inspection",
+                                               "audit"
+                                           ],
+                                "boundary":  "task-scoped agentic skill patterns only; reject generic agent shells, second routers, and always-on subagent doctrine",
+                                "reason":  "some micro-skill and verification patterns are useful, but the category is too broad to land as a single active runtime"
+                            },
+                            {
+                                "object":  "Claude loops",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "development-profile",
+                                               "quality-inspection",
+                                               "audit",
+                                               "performance-benchmark-on-demand"
+                                           ],
+                                "boundary":  "bounded loop pattern only: budget cap, dedupe, stop condition, failure evidence, and real verification; no autonomous infinite loop",
+                                "reason":  "loop thinking can improve debug and verification closure only when constrained under the single main chain"
+                            },
+                            {
+                                "object":  "universal-android-debloater",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "guard-office",
+                                               "compliance-on-demand",
+                                               "white-hat"
+                                           ],
+                                "boundary":  "no ADB device-operation tool enters Wuji as a runtime capability",
+                                "reason":  "device mutation, GPL boundary, and bricking risk are unrelated to the Codex task kernel"
+                            },
+                            {
+                                "object":  "penpot",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "visual-profile",
+                                               "guard-office",
+                                               "compliance-on-demand"
+                                           ],
+                                "boundary":  "external design tool candidate only; no self-hosted platform, account state, or design runtime enters the kernel",
+                                "reason":  "may help inspect design exports, but it is too heavy for sparse Codex execution"
+                            },
+                            {
+                                "object":  "plane",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "white-hat",
+                                               "guard-office",
+                                               "audit"
+                                           ],
+                                "boundary":  "no project-management platform or second status center enters the main chain",
+                                "reason":  "it would add a parallel workflow authority and context burden without improving the kernel"
+                            },
+                            {
+                                "object":  "Agency Agents",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "guard-office",
+                                               "white-hat",
+                                               "audit"
+                                           ],
+                                "boundary":  "no large roster shell, persona replay, or second coordination doctrine",
+                                "reason":  "the shell is too heavy for sparse activation and single-main-chain execution"
+                            },
+                            {
+                                "object":  "gstack",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "white-hat",
+                                               "audit",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "no command-suite shell, no browser/QA doctrine takeover",
+                                "reason":  "process lessons are already covered by existing review, QA, and closeout gates"
+                            },
+                            {
+                                "object":  "Agnes AI",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "provider-mirror-only",
+                                "landed_surfaces":  [
+                                                        "route-task:chat",
+                                                        "route-task:code-plan",
+                                                        "route-task:imagegen",
+                                                        "route-task:video"
+                                                    ],
+                                "owners":  [
+                                               "staff-runtime",
+                                               "go-execution-base"
+                                           ],
+                                "boundary":  "only while current free status holds; failure may fall back only to default GPT route",
+                                "reason":  "Agnes is used as a low-cost provider mirror, not as a second reasoning commander"
+                            },
+                            {
+                                "object":  "context-mode",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "content-type-compression-router",
+                                                        "reversible-evidence-handle",
+                                                        "research-evidence-pack",
+                                                        "compliance-on-demand"
+                                                    ],
+                                "owners":  [
+                                               "go-execution-base",
+                                               "audit",
+                                               "guard-office",
+                                               "compliance-on-demand"
+                                           ],
+                                "boundary":  "reject full plugin/runtime shell and hosted-service shape",
+                                "reason":  "sandboxed reentry, output shaping, and privacy boundaries were distilled into existing atoms and gates"
+                            },
+                            {
+                                "object":  "rtk",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "content-type-compression-router",
+                                                        "terminal-real-run-verification"
+                                                    ],
+                                "owners":  [
+                                               "go-execution-base",
+                                               "quality-inspection",
+                                               "performance-benchmark-on-demand"
+                                           ],
+                                "boundary":  "reject external CLI proxy shell",
+                                "reason":  "command-output trimming and token-volume discipline were absorbed into current execution and benchmark surfaces"
+                            },
+                            {
+                                "object":  "graphify",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "research-evidence-pack",
+                                                        "reversible-evidence-handle",
+                                                        "root-cause-radar"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "audit",
+                                               "root-cause-officer"
+                                           ],
+                                "boundary":  "reject always-on graph runtime and replay shell",
+                                "reason":  "graph-backed lookup and dependency handles were distilled into evidence and RCA atoms"
+                            },
+                            {
+                                "object":  "open-code-review",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "claim-fact-check",
+                                                        "assumption-ledger",
+                                                        "verified-learning-loop",
+                                                        "quality-inspection"
+                                                    ],
+                                "owners":  [
+                                               "quality-inspection",
+                                               "audit",
+                                               "white-hat",
+                                               "evolution-profile"
+                                           ],
+                                "boundary":  "reject external review runtime as commander",
+                                "reason":  "deterministic prefiltering and line-anchored review structure were fused into review evidence paths"
+                            },
+                            {
+                                "object":  "hyperframes",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "html-native-design-canvas",
+                                                        "motion-stage-sprite-engine",
+                                                        "anti-ai-slop-visual-rules",
+                                                        "native-pptx-master-route"
+                                                    ],
+                                "owners":  [
+                                               "visual-profile",
+                                               "quality-inspection",
+                                               "performance-benchmark-on-demand"
+                                           ],
+                                "boundary":  "task-scoped media surface only; never a second design runtime",
+                                "reason":  "render, motion, and visual-acceptance lessons were absorbed into visual atoms"
+                            },
+                            {
+                                "object":  "pi",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "root-cause-officer",
+                                               "guard-office",
+                                               "compliance-on-demand",
+                                               "performance-benchmark-on-demand"
+                                           ],
+                                "boundary":  "no agent harness, session publishing pattern, or second execution surface",
+                                "reason":  "only narrow sandboxing and loop-budget lessons may be reviewed when needed"
+                            },
+                            {
+                                "object":  "baoyu-article-illustrator",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "html-native-design-canvas",
+                                                        "brand-asset-protocol"
+                                                    ],
+                                "owners":  [
+                                               "visual-profile",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "illustration planning only, not a second image runtime",
+                                "reason":  "illustration type, style, palette, and placement planning filled a real visual gap"
+                            },
+                            {
+                                "object":  "baoyu-image-gen",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "visual-profile"
+                                           ],
+                                "boundary":  "prompt batching and reference-image conventions only; default image route stays on the main chain",
+                                "reason":  "useful prompt scaffolding exists, but the project does not become an admitted image runtime"
+                            },
+                            {
+                                "object":  "dbs-business-toolbox",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "content-profile",
+                                               "intelligence-profile",
+                                               "evolution-profile"
+                                           ],
+                                "boundary":  "recipe fragments only; no toolbox shell, no second business-analysis runtime, and no standing resident context",
+                                "reason":  "commercial diagnosis recipes may fill narrow content or research gaps, but the toolbox shell duplicates current owners and adds no justified runtime surface"
+                            },
+                            {
+                                "object":  "baoyu-url-to-markdown",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "restricted-boundary",
+                                "landed_surfaces":  [
+                                                        "guarded-realtime-source-search",
+                                                        "research-evidence-pack"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "guard-office",
+                                               "audit"
+                                           ],
+                                "boundary":  "guarded capture and selected sections only; never replay whole pages by default",
+                                "reason":  "URL capture is useful only behind source and injection checks"
+                            },
+                            {
+                                "object":  "baoyu-youtube-transcript",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "restricted-boundary",
+                                "landed_surfaces":  [
+                                                        "guarded-realtime-source-search",
+                                                        "research-evidence-pack"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "guard-office",
+                                               "audit"
+                                           ],
+                                "boundary":  "timestamp evidence and chapter summaries only; no full transcript replay by default",
+                                "reason":  "video evidence packing is useful only as compact, auditable handles"
+                            },
+                            {
+                                "object":  "baoyu-electron-extract",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "restricted-boundary",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "guard-office",
+                                               "compliance-on-demand"
+                                           ],
+                                "boundary":  "high-risk reviewed only with explicit authorization",
+                                "reason":  "account-adjacent extraction surfaces stay outside the default runtime"
+                            },
+                            {
+                                "object":  "baoyu-post-to-x/wechat/weibo",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "restricted-boundary",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "guard-office",
+                                               "compliance-on-demand",
+                                               "audit"
+                                           ],
+                                "boundary":  "draft formatting and explicit authorization checklists only; no silent posting or session retention",
+                                "reason":  "external write surfaces are not admitted as default runtime capabilities"
+                            },
+                            {
+                                "object":  "baoyu-translate",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "research-evidence-pack",
+                                                        "content-profile"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "content-profile"
+                                           ],
+                                "boundary":  "handoff and glossary notes only",
+                                "reason":  "lightweight translation handoff improved research packaging without adding a new shell"
+                            },
+                            {
+                                "object":  "khazix-writer",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "content-profile",
+                                                        "quality-inspection"
+                                                    ],
+                                "owners":  [
+                                               "content-profile",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "writing craft only, not a second content command system",
+                                "reason":  "stronger Chinese long-form rhythm, hooks, and transitions filled a real content gap"
+                            },
+                            {
+                                "object":  "huashu-design",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "html-native-design-canvas",
+                                                        "brand-asset-protocol",
+                                                        "anti-ai-slop-visual-rules",
+                                                        "design-direction-triad",
+                                                        "native-pptx-master-route",
+                                                        "motion-stage-sprite-engine"
+                                                    ],
+                                "owners":  [
+                                               "visual-profile",
+                                               "quality-inspection",
+                                               "staff-runtime"
+                                           ],
+                                "boundary":  "never mount as an installed commander, plugin, or second runtime",
+                                "reason":  "its strongest design and direction atoms were absorbed into the current visual chain"
+                            },
+                            {
+                                "object":  "ppt-master",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "native-pptx-master-route",
+                                                        "quality-inspection"
+                                                    ],
+                                "owners":  [
+                                               "visual-profile",
+                                               "quality-inspection",
+                                               "go-execution-base"
+                                           ],
+                                "boundary":  "strengthen the native PPTX route only; do not stack another deck system",
+                                "reason":  "high-fidelity PPT planning improved the current native PPTX chain"
+                            },
+                            {
+                                "object":  "open-notebook",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "research-evidence-pack",
+                                                        "data-profile"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "audit",
+                                               "data-profile"
+                                           ],
+                                "boundary":  "local knowledge handles only; no whole-library replay",
+                                "reason":  "multi-document evidence and local notebook structure strengthened research packaging"
+                            },
+                            {
+                                "object":  "tolaria",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "research-evidence-pack",
+                                                        "data-profile"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "audit",
+                                               "data-profile"
+                                           ],
+                                "boundary":  "local knowledge handles only; no whole-library replay",
+                                "reason":  "knowledge-base organization improved evidence handles and local retrieval discipline"
+                            },
+                            {
+                                "object":  "last30days",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "guarded-realtime-source-search"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "guard-office",
+                                               "audit"
+                                           ],
+                                "boundary":  "candidate scouting only, not a standalone research runtime",
+                                "reason":  "cross-platform recent-signal gathering strengthened the scout layer"
+                            },
+                            {
+                                "object":  "taste-skill",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "anti-ai-slop-visual-rules",
+                                                        "quality-inspection"
+                                                    ],
+                                "owners":  [
+                                               "visual-profile",
+                                               "quality-inspection",
+                                               "white-hat"
+                                           ],
+                                "boundary":  "quality rubric only, not a taste persona shell",
+                                "reason":  "visual taste checks were distilled into concrete anti-slop review rules"
+                            },
+                            {
+                                "object":  "goose",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "prior-art-solution-search",
+                                                        "terminal-real-run-verification",
+                                                        "execution-base-profile"
+                                                    ],
+                                "owners":  [
+                                               "execution-base-profile",
+                                               "quality-inspection",
+                                               "audit"
+                                           ],
+                                "boundary":  "process lessons only; it cannot become an external executor",
+                                "reason":  "edit-run-test-verify discipline strengthened execution-base practice without adding a second host"
+                            },
+                            {
+                                "object":  "openai-plugins",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "restricted-boundary",
+                                "landed_surfaces":  [
+                                                        "prior-art-solution-search"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "guard-office",
+                                               "execution-base-profile"
+                                           ],
+                                "boundary":  "plugin runtime not admitted by default; only boundary lessons and prior-art cues survive",
+                                "reason":  "plugin ecosystem knowledge is useful, but runtime surfaces remain tightly gated"
+                            },
+                            {
+                                "object":  "GhostTrack",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "guard-office",
+                                               "compliance-on-demand",
+                                               "white-hat"
+                                           ],
+                                "boundary":  "no privacy-invasive tracking surface enters the runtime",
+                                "reason":  "it conflicts with privacy, security, and source-boundary doctrine"
+                            },
+                            {
+                                "object":  "project-nomad",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "guard-office",
+                                               "white-hat",
+                                               "audit"
+                                           ],
+                                "boundary":  "no offline appliance shell or external-system takeover",
+                                "reason":  "it would reintroduce an external command surface and split runtime authority"
+                            },
+                            {
+                                "object":  "assumption-checker",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "assumption-ledger"
+                                                    ],
+                                "owners":  [
+                                               "white-hat",
+                                               "audit",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "no standalone checker shell or second truth authority",
+                                "reason":  "assumption surfacing was distilled into the resident assumption ledger instead of keeping a separate checker runtime"
+                            },
+                            {
+                                "object":  "hallucination-detector",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "claim-fact-check"
+                                                    ],
+                                "owners":  [
+                                               "white-hat",
+                                               "audit",
+                                               "intelligence-profile"
+                                           ],
+                                "boundary":  "no standalone detector shell or fake certainty authority",
+                                "reason":  "weak-claim and fabricated-fact screening were absorbed into claim-fact-check"
+                            },
+                            {
+                                "object":  "context7-mcp",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "version-doc-mcp"
+                                                    ],
+                                "owners":  [
+                                               "development-profile",
+                                               "intelligence-profile",
+                                               "guard-office"
+                                           ],
+                                "boundary":  "no separate MCP commander or second documentation runtime",
+                                "reason":  "version-aware documentation lookup was distilled into version-doc-mcp"
+                            },
+                            {
+                                "object":  "research-mode",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "guarded-realtime-source-search",
+                                                        "research-evidence-pack"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "guard-office",
+                                               "audit"
+                                           ],
+                                "boundary":  "no standalone research shell or raw-search pile replay",
+                                "reason":  "broad candidate scouting and structured evidence packing were absorbed into the intelligence chain"
+                            },
+                            {
+                                "object":  "ECC",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "skill-stocktake-daily-library",
+                                                        "verified-learning-loop"
+                                                    ],
+                                "owners":  [
+                                               "evolution-profile",
+                                               "audit",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "no external agent-performance shell or second optimization commander",
+                                "reason":  "skill inventory and verified upgrade discipline were distilled into the evolution path"
+                            },
+                            {
+                                "object":  "Hermes",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "skill-stocktake-daily-library",
+                                                        "verified-learning-loop"
+                                                    ],
+                                "owners":  [
+                                               "evolution-profile",
+                                               "audit",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "no persistent external agent shell or user-growth runtime survives",
+                                "reason":  "continuous improvement and reusable upgrade patterns were absorbed into the verified learning loop"
+                            },
+                            {
+                                "object":  "baoyu-skills",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "content-profile",
+                                               "visual-profile",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "keep only split lessons; no umbrella shell, no account runtime, no external write surface",
+                                "reason":  "its useful parts were already decomposed into dedicated baoyu verdicts and existing atoms"
+                            },
+                            {
+                                "object":  "OMX / oh-my-codex",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "staff-runtime",
+                                               "audit",
+                                               "guard-office"
+                                           ],
+                                "boundary":  "keep hook, HUD, and sidecar lifecycle lessons only; reject the external runtime shell",
+                                "reason":  "its lifecycle ideas were absorbed, but a second runtime shell would violate the single-main-chain rule"
+                            },
+                            {
+                                "object":  "wechat-toutiao-article-writer",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "content-profile",
+                                                        "quality-inspection"
+                                                    ],
+                                "owners":  [
+                                               "content-profile",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "writing craft and platform-fit only; no publishing shell or account power",
+                                "reason":  "title, summary, section rhythm, and platform-fit checks strengthened content delivery"
+                            },
+                            {
+                                "object":  "humanizer-zh",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "content-profile",
+                                                        "quality-inspection"
+                                                    ],
+                                "owners":  [
+                                               "content-profile",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "language cleanup only; no separate rewrite shell survives",
+                                "reason":  "Chinese AI-flavor removal and sentence relaxation were folded into content and QA checks"
+                            },
+                            {
+                                "object":  "competitive-teardown",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "research-evidence-pack"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "audit"
+                                           ],
+                                "boundary":  "analysis cards only; no second research runtime or broad replay",
+                                "reason":  "competitive comparison structure was absorbed into research evidence packing"
+                            },
+                            {
+                                "object":  "hv-analysis",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "research-evidence-pack"
+                                                    ],
+                                "owners":  [
+                                               "intelligence-profile",
+                                               "audit"
+                                           ],
+                                "boundary":  "historical comparison cards only; no separate analysis shell",
+                                "reason":  "historical-vs-current synthesis strengthened evidence-pack structure"
+                            },
+                            {
+                                "object":  "ppt-keynote",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "html-native-design-canvas",
+                                                        "native-pptx-master-route",
+                                                        "motion-stage-sprite-engine"
+                                                    ],
+                                "owners":  [
+                                               "visual-profile",
+                                               "quality-inspection",
+                                               "go-execution-base"
+                                           ],
+                                "boundary":  "strengthen the current deck path only; no second presentation system",
+                                "reason":  "Keynote-style exploration and HTML-to-editable-PPTX discipline improved the native PPTX route"
+                            },
+                            {
+                                "object":  "ian-xiaohei-illustrations",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "restricted-boundary",
+                                "landed_surfaces":  [
+                                                        "html-native-design-canvas"
+                                                    ],
+                                "owners":  [
+                                               "visual-profile",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "optional article-illustration preset only; never the default house style or a second image runtime",
+                                "reason":  "its style cues are useful as optional visual references, not as a mounted runtime shell"
+                            },
+                            {
+                                "object":  "neat-freak",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "content-type-compression-router",
+                                                        "reversible-evidence-handle",
+                                                        "skill-stocktake-daily-library"
+                                                    ],
+                                "owners":  [
+                                               "go-execution-base",
+                                               "evolution-profile",
+                                               "audit"
+                                           ],
+                                "boundary":  "cleanup discipline only; no separate organizer shell or memory body",
+                                "reason":  "deletion-first consolidation and compact evidence retention improved context and stocktake hygiene"
+                            },
+                            {
+                                "object":  "SenseNova-Skills",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "visual-profile",
+                                               "data-profile",
+                                               "intelligence-profile",
+                                               "evolution-profile"
+                                           ],
+                                "boundary":  "only stronger substeps may survive in current atoms; shell and external runtime stay retired",
+                                "reason":  "its useful visual, data, and research fragments were split into existing surfaces while the shell was retired"
+                            },
+                            {
+                                "object":  "ChinaTextbook",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "guard-office",
+                                               "compliance-on-demand",
+                                               "white-hat"
+                                           ],
+                                "boundary":  "no copyright-heavy dataset surface enters the runtime",
+                                "reason":  "it conflicts with copyright, source-boundary, and publication discipline"
+                            },
+                            {
+                                "object":  "AiToEarn",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "guard-office",
+                                               "white-hat",
+                                               "audit"
+                                           ],
+                                "boundary":  "no monetization-hype shell enters the runtime by trend pressure alone",
+                                "reason":  "it does not fill a real capability gap and weakens signal quality"
+                            },
+                            {
+                                "object":  "prompt-cache-block-control",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "content-type-compression-router",
+                                                        "optimization-kernel"
+                                                    ],
+                                "owners":  [
+                                               "go-execution-base",
+                                               "performance-benchmark-on-demand",
+                                               "audit"
+                                           ],
+                                "boundary":  "no separate cache-control shell or second routing layer",
+                                "reason":  "cache-aware prompt block shaping strengthened local context slimming and prefix discipline"
+                            },
+                            {
+                                "object":  "LLMLingua",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "content-type-compression-router",
+                                                        "optimization-kernel"
+                                                    ],
+                                "owners":  [
+                                               "go-execution-base",
+                                               "performance-benchmark-on-demand",
+                                               "audit"
+                                           ],
+                                "boundary":  "compression only; never save tokens by dropping required evidence",
+                                "reason":  "compression techniques strengthened current token discipline under existing evidence guards"
+                            },
+                            {
+                                "object":  "MemGPT",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "reversible-evidence-handle",
+                                                        "optimization-kernel"
+                                                    ],
+                                "owners":  [
+                                               "go-execution-base",
+                                               "audit",
+                                               "evolution-profile"
+                                           ],
+                                "boundary":  "no persistent external memory runtime or second context authority",
+                                "reason":  "handle-based recall and memory-window discipline were distilled into current evidence retention"
+                            },
+                            {
+                                "object":  "turbovec",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "data-profile",
+                                                        "research-evidence-pack"
+                                                    ],
+                                "owners":  [
+                                               "data-profile",
+                                               "intelligence-profile",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "only for large-file or vector-index gaps; no always-on retrieval runtime",
+                                "reason":  "vector indexing and large-file chunking lessons strengthened handle-based data workflows"
+                            },
+                            {
+                                "object":  "pg_durable",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "terminal-real-run-verification",
+                                                        "execution-base-profile"
+                                                    ],
+                                "owners":  [
+                                               "execution-base-profile",
+                                               "quality-inspection",
+                                               "audit"
+                                           ],
+                                "boundary":  "local checkpoint discipline only; no second runtime or durable executor shell",
+                                "reason":  "durable task-state and verification checkpoint lessons strengthened local closeout"
+                            },
+                            {
+                                "object":  "CopilotKit",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "html-native-design-canvas",
+                                                        "design-direction-triad"
+                                                    ],
+                                "owners":  [
+                                               "visual-profile",
+                                               "development-profile",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "agent UI and generative-interface patterns only; no frontend framework shell or second app runtime",
+                                "reason":  "generative UI composition and agent-facing interaction patterns strengthened task-scoped visual delivery without changing the single main chain"
+                            },
+                            {
+                                "object":  "cosmos",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "white-hat",
+                                               "guard-office",
+                                               "audit"
+                                           ],
+                                "boundary":  "no heavyweight world-model or physical-AI runtime enters the Codex task chain without a concrete local need",
+                                "reason":  "the project is outside the current task-execution scope and would add a large unrelated surface"
+                            },
+                            {
+                                "object":  "MiroFish",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "white-hat",
+                                               "guard-office",
+                                               "audit"
+                                           ],
+                                "boundary":  "no speculative swarm-simulation shell or prediction runtime enters the main chain",
+                                "reason":  "fit is weak, verification value is low, and current source-trust signal is not strong enough for admission"
+                            },
+                            {
+                                "object":  "PaddleOCR",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "research-evidence-pack",
+                                                        "data-profile"
+                                                    ],
+                                "owners":  [
+                                               "data-profile",
+                                               "intelligence-profile",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "OCR and document-structure extraction only; no second document runtime or default heavyweight dependency shell",
+                                "reason":  "image and PDF to structured-data extraction fills a real evidence-pack gap for screenshots and scanned materials"
+                            },
+                            {
+                                "object":  "mempalace",
+                                "fusion_mode":  "defer",
+                                "runtime_status":  "source-pool-only",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "go-execution-base",
+                                               "audit",
+                                               "evolution-profile"
+                                           ],
+                                "boundary":  "memory-benchmark and drawer-pattern lessons only; no persistent external memory runtime or second memory authority",
+                                "reason":  "it overlaps the current handle-based memory path, but some memory hygiene lessons remain reusable as source material"
+                            },
+                            {
+                                "object":  "flue",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "white-hat",
+                                               "guard-office",
+                                               "execution-base-profile"
+                                           ],
+                                "boundary":  "no second agent harness, sandbox framework shell, or alternate execution host",
+                                "reason":  "it overlaps the existing execution base and sparse-mount doctrine without filling a distinct runtime gap"
+                            },
+                            {
+                                "object":  "coding-interview-university",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "white-hat",
+                                               "audit",
+                                               "evolution-profile"
+                                           ],
+                                "boundary":  "no study-plan content corpus enters the runtime as an active capability surface",
+                                "reason":  "it is valuable educational material but not an execution, routing, evidence, or verification capability"
+                            },
+                            {
+                                "object":  "trivy",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "terminal-real-run-verification",
+                                                        "compliance-on-demand"
+                                                    ],
+                                "owners":  [
+                                               "guard-office",
+                                               "compliance-on-demand",
+                                               "quality-inspection"
+                                           ],
+                                "boundary":  "filesystem, repo, and dependency scan discipline only; no always-on external scanner shell",
+                                "reason":  "vulnerability and misconfiguration scan patterns strengthen guarded dependency review and release evidence"
+                            },
+                            {
+                                "object":  "openclaw-windows-node",
+                                "fusion_mode":  "reject",
+                                "runtime_status":  "rejected",
+                                "landed_surfaces":  [
+
+                                                    ],
+                                "owners":  [
+                                               "guard-office",
+                                               "white-hat",
+                                               "audit"
+                                           ],
+                                "boundary":  "no gateway companion, tray shell, or alternate control surface for a separate runtime enters Wuji",
+                                "reason":  "it exists to serve an external runtime stack and would reintroduce a second host/control surface"
+                            },
+                            {
+                                "object":  "storage-analyzer",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "content-type-compression-router",
+                                                        "optimization-kernel"
+                                                    ],
+                                "owners":  [
+                                               "performance-benchmark-on-demand",
+                                               "audit",
+                                               "evolution-profile"
+                                           ],
+                                "boundary":  "artifact-size and residue analysis only; no standing scanner shell or background daemon",
+                                "reason":  "workspace bloat and artifact-footprint heuristics strengthen token-volume control and residue cleanup audits"
+                            },
+                            {
+                                "object":  "Reasonix",
+                                "fusion_mode":  "gap-fill",
+                                "runtime_status":  "landed",
+                                "landed_surfaces":  [
+                                                        "content-type-compression-router",
+                                                        "optimization-kernel"
+                                                    ],
+                                "owners":  [
+                                               "go-execution-base",
+                                               "performance-benchmark-on-demand",
+                                               "audit"
+                                           ],
+                                "boundary":  "replace weaker token-discipline behaviors instead of stacking a second shell",
+                                "reason":  "its cost and routing discipline strengthened the current optimization kernel"
+                            }
+                        ],
+    "source_catalog_ids":  [
+                               "old-wuji",
+                               "opensquilla",
+                               "headroom-style",
+                               "reasonix-style",
+                               "hermes-style",
+                               "ecc-style",
+                               "context7-mcp-style",
+                               "research-mode-style",
+                               "superpowers-style-approved-atoms",
+                               "huashu-design-style",
+                               "prior-art-rca-tooling-style",
+                               "fault-localization-style",
+                               "multi-agent-rca-style",
+                               "patch-debt-cure-style",
+                               "refactor-recipe-style",
+                               "agent-eval-style",
+                               "terminal-verification-style",
+                               "github-trending-20260608-style",
+                               "omx-style",
+                               "baoyu-skills-style",
+                               "khazix-skills-style",
+                               "humanizer-zh-style",
+                               "neat-freak-style",
+                               "competitive-teardown-style",
+                               "hv-analysis-style",
+                               "ppt-keynote-style",
+                               "ian-xiaohei-style",
+                               "prompt-cache-block-control-style",
+                               "llmlingua-style",
+                               "memgpt-style",
+                               "external-agent-shells",
+                               "external-write-surfaces",
+                               "codex-runtime-style",
+                               "audit-trace-style",
+                               "guard-office",
+                               "audit",
+                               "quality-inspection",
+                               "go-execution-base",
+                               "codex-plugins",
+                               "assumption-checker",
+                               "white-hat",
+                               "hallucination-detector",
+                               "context7-mcp",
+                               "AnySearch",
+                               "Agent-Reach",
+                               "research-mode",
+                               "last30days",
+                               "open-notebook",
+                               "tolaria",
+                               "ECC",
+                               "Hermes",
+                               "source-pool-not-shell",
+                               "Superpowers",
+                               "development-profile",
+                               "fault-localization",
+                               "delta-debugging",
+                               "multi-agent-rca",
+                               "web-search-rag",
+                               "goose",
+                               "llama.cpp",
+                               "openai-plugins",
+                               "pg_durable",
+                               "trace-analysis",
+                               "parallel-sidecar-execution",
+                               "codex-subagents",
+                               "verified-learning-loop",
+                               "codex-runtime",
+                               "goose-style",
+                               "pg_durable-style",
+                               "visual-profile",
+                               "intelligence-profile",
+                               "taste-skill",
+                               "opencv-style",
+                               "staff-runtime",
+                               "nuwa-preflight",
+                               "html-ppt-skill",
+                               "sensenova-skills-style",
+                               "huashu-design",
+                               "spreadsheet-profile",
+                               "turbovec-style",
+                               "research-evidence-pack",
+                               "GhostTrack",
+                               "ChinaTextbook",
+                               "AiToEarn",
+                               "project-nomad"
+                              ,"CopilotKit"
+                              ,"cosmos"
+                              ,"MiroFish"
+                              ,"PaddleOCR"
+                              ,"mempalace"
+                              ,"flue"
+                              ,"coding-interview-university"
+                              ,"trivy"
+                              ,"openclaw-windows-node"
+                              ,"storage-analyzer"
+                              ,"codebase-memory-mcp"
+                              ,"awesome-design-md"
+                              ,"mattpocock-skills"
+                              ,"agentic-coding-skills"
+                              ,"claude-loops"
+                              ,"penpot"
+                              ,"plane"
+                              ,"universal-android-debloater"
+                           ]
 }

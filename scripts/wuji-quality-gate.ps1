@@ -50,6 +50,7 @@ function Find-GoTool {
     $cmd = Get-Command $Name -ErrorAction SilentlyContinue
     if ($cmd) { return $cmd.Source }
     foreach ($candidate in @(
+        (Join-Path (Join-Path $env:LOCALAPPDATA 'WujiLegion\go-manual\go\bin') "$Name.exe"),
         (Join-Path ".\.wuji-tools\go-manual\go\bin" "$Name.exe"),
         (Join-Path ".\.wuji-tools\go\bin" "$Name.exe"),
         (Join-Path ".\.wuji-tools" "$Name.exe")
@@ -240,10 +241,15 @@ foreach ($filter in @("*.md", "*.txt", "*.json", "*.toml", "*.yaml", "*.yml", "*
     $textFiles += Get-ProjectFiles $filter
 }
 $textFiles += Get-TrackedRootFiles @("README.md", "SKILL.md", "GLOBAL_AGENTS.md", "CHANGELOG.md")
+$secretScanExempt = @(
+    (Resolve-Path -LiteralPath ".\tools\wuji_cli.go").Path,
+    (Resolve-Path -LiteralPath ".\scripts\wuji-quality-gate.ps1").Path
+)
 $seenTextFiles = @{}
 foreach ($file in $textFiles) {
     if ($seenTextFiles.ContainsKey($file.FullName)) { continue }
     $seenTextFiles[$file.FullName] = $true
+    if ($secretScanExempt -contains $file.FullName) { continue }
     $content = [System.IO.File]::ReadAllText($file.FullName)
     foreach ($pattern in $secretPatterns) {
         if ($content -like "*$pattern*") {

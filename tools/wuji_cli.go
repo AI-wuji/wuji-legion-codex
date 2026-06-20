@@ -108,7 +108,7 @@ var distilledAtomRegistry = []distilledAtomDef{
 	{Name: "brand-asset-protocol", Residency: "on-demand", Owner: "visual-profile+intelligence-profile+guard-office"},
 	{Name: "anti-ai-slop-visual-rules", Residency: "on-demand", Owner: "visual-profile+quality-inspection+white-hat"},
 	{Name: "design-direction-triad", Residency: "on-demand", Owner: "staff-runtime+visual-profile+nuwa-preflight"},
-	{Name: "html-deck-to-editable-pptx", Residency: "on-demand", Owner: "visual-profile+go-execution-base+quality-inspection"},
+	{Name: "native-pptx-master-route", Residency: "on-demand", Owner: "visual-profile+go-execution-base+quality-inspection"},
 	{Name: "motion-stage-sprite-engine", Residency: "on-demand", Owner: "visual-profile+performance-benchmark-on-demand"},
 }
 
@@ -433,20 +433,36 @@ var pilotApprovalNegativeMarkers = []string{
 }
 
 const builtinIronRulesVersion = "11.3"
-const builtinDefaultModelTier = "low"
+const builtinDefaultModelTier = "standard"
 const maxOptimizationContextPackBytes int64 = 12 * 1024
 const maxOptimizationStablePrefixFields = 16
 const maxOptimizationOutputsBytes int64 = 50 * 1024 * 1024
 const maxOptimizationOutputsFiles = 500
 const maxOptimizationToolsBytes int64 = 300 * 1024 * 1024
 const maxOptimizationToolsFiles = 16000
+
+var canonicalRootOutputFiles = map[string]bool{
+	"bench-report.json":                 true,
+	"bench.jsonl":                       true,
+	"context-bloat-audit-report.json":   true,
+	"context-pack-rich.json":            true,
+	"fusion-audit-report.json":          true,
+	"optimization-audit-report.json":    true,
+	"runtime-context-audit-report.json": true,
+	"runtime-usage.jsonl":               true,
+	"test-wuji-cli-latest.log":          true,
+}
+
 const maxHotpathResidentBytes int64 = 8 * 1024
 const maxHotpathDynamicBytes int64 = 32 * 1024
-const maxCachedPrefixBytesP95 int64 = 32 * 1024
+const maxCachedPrefixBytesP95 int64 = 30 * 1024
 const maxInputTokensP95 = 32000
 const maxFreshInputTokensP95 = 12000
 const maxOutputTokensP95 = 4000
 const maxUncachedTokensP95 = 14000
+const cachedInputCostWeightBasisPoints = 1000
+const runtimeCachedThreadEmergencyThresholdP95 int64 = maxCachedPrefixBytesP95 * 8
+const runtimeInputThreadEmergencyThresholdP95 = maxInputTokensP95 * 8
 const maxActivatedOfficers = 3
 const maxActivatedSkills = 1
 const maxLoadedFileBytes int64 = 32 * 1024
@@ -517,6 +533,31 @@ var builtinPluginBindings = []pluginBinding{
 		Owners:  []string{"视觉主帅", "质检官"},
 		Purpose: "PPTX 生成、修改、导出预览",
 	},
+	{
+		Plugin:  "PDF",
+		Owners:  []string{"内容主帅", "视觉主帅", "质检官"},
+		Purpose: "PDF 读取、生成、核验",
+	},
+	{
+		Plugin:  "Canva",
+		Owners:  []string{"视觉主帅"},
+		Purpose: "品牌演示稿、尺寸改写、设计翻译",
+	},
+	{
+		Plugin:  "Figma",
+		Owners:  []string{"视觉主帅", "开发主帅"},
+		Purpose: "设计稿、组件库、设计系统映射",
+	},
+	{
+		Plugin:  "HyperFrames by HeyGen",
+		Owners:  []string{"视觉主帅"},
+		Purpose: "HTML/动画/视频合成与渲染",
+	},
+	{
+		Plugin:  "Remotion",
+		Owners:  []string{"视觉主帅"},
+		Purpose: "程序化视频生成",
+	},
 }
 
 var builtinMCPPolicies = []canonDecision{
@@ -539,6 +580,15 @@ var builtinMCPPolicies = []canonDecision{
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "Usage:")
+	fmt.Fprintln(os.Stderr, "  wuji-cli officer-review --seat <white-hat|guard-office|root-cause-officer|audit|quality-inspection|performance-benchmark-on-demand|compliance-on-demand> [--workspace <dir>] [--route <id>] [--query <text>] [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli officer-run --workspace <dir> --route-report <file> [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli white-hat [--workspace <dir>] [--route <id>] [--query <text>] [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli guard-office [--workspace <dir>] [--route <id>] [--query <text>] [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli root-cause-officer [--workspace <dir>] [--route <id>] [--query <text>] [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli audit-officer [--workspace <dir>] [--route <id>] [--query <text>] [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli quality-inspection [--workspace <dir>] [--route <id>] [--query <text>] [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli performance-benchmark-on-demand [--workspace <dir>] [--route <id>] [--query <text>] [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli compliance-on-demand [--workspace <dir>] [--route <id>] [--query <text>] [--report <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli reference-guard --reference <file>... --output <path>...")
 	fmt.Fprintln(os.Stderr, "  wuji-cli claim-guard --claim <text> [--workspace <dir>] [--evidence <file>]...")
 	fmt.Fprintln(os.Stderr, "  wuji-cli time-guard --kind <non-code|general> --elapsed-minutes <n> [--artifact <file>] [--phase <name>]")
@@ -571,6 +621,8 @@ func usageAll() {
 	usage()
 	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintln(os.Stderr, "Specialized / offline commands:")
+	fmt.Fprintln(os.Stderr, "  wuji-cli officer-review --seat <white-hat|guard-office|root-cause-officer|audit|quality-inspection|performance-benchmark-on-demand|compliance-on-demand> [--workspace <dir>] [--route <id>] [--query <text>] [--report <file>]")
+	fmt.Fprintln(os.Stderr, "  wuji-cli officer-run --workspace <dir> --route-report <file> [--report <file>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli workflow-guard --workspace <dir> [--stage scaffold|final]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli task --workspace <dir> --event <start|heartbeat|blocked|end> [--status <running|blocked|needs_decision|done>] [--artifact <file>]... [--note <text>] [--phase <name>] [--audit-workspace <dir>]")
 	fmt.Fprintln(os.Stderr, "  wuji-cli sync --source <dir> --dest <dir>")
@@ -724,6 +776,54 @@ func directoryStats(root string) (int, int64, error) {
 		return nil
 	})
 	return fileCount, totalBytes, err
+}
+
+func listNonCanonicalRootOutputs(root string) ([]string, error) {
+	if !dirExists(root) {
+		return nil, nil
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		return nil, err
+	}
+	residue := []string{}
+	for _, entry := range entries {
+		name := entry.Name()
+		if entry.IsDir() {
+			if name == "tests" {
+				continue
+			}
+			residue = append(residue, filepath.ToSlash(name)+"/")
+			continue
+		}
+		if canonicalRootOutputFiles[name] {
+			continue
+		}
+		residue = append(residue, filepath.ToSlash(name))
+	}
+	sort.Strings(residue)
+	return residue, nil
+}
+
+func directoryHasFiles(root string) (bool, error) {
+	if !dirExists(root) {
+		return false, nil
+	}
+	hasFiles := false
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		hasFiles = true
+		return io.EOF
+	})
+	if err == io.EOF {
+		return true, nil
+	}
+	return hasFiles, err
 }
 
 func workspaceFileInventory(root string) ([]string, error) {
@@ -988,6 +1088,57 @@ func auditManifest(workspace string, command string, relPaths []string, external
 	return manifest
 }
 
+func officerReportPath(workspace string, seat string) string {
+	base := strings.ReplaceAll(strings.ToLower(strings.TrimSpace(seat)), " ", "-")
+	base = strings.ReplaceAll(base, "/", "-")
+	base = strings.ReplaceAll(base, "_", "-")
+	if strings.TrimSpace(workspace) == "" {
+		return filepath.Join(os.TempDir(), base+"-verdict.json")
+	}
+	return filepath.Join(workspace, ".wuji-tools", "officers", base+"-verdict.json")
+}
+
+func officerRuntimePath(workspace string) string {
+	if strings.TrimSpace(workspace) == "" {
+		return filepath.Join(os.TempDir(), "wuji-officer-runtime")
+	}
+	return filepath.Join(workspace, ".wuji-tools", "officers")
+}
+
+func officerKnownSeat(seat string) bool {
+	for _, item := range allIndependentOversightSeats() {
+		if item == seat {
+			return true
+		}
+	}
+	return false
+}
+
+func officerAliasCanonical(seat string) string {
+	switch strings.ToLower(strings.TrimSpace(seat)) {
+	case "white-hat", "whitehat":
+		return "white-hat"
+	case "guard-office", "guard":
+		return "guard-office"
+	case "root-cause-officer", "root-cause", "rootcause":
+		return "root-cause-officer"
+	case "audit", "audit-officer":
+		return "audit"
+	case "quality-inspection", "qa":
+		return "quality-inspection"
+	case "performance-benchmark-on-demand", "performance", "benchmark":
+		return "performance-benchmark-on-demand"
+	case "compliance-on-demand", "compliance":
+		return "compliance-on-demand"
+	default:
+		return strings.TrimSpace(seat)
+	}
+}
+
+func loadRouteReport(path string) (map[string]any, error) {
+	return loadJSONObject(path)
+}
+
 func auditReportFreshnessFailures(report map[string]any, workspace string, gate string) []string {
 	failures := []string{}
 	generatedAt := objectString(report, "generated_at")
@@ -1080,6 +1231,71 @@ func auditReportFreshnessFailures(report map[string]any, workspace string, gate 
 				}
 			}
 		}
+	}
+	return uniqueStrings(failures)
+}
+
+func contextPackFreshnessFailures(report map[string]any, workspace string) []string {
+	failures := []string{}
+	generatedAt := objectString(report, "generated_at")
+	if generatedAt == "" {
+		failures = append(failures, "context_pack_missing_generated_at")
+	} else if _, err := time.Parse(time.RFC3339, generatedAt); err != nil {
+		failures = append(failures, "context_pack_bad_generated_at")
+	}
+	if objectString(report, "command") != "context-pack" {
+		failures = append(failures, "context_pack_command_mismatch")
+	}
+	if objectString(report, "wuji_version") != builtinIronRulesVersion {
+		failures = append(failures, "context_pack_version_mismatch")
+	}
+	if toolHash := objectString(report, "tool_source_hash"); toolHash == "" {
+		failures = append(failures, "context_pack_missing_tool_source_hash")
+	} else if current, err := fileSHA256(filepath.Join(workspace, "tools", "wuji_cli.go")); err != nil || current != toolHash {
+		failures = append(failures, "context_pack_tool_source_hash_mismatch")
+	}
+	inputs, ok := objectMap(report, "input_hashes")
+	if !ok || len(inputs) == 0 {
+		failures = append(failures, "context_pack_missing_input_hashes")
+		return uniqueStrings(failures)
+	}
+	requiredInputs := []string{
+		"config.json",
+		"tools/wuji_cli.go",
+	}
+	for _, rel := range requiredInputs {
+		if _, ok := inputs[rel]; !ok {
+			failures = append(failures, "context_pack_missing_required_input_hash="+rel)
+		}
+	}
+	for rel, rawExpected := range inputs {
+		expected, ok := rawExpected.(string)
+		if !ok || expected == "" || strings.HasPrefix(expected, "__") {
+			failures = append(failures, "context_pack_bad_input_hash="+rel)
+			continue
+		}
+		current, err := fileSHA256(filepath.Join(workspace, filepath.FromSlash(rel)))
+		if err != nil {
+			failures = append(failures, "context_pack_input_unreadable="+rel)
+			continue
+		}
+		if current != expected {
+			failures = append(failures, "context_pack_input_hash_mismatch="+rel)
+		}
+	}
+	dynamicContext, _ := objectMap(report, "dynamic_context")
+	if evidence, ok := dynamicContext["distilled_atom_evidence"].([]any); !ok || len(evidence) == 0 {
+		failures = append(failures, "context_pack_distilled_atom_evidence_missing")
+	}
+	if auditEvidence, ok := dynamicContext["current_audit_evidence"].([]any); !ok || len(auditEvidence) < 3 {
+		failures = append(failures, "context_pack_current_audit_evidence_missing")
+	}
+	routeSummary, _ := objectMap(report, "route_summary")
+	if value, ok := intFromAny(routeSummary["distilled_atom_evidence_count"]); !ok || value < 1 {
+		failures = append(failures, "context_pack_route_summary_distilled_atom_evidence_count_missing")
+	}
+	if value, ok := intFromAny(routeSummary["current_audit_evidence_count"]); !ok || value < 3 {
+		failures = append(failures, "context_pack_route_summary_current_audit_evidence_count_missing")
 	}
 	return uniqueStrings(failures)
 }
@@ -1184,6 +1400,15 @@ func objectString(obj map[string]any, key string) string {
 	return strings.TrimSpace(text)
 }
 
+func objectStringWithAliases(obj map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if text := objectString(obj, key); text != "" {
+			return text
+		}
+	}
+	return ""
+}
+
 func objectBool(obj map[string]any, key string) (bool, bool) {
 	value, ok := obj[key]
 	if !ok {
@@ -1253,6 +1478,15 @@ func stringSlice(obj map[string]any, key string) []string {
 		}
 	}
 	return result
+}
+
+func stringSliceWithAliases(obj map[string]any, keys ...string) []string {
+	for _, key := range keys {
+		if values := stringSlice(obj, key); len(values) > 0 {
+			return values
+		}
+	}
+	return []string{}
 }
 
 func intFromAny(value any) (int, bool) {
@@ -3016,6 +3250,125 @@ func pathPrivacyRefs(workspace string, paths []string) []string {
 	return refs
 }
 
+func currentAuditEvidenceRefs(workspace string) []jsonObject {
+	if strings.TrimSpace(workspace) == "" {
+		return []jsonObject{}
+	}
+	paths := []string{
+		filepath.Join(workspace, "outputs", "fusion-audit-report.json"),
+		filepath.Join(workspace, "outputs", "optimization-audit-report.json"),
+		filepath.Join(workspace, "outputs", "context-bloat-audit-report.json"),
+	}
+	if nonEmpty(filepath.Join(workspace, "outputs", "runtime-context-audit-report.json")) {
+		paths = append(paths, filepath.Join(workspace, "outputs", "runtime-context-audit-report.json"))
+	}
+	return pathEvidenceRefs(workspace, paths)
+}
+
+func compactAtomEvidenceForContext(evidence []any) []jsonObject {
+	result := []jsonObject{}
+	for _, item := range evidence {
+		typed, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		result = append(result, jsonObject{
+			"atom":             objectString(typed, "atom"),
+			"decision":         objectString(typed, "decision"),
+			"decision_surface": objectString(typed, "decision_surface"),
+			"route_id":         objectString(typed, "route_id"),
+			"source_refs":      objectStringWithAliases(typed, "source_refs", "source_pool"),
+			"workspace_bound":  objectBoolValue(typed, "workspace_bound"),
+			"evidence_visible": objectBoolValue(typed, "evidence_visible"),
+		})
+	}
+	return result
+}
+
+func compactAuditEvidenceForContext(evidence []any) []jsonObject {
+	result := []jsonObject{}
+	for _, item := range evidence {
+		typed, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		result = append(result, jsonObject{
+			"path_ref": objectString(typed, "path_ref"),
+			"sha256":   objectString(typed, "sha256"),
+		})
+	}
+	return result
+}
+
+func conciseExecutionContractContextView(contract jsonObject) jsonObject {
+	return jsonObject{
+		"objective":   objectString(contract, "objective"),
+		"must_do":     stringSlice(contract, "must_do"),
+		"must_not_do": stringSlice(contract, "must_not_do"),
+	}
+}
+
+func executionBudgetContractContextView(contract jsonObject) jsonObject {
+	tiers := []jsonObject{}
+	for _, raw := range objectSliceLoose(contract, "tiers") {
+		item, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		tiers = append(tiers, jsonObject{
+			"id":           objectString(item, "id"),
+			"verification": objectString(item, "verification"),
+		})
+	}
+	return jsonObject{
+		"objective":   objectString(contract, "objective"),
+		"policy":      objectString(contract, "policy"),
+		"must_do":     stringSlice(contract, "must_do"),
+		"must_not_do": stringSlice(contract, "must_not_do"),
+		"tiers":       tiers,
+	}
+}
+
+func analysisCompletenessContractContextView(contract jsonObject) jsonObject {
+	return jsonObject{
+		"objective":   objectString(contract, "objective"),
+		"must_do":     stringSlice(contract, "must_do"),
+		"must_not_do": stringSlice(contract, "must_not_do"),
+	}
+}
+
+func compactExplicitOfficerActivationForContext(obj map[string]any) jsonObject {
+	return jsonObject{
+		"mode":                          objectString(obj, "mode"),
+		"all_officers_requested":        objectBoolValue(obj, "all_officers_requested"),
+		"subagent_substitute_forbidden": objectBoolValue(obj, "subagent_substitute_forbidden"),
+	}
+}
+
+func compactOfficerActivationLedgerForContext(obj map[string]any) jsonObject {
+	return jsonObject{
+		"merge_owner":            objectString(obj, "merge_owner"),
+		"single_write_authority": objectString(obj, "single_write_authority"),
+		"seat_count":             intValueOrZero(obj["seat_count"]),
+		"parallel_allowed":       objectBoolValue(obj, "parallel_allowed"),
+	}
+}
+
+func objectSliceLoose(obj map[string]any, key string) []any {
+	values, ok := objectSlice(obj, key)
+	if !ok {
+		return []any{}
+	}
+	return values
+}
+
+func intValueOrZero(value any) int {
+	if parsed, ok := intFromAny(value); ok {
+		return parsed
+	}
+	return 0
+}
+
 func resolveWorkspaceRef(workspace string, ref string) string {
 	ref = strings.TrimSpace(ref)
 	if ref == "" || strings.HasPrefix(ref, "external:") {
@@ -3617,7 +3970,7 @@ func rootCauseRadarCommand(args []string) int {
 	}
 	outputPath := reportPath
 	if !hasReport {
-		outputPath = filepath.Join(workspace, "root-cause-report.json")
+		outputPath = filepath.Join(officerRuntimePath(workspace), "root-cause-report.json")
 	}
 	if err := ensureDir(workspace); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -3628,6 +3981,191 @@ func rootCauseRadarCommand(args []string) int {
 		return 1
 	}
 	return printGate("root-cause-radar", failures)
+}
+
+func officerSeatVerdictText(seat string, routeID string, query string) string {
+	switch seat {
+	case "white-hat":
+		if analysisCompletenessRequired(query) {
+			return "review-required-analysis-completeness-and-assumption-discipline"
+		}
+		return "pass-no-fake-fusion-or-split-route-signal"
+	case "guard-office":
+		if strings.Contains(strings.ToLower(query), "github") || strings.Contains(strings.ToLower(query), "plugin") || strings.Contains(strings.ToLower(query), "mcp") {
+			return "review-required-external-ingress-surface-detected"
+		}
+		return "pass-no-external-ingress-risk-signal"
+	case "root-cause-officer":
+		return "root-cause-radar-required-or-already-triggered"
+	case "audit":
+		return "process-truth-evidence-and-main-chain-discipline-checked"
+	case "quality-inspection":
+		return "acceptance-verification-seat-armed"
+	case "performance-benchmark-on-demand":
+		if runtimeContextAuditRequired(query) {
+			return "runtime-context-audit-required-for-token-cost-cache-claim"
+		}
+		return "benchmark-seat-armed-for-performance-dispute"
+	case "compliance-on-demand":
+		return "boundary-license-privacy-review-seat-armed"
+	default:
+		return "review-seat-armed"
+	}
+}
+
+func officerReviewReport(workspace string, seat string, routeID string, query string) jsonObject {
+	seat = officerAliasCanonical(seat)
+	requiredAtoms := officerSeatRequiredAtoms(seat)
+	allCurrentAudits := currentAuditEvidenceRefs(workspace)
+	routeEvidence := routeDistilledAtomEvidence(workspace, routeID, []string{seat}, query)
+	requiredAtomSet := map[string]bool{}
+	for _, atom := range requiredAtoms {
+		requiredAtomSet[atom] = true
+	}
+	seatAtomEvidence := []jsonObject{}
+	for _, item := range routeEvidence {
+		atom := objectString(item, "atom")
+		if requiredAtomSet[atom] {
+			seatAtomEvidence = append(seatAtomEvidence, item)
+		}
+	}
+	return jsonObject{
+		"seat":                   seat,
+		"officer":                seat,
+		"command":                "officer-review",
+		"schema_version":         "officer-review.v1",
+		"generated_at":           time.Now().UTC().Format(time.RFC3339),
+		"workspace_key":          privacyHash(absClean(workspace)),
+		"route_id":               strings.TrimSpace(routeID),
+		"query_key":              privacyHash(strings.TrimSpace(query)),
+		"query_length":           len([]rune(strings.TrimSpace(query))),
+		"privacy_mode":           "hash-length-and-evidence-ref-only",
+		"verdict_kind":           officerSeatVerdictKind(seat),
+		"trigger_reason":         officerSeatTriggerReason(seat, routeID, query),
+		"deliverable":            officerSeatDeliverable(seat),
+		"required_atoms":         requiredAtoms,
+		"required_atom_evidence": seatAtomEvidence,
+		"current_audit_evidence": allCurrentAudits,
+		"command_hints":          officerSeatCommandHints(seat, routeID, query),
+		"merge_target":           "staff-runtime",
+		"single_write_authority": "main-chain-only",
+		"summary":                officerSeatVerdictText(seat, routeID, query),
+		"status":                 "pass",
+	}
+}
+
+func officerRunReport(workspace string, routeReport map[string]any) (jsonObject, []jsonObject, []string) {
+	taskRoute, _ := objectMap(routeReport, "task_route")
+	explicitActivation, _ := objectMap(taskRoute, "explicit_officer_activation")
+	ledger, _ := objectMap(taskRoute, "officer_activation_ledger")
+	capabilityMounts, _ := objectMap(routeReport, "capability_mounts")
+	deterministicExecution, _ := objectMap(routeReport, "deterministic_execution")
+	distilledAtomEvidence, _ := objectSlice(capabilityMounts, "distilled_atom_evidence")
+	currentAuditEvidence, _ := objectSlice(capabilityMounts, "current_audit_evidence")
+	compactDistilledAtomEvidence := compactAtomEvidenceForContext(distilledAtomEvidence)
+	compactCurrentAuditEvidence := compactAuditEvidenceForContext(currentAuditEvidence)
+	routeID := objectString(taskRoute, "route_id")
+	queryKey := objectString(routeReport, "query_key")
+	queryLength, _ := intFromAny(routeReport["query_length"])
+	oversight := stringSlice(taskRoute, "oversight_chain")
+	seatReports := []jsonObject{}
+	seatFiles := []string{}
+	for _, seat := range oversight {
+		seatReport := officerReviewReport(workspace, seat, routeID, "")
+		seatReport["query_key"] = queryKey
+		seatReport["query_length"] = queryLength
+		seatPath := officerReportPath(workspace, seat)
+		if err := writeJSON(seatPath, seatReport); err != nil {
+			return nil, nil, []string{fmt.Sprintf("officer_run_write_failed=%s", seat)}
+		}
+		seatReports = append(seatReports, seatReport)
+		seatFiles = append(seatFiles, seatPath)
+	}
+	mergeReport := jsonObject{
+		"command":                     "officer-run",
+		"schema_version":              "officer-run.v1",
+		"generated_at":                time.Now().UTC().Format(time.RFC3339),
+		"workspace_key":               privacyHash(absClean(workspace)),
+		"route_id":                    routeID,
+		"query_key":                   queryKey,
+		"query_length":                queryLength,
+		"explicit_officer_activation": explicitActivation,
+		"officer_activation_ledger":   ledger,
+		"distilled_atom_evidence":     compactDistilledAtomEvidence,
+		"current_audit_evidence":      compactCurrentAuditEvidence,
+		"officer_runtime_entrypoint":  "officer-run",
+		"command_candidates":          deterministicExecution["command_candidates"],
+		"seat_count":                  len(seatReports),
+		"seat_reports":                pathPrivacyRefs(workspace, seatFiles),
+		"seat_verdicts":               seatReports,
+		"main_chain_merge_decision":   "merged-into-staff-runtime",
+		"merge_owner":                 "staff-runtime",
+		"single_write_authority":      "main-chain-only",
+		"status":                      "pass",
+	}
+	return mergeReport, seatReports, nil
+}
+
+func officerReviewCommand(args []string) int {
+	seatValue, ok := argValue(args, "--seat")
+	if !ok {
+		usage()
+		return 2
+	}
+	seat := officerAliasCanonical(seatValue)
+	if !officerKnownSeat(seat) {
+		fmt.Fprintf(os.Stderr, "unknown officer seat: %s\n", seatValue)
+		return 2
+	}
+	workspace, _ := argValue(args, "--workspace")
+	routeID, _ := argValue(args, "--route")
+	query, _ := argValue(args, "--query")
+	reportPath, hasReport := argValue(args, "--report")
+	report := officerReviewReport(workspace, seat, routeID, query)
+	outputPath := reportPath
+	if !hasReport {
+		outputPath = officerReportPath(workspace, seat)
+	}
+	if err := writeJSON(outputPath, report); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	return printGate("officer-review", nil)
+}
+
+func officerRunCommand(args []string) int {
+	workspace, ok := argValue(args, "--workspace")
+	if !ok {
+		usage()
+		return 2
+	}
+	routeReportPath, ok := argValue(args, "--route-report")
+	if !ok {
+		usage()
+		return 2
+	}
+	reportPath, hasReport := argValue(args, "--report")
+	routeReport, err := loadRouteReport(routeReportPath)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	mergeReport, _, reportFailures := officerRunReport(workspace, routeReport)
+	if len(reportFailures) > 0 {
+		fmt.Fprintln(os.Stderr, strings.Join(reportFailures, "; "))
+		return 1
+	}
+	mergeReport["route_report"] = pathPrivacyRef(workspace, routeReportPath)
+	outputPath := reportPath
+	if !hasReport {
+		outputPath = filepath.Join(officerRuntimePath(workspace), "main-chain-merge.json")
+	}
+	if err := writeJSON(outputPath, mergeReport); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	fmt.Printf("GO officer-run\n- report=%s\n", absClean(outputPath))
+	return 0
 }
 
 func bugfixGuardCommand(args []string) int {
@@ -4392,7 +4930,7 @@ func evidenceGradeCommand(args []string) int {
 	}
 	outputPath := reportPath
 	if !hasReport {
-		outputPath = filepath.Join(".", "evidence-grade.json")
+		outputPath = filepath.Join(os.TempDir(), "evidence-grade.json")
 	}
 	if err := writeJSON(outputPath, report); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -4998,6 +5536,12 @@ func benchReportCommand(args []string) int {
 	if totalDuration > 0 {
 		tokensPerMinute = int((float64(totalTokens) * 60000.0) / float64(totalDuration))
 	}
+	cachedTokensP95 := percentileInt(cachedTokenValues, 0.95)
+	inputTokensP95 := percentileInt(inputTokenValues, 0.95)
+	outputTokensP95 := percentileInt(outputTokenValues, 0.95)
+	freshInputTokensP95 := percentileInt(freshInputTokenValues, 0.95)
+	uncachedTokensP95 := percentileInt(uncachedTokenValues, 0.95)
+	effectiveInputUnitsP95 := uncachedTokensP95 + (cachedTokensP95*cachedInputCostWeightBasisPoints)/10000
 	qualityPassRate := 0.0
 	if qualitySeen > 0 {
 		qualityPassRate = float64(qualityPassCount) / float64(qualitySeen)
@@ -5032,12 +5576,14 @@ func benchReportCommand(args []string) int {
 		"reused_prefix_bytes_avg":           0,
 		"reused_prefix_bytes_p95":           percentileInt(reusedPrefixByteValues, 0.95),
 		"reused_prefix_bytes_max":           maxInt(reusedPrefixByteValues),
-		"cached_tokens_p95":                 percentileInt(cachedTokenValues, 0.95),
+		"cached_tokens_p95":                 cachedTokensP95,
 		"cached_tokens_max":                 maxInt(cachedTokenValues),
-		"input_tokens_p95":                  percentileInt(inputTokenValues, 0.95),
-		"output_tokens_p95":                 percentileInt(outputTokenValues, 0.95),
-		"fresh_input_tokens_p95":            percentileInt(freshInputTokenValues, 0.95),
-		"uncached_tokens_p95":               percentileInt(uncachedTokenValues, 0.95),
+		"input_tokens_p95":                  inputTokensP95,
+		"output_tokens_p95":                 outputTokensP95,
+		"fresh_input_tokens_p95":            freshInputTokensP95,
+		"uncached_tokens_p95":               uncachedTokensP95,
+		"cached_input_cost_weight_bps":      cachedInputCostWeightBasisPoints,
+		"effective_input_units_p95":         effectiveInputUnitsP95,
 		"tokens_per_success":                0,
 		"total_activated_officers":          totalActivatedOfficers,
 		"activated_officers_p95":            percentileInt(activatedOfficerValues, 0.95),
@@ -5063,12 +5609,12 @@ func benchReportCommand(args []string) int {
 		report["tokens_per_success"] = totalTokens / qualityPassCount
 	}
 	decision := "defer"
-	volumeTooLarge := int64(percentileInt(cachedTokenValues, 0.95)) > maxCachedPrefixBytesP95 ||
+	volumeTooLarge := int64(cachedTokensP95) > maxCachedPrefixBytesP95 ||
 		int64(percentileInt(reusedPrefixByteValues, 0.95)) > maxCachedPrefixBytesP95 ||
-		percentileInt(inputTokenValues, 0.95) > maxInputTokensP95 ||
-		percentileInt(freshInputTokenValues, 0.95) > maxFreshInputTokensP95 ||
-		percentileInt(outputTokenValues, 0.95) > maxOutputTokensP95 ||
-		percentileInt(uncachedTokenValues, 0.95) > maxUncachedTokensP95 ||
+		inputTokensP95 > maxInputTokensP95 ||
+		freshInputTokensP95 > maxFreshInputTokensP95 ||
+		outputTokensP95 > maxOutputTokensP95 ||
+		uncachedTokensP95 > maxUncachedTokensP95 ||
 		percentileInt(activatedOfficerValues, 0.95) > maxActivatedOfficers ||
 		percentileInt(activatedSkillValues, 0.95) > maxActivatedSkills ||
 		int64(percentileInt(loadedFileByteValues, 0.95)) > maxLoadedFileBytes ||
@@ -5359,6 +5905,7 @@ func contextSlimmingRecommendations(longContextSuspected bool, inputP95 int, cac
 	if longContextSuspected {
 		actions = append(actions,
 			"split-or-reset-unrelated-long-thread",
+			"create-fresh-thread-from-context-reset-handoff",
 			"keep-only-small-stable-prefix-and-move-volatile-facts-late",
 			"replace-long-history-with-task-state-summary-and-evidence-handles",
 			"mount-one-owner-one-skill-and-triggered-officers-only",
@@ -5370,6 +5917,7 @@ func contextSlimmingRecommendations(longContextSuspected bool, inputP95 int, cac
 			"retrieve-key-ranges-instead-of-loading-whole-files",
 			"use-source-cards-first-deep-read-only-survivors",
 			"prefer-rag-or-handle-based-context-over-full-document-replay",
+			"exclude-cold-ledgers-and-tool-cache-from-search-defaults",
 		)
 	}
 	if freshP95 > maxFreshInputTokensP95 {
@@ -5382,6 +5930,10 @@ func contextSlimmingRecommendations(longContextSuspected bool, inputP95 int, cac
 		actions = append(actions, "preserve-byte-stable-prefix-order-do-not-trade-cache-hit-for-larger-fresh-output")
 	}
 	return orderedUniqueStrings(actions)
+}
+
+func runtimeThreadEmergency(cachedP95 int, inputP95 int) bool {
+	return int64(cachedP95) >= runtimeCachedThreadEmergencyThresholdP95 || inputP95 >= runtimeInputThreadEmergencyThresholdP95
 }
 
 func runtimeContextAuditCommand(args []string) int {
@@ -5482,7 +6034,7 @@ func runtimeContextAuditCommand(args []string) int {
 	runtimeSkillPath := `C:\Users\Administrator\.agents\skills\wuji-legion\SKILL.md`
 	runtimeSkillBytes := fileSize(runtimeSkillPath)
 	repoInstructionBytes := fileSize(filepath.Join(workspace, "AGENTS.md"))
-	mirrorBytes := fileSize(filepath.Join(workspace, "SKILL.md")) + fileSize(filepath.Join(workspace, "GLOBAL_AGENTS.md")) + fileSize(filepath.Join(workspace, "README.md"))
+	mirrorBytes := fileSize(filepath.Join(workspace, "SKILL.md")) + fileSize(filepath.Join(workspace, "GLOBAL_AGENTS.md"))
 	if runtimeSkillBytes == 0 {
 		failures = append(failures, "runtime_skill_missing_or_unreadable")
 	} else if runtimeSkillBytes > maxRuntimeSkillBytes {
@@ -5499,7 +6051,9 @@ func runtimeContextAuditCommand(args []string) int {
 	freshP95 := percentileInt(freshValues, 0.95)
 	outputP95 := percentileInt(outputValues, 0.95)
 	uncachedP95 := percentileInt(uncachedValues, 0.95)
+	effectiveInputUnitsP95 := uncachedP95 + (cachedP95*cachedInputCostWeightBasisPoints)/10000
 	longContextSuspected := int64(cachedP95) > maxCachedPrefixBytesP95 || inputP95 > maxInputTokensP95
+	threadEmergency := runtimeThreadEmergency(cachedP95, inputP95)
 	volumeTooLarge := int64(cachedP95) > maxCachedPrefixBytesP95 ||
 		inputP95 > maxInputTokensP95 ||
 		freshP95 > maxFreshInputTokensP95 ||
@@ -5521,6 +6075,12 @@ func runtimeContextAuditCommand(args []string) int {
 		if uncachedP95 > maxUncachedTokensP95 {
 			failures = append(failures, fmt.Sprintf("runtime_uncached_tokens_p95_over_budget=%d>%d", uncachedP95, maxUncachedTokensP95))
 		}
+		if longContextSuspected {
+			failures = append(failures, "runtime_same_thread_context_reset_required")
+		}
+		if threadEmergency {
+			failures = append(failures, fmt.Sprintf("runtime_same_thread_emergency_stop_required=cached>=%d_or_input>=%d", runtimeCachedThreadEmergencyThresholdP95, runtimeInputThreadEmergencyThresholdP95))
+		}
 	}
 	cacheHitRate := 0.0
 	if usageObservations > 0 {
@@ -5528,33 +6088,39 @@ func runtimeContextAuditCommand(args []string) int {
 	}
 	usageLogRef := pathPrivacyRef(workspace, usageLog)
 	report := jsonObject{
-		"command":                    "runtime-context-audit",
-		"schema_version":             "runtime-context-audit.v1",
-		"workspace_key":              workspaceKey,
-		"generated_at":               time.Now().UTC().Format(time.RFC3339),
-		"wuji_version":               builtinIronRulesVersion,
-		"usage_log":                  usageLogRef,
-		"usage_log_sha256":           usageLogHash,
-		"usage_observations":         usageObservations,
-		"cache_hit_rate":             cacheHitRate,
-		"cached_tokens_p95":          cachedP95,
-		"input_tokens_p95":           inputP95,
-		"fresh_input_tokens_p95":     freshP95,
-		"output_tokens_p95":          outputP95,
-		"uncached_tokens_p95":        uncachedP95,
-		"long_context_suspected":     longContextSuspected,
-		"diagnosis":                  ternaryStatus(longContextSuspected, "cached-token-bloat-suspected-long-resident-or-outer-context", "no-long-context-bloat-signal"),
-		"context_slimming_actions":   contextSlimmingRecommendations(longContextSuspected, inputP95, cachedP95, freshP95, outputP95, uncachedP95),
-		"volume_gate":                ternaryStatus(!volumeTooLarge, "pass", "fail"),
-		"runtime_skill_bytes":        runtimeSkillBytes,
-		"repo_instruction_bytes":     repoInstructionBytes,
-		"runtime_mirror_bytes":       mirrorBytes,
-		"privacy_mode":               "numeric-usage-and-hash-only",
-		"outer_context_claim_policy": "token-cost-cache-usage-claims-require-runtime-usage-evidence",
-		"checks":                     []string{"runtime-skill-budget", "repo-instruction-budget", "runtime-mirror-budget", "outer-usage-volume", "long-context-suspect", "raw-payload-forbidden"},
-		"budgets":                    jsonObject{"runtime_skill_bytes_max": maxRuntimeSkillBytes, "repo_instruction_bytes_max": maxRuntimeRepoInstructionBytes, "runtime_mirror_bytes_max": maxRuntimeMirrorBytes, "cached_prefix_tokens_p95_max": maxCachedPrefixBytesP95, "input_tokens_p95_max": maxInputTokensP95, "fresh_input_tokens_p95_max": maxFreshInputTokensP95, "output_tokens_p95_max": maxOutputTokensP95, "uncached_tokens_p95_max": maxUncachedTokensP95, "min_runtime_usage_observations": minRuntimeUsageObservations},
-		"warnings":                   warnings,
-		"status":                     ternaryStatus(len(failures) == 0, "pass", "fail"),
+		"command":                      "runtime-context-audit",
+		"schema_version":               "runtime-context-audit.v1",
+		"workspace_key":                workspaceKey,
+		"generated_at":                 time.Now().UTC().Format(time.RFC3339),
+		"wuji_version":                 builtinIronRulesVersion,
+		"usage_log":                    usageLogRef,
+		"usage_log_sha256":             usageLogHash,
+		"usage_observations":           usageObservations,
+		"cache_hit_rate":               cacheHitRate,
+		"cached_tokens_p95":            cachedP95,
+		"input_tokens_p95":             inputP95,
+		"fresh_input_tokens_p95":       freshP95,
+		"output_tokens_p95":            outputP95,
+		"uncached_tokens_p95":          uncachedP95,
+		"cached_input_cost_weight_bps": cachedInputCostWeightBasisPoints,
+		"effective_input_units_p95":    effectiveInputUnitsP95,
+		"long_context_suspected":       longContextSuspected,
+		"thread_reset_required":        longContextSuspected,
+		"thread_emergency":             threadEmergency,
+		"same_thread_policy":           ternaryStatus(threadEmergency, "emergency-stop-refresh-handoff", ternaryStatus(longContextSuspected, "stop-broad-work-refresh-handoff", "same-thread-allowed")),
+		"diagnosis":                    ternaryStatus(longContextSuspected, "cached-token-bloat-suspected-long-resident-or-outer-context", "no-long-context-bloat-signal"),
+		"context_slimming_actions":     contextSlimmingRecommendations(longContextSuspected, inputP95, cachedP95, freshP95, outputP95, uncachedP95),
+		"volume_gate":                  ternaryStatus(!volumeTooLarge, "pass", "fail"),
+		"runtime_skill_bytes":          runtimeSkillBytes,
+		"repo_instruction_bytes":       repoInstructionBytes,
+		"runtime_mirror_bytes":         mirrorBytes,
+		"runtime_mirror_scope":         []string{"SKILL.md", "GLOBAL_AGENTS.md"},
+		"privacy_mode":                 "numeric-usage-and-hash-only",
+		"outer_context_claim_policy":   "token-cost-cache-usage-claims-require-runtime-usage-evidence",
+		"checks":                       []string{"runtime-skill-budget", "repo-instruction-budget", "runtime-mirror-budget", "outer-usage-volume", "long-context-suspect", "raw-payload-forbidden"},
+		"budgets":                      jsonObject{"runtime_skill_bytes_max": maxRuntimeSkillBytes, "repo_instruction_bytes_max": maxRuntimeRepoInstructionBytes, "runtime_mirror_bytes_max": maxRuntimeMirrorBytes, "cached_prefix_tokens_p95_max": maxCachedPrefixBytesP95, "input_tokens_p95_max": maxInputTokensP95, "fresh_input_tokens_p95_max": maxFreshInputTokensP95, "output_tokens_p95_max": maxOutputTokensP95, "uncached_tokens_p95_max": maxUncachedTokensP95, "cached_input_cost_weight_bps": cachedInputCostWeightBasisPoints, "runtime_cached_thread_emergency_threshold_p95": runtimeCachedThreadEmergencyThresholdP95, "runtime_input_thread_emergency_threshold_p95": runtimeInputThreadEmergencyThresholdP95, "min_runtime_usage_observations": minRuntimeUsageObservations},
+		"warnings":                     warnings,
+		"status":                       ternaryStatus(len(failures) == 0, "pass", "fail"),
 	}
 	relUsage := filepath.ToSlash(strings.TrimPrefix(usageLogRef, "./"))
 	manifestRelPaths := []string{"tools/wuji_cli.go", "AGENTS.md", "SKILL.md", "GLOBAL_AGENTS.md", "README.md"}
@@ -6314,9 +6880,26 @@ func mcpDistill(args []string) int {
 		return 1
 	}
 	items, ok := objectSlice(catalog, "candidates")
-	if !ok || len(items) == 0 {
+	if !ok {
 		fmt.Fprintln(os.Stderr, "catalog must contain candidates")
 		return 2
+	}
+	if len(items) == 0 {
+		report := jsonObject{
+			"catalog":          absClean(catalogPath),
+			"standing_backlog": "empty",
+			"decision_mode":    "task-scoped-ad-hoc-only",
+			"decisions":        []jsonObject{},
+			"note":             "no standing MCP candidate backlog retained",
+			"evidence_level":   "candidate",
+		}
+		if hasReport {
+			if err := writeJSON(reportPath, report); err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+		}
+		return printGate("mcp-distill", nil)
 	}
 	failures := []string{}
 	decisions := []jsonObject{}
@@ -6618,6 +7201,178 @@ func resolvedDefaultModelTier(config map[string]any) string {
 	return builtinDefaultModelTier
 }
 
+func enabledProviderMap(config map[string]any) map[string]bool {
+	enabledProviders := map[string]bool{}
+	if providers, ok := objectSlice(config, "providers"); ok {
+		for _, rawProvider := range providers {
+			provider, ok := rawProvider.(map[string]any)
+			if !ok {
+				continue
+			}
+			id := objectString(provider, "id")
+			if enabled, ok := objectBool(provider, "enabled"); id != "" && ok && enabled {
+				enabledProviders[id] = true
+			}
+		}
+	}
+	return enabledProviders
+}
+
+func providerDefaultModel(config map[string]any, providerID string) string {
+	if strings.TrimSpace(providerID) == "" {
+		return ""
+	}
+	if providers, ok := objectSlice(config, "providers"); ok {
+		for _, rawProvider := range providers {
+			provider, ok := rawProvider.(map[string]any)
+			if !ok {
+				continue
+			}
+			if !strings.EqualFold(objectString(provider, "id"), providerID) {
+				continue
+			}
+			if model := objectString(provider, "model"); model != "" {
+				return model
+			}
+		}
+	}
+	return ""
+}
+
+func firstProfileForProvider(profiles map[string]modelProfile, providerID string) (modelProfile, bool) {
+	profile, _, ok := firstProfileWithTierForProvider(profiles, providerID)
+	return profile, ok
+}
+
+func firstProfileWithTierForProvider(profiles map[string]modelProfile, providerID string) (modelProfile, string, bool) {
+	for _, tier := range []string{"standard", "high", "low"} {
+		if profile, ok := profiles[tier]; ok && strings.EqualFold(profile.ProviderID, providerID) {
+			return profile, tier, true
+		}
+	}
+	for _, profile := range profiles {
+		if strings.EqualFold(profile.ProviderID, providerID) {
+			return profile, "", true
+		}
+	}
+	return modelProfile{}, "", false
+}
+
+func defaultStrongFallbackProfile(profiles map[string]modelProfile, enabledProviders map[string]bool, excludedProviderIDs ...string) (modelProfile, string, bool) {
+	excluded := map[string]bool{}
+	for _, providerID := range excludedProviderIDs {
+		if providerID != "" {
+			excluded[strings.ToLower(strings.TrimSpace(providerID))] = true
+		}
+	}
+	for _, tier := range []string{"standard", "high", "low"} {
+		profile, ok := profiles[tier]
+		if !ok || strings.TrimSpace(profile.ProviderID) == "" {
+			continue
+		}
+		key := strings.ToLower(strings.TrimSpace(profile.ProviderID))
+		if excluded[key] {
+			continue
+		}
+		if enabledProviders[profile.ProviderID] {
+			return profile, tier, true
+		}
+	}
+	return modelProfile{}, "", false
+}
+
+func routeRuleModelForProvider(rules []routeRule, routeID string, providerID string) string {
+	for _, rule := range rules {
+		if strings.EqualFold(rule.ID, routeID) && strings.EqualFold(rule.ProviderID, providerID) && strings.TrimSpace(rule.Model) != "" {
+			return strings.TrimSpace(rule.Model)
+		}
+	}
+	return ""
+}
+
+func queryExplicitlyRequestsAlias(lowerQuery string, alias string) bool {
+	alias = strings.ToLower(strings.TrimSpace(alias))
+	if alias == "" {
+		return false
+	}
+	patterns := []string{
+		"use " + alias,
+		"using " + alias,
+		"switch to " + alias,
+		"route through " + alias,
+		"use model " + alias,
+		"\u7528" + alias,
+		"\u4f7f\u7528" + alias,
+		"\u6539\u7528" + alias,
+		"\u6362\u6210" + alias,
+		"\u6307\u5b9a" + alias,
+		"\u8d70" + alias,
+	}
+	for _, pattern := range patterns {
+		if strings.Contains(lowerQuery, pattern) {
+			return true
+		}
+	}
+	return false
+}
+
+func explicitProviderOverride(query string, config map[string]any, routeID string, rules []routeRule, profiles map[string]modelProfile) (string, string, string, bool) {
+	lowerQuery := strings.ToLower(query)
+	enabledFallback, _, hasDefaultFallback := defaultStrongFallbackProfile(profiles, enabledProviderMap(config), "agnes-openai-free")
+	if hasDefaultFallback {
+		for _, alias := range []string{"default model", "default gpt", "gpt", "\u9ed8\u8ba4\u6a21\u578b", "\u9ed8\u8ba4gpt", "deepseek"} {
+			if queryExplicitlyRequestsAlias(lowerQuery, alias) {
+				model := providerDefaultModel(config, enabledFallback.ProviderID)
+				if model == "" {
+					model = enabledFallback.Model
+				}
+				return enabledFallback.ProviderID, model, alias, true
+			}
+		}
+	}
+	if providers, ok := objectSlice(config, "providers"); ok {
+		for _, rawProvider := range providers {
+			provider, ok := rawProvider.(map[string]any)
+			if !ok {
+				continue
+			}
+			providerID := objectString(provider, "id")
+			if providerID == "" {
+				continue
+			}
+			aliases := []string{
+				strings.ToLower(providerID),
+				strings.ToLower(objectString(provider, "name")),
+				strings.ToLower(objectString(provider, "model")),
+			}
+			switch {
+			case strings.Contains(strings.ToLower(providerID), "agnes"):
+				aliases = append(aliases, "agnes", "agnes ai")
+			case strings.Contains(strings.ToLower(providerID), "deepseek"):
+				aliases = append(aliases, "deepseek")
+			case strings.Contains(strings.ToLower(providerID), "openai"):
+				aliases = append(aliases, "openai", "gpt")
+			}
+			for _, alias := range orderedUniqueStrings(aliases) {
+				if !queryExplicitlyRequestsAlias(lowerQuery, alias) {
+					continue
+				}
+				model := routeRuleModelForProvider(rules, routeID, providerID)
+				if model == "" {
+					model = providerDefaultModel(config, providerID)
+				}
+				if model == "" {
+					if profile, ok := firstProfileForProvider(profiles, providerID); ok {
+						model = profile.Model
+					}
+				}
+				return providerID, model, alias, true
+			}
+		}
+	}
+	return "", "", "", false
+}
+
 func cloneBuiltinRoutingRules() []routeRule {
 	canonRules := canonRoutingRules()
 	cloned := make([]routeRule, 0, len(canonRules))
@@ -6651,7 +7406,8 @@ func performanceRouteMarkers() []string {
 		"token", "token cost", "token volume", "cached tokens", "cost", "speed", "slow", "p95", "p99", "cpu", "memory", "resource",
 		"rework cost", "headroom", "prefix cache", "context-bloat", "context bloat", "context volume", "token optimization",
 		"long context", "large context", "context window", "cached token volume", "200k", "blue hit",
-		"上下文", "长上下文", "上下文太长", "蓝色命中", "命中体量", "后台token", "后台 token", "命中的数量",
+		"性能", "基准", "压测", "延迟", "吞吐", "命中率", "缓存命中", "缓存膨胀", "缓存体量",
+		"费用", "成本", "速度", "慢", "内存", "资源", "上下文膨胀", "上下文体量", "长上下文",
 		"mtp", "tpm", "tq", "sageattention", "attention acceleration", "cache acceleration",
 	}
 }
@@ -6671,21 +7427,146 @@ func analysisCompletenessRequired(query string) bool {
 	return len(markerHits(query, analysisCompletenessMarkers())) > 0
 }
 
+func simpleScopedTaskMarkers() []string {
+	return []string{
+		"fix bug", "small fix", "small change", "tiny change", "minor edit", "rename", "adjust text", "update copy",
+		"single file", "one file", "simple task", "quick fix", "small feature", "simple feature", "simple script",
+		"one section", "single section", "one paragraph", "single paragraph", "one page", "single page",
+		"one slide", "single slide", "draft note", "polish copy", "rewrite wording", "small doc update",
+		"修bug", "小修", "小改", "小功能", "简单任务", "简单功能", "单文件", "一个文件", "改文案", "改下文字", "小脚本",
+	}
+}
+
+func simpleScopedTaskPreferred(query string) bool {
+	if len(markerHits(query, simpleScopedTaskMarkers())) == 0 {
+		return false
+	}
+	heavyBlockers := []string{
+		"architecture", "system analysis", "whole system", "full legion", "all officers", "all independent officers",
+		"release", "publish", "ship", "root cause", "patch debt", "migration", "security review", "threat model",
+		"全局", "整体", "全军", "全体官员", "多堂会审", "发布", "上线", "根因", "补丁债", "迁移", "安全审查", "架构",
+	}
+	return len(markerHits(query, heavyBlockers)) == 0
+}
+
+func directCodeFirstPassGuardRequired(routeID string, query string, complexitySignals int) bool {
+	routeID = strings.ToLower(routeID)
+	if routeID != "code" {
+		return false
+	}
+	if analysisCompletenessRequired(query) {
+		return false
+	}
+	if codePlanningRequired(query, complexitySignals) {
+		return false
+	}
+	if explicitAllOfficersRequested(query) {
+		return false
+	}
+	lightFixMarkers := []string{
+		"fix", "bug", "bugfix", "small fix", "small bug", "minor edit", "button", "click", "page", "route", "render", "ui", "frontend",
+		"修", "小 bug", "小bug", "按钮", "点击", "页面", "路由", "渲染", "前端", "界面",
+	}
+	return len(markerHits(query, lightFixMarkers)) > 0
+}
+
+func visualDeliveryPreferred(query string) bool {
+	visualMarkers := []string{
+		"ppt", "pptx", "presentation", "slide", "deck", "design", "ui", "frontend", "html", "css", "page", "landing", "preview",
+		"页面设计", "界面设计", "网页设计", "演示文稿", "幻灯片", "页面", "界面", "前端", "网页", "版式",
+	}
+	technicalCodeMarkers := []string{
+		"fix", "bug", "debug", "plugin", "script", "function", "compile", "module", "dependency", "refactor", "implement",
+		"修", "修复", "排查", "脚本", "函数", "编译", "模块", "依赖", "重构", "实现",
+	}
+	return len(markerHits(query, visualMarkers)) > 0 && len(markerHits(query, technicalCodeMarkers)) == 0
+}
+
+func lightweightGoalPreferred(routeID string, query string, complexitySignals int) bool {
+	routeID = strings.ToLower(routeID)
+	if routeID == "execution-base" || isQualityInspectionRoute(routeID) || routeID == "evolve" {
+		return false
+	}
+	if complexitySignals >= 2 {
+		return false
+	}
+	if analysisCompletenessRequired(query) || releaseBudgetRequired(query) || explicitAllOfficersRequested(query) {
+		return false
+	}
+	if len(markerHits(query, securityTaskMarkers())) > 0 {
+		return false
+	}
+	return simpleScopedTaskPreferred(query)
+}
+
+func codePlanningRequired(query string, complexitySignals int) bool {
+	if complexitySignals >= 2 {
+		return true
+	}
+	if analysisCompletenessRequired(query) {
+		return true
+	}
+	planningMarkers := []string{
+		"refactor", "across multiple files", "multiple files", "architecture", "system analysis", "module map", "dependency map", "plan first",
+		"重构", "多文件", "跨文件", "架构", "系统分析", "模块图", "依赖图", "先规划",
+	}
+	return len(markerHits(query, planningMarkers)) > 0
+}
+
+func priorArtSearchRequired(routeID string, query string, complexitySignals int) bool {
+	if strings.EqualFold(routeID, "search") {
+		return true
+	}
+	markers := []string{
+		"existing solution", "prior art", "from scratch", "open source", "open-source", "research", "search", "github issue", "known solution", "tooling",
+		"方案", "解决", "修复", "根因", "问题", "全网", "搜索", "借鉴", "现成", "开源", "工具", "不要从零",
+	}
+	if len(markerHits(query, markers)) == 0 {
+		return false
+	}
+	if simpleScopedTaskPreferred(query) && complexitySignals == 0 {
+		return false
+	}
+	return true
+}
+
+func securityTaskMarkers() []string {
+	return []string{
+		"security review", "threat model", "threat modeling", "vulnerability", "vuln", "attack surface", "hardening",
+		"secret handling", "secret leak", "dependency risk", "supply chain", "permission review", "auth review",
+		"安全审查", "威胁建模", "漏洞", "攻击面", "加固", "密钥", "秘钥", "依赖风险", "供应链", "权限审查", "认证审查",
+	}
+}
+
+func deliveryCoordinationMarkers() []string {
+	return []string{
+		"handoff", "closeout", "broad cleanup", "work slices", "parallel work", "delivery pacing", "merge results", "final closeout",
+		"交接", "收口", "大清理", "切片", "并行推进", "回收结果", "最终收口",
+	}
+}
+
+func strategyFramingMarkers() []string {
+	return []string{
+		"tradeoff", "strategy", "first principles", "architecture analysis", "system analysis", "design review",
+		"取舍", "战略", "第一性原理", "架构分析", "系统分析", "设计审查",
+	}
+}
+
 func canonRoutingRules() []routeRule {
 	return []routeRule{
-		{ID: "search", Name: "search-intelligence", Keywords: []string{"search", "find", "research", "web", "latest", "cite", "github"}, ProviderID: "deepseek-web", Priority: 100},
-		{ID: "code", Name: "code-development", Keywords: []string{"code", "fix", "debug", "bugfix", "compile", "function", "script", "test", "tests", "refactor", "implement", "plugin", "python", "powershell", "rust", "architecture", "system analysis", "module", "module map", "dependency", "repository", "repo"}, ProviderID: "deepseek-web", Priority: 80},
+		{ID: "search", Name: "search-intelligence", Keywords: []string{"search", "find", "research", "web", "latest", "cite", "github", "全网", "搜索", "联网", "网上", "查一下", "查资料", "github上看看", "github 看看"}, ProviderID: "agnes-openai-free", Model: "agnes-2.0-flash", Priority: 100},
+		{ID: "code", Name: "code-development", Keywords: []string{"code", "fix", "debug", "bugfix", "compile", "function", "script", "test", "tests", "refactor", "implement", "plugin", "python", "powershell", "rust", "module", "module map", "dependency", "repository", "repo", "security review", "threat model", "vulnerability", "attack surface", "hardening", "secret handling", "dependency risk", "修", "修复", "修bug", "修 bug", "改bug", "改 bug", "排查", "写代码", "开发", "按钮", "页面", "功能", "导出按钮"}, ProviderID: "deepseek-web", Priority: 80},
 		{ID: "execution-base", Name: "go-execution-base", Keywords: append([]string{"wuji-cli", "go", "guard", "audit", "claim-guard", "reference-guard", "truth-state", "finish-or-block", "closeout-check", "pptx-preflight", "pptx-batch-gate", "pptx-audit", "asset-map", "time-guard", "mcp-guard", "reference-frame-map", "reusable-asset-map", "illustration-plan", "pilot-page", "pilot-preview", "pilot-score"}, performanceRouteMarkers()...), ProviderID: "deepseek-web", Priority: 82},
-		{ID: "content", Name: "content-document", Keywords: []string{"article", "document", "report", "word", "docx", "markdown", "blog", "story", "course", "proposal"}, ProviderID: "deepseek-web", Priority: 70},
-		{ID: "visual", Name: "visual-ppt-ui", Keywords: []string{"ppt", "presentation", "slide", "deck", "design", "ui", "frontend", "html", "css", "page", "landing", "preview", "opendesign", "remotion"}, ProviderID: "deepseek-web", Priority: 60},
+		{ID: "content", Name: "content-document", Keywords: []string{"article", "document", "doc", "report", "word", "docx", "markdown", "blog", "story", "course", "proposal", "copy", "content", "section", "paragraph", "rewrite", "update", "edit", "文档", "报告", "文章", "改文案", "改文字", "一段文案"}, ProviderID: "deepseek-web", Priority: 70},
+		{ID: "visual", Name: "visual-ppt-ui", Keywords: []string{"ppt", "presentation", "slide", "deck", "design", "ui", "frontend", "html", "css", "page", "landing", "preview", "opendesign", "remotion", "PPT", "幻灯片", "页面设计", "界面", "前端", "网页"}, ProviderID: "deepseek-web", Priority: 60},
 		{ID: "video", Name: "video-motion", Keywords: []string{"video", "motion", "animated", "animation", "stage", "sprite", "timeline", "product demo", "demo video", "mp4", "gif", "reel"}, ProviderID: "deepseek-web", Priority: 55},
 		{ID: "imagegen", Name: "imagegen-direct-image", Keywords: []string{"image", "illustration", "poster", "cover", "generate image", "imagegen"}, Priority: 52},
 		{ID: "prompt", Name: "prompt-engineering", Keywords: []string{"prompt", "storyboard-spec", "image-spec", "rewrite prompt", "expand prompt"}, ProviderID: "deepseek-web", Priority: 50},
 		{ID: "spreadsheet", Name: "spreadsheet-data", Keywords: []string{"spreadsheet", "excel", "xlsx", "csv", "table", "ledger"}, ProviderID: "deepseek-web", Priority: 58},
 		{ID: "comfyui", Name: "comfyui-workflow", Keywords: []string{"comfyui", "workflow json", "node graph", "screenshot", "render"}, ProviderID: "deepseek-web", Priority: 95},
-		{ID: "quality-inspection", Name: "quality-inspection", Keywords: []string{"quality-inspection", "qa", "quality review", "acceptance review", "final acceptance", "final verification", "white-hat review", "guard-office review", "release acceptance", "验收", "质检"}, ProviderID: "deepseek-web", Priority: 40},
+		{ID: "quality-inspection", Name: "quality-inspection", Keywords: []string{"quality-inspection", "qa", "quality review", "acceptance review", "final acceptance", "final verification", "white-hat review", "guard-office review", "release acceptance"}, ProviderID: "deepseek-web", Priority: 40},
 		{ID: "evolve", Name: "evolution-distillation", Keywords: []string{"evolve", "distill", "fusion", "rules", "skills", "source pool", "recipe", "eval set", "promotion", "retire", "learning"}, ProviderID: "deepseek-web", Priority: 30},
-		{ID: "chat", Name: "chat", Keywords: []string{}, ProviderID: "deepseek-web", Priority: 0},
+		{ID: "chat", Name: "chat", Keywords: []string{}, ProviderID: "deepseek-web", Model: "deepseek-chat", Priority: 0},
 	}
 }
 
@@ -6839,6 +7720,10 @@ func canonPluginBindingsAsJSON() []jsonObject {
 	return result
 }
 
+func hostAvailablePluginBindingsAsJSON() []jsonObject {
+	return canonPluginBindingsAsJSON()
+}
+
 func mcpPoliciesAsJSON() []jsonObject {
 	result := make([]jsonObject, 0, len(builtinMCPPolicies))
 	for _, policy := range builtinMCPPolicies {
@@ -6891,28 +7776,84 @@ func distilledAtomOwnerMap() jsonObject {
 	for _, atom := range distilledAtomRegistry {
 		owners[atom.Name] = atom.Owner
 	}
-	owners["assumption-ledger"] = "white-hat+quality-inspection+audit"
-	owners["claim-fact-check"] = "white-hat+audit+intelligence-profile"
-	owners["reversible-evidence-handle"] = "go-execution-base+audit+quality-inspection"
-	owners["content-type-compression-router"] = "go-execution-base+performance-benchmark-on-demand"
-	owners["version-doc-mcp"] = "development-profile+intelligence-profile+guard-office"
-	owners["guarded-realtime-source-search"] = "intelligence-profile+guard-office+audit"
-	owners["research-evidence-pack"] = "intelligence-profile+audit+content-profile"
-	owners["skill-stocktake-daily-library"] = "evolution-profile+audit+white-hat"
-	owners["verified-learning-loop"] = "evolution-profile+quality-inspection+go-execution-base+performance-benchmark-on-demand"
-	owners["disciplined-debug-loop"] = "development-profile+quality-inspection"
-	owners["prior-art-solution-search"] = "intelligence-profile+owner-profile+guard-office"
-	owners["root-cause-radar"] = "root-cause-officer+development-profile+quality-inspection+white-hat"
-	owners["parallel-hypothesis-fanout"] = "staff-runtime+quality-inspection"
-	owners["patch-debt-root-cure"] = "evolution-profile+root-cause-officer+audit+performance-benchmark-on-demand"
-	owners["terminal-real-run-verification"] = "quality-inspection+audit+go-execution-base"
-	owners["html-native-design-canvas"] = "visual-profile+quality-inspection"
-	owners["brand-asset-protocol"] = "visual-profile+intelligence-profile+guard-office"
-	owners["anti-ai-slop-visual-rules"] = "visual-profile+quality-inspection+white-hat"
-	owners["design-direction-triad"] = "staff-runtime+visual-profile+nuwa-preflight"
-	owners["html-deck-to-editable-pptx"] = "visual-profile+go-execution-base+quality-inspection"
-	owners["motion-stage-sprite-engine"] = "visual-profile+performance-benchmark-on-demand"
 	return owners
+}
+
+func distilledAtomRegistryIndex() map[string]distilledAtomDef {
+	index := map[string]distilledAtomDef{}
+	for _, atom := range distilledAtomRegistry {
+		index[atom.Name] = atom
+	}
+	return index
+}
+
+func routeWorkspaceFromConfigPath(configPath string) string {
+	if strings.TrimSpace(configPath) == "" {
+		return ""
+	}
+	return absClean(filepath.Dir(configPath))
+}
+
+func loadFusionDecisionIndex(workspace string) map[string]map[string]any {
+	if strings.TrimSpace(workspace) == "" {
+		return map[string]map[string]any{}
+	}
+	fusionMatrixPath := filepath.Join(workspace, "fusion-matrix.json")
+	if !nonEmpty(fusionMatrixPath) {
+		return map[string]map[string]any{}
+	}
+	fusionMatrixObj, err := loadJSONObject(fusionMatrixPath)
+	if err != nil {
+		return map[string]map[string]any{}
+	}
+	rawDecisions, ok := fusionMatrixObj["decisions"].([]any)
+	if !ok {
+		return map[string]map[string]any{}
+	}
+	index := map[string]map[string]any{}
+	for _, rawDecision := range rawDecisions {
+		decision, ok := rawDecision.(map[string]any)
+		if !ok {
+			continue
+		}
+		atom := objectString(decision, "atom")
+		if strings.TrimSpace(atom) == "" {
+			continue
+		}
+		index[atom] = decision
+	}
+	return index
+}
+
+func loadFusionObjectVerdictIndex(workspace string) map[string]map[string]any {
+	if strings.TrimSpace(workspace) == "" {
+		return map[string]map[string]any{}
+	}
+	fusionMatrixPath := filepath.Join(workspace, "fusion-matrix.json")
+	if !nonEmpty(fusionMatrixPath) {
+		return map[string]map[string]any{}
+	}
+	fusionMatrixObj, err := loadJSONObject(fusionMatrixPath)
+	if err != nil {
+		return map[string]map[string]any{}
+	}
+	rawVerdicts, ok := fusionMatrixObj["object_verdicts"].([]any)
+	if !ok {
+		return map[string]map[string]any{}
+	}
+	index := map[string]map[string]any{}
+	for _, rawVerdict := range rawVerdicts {
+		verdict, ok := rawVerdict.(map[string]any)
+		if !ok {
+			continue
+		}
+		objectName := objectString(verdict, "object")
+		if objectName == "" {
+			continue
+		}
+		index[objectName] = verdict
+	}
+	return index
 }
 
 func distilledAtomPresenceMap() map[string]bool {
@@ -6928,6 +7869,7 @@ func intelligenceProfileContract() jsonObject {
 		"role":          "candidate-scout-not-research-system",
 		"search_scope":  "wide-recall-shallow-first",
 		"github_status": "first-class-source-for-code-tool-plugin-skill-bug-prior-art",
+		"search_method": "wide-shallow-scout-first-then-deepen-only-on-promising-candidates",
 		"may_do": []string{
 			"search",
 			"candidate-metadata",
@@ -6961,10 +7903,21 @@ func conciseExecutionContract() jsonObject {
 	return jsonObject{
 		"objective": "short-precise-high-hit-low-total-cost",
 		"must_do": []string{
+			"simplest-effective-path-first",
 			"single-message-precision",
 			"minimal-needed-context",
+			"agnes-search-only-before-uncertain-build-when-web-search-is-explicitly-needed",
 			"prior-art-before-invention-when-uncertain",
+			"first-pass-acceptance-and-impact-lock-before-edit",
+			"acceptance-lock-before-broad-implementation",
+			"impact-scan-before-cross-file-change",
 			"root-cause-before-patch",
+			"prove-need-before-abstraction",
+			"delete-or-reuse-before-add",
+			"target-page-in-place-replacement",
+			"active-route-entrypoint-verification",
+			"superseded-page-cleanup-before-completion",
+			"smallest-working-change-first",
 			"fresh-output-uncached-volume-gated",
 			"cached-volume-before-hit-rate-claim",
 			"stable-prefix-small-not-just-cacheable",
@@ -6972,8 +7925,16 @@ func conciseExecutionContract() jsonObject {
 		"must_not_do": []string{
 			"verbose-status-padding",
 			"unneeded-preflight-loop",
+			"guess-without-evidence",
+			"blind-trial-and-error-when-prior-art-is-available",
 			"context-shift-from-cached-to-uncached",
 			"from-scratch-tooling-when-existing-solution-fits",
+			"clever-overengineering-without-proven-need",
+			"new-abstraction-before-duplication-or-gap-is-proven",
+			"parallel-compat-page-for-requested-page-change",
+			"leave-old-page-reachable-after-replacement",
+			"broad-implementation-before-acceptance-is-locked",
+			"cross-file-edits-without-impact-scan",
 			"short-answer-that-causes-rework",
 		},
 		"cost_vector": []string{
@@ -6991,54 +7952,45 @@ func conciseExecutionContract() jsonObject {
 
 func executionBudgetContract() jsonObject {
 	return jsonObject{
-		"objective": "scoped-fast-real-completion",
-		"policy":    "use the smallest verification tier that preserves first-pass success, evidence, and user constraints",
+		"objective": "all-work-direct-small-task-execution",
+		"policy":    "treat every non-chat request as direct small-task execution; keep officers explicit and on-demand, and use targeted verification unless the user explicitly asks for a broad final review",
 		"tiers": []jsonObject{
 			{
 				"id":                  "FAST_REPLY",
 				"scope":               "discussion, direct answer, or analysis with no requested file changes",
-				"officer_mode":        "perspective-only-when-named",
+				"officer_mode":        "no-officer-seat-unless-explicitly-triggered",
 				"verification":        "no tool gate unless factual, current, or local evidence is required",
 				"full_audit":          false,
 				"full_suite_max_runs": 0,
 			},
 			{
-				"id":                  "LIGHT_TASK",
-				"scope":               "small scoped edit or single-owner task",
-				"officer_mode":        "only explicitly triggered officers, one concise verdict",
-				"verification":        "targeted command, artifact, or focused test",
+				"id":                  "DIRECT_TASK",
+				"scope":               "all non-chat execution work, including code, docs, routing, kernel, root-cause, fusion, and cleanup tasks",
+				"officer_mode":        "only explicitly triggered officers or clearly required specialist seats, merged once then exited",
+				"verification":        "targeted command, artifact, focused test, or one necessary final proof only",
 				"full_audit":          false,
 				"full_suite_max_runs": 0,
-			},
-			{
-				"id":                  "STRUCTURAL_TASK",
-				"scope":               "router, kernel, officer, gate, multi-file, or root-cause work",
-				"officer_mode":        "triggered officers may run in parallel, then exit after merge",
-				"verification":        "targeted gates during work, one full verification at final if touched surfaces require it",
-				"full_audit":          "final-only-when-surface-requires",
-				"full_suite_max_runs": 1,
-			},
-			{
-				"id":                  "RELEASE_TASK",
-				"scope":               "explicit full-legion scan, release, broad cleanup, or final completion claim",
-				"officer_mode":        "all relevant officers may review once under single main-chain merge",
-				"verification":        "full audit and real-run closeout once at final",
-				"full_audit":          true,
-				"full_suite_max_runs": 1,
 			},
 		},
 		"must_do": []string{
 			"bind-current-scope-before-expansion",
-			"run-targeted-verification-before-full-suite",
+			"bind-finish-line-and-out-of-scope-before-goal-start",
+			"keep-direct-code-work-on-a-minimal-first-pass-guard",
+			"run-targeted-verification-before-any-full-suite",
+			"all-non-chat-work-stays-direct-task-by-default",
 			"keep-officers-on-demand-and-exit-after-merge",
 			"treat-runtime-context-audit-as-token-cost-cache-claim-only",
 			"finish-current-scope-without-reopen-ceremony",
+			"avoid-automatic-task-upshift",
 		},
 		"must_not_do": []string{
-			"escalate-small-task-to-full-legion-scan",
-			"spawn-sidecars-for-officer-perspectives",
+			"auto-create-big-task-mode",
+			"auto-upshift-to-structural-or-release-mode",
+			"add-agnes-scout-or-planning-sidecar-to-light-task-by-tier-alone",
+			"treat-officers-as-perspectives-or-tones",
 			"repeat-full-suite-after-small-edits",
 			"block-non-token-work-on-missing-runtime-usage-log",
+			"start-goal-without-clear-finish-line",
 			"continue-low-value-sweep-outside-current-scope",
 		},
 	}
@@ -7046,25 +7998,31 @@ func executionBudgetContract() jsonObject {
 
 func executionBudgetContractFailures(contract map[string]any, prefix string) []string {
 	failures := []string{}
-	if objectString(contract, "objective") != "scoped-fast-real-completion" {
+	if objectString(contract, "objective") != "all-work-direct-small-task-execution" {
 		failures = append(failures, prefix+"bad_objective")
 	}
 	for _, required := range []string{
 		"bind-current-scope-before-expansion",
-		"run-targeted-verification-before-full-suite",
+		"bind-finish-line-and-out-of-scope-before-goal-start",
+		"keep-direct-code-work-on-a-minimal-first-pass-guard",
+		"run-targeted-verification-before-any-full-suite",
+		"all-non-chat-work-stays-direct-task-by-default",
 		"keep-officers-on-demand-and-exit-after-merge",
 		"treat-runtime-context-audit-as-token-cost-cache-claim-only",
 		"finish-current-scope-without-reopen-ceremony",
+		"avoid-automatic-task-upshift",
 	} {
 		if !containsExactString(stringSlice(contract, "must_do"), required) {
 			failures = append(failures, prefix+"missing_must_do="+required)
 		}
 	}
 	for _, forbidden := range []string{
-		"escalate-small-task-to-full-legion-scan",
-		"spawn-sidecars-for-officer-perspectives",
+		"auto-create-big-task-mode",
+		"auto-upshift-to-structural-or-release-mode",
+		"treat-officers-as-perspectives-or-tones",
 		"repeat-full-suite-after-small-edits",
 		"block-non-token-work-on-missing-runtime-usage-log",
+		"start-goal-without-clear-finish-line",
 		"continue-low-value-sweep-outside-current-scope",
 	} {
 		if !containsExactString(stringSlice(contract, "must_not_do"), forbidden) {
@@ -7162,10 +8120,11 @@ func builtinCanonReport() jsonObject {
 				},
 			},
 		},
-		"model_profiles":     modelProfilesAsJSON(cloneBuiltinModelProfiles()),
-		"routing_rules":      routeRulesAsJSON(canonRoutingRules()),
-		"built_in_plugins":   canonPluginBindingsAsJSON(),
-		"mcp_default_policy": canonMCPPoliciesAsJSON(),
+		"model_profiles":         modelProfilesAsJSON(cloneBuiltinModelProfiles()),
+		"routing_rules":          routeRulesAsJSON(canonRoutingRules()),
+		"host_available_plugins": hostAvailablePluginBindingsAsJSON(),
+		"admitted_plugins":       canonPluginBindingsAsJSON(),
+		"mcp_default_policy":     canonMCPPoliciesAsJSON(),
 		"distilled_atom_kernel": jsonObject{
 			"policy":               "gap-fill-replace-weaker-atoms-no-stack",
 			"resident_light_atoms": distilledAtomNamesByResidency("resident-light"),
@@ -7229,6 +8188,29 @@ func mirrorDriftFailures(path string, requiredMarkers []string) []string {
 	return failures
 }
 
+func activeSkillMirrorSyncFailures(workspace string) []string {
+	sourcePath := filepath.Join(workspace, "SKILL.md")
+	mirrorPath := `C:\Users\Administrator\.agents\skills\wuji-legion\SKILL.md`
+	if !nonEmpty(sourcePath) {
+		return []string{"repo_skill_missing_or_too_small=" + absClean(sourcePath)}
+	}
+	if !nonEmpty(mirrorPath) {
+		return []string{"active_skill_mirror_missing_or_too_small=" + absClean(mirrorPath)}
+	}
+	sourceHash, sourceErr := fileSHA256(sourcePath)
+	mirrorHash, mirrorErr := fileSHA256(mirrorPath)
+	if sourceErr != nil {
+		return []string{"repo_skill_unreadable=" + absClean(sourcePath)}
+	}
+	if mirrorErr != nil {
+		return []string{"active_skill_mirror_unreadable=" + absClean(mirrorPath)}
+	}
+	if sourceHash != mirrorHash {
+		return []string{"active_skill_mirror_hash_mismatch=" + privacyHash(absClean(mirrorPath))}
+	}
+	return nil
+}
+
 func sourcePoolTokenSet(values ...[]string) map[string]bool {
 	result := map[string]bool{}
 	for _, list := range values {
@@ -7239,6 +8221,10 @@ func sourcePoolTokenSet(values ...[]string) map[string]bool {
 		}
 	}
 	return result
+}
+
+func catalogIDs(obj map[string]any) []string {
+	return stringSliceWithAliases(obj, "source_catalog_ids", "source_pools")
 }
 
 func splitSourcePoolTokens(sourcePool string) []string {
@@ -7255,77 +8241,383 @@ func splitSourcePoolTokens(sourcePool string) []string {
 }
 
 func fusionSourcePoolCatalog(kernelObj map[string]any, fusionMatrixObj map[string]any) map[string]bool {
-	catalog := sourcePoolTokenSet(stringSlice(kernelObj, "source_pools"), stringSlice(fusionMatrixObj, "source_pools"))
-	for _, token := range []string{
-		"AnySearch",
-		"Agent-Reach",
-		"AiToEarn",
-		"assumption-checker",
-		"audit",
-		"audit-trace-style",
-		"ChinaTextbook",
-		"codex-plugins",
-		"codex-runtime",
-		"codex-runtime-style",
-		"codex-subagents",
-		"context7-mcp",
-		"delta-debugging",
-		"development-profile",
-		"ECC",
-		"external-agent-shells",
-		"fault-localization",
-		"GhostTrack",
-		"go-execution-base",
-		"goose",
-		"goose-style",
-		"guard-office",
-		"hallucination-detector",
-		"headroom",
-		"Hermes",
-		"html-ppt-skill",
-		"huashu-design",
-		"intelligence-profile",
-		"last30days",
-		"llama.cpp",
-		"multi-agent-rca",
-		"nuwa-preflight",
-		"open-notebook",
-		"openai-plugins",
-		"opencv-style",
-		"parallel-sidecar-execution",
-		"pg_durable",
-		"pg_durable-style",
-		"project-nomad",
-		"quality-inspection",
-		"reasonix",
-		"research-evidence-pack",
-		"research-mode",
-		"source-pool-not-shell",
-		"spreadsheet-profile",
-		"staff-runtime",
-		"Superpowers",
-		"taste-skill",
-		"tolaria",
-		"trace-analysis",
-		"turbovec-style",
-		"verified-learning-loop",
-		"visual-profile",
-		"web-search-rag",
-		"white-hat",
-	} {
-		catalog[strings.ToLower(token)] = true
-	}
-	return catalog
+	return sourcePoolTokenSet(catalogIDs(kernelObj), catalogIDs(fusionMatrixObj))
 }
 
-func sourcePoolFailures(atom string, sourcePool string, catalog map[string]bool) []string {
+func sourcePoolFailures(atom string, sourceRefs string, catalog map[string]bool) []string {
 	failures := []string{}
-	for _, token := range splitSourcePoolTokens(sourcePool) {
+	for _, token := range splitSourcePoolTokens(sourceRefs) {
 		if !catalog[strings.ToLower(token)] {
-			failures = append(failures, "fusion_matrix_unknown_source_pool="+atom+":"+token)
+			failures = append(failures, "fusion_matrix_unknown_source_refs="+atom+":"+token)
 		}
 	}
 	return failures
+}
+
+func knownVerdictOwners() map[string]bool {
+	owners := map[string]bool{
+		"white-hat":                       true,
+		"guard-office":                    true,
+		"root-cause-officer":              true,
+		"audit":                           true,
+		"quality-inspection":              true,
+		"performance-benchmark-on-demand": true,
+		"compliance-on-demand":            true,
+		"staff-runtime":                   true,
+		"go-execution-base":               true,
+		"development-profile":             true,
+		"intelligence-profile":            true,
+		"content-profile":                 true,
+		"visual-profile":                  true,
+		"data-profile":                    true,
+		"evolution-profile":               true,
+		"execution-base-profile":          true,
+		"owner-profile":                   true,
+		"nuwa-preflight":                  true,
+		"security-profile":                true,
+	}
+	for _, atom := range distilledAtomRegistry {
+		for _, owner := range splitSourcePoolTokens(atom.Owner) {
+			owners[strings.ToLower(owner)] = true
+		}
+	}
+	for _, binding := range builtinPluginBindings {
+		for _, owner := range binding.Owners {
+			owners[strings.ToLower(strings.TrimSpace(owner))] = true
+		}
+	}
+	return owners
+}
+
+func knownVerdictSurfaces() map[string]bool {
+	surfaces := map[string]bool{
+		"optimization-kernel":    true,
+		"compliance-on-demand":   true,
+		"quality-inspection":     true,
+		"content-profile":        true,
+		"data-profile":           true,
+		"execution-base-profile": true,
+	}
+	for _, atom := range distilledAtomRegistry {
+		surfaces[strings.ToLower(atom.Name)] = true
+	}
+	for _, routeSurface := range []string{"route-task:chat", "route-task:code-plan", "route-task:imagegen", "route-task:video"} {
+		surfaces[strings.ToLower(routeSurface)] = true
+	}
+	return surfaces
+}
+
+func fusionObjectVerdictFailures(fusionMatrixObj map[string]any) []string {
+	rawVerdicts, ok := fusionMatrixObj["object_verdicts"].([]any)
+	if !ok || len(rawVerdicts) == 0 {
+		return []string{"fusion_matrix_object_verdicts_missing"}
+	}
+	failures := []string{}
+	seenObjects := map[string]bool{}
+	allowedModes := map[string]bool{"gap-fill": true, "replace": true, "defer": true, "reject": true}
+	allowedStatuses := map[string]bool{"landed": true, "rejected": true, "provider-mirror-only": true, "restricted-boundary": true, "source-pool-only": true}
+	knownOwners := knownVerdictOwners()
+	knownSurfaces := knownVerdictSurfaces()
+	index := map[string]map[string]any{}
+	for _, rawVerdict := range rawVerdicts {
+		verdict, ok := rawVerdict.(map[string]any)
+		if !ok {
+			failures = append(failures, "fusion_matrix_object_verdict_invalid_entry")
+			continue
+		}
+		objectName := objectString(verdict, "object")
+		if objectName == "" {
+			failures = append(failures, "fusion_matrix_object_verdict_missing_field=object")
+			continue
+		}
+		lowerObject := strings.ToLower(objectName)
+		if seenObjects[lowerObject] {
+			failures = append(failures, "fusion_matrix_object_verdict_duplicate="+objectName)
+			continue
+		}
+		seenObjects[lowerObject] = true
+		index[objectName] = verdict
+		for _, required := range []string{"fusion_mode", "runtime_status", "boundary", "reason"} {
+			if objectString(verdict, required) == "" {
+				failures = append(failures, "fusion_matrix_object_verdict_missing_field="+objectName+":"+required)
+			}
+		}
+		mode := objectString(verdict, "fusion_mode")
+		status := objectString(verdict, "runtime_status")
+		if !allowedModes[mode] {
+			failures = append(failures, "fusion_matrix_object_verdict_invalid_fusion_mode="+objectName+":"+mode)
+		}
+		if !allowedStatuses[status] {
+			failures = append(failures, "fusion_matrix_object_verdict_invalid_runtime_status="+objectName+":"+status)
+		}
+		surfaces, surfacesOk := verdict["landed_surfaces"].([]any)
+		if !surfacesOk {
+			failures = append(failures, "fusion_matrix_object_verdict_landed_surfaces_not_array="+objectName)
+			surfaces = []any{}
+		}
+		owners, ownersOk := verdict["owners"].([]any)
+		if !ownersOk {
+			failures = append(failures, "fusion_matrix_object_verdict_owners_not_array="+objectName)
+			owners = []any{}
+		}
+		surfaceNames := []string{}
+		for _, rawSurface := range surfaces {
+			text, ok := rawSurface.(string)
+			text = strings.TrimSpace(text)
+			if !ok || text == "" {
+				failures = append(failures, "fusion_matrix_object_verdict_invalid_surface="+objectName)
+				continue
+			}
+			surfaceNames = append(surfaceNames, text)
+			if !knownSurfaces[strings.ToLower(text)] {
+				failures = append(failures, "fusion_matrix_object_verdict_unknown_surface="+objectName+":"+text)
+			}
+		}
+		if len(uniqueStrings(surfaceNames)) != len(surfaceNames) {
+			failures = append(failures, "fusion_matrix_object_verdict_duplicate_surface="+objectName)
+		}
+		ownerNames := []string{}
+		for _, rawOwner := range owners {
+			text, ok := rawOwner.(string)
+			text = strings.TrimSpace(text)
+			if !ok || text == "" {
+				failures = append(failures, "fusion_matrix_object_verdict_invalid_owner="+objectName)
+				continue
+			}
+			ownerNames = append(ownerNames, text)
+			if !knownOwners[strings.ToLower(text)] {
+				failures = append(failures, "fusion_matrix_object_verdict_unknown_owner="+objectName+":"+text)
+			}
+		}
+		if len(ownerNames) == 0 {
+			failures = append(failures, "fusion_matrix_object_verdict_no_owner="+objectName)
+		}
+		if len(uniqueStrings(ownerNames)) != len(ownerNames) {
+			failures = append(failures, "fusion_matrix_object_verdict_duplicate_owner="+objectName)
+		}
+		switch status {
+		case "landed":
+			if len(surfaceNames) == 0 {
+				failures = append(failures, "fusion_matrix_object_verdict_landed_without_surface="+objectName)
+			}
+		case "rejected":
+			if mode != "reject" {
+				failures = append(failures, "fusion_matrix_object_verdict_rejected_mode_mismatch="+objectName+":"+mode)
+			}
+			if len(surfaceNames) != 0 {
+				failures = append(failures, "fusion_matrix_object_verdict_rejected_has_surface="+objectName)
+			}
+		case "provider-mirror-only":
+			if mode != "defer" {
+				failures = append(failures, "fusion_matrix_object_verdict_provider_mode_mismatch="+objectName+":"+mode)
+			}
+		}
+		boundary := strings.ToLower(objectString(verdict, "boundary"))
+		if containsAny(boundary, []string{"no standalone shell", "second runtime", "external executor", "not admitted", "no command-suite shell"}) {
+			for _, surface := range surfaceNames {
+				if strings.Contains(strings.ToLower(surface), "runtime-shell") || strings.Contains(strings.ToLower(surface), "commander") {
+					failures = append(failures, "fusion_matrix_object_verdict_boundary_shell_conflict="+objectName+":"+surface)
+				}
+			}
+		}
+	}
+	requiredExact := []struct {
+		Object   string
+		Mode     string
+		Status   string
+		Surfaces []string
+	}{
+		{"Agency Agents", "reject", "rejected", []string{}},
+		{"gstack", "reject", "rejected", []string{}},
+		{"baoyu-post-to-x/wechat/weibo", "defer", "restricted-boundary", []string{}},
+		{"Agnes AI", "defer", "provider-mirror-only", []string{"route-task:chat", "route-task:code-plan", "route-task:imagegen", "route-task:video"}},
+		{"baoyu-url-to-markdown", "defer", "restricted-boundary", []string{"guarded-realtime-source-search", "research-evidence-pack"}},
+		{"ppt-master", "gap-fill", "landed", []string{"native-pptx-master-route", "quality-inspection"}},
+		{"hyperframes", "gap-fill", "landed", []string{"html-native-design-canvas", "motion-stage-sprite-engine", "anti-ai-slop-visual-rules", "native-pptx-master-route"}},
+		{"Headroom", "replace", "landed", []string{"content-type-compression-router", "reversible-evidence-handle", "optimization-kernel"}},
+		{"Superpowers", "gap-fill", "landed", []string{"verified-learning-loop", "disciplined-debug-loop", "parallel-hypothesis-fanout", "patch-debt-root-cure"}},
+		{"Ponytail", "reject", "rejected", []string{}},
+		{"AnySearch", "gap-fill", "landed", []string{"guarded-realtime-source-search"}},
+		{"codebase-memory-mcp", "gap-fill", "source-pool-only", []string{}},
+		{"awesome-design-md", "gap-fill", "source-pool-only", []string{}},
+		{"mattpocock/skills", "gap-fill", "source-pool-only", []string{}},
+		{"agentic coding skills", "gap-fill", "source-pool-only", []string{}},
+		{"Claude loops", "gap-fill", "source-pool-only", []string{}},
+		{"universal-android-debloater", "reject", "rejected", []string{}},
+		{"penpot", "defer", "source-pool-only", []string{}},
+		{"plane", "reject", "rejected", []string{}},
+	}
+	for _, rule := range requiredExact {
+		verdict, ok := index[rule.Object]
+		if !ok {
+			failures = append(failures, "fusion_matrix_object_verdict_required_missing="+rule.Object)
+			continue
+		}
+		if objectString(verdict, "fusion_mode") != rule.Mode {
+			failures = append(failures, "fusion_matrix_object_verdict_required_mode_drift="+rule.Object)
+		}
+		if objectString(verdict, "runtime_status") != rule.Status {
+			failures = append(failures, "fusion_matrix_object_verdict_required_status_drift="+rule.Object)
+		}
+		if strings.Join(uniqueSorted(stringSlice(verdict, "landed_surfaces")), "|") != strings.Join(uniqueSorted(rule.Surfaces), "|") {
+			failures = append(failures, "fusion_matrix_object_verdict_required_surfaces_drift="+rule.Object)
+		}
+	}
+	requiredPresence := []string{
+		"Agent-Reach",
+		"assumption-checker",
+		"CopilotKit",
+		"cosmos",
+		"MiroFish",
+		"PaddleOCR",
+		"mempalace",
+		"flue",
+		"coding-interview-university",
+		"trivy",
+		"openclaw-windows-node",
+		"storage-analyzer",
+		"hallucination-detector",
+		"context7-mcp",
+		"research-mode",
+		"ECC",
+		"Hermes",
+		"baoyu-skills",
+		"OMX / oh-my-codex",
+		"wechat-toutiao-article-writer",
+		"humanizer-zh",
+		"competitive-teardown",
+		"hv-analysis",
+		"ppt-keynote",
+		"ian-xiaohei-illustrations",
+		"neat-freak",
+		"SenseNova-Skills",
+		"ChinaTextbook",
+		"AiToEarn",
+		"prompt-cache-block-control",
+		"LLMLingua",
+		"MemGPT",
+		"turbovec",
+		"pg_durable",
+		"Reasonix",
+		"baoyu-image-gen",
+		"baoyu-article-illustrator",
+		"khazix-writer",
+		"baoyu-youtube-transcript",
+		"baoyu-electron-extract",
+		"baoyu-translate",
+		"open-notebook",
+		"tolaria",
+		"last30days",
+		"taste-skill",
+		"goose",
+		"openai-plugins",
+		"GhostTrack",
+		"project-nomad",
+		"dbs-business-toolbox",
+		"codebase-memory-mcp",
+		"awesome-design-md",
+		"mattpocock/skills",
+		"agentic coding skills",
+		"Claude loops",
+		"universal-android-debloater",
+		"penpot",
+		"plane",
+	}
+	for _, objectName := range requiredPresence {
+		if _, ok := index[objectName]; !ok {
+			failures = append(failures, "fusion_matrix_object_verdict_required_missing="+objectName)
+		}
+	}
+	return failures
+}
+
+func docObjectVerdictCoverageFailures(workspace string, verdictIndex map[string]map[string]any) []string {
+	type docCoverageSpec struct {
+		Path    string
+		Objects []string
+	}
+	docSpecs := []docCoverageSpec{
+		{
+			Path: filepath.Join(workspace, "units", "distillation.md"),
+			Objects: []string{
+				"Headroom", "Reasonix", "ECC", "Hermes", "Superpowers", "Agency Agents", "gstack",
+				"AnySearch", "Agent-Reach", "last30days", "research-mode", "context7-mcp",
+				"assumption-checker", "hallucination-detector", "open-notebook", "tolaria",
+				"competitive-teardown", "hv-analysis", "PaddleOCR", "baoyu-url-to-markdown",
+				"baoyu-youtube-transcript", "baoyu-translate", "khazix-writer",
+				"wechat-toutiao-article-writer", "humanizer-zh", "neat-freak",
+				"dbs-business-toolbox", "CopilotKit", "huashu-design", "ppt-master", "ppt-keynote",
+				"hyperframes", "taste-skill", "baoyu-article-illustrator", "baoyu-image-gen",
+				"ian-xiaohei-illustrations", "storage-analyzer", "turbovec", "goose", "pg_durable", "trivy",
+				"baoyu-skills", "OMX / oh-my-codex", "SenseNova-Skills", "pi", "mempalace",
+				"baoyu-electron-extract", "baoyu-post-to-x/wechat/weibo",
+				"cosmos", "MiroFish", "flue", "coding-interview-university", "openclaw-windows-node",
+				"GhostTrack", "ChinaTextbook", "AiToEarn", "project-nomad",
+				"openai-plugins", "Agnes AI",
+				"codebase-memory-mcp", "awesome-design-md", "mattpocock/skills",
+				"agentic coding skills", "Claude loops", "universal-android-debloater",
+				"penpot", "plane",
+			},
+		},
+		{
+			Path: filepath.Join(workspace, "units", "plugins.md"),
+			Objects: []string{
+				"huashu-design", "OMX / oh-my-codex", "baoyu-image-gen",
+				"dbs-business-toolbox", "baoyu-url-to-markdown",
+				"baoyu-youtube-transcript", "baoyu-electron-extract",
+				"baoyu-post-to-x/wechat/weibo",
+			},
+		},
+		{
+			Path:    filepath.Join(workspace, "units", "security.md"),
+			Objects: []string{"GhostTrack", "ChinaTextbook", "AiToEarn", "project-nomad", "openai-plugins"},
+		},
+		{
+			Path:    filepath.Join(workspace, "units", "intel.md"),
+			Objects: []string{"last30days", "AnySearch", "Agent-Reach", "open-notebook", "tolaria", "openai-plugins", "codebase-memory-mcp"},
+		},
+		{
+			Path:    filepath.Join(workspace, "units", "pptx_master.md"),
+			Objects: []string{"ppt-master"},
+		},
+		{
+			Path:    filepath.Join(workspace, "experts", "visual", "视觉主帅.md"),
+			Objects: []string{"taste-skill", "huashu-design", "hyperframes", "ppt-master", "baoyu-article-illustrator", "ian-xiaohei-illustrations", "baoyu-image-gen", "ppt-keynote"},
+		},
+		{
+			Path:    filepath.Join(workspace, "experts", "intel", "情报主帅.md"),
+			Objects: []string{"AnySearch", "Agent-Reach", "last30days", "open-notebook", "tolaria", "openai-plugins", "baoyu-url-to-markdown", "baoyu-youtube-transcript", "hv-analysis", "competitive-teardown", "baoyu-translate"},
+		},
+		{
+			Path:    filepath.Join(workspace, "experts", "content", "内容主帅.md"),
+			Objects: []string{"khazix-writer", "wechat-toutiao-article-writer", "humanizer-zh", "neat-freak"},
+		},
+		{
+			Path:    filepath.Join(workspace, "experts", "execution_base", "执行底座主帅.md"),
+			Objects: []string{"goose", "openai-plugins", "OMX / oh-my-codex", "prompt-cache-block-control", "LLMLingua", "MemGPT", "neat-freak"},
+		},
+	}
+	failures := []string{}
+	for _, spec := range docSpecs {
+		content, err := os.ReadFile(spec.Path)
+		if err != nil {
+			continue
+		}
+		text := string(content)
+		for _, name := range spec.Objects {
+			if strings.TrimSpace(name) == "" {
+				continue
+			}
+			if _, ok := verdictIndex[name]; ok {
+				continue
+			}
+			if !strings.Contains(text, name) {
+				continue
+			}
+			failures = append(failures, "doc_object_without_verdict="+filepath.Base(spec.Path)+":"+name)
+		}
+	}
+	return uniqueSorted(failures)
 }
 
 func isActiveFusionDecision(decision string) bool {
@@ -7359,7 +8651,12 @@ func activeFusionDecisionLooksLikeRuntimeAtom(atom string, sourcePool string) bo
 }
 
 func fusionDecisionNeedsReject(atom string, sourcePool string, reason string, fusionPolicy string) bool {
+	atomLower := strings.ToLower(atom)
+	sourcePoolLower := strings.ToLower(sourcePool)
 	decisionSurface := strings.ToLower(atom + " " + sourcePool)
+	if strings.Contains(sourcePoolLower, "hyperframes") && atomLower != "hyperframes-runtime-shell" {
+		return false
+	}
 	directRejectMarkers := []string{
 		"ghosttrack",
 		"chinatextbook",
@@ -7379,6 +8676,9 @@ func fusionDecisionNeedsReject(atom string, sourcePool string, reason string, fu
 		return true
 	}
 	if !containsAny(decisionSurface, []string{"risk", "github-trending", "plugin-runtime", "external-agent-shell"}) {
+		return false
+	}
+	if containsAny(decisionSurface, []string{"hyperframes-runtime-shell", "context-mode-runtime-shell", "rtk-cli-proxy-shell", "graphify-always-on-graph-runtime", "open-code-review-external-runtime"}) {
 		return false
 	}
 	riskDetail := strings.ToLower(reason + " " + fusionPolicy)
@@ -7629,6 +8929,9 @@ func fusionAuditCommand(args []string) int {
 			if objectString(intelContract, "search_scope") != "wide-recall-shallow-first" {
 				failures = append(failures, "intelligence_profile_contract_bad_search_scope")
 			}
+			if objectString(intelContract, "search_method") != "wide-shallow-scout-first-then-deepen-only-on-promising-candidates" {
+				failures = append(failures, "intelligence_profile_contract_bad_search_method")
+			}
 			if !containsExactString(stringSlice(intelContract, "may_do"), "candidate-metadata") ||
 				!containsExactString(stringSlice(intelContract, "may_do"), "evidence-handle") {
 				failures = append(failures, "intelligence_profile_contract_missing_may_do")
@@ -7650,12 +8953,12 @@ func fusionAuditCommand(args []string) int {
 			if objectString(conciseContract, "objective") != "short-precise-high-hit-low-total-cost" {
 				failures = append(failures, "concise_execution_contract_bad_objective")
 			}
-			for _, required := range []string{"single-message-precision", "minimal-needed-context", "prior-art-before-invention-when-uncertain", "fresh-output-uncached-volume-gated"} {
+			for _, required := range []string{"simplest-effective-path-first", "single-message-precision", "minimal-needed-context", "agnes-search-only-before-uncertain-build-when-web-search-is-explicitly-needed", "prior-art-before-invention-when-uncertain", "prove-need-before-abstraction", "delete-or-reuse-before-add", "target-page-in-place-replacement", "active-route-entrypoint-verification", "superseded-page-cleanup-before-completion", "smallest-working-change-first", "fresh-output-uncached-volume-gated"} {
 				if !containsExactString(stringSlice(conciseContract, "must_do"), required) {
 					failures = append(failures, "concise_execution_contract_missing_must_do="+required)
 				}
 			}
-			for _, forbidden := range []string{"verbose-status-padding", "unneeded-preflight-loop", "context-shift-from-cached-to-uncached", "from-scratch-tooling-when-existing-solution-fits"} {
+			for _, forbidden := range []string{"verbose-status-padding", "unneeded-preflight-loop", "guess-without-evidence", "blind-trial-and-error-when-prior-art-is-available", "context-shift-from-cached-to-uncached", "from-scratch-tooling-when-existing-solution-fits", "clever-overengineering-without-proven-need", "new-abstraction-before-duplication-or-gap-is-proven", "parallel-compat-page-for-requested-page-change", "leave-old-page-reachable-after-replacement"} {
 				if !containsExactString(stringSlice(conciseContract, "must_not_do"), forbidden) {
 					failures = append(failures, "concise_execution_contract_missing_must_not_do="+forbidden)
 				}
@@ -7716,11 +9019,11 @@ func fusionAuditCommand(args []string) int {
 				}
 			}
 		}
-		if !containsExactString(stringSlice(kernelObj, "source_pools"), "github-trending-20260608-style") {
-			failures = append(failures, "kernel_source_pool_missing=github-trending-20260608-style")
+		if len(catalogIDs(kernelObj)) == 0 {
+			failures = append(failures, "kernel_source_catalog_ids_missing")
 		}
 	}
-	failures = append(failures, mixedDistilledSourceLineageAtomFailures()...)
+	failures = append(failures, mixedDistilledSourceSupportClassFailures()...)
 	failures = append(failures, routeDistilledAtomCoverageFailures()...)
 	failures = append(failures, distilledAtomRegistryFailures()...)
 
@@ -7756,8 +9059,15 @@ func fusionAuditCommand(args []string) int {
 		failures = append(failures, "missing_fusion_matrix="+absClean(fusionMatrixPath))
 	}
 	if fusionMatrixObj, err := loadJSONObject(fusionMatrixPath); err == nil {
-		if !containsExactString(stringSlice(fusionMatrixObj, "source_pools"), "github-trending-20260608-style") {
-			failures = append(failures, "fusion_matrix_source_pool_missing=github-trending-20260608-style")
+		if len(catalogIDs(fusionMatrixObj)) == 0 {
+			failures = append(failures, "fusion_matrix_catalog_ids_missing")
+		}
+		failures = append(failures, fusionObjectVerdictFailures(fusionMatrixObj)...)
+		failures = append(failures, docObjectVerdictCoverageFailures(workspace, loadFusionObjectVerdictIndex(workspace))...)
+		kernelCatalog := uniqueSorted(catalogIDs(kernelObj))
+		fusionCatalog := uniqueSorted(catalogIDs(fusionMatrixObj))
+		if strings.Join(kernelCatalog, "|") != strings.Join(fusionCatalog, "|") {
+			failures = append(failures, "source_catalog_mismatch=kernel-source.json|fusion-matrix.json")
 		}
 		if decisions, ok := fusionMatrixObj["decisions"].([]any); !ok || len(decisions) == 0 {
 			failures = append(failures, "fusion_matrix_has_no_decisions")
@@ -7788,7 +9098,7 @@ func fusionAuditCommand(args []string) int {
 				}
 				atom := objectString(decision, "atom")
 				decisionValue := objectString(decision, "decision")
-				sourcePool := objectString(decision, "source_pool")
+				sourcePool := objectStringWithAliases(decision, "source_refs", "source_pool")
 				sourcePoolCatalogFailures = append(sourcePoolCatalogFailures, sourcePoolFailures(atom, sourcePool, sourcePoolCatalog)...)
 				if isActiveFusionDecision(decisionValue) && !distilledAtomKnownMap()[atom] && activeFusionDecisionLooksLikeRuntimeAtom(atom, sourcePool) {
 					failures = append(failures, "fusion_matrix_extra_active_atom="+atom)
@@ -7954,13 +9264,15 @@ func fusionAuditCommand(args []string) int {
 		{filepath.Join(workspace, "GLOBAL_AGENTS.md"), []string{"kernel-source.json", "fusion-audit", "optimization-audit", "distilled_atom_kernel", "claim-fact-check", "prior-art-solution-search", "root-cause-radar", "根因雷达官", "terminal-real-run-verification", "Closeout Sound"}},
 		{filepath.Join(workspace, "README.md"), []string{"kernel-source.json", "fusion-audit", "optimization-audit", "distilled_atom_kernel", "reversible-evidence-handle", "patch-debt-root-cure", "root-cause officer", "Closeout Sound"}},
 		{filepath.Join(workspace, "experts", "INDEX.md"), []string{"kernel-source.json", "fusion-matrix.json", "residual-entrypoints.json"}},
-		{filepath.Join(workspace, "units", "context_router.md"), []string{"kernel-source.json", "task-routing", "capability-mount", "deterministic-execution", "distilled_atoms", "source_lineage_atoms"}},
+		{filepath.Join(workspace, "units", "context_router.md"), []string{"kernel-source.json", "task-routing", "capability-mount", "deterministic-execution", "distilled_atoms", "source_support_classes"}},
 		{filepath.Join(workspace, "units", "execution_base.md"), []string{"kernel-source.json", "deterministic-execution", "wuji-cli", "terminal-real-run-verification", "scripts/beep.ps1", "goose", "pg_durable-style", "openai-plugins"}},
-		{filepath.Join(workspace, "units", "staff.md"), []string{"kernel-source.json", "task-routing", "capability-mount", "minimal-gap-first", "distilled_atoms", "source_lineage_atoms", "parallel-hypothesis-fanout"}},
+		{filepath.Join(workspace, "units", "staff.md"), []string{"kernel-source.json", "task-routing", "capability-mount", "minimal-gap-first", "distilled_atoms", "source_support_classes", "parallel-hypothesis-fanout"}},
 		{filepath.Join(workspace, "units", "dev.md"), []string{"root-cause-radar", "parallel-hypothesis-fanout", "terminal-real-run-verification"}},
 		{filepath.Join(workspace, "units", "expedition.md"), []string{"parallel-hypothesis-fanout", "单一主链"}},
 		{filepath.Join(workspace, "units", "auto_evolve.md"), []string{"patch-debt-root-cure", "不打补丁"}},
 		{filepath.Join(workspace, "units", "mcp_plugins.md"), []string{"kernel-source.json", "capability-mount", "do not let MCP or plugins become a second router"}},
+		{filepath.Join(workspace, "units", "plugins.md"), []string{"宿主可用", "军团准入", "边界裁决", "不再保留“先登记、以后再说”的候选台账", "restricted-boundary", "source-pool-only", "reject"}},
+		{filepath.Join(workspace, "units", "mcp_catalog.json"), []string{"standing_backlog_policy", "empty-by-default", "task-scoped tool capability"}},
 		{filepath.Join(workspace, "units", "distillation.md"), []string{"kernel-source.json", "fusion-matrix.json", "residual-entrypoints.json", "distilled_atom_kernel", "version-doc-mcp", "verified-learning-loop", "root-cause-radar", "github-trending-20260608-style", "existing 21"}},
 		{filepath.Join(workspace, "units", "oversight.md"), []string{"kernel-source.json", "white-hat", "root-cause-officer", "audit", "质检", "assumption-ledger", "claim-fact-check", "distilled_atoms", "terminal-real-run-verification"}},
 		{filepath.Join(workspace, "units", "security.md"), []string{"kernel-source.json", "guard-office", "security", "compliance-on-demand", "GhostTrack", "ChinaTextbook", "AiToEarn", "project-nomad"}},
@@ -7971,7 +9283,7 @@ func fusionAuditCommand(args []string) int {
 		{filepath.Join(workspace, "experts", "oversight", "审计官.md"), []string{"research-evidence-pack", "reversible-evidence-handle"}},
 		{filepath.Join(workspace, "experts", "oversight", "质检官.md"), []string{"claim-fact-check", "disciplined-debug-loop", "taste-skill", "opencv-style"}},
 		{filepath.Join(workspace, "experts", "security", "保卫科.md"), []string{"guarded-realtime-source-search", "version-doc-mcp", "GhostTrack", "ChinaTextbook", "AiToEarn", "project-nomad"}},
-		{filepath.Join(workspace, "experts", "staff", "参谋主帅.md"), []string{"distilled_atoms", "source_lineage_atoms"}},
+		{filepath.Join(workspace, "experts", "staff", "参谋主帅.md"), []string{"distilled_atoms", "source_support_classes"}},
 		{filepath.Join(workspace, "experts", "dev", "开发主帅.md"), []string{"version-doc-mcp", "disciplined-debug-loop"}},
 		{filepath.Join(workspace, "experts", "intel", "情报主帅.md"), []string{"guarded-realtime-source-search", "research-evidence-pack", "prior-art-solution-search", "候选来源卡片", "证据句柄", "不可以：做最终分析", "last30days", "open-notebook", "tolaria", "openai-plugins"}},
 		{filepath.Join(workspace, "experts", "data", "数据主帅.md"), []string{"turbovec-style", "open-notebook", "tolaria", "content-type-compression-router", "reversible-evidence-handle"}},
@@ -7983,15 +9295,19 @@ func fusionAuditCommand(args []string) int {
 		struct {
 			path    string
 			markers []string
-		}{filepath.Join(workspace, "units", "execution_base.md"), []string{"execution_budget_contract", "LIGHT_TASK", "runtime-context-audit"}},
+		}{filepath.Join(workspace, "units", "execution_base.md"), []string{"execution_budget_contract", "DIRECT_TASK", "runtime-context-audit"}},
 		struct {
 			path    string
 			markers []string
-		}{filepath.Join(workspace, "units", "staff.md"), []string{"execution_budget_contract", "LIGHT_TASK", "STRUCTURAL_TASK"}},
+		}{filepath.Join(workspace, "units", "staff.md"), []string{"execution_budget_contract", "DIRECT_TASK"}},
 		struct {
 			path    string
 			markers []string
-		}{filepath.Join(workspace, "units", "oversight.md"), []string{"execution_budget_contract", "LIGHT_TASK", "runtime-context-audit"}},
+		}{filepath.Join(workspace, "units", "oversight.md"), []string{"execution_budget_contract", "DIRECT_TASK", "runtime-context-audit"}},
+		struct {
+			path    string
+			markers []string
+		}{filepath.Join(workspace, "units", "dev.md"), []string{"target-page-in-place-replacement", "active-route-entrypoint-verification"}},
 	)
 	mirrorChecks = append(mirrorChecks,
 		struct {
@@ -8005,7 +9321,7 @@ func fusionAuditCommand(args []string) int {
 		struct {
 			path    string
 			markers []string
-		}{filepath.Join(workspace, "units", "visual.md"), []string{"kernel-source.json", "huashu-design", "html-native-design-canvas", "anti-ai-slop-visual-rules", "html-deck-to-editable-pptx", "taste-skill", "opencv-style"}},
+		}{filepath.Join(workspace, "units", "visual.md"), []string{"kernel-source.json", "huashu-design", "html-native-design-canvas", "anti-ai-slop-visual-rules", "native-pptx-master-route", "taste-skill", "opencv-style"}},
 		struct {
 			path    string
 			markers []string
@@ -8017,7 +9333,7 @@ func fusionAuditCommand(args []string) int {
 		struct {
 			path    string
 			markers []string
-		}{filepath.Join(workspace, "experts", "oversight", "质检官.md"), []string{"anti-ai-slop-visual-rules", "html-deck-to-editable-pptx"}},
+		}{filepath.Join(workspace, "experts", "oversight", "质检官.md"), []string{"anti-ai-slop-visual-rules", "native-pptx-master-route"}},
 		struct {
 			path    string
 			markers []string
@@ -8063,8 +9379,70 @@ func fusionAuditCommand(args []string) int {
 			markers []string
 		}{`C:\Users\Administrator\.agents\skills\wuji-legion\SKILL.md`, []string{"analysis_completeness_contract", "complete-materials-before-architecture-analysis"}},
 	)
+	mirrorChecks = append(mirrorChecks,
+		struct {
+			path    string
+			markers []string
+		}{filepath.Join(workspace, "SKILL.md"), []string{"target-page-in-place-replacement", "parallel-compat-page-for-requested-page-change"}},
+		struct {
+			path    string
+			markers []string
+		}{filepath.Join(workspace, "GLOBAL_AGENTS.md"), []string{"target-page-in-place-replacement", "parallel-compat-page-for-requested-page-change"}},
+		struct {
+			path    string
+			markers []string
+		}{filepath.Join(workspace, "README.md"), []string{"target-page-in-place-replacement", "parallel-compat-page-for-requested-page-change"}},
+		struct {
+			path    string
+			markers []string
+		}{`C:\Users\Administrator\.agents\skills\wuji-legion\SKILL.md`, []string{"target-page-in-place-replacement", "parallel-compat-page-for-requested-page-change"}},
+	)
 	for _, check := range mirrorChecks {
 		failures = append(failures, mirrorDriftFailures(check.path, check.markers)...)
+	}
+	failures = append(failures, activeSkillMirrorSyncFailures(workspace)...)
+	routeReportFixture := filepath.Join(os.TempDir(), fmt.Sprintf("wuji-fusion-audit-route-%d.json", time.Now().UnixNano()))
+	routeCode := routeTaskCommand([]string{
+		"--config", filepath.Join(workspace, "config.json"),
+		"--query", "all independent officers joint review full legion whole system analysis",
+		"--report", routeReportFixture,
+	})
+	if routeCode == 0 {
+		if routeReport, err := loadRouteReport(routeReportFixture); err == nil {
+			capabilityMounts, _ := objectMap(routeReport, "capability_mounts")
+			if evidence, ok := capabilityMounts["distilled_atom_evidence"].([]any); !ok || len(evidence) == 0 {
+				failures = append(failures, "route_distilled_atom_evidence_missing")
+			}
+			if auditEvidence, ok := capabilityMounts["current_audit_evidence"].([]any); !ok || len(auditEvidence) < 3 {
+				failures = append(failures, "route_current_audit_evidence_missing")
+			}
+			mergeReport, seatReports, reportFailures := officerRunReport(workspace, routeReport)
+			if len(reportFailures) > 0 {
+				failures = append(failures, reportFailures...)
+			} else {
+				if len(seatReports) != len(allIndependentOversightSeats()) {
+					failures = append(failures, fmt.Sprintf("officer_runtime_seat_count_mismatch=%d!=%d", len(seatReports), len(allIndependentOversightSeats())))
+				}
+				if objectString(mergeReport, "main_chain_merge_decision") != "merged-into-staff-runtime" {
+					failures = append(failures, "officer_runtime_merge_decision_missing")
+				}
+				if evidence, ok := mergeReport["distilled_atom_evidence"].([]jsonObject); ok && len(evidence) == 0 {
+					failures = append(failures, "officer_runtime_distilled_atom_evidence_missing")
+				} else if evidence, ok := mergeReport["distilled_atom_evidence"].([]any); ok && len(evidence) == 0 {
+					failures = append(failures, "officer_runtime_distilled_atom_evidence_missing")
+				}
+				if auditEvidence, ok := mergeReport["current_audit_evidence"].([]jsonObject); ok && len(auditEvidence) < 3 {
+					failures = append(failures, "officer_runtime_current_audit_evidence_missing")
+				} else if auditEvidence, ok := mergeReport["current_audit_evidence"].([]any); ok && len(auditEvidence) < 3 {
+					failures = append(failures, "officer_runtime_current_audit_evidence_missing")
+				}
+			}
+		} else {
+			failures = append(failures, "officer_runtime_fixture_unreadable")
+		}
+		_ = os.Remove(routeReportFixture)
+	} else {
+		failures = append(failures, "officer_runtime_fixture_route_failed")
 	}
 
 	report := jsonObject{
@@ -8086,6 +9464,10 @@ func fusionAuditCommand(args []string) int {
 			"acceptance-checklists-present",
 			"purification-charter-present",
 			"mirror-doc-drift-detection",
+			"active-skill-mirror-in-sync",
+			"officer-runtime-executable",
+			"distilled-atom-evidence-visible",
+			"current-audit-evidence-visible",
 		},
 		"warnings": warnings,
 		"status":   ternaryStatus(len(failures) == 0, "pass", "fail"),
@@ -8168,6 +9550,9 @@ func optimizationAuditCommand(args []string) int {
 	if contextErr != nil {
 		failures = append(failures, "context_pack_unreadable="+absClean(contextPackPath))
 	}
+	if contextErr == nil {
+		failures = append(failures, contextPackFreshnessFailures(contextObj, workspace)...)
+	}
 	if contextPackBytes > maxOptimizationContextPackBytes {
 		failures = append(failures, fmt.Sprintf("context_pack_over_budget=%s:%d>%d", absClean(contextPackPath), contextPackBytes, maxOptimizationContextPackBytes))
 	}
@@ -8186,6 +9571,21 @@ func optimizationAuditCommand(args []string) int {
 	}
 	if outputFiles > maxOptimizationOutputsFiles {
 		failures = append(failures, fmt.Sprintf("outputs_file_count_over_budget=%s:%d>%d", absClean(outputsPath), outputFiles, maxOptimizationOutputsFiles))
+	}
+	if residue, err := listNonCanonicalRootOutputs(outputsPath); err != nil {
+		failures = append(failures, "outputs_root_inventory_unreadable="+absClean(outputsPath))
+	} else if len(residue) > 0 {
+		failures = append(failures, "outputs_noncanonical_root_residue="+strings.Join(residue, "|"))
+	}
+	testsPath := filepath.Join(outputsPath, "tests")
+	if hasTestFiles, err := directoryHasFiles(testsPath); err != nil {
+		failures = append(failures, "outputs_tests_inventory_unreadable="+absClean(testsPath))
+	} else if hasTestFiles {
+		failures = append(failures, "outputs_tests_residue_present="+absClean(testsPath))
+	}
+	legacyOutputPath := filepath.Join(workspace, "output")
+	if info, err := os.Stat(legacyOutputPath); err == nil && info.IsDir() {
+		failures = append(failures, "legacy_output_directory_present="+absClean(legacyOutputPath))
 	}
 	toolsPath := filepath.Join(workspace, ".wuji-tools")
 	toolsFiles, toolsBytes, toolsStatsErr := directoryStats(toolsPath)
@@ -8347,20 +9747,23 @@ func optimizationAuditCommand(args []string) int {
 			"acceptance-checklists-present",
 		},
 		"budgets": jsonObject{
-			"context_pack_max_bytes":          maxOptimizationContextPackBytes,
-			"context_pack_bytes":              contextPackBytes,
-			"stable_prefix_max_fields":        maxOptimizationStablePrefixFields,
-			"outputs_max_bytes":               maxOptimizationOutputsBytes,
-			"outputs_bytes":                   outputBytes,
-			"outputs_max_files":               maxOptimizationOutputsFiles,
-			"outputs_files":                   outputFiles,
-			"wuji_tools_max_bytes":            maxOptimizationToolsBytes,
-			"wuji_tools_bytes":                toolsBytes,
-			"wuji_tools_max_files":            maxOptimizationToolsFiles,
-			"wuji_tools_files":                toolsFiles,
-			"stale_context_pack_forbidden":    true,
-			"large_artifacts_policy":          "handle-or-summary-only",
-			"anti_overoptimization_condition": "must preserve evidence, audit boundaries, and first-pass hit rate",
+			"context_pack_max_bytes":            maxOptimizationContextPackBytes,
+			"context_pack_bytes":                contextPackBytes,
+			"stable_prefix_max_fields":          maxOptimizationStablePrefixFields,
+			"outputs_max_bytes":                 maxOptimizationOutputsBytes,
+			"outputs_bytes":                     outputBytes,
+			"outputs_max_files":                 maxOptimizationOutputsFiles,
+			"outputs_files":                     outputFiles,
+			"outputs_root_policy":               "canonical-current-evidence-only",
+			"outputs_tests_policy":              "empty-or-absent",
+			"legacy_output_directory_forbidden": true,
+			"wuji_tools_max_bytes":              maxOptimizationToolsBytes,
+			"wuji_tools_bytes":                  toolsBytes,
+			"wuji_tools_max_files":              maxOptimizationToolsFiles,
+			"wuji_tools_files":                  toolsFiles,
+			"stale_context_pack_forbidden":      true,
+			"large_artifacts_policy":            "handle-or-summary-only",
+			"anti_overoptimization_condition":   "must preserve evidence, audit boundaries, and first-pass hit rate",
 		},
 		"warnings": warnings,
 		"status":   ternaryStatus(len(failures) == 0, "pass", "fail"),
@@ -8392,7 +9795,7 @@ func optimizationAuditCommand(args []string) int {
 func canonReportCommand(args []string) int {
 	reportPath, hasReport := argValue(args, "--report")
 	if !hasReport {
-		reportPath = filepath.Join(".", "wuji-canon-report.json")
+		reportPath = filepath.Join(os.TempDir(), "wuji-canon-report.json")
 	}
 	if err := writeJSON(reportPath, builtinCanonReport()); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -8901,27 +10304,107 @@ func routeComplexitySignalCount(routeID string, query string) int {
 	return signals
 }
 
-func routeTaskState(routeID string, tierSignalCount int, complexitySignals int) string {
+func routeTaskState(routeID string, query string, tierSignalCount int, complexitySignals int) string {
 	routeID = strings.ToLower(routeID)
 	if routeID == "chat" {
 		return "FAST_REPLY"
 	}
-	if routeID == "execution-base" || isQualityInspectionRoute(routeID) || routeID == "evolve" {
-		return "LEGION_TASK"
-	}
 	_ = tierSignalCount
-	if complexitySignals >= 2 {
-		return "LEGION_TASK"
+	_ = complexitySignals
+	_ = query
+	return "LIGHT_EXECUTION"
+}
+
+func routeSpecializedEntrypoints(routeID string, taskState string, query string) []string {
+	routeID = strings.ToLower(routeID)
+	entrypoints := []string{}
+	add := func(name string) {
+		if name == "" || containsExactString(entrypoints, name) {
+			return
+		}
+		entrypoints = append(entrypoints, name)
 	}
-	return "SINGLE_COMMANDER"
+	if analysisCompletenessRequired(query) || len(markerHits(query, strategyFramingMarkers())) > 0 {
+		add("参谋主帅")
+	}
+	switch routeID {
+	case "prompt":
+		add("提示词主帅")
+	case "comfyui":
+		add("ComfyUI主帅")
+	case "code":
+		if len(markerHits(query, securityTaskMarkers())) > 0 {
+			add("安全主帅")
+		}
+	}
+	if explicitAllOfficersRequested(query) && len(markerHits(query, deliveryCoordinationMarkers())) > 0 {
+		add("交付主帅")
+	}
+	return entrypoints
 }
 
 func releaseBudgetRequired(query string) bool {
+	return explicitAllOfficersRequested(query)
+}
+
+func explicitAllOfficersRequested(query string) bool {
 	markers := []string{
-		"full legion", "full scan", "whole system", "release", "ship", "publish", "all officers", "all independent officers",
-		"completion claim", "final completion", "broad cleanup", "purification", "deep cleanup",
+		"all officers", "all independent officers", "full legion", "multi-seat review", "joint review", "all oversight officers",
+		"独立官", "所有独立官", "全体独立官", "全部独立官", "多堂会审", "联合会审", "全体官员", "所有官员", "白帽 审计 质检", "白帽、审计、质检",
 	}
 	return len(markerHits(query, markers)) > 0
+}
+
+func allIndependentOversightSeats() []string {
+	return []string{
+		"white-hat",
+		"guard-office",
+		"root-cause-officer",
+		"audit",
+		"quality-inspection",
+		"performance-benchmark-on-demand",
+		"compliance-on-demand",
+	}
+}
+
+func allIndependentOversightActive(chain []string) bool {
+	for _, seat := range allIndependentOversightSeats() {
+		if !containsExactString(chain, seat) {
+			return false
+		}
+	}
+	return len(chain) >= len(allIndependentOversightSeats())
+}
+
+func strictExplicitAllOfficersRequested(query string) bool {
+	lower := strings.ToLower(query)
+	englishMarkers := []string{
+		"all officers",
+		"all independent officers",
+		"all oversight officers",
+		"full legion",
+		"multi-seat review",
+		"joint review",
+	}
+	if len(markerHits(query, englishMarkers)) > 0 {
+		return true
+	}
+	chineseMarkers := []string{
+		"所有独立官",
+		"全体独立官",
+		"全部独立官",
+		"联合会审",
+		"多堂会审",
+		"全体官员",
+		"所有官员",
+	}
+	if len(markerHits(query, chineseMarkers)) > 0 {
+		return true
+	}
+	if strings.Contains(lower, "白帽") && strings.Contains(lower, "审计") && strings.Contains(lower, "质检") {
+		return false
+	}
+	return false
 }
 
 func runtimeContextAuditRequired(query string) bool {
@@ -8932,35 +10415,27 @@ func runtimeContextAuditRequired(query string) bool {
 }
 
 func routeExecutionBudget(routeID string, taskState string, complexitySignals int, oversightChain []string, query string) jsonObject {
-	budgetID := "LIGHT_TASK"
+	budgetID := "DIRECT_TASK"
 	verification := "targeted"
 	fullAudit := any(false)
 	fullSuiteMaxRuns := 0
 	sidecarMode := "off"
-	reason := "small_scoped_task"
+	reason := "direct_small_task_execution"
 	routeID = strings.ToLower(routeID)
 	if taskState == "FAST_REPLY" {
 		budgetID = "FAST_REPLY"
 		verification = "none-unless-needed"
 		reason = "discussion_or_direct_answer"
-	} else if releaseBudgetRequired(query) {
-		budgetID = "RELEASE_TASK"
+	} else if releaseBudgetRequired(query) || allIndependentOversightActive(oversightChain) {
+		budgetID = "DIRECT_TASK"
 		verification = "full-final-once"
-		fullAudit = true
+		fullAudit = "explicit-final-review-only"
 		fullSuiteMaxRuns = 1
 		sidecarMode = "all-relevant-once"
-		reason = "explicit_broad_release_or_full_scan"
-	} else if taskState == "LEGION_TASK" || complexitySignals >= 2 ||
-		routeID == "execution-base" || routeID == "evolve" || isQualityInspectionRoute(routeID) ||
-		containsExactString(oversightChain, "root-cause-officer") ||
-		containsExactString(oversightChain, "performance-benchmark-on-demand") {
-		budgetID = "STRUCTURAL_TASK"
-		verification = "targeted-then-final-once-if-required"
-		fullAudit = "final-only-when-surface-requires"
-		fullSuiteMaxRuns = 1
-		sidecarMode = "triggered-only"
-		reason = "structural_or_high_risk_surface"
+		reason = "explicit_all_officer_final_review"
 	}
+	_ = complexitySignals
+	_ = routeID
 	return jsonObject{
 		"id":                           budgetID,
 		"reason":                       reason,
@@ -8968,7 +10443,7 @@ func routeExecutionBudget(routeID string, taskState string, complexitySignals in
 		"full_audit":                   fullAudit,
 		"full_suite_max_runs":          fullSuiteMaxRuns,
 		"sidecar_mode":                 sidecarMode,
-		"officer_default":              "perspective-only-unless-triggered",
+		"officer_default":              "no-independent-officer-seat-unless-triggered",
 		"runtime_context_audit_policy": "only-for-token-cost-cache-backend-usage-claims",
 		"scope_policy":                 "current-scope-only-no-low-value-expansion",
 	}
@@ -8999,13 +10474,27 @@ func routeOversightChain(routeID string, query string) []string {
 		}
 		chain = append(chain, name)
 	}
-	if routeID == "execution-base" || isQualityInspectionRoute(routeID) || routeID == "evolve" {
-		add("white-hat")
-		add("audit")
-	}
 	if analysisCompletenessRequired(query) {
 		add("white-hat")
 		add("audit")
+	}
+	if strings.Contains(lowerQuery, "white-hat") || strings.Contains(lowerQuery, "白帽") {
+		add("white-hat")
+	}
+	if strings.Contains(lowerQuery, "guard-office") || strings.Contains(lowerQuery, "保卫科") {
+		add("guard-office")
+	}
+	if strings.Contains(lowerQuery, "audit") || strings.Contains(lowerQuery, "审计") {
+		add("audit")
+	}
+	if strings.Contains(lowerQuery, "quality-inspection") || strings.Contains(lowerQuery, "质检") || strings.Contains(lowerQuery, "qa") {
+		add("quality-inspection")
+	}
+	if strings.Contains(lowerQuery, "performance-benchmark-on-demand") || strings.Contains(lowerQuery, "性能基准") {
+		add("performance-benchmark-on-demand")
+	}
+	if strings.Contains(lowerQuery, "compliance-on-demand") || strings.Contains(lowerQuery, "合规") {
+		add("compliance-on-demand")
 	}
 	rootCauseMarkers := []string{
 		"root cause", "root-cause", "fault localization", "failure", "failing", "rca", "symptom", "reproduce", "repro",
@@ -9040,29 +10529,248 @@ func routeOversightChain(routeID string, query string) []string {
 	if isQualityInspectionRoute(routeID) || len(markerHits(query, qualityMarkers)) > 0 {
 		add("quality-inspection")
 	}
+	if strictExplicitAllOfficersRequested(query) {
+		for _, seat := range allIndependentOversightSeats() {
+			add(seat)
+		}
+	}
 	return chain
 }
 
-func routeSourceLineageAtoms(routeID string) []string {
+func routeExplicitOfficerActivation(oversightChain []string, query string) jsonObject {
+	allRequested := strictExplicitAllOfficersRequested(query) || allIndependentOversightActive(oversightChain)
+	mode := "triggered-officers-only"
+	if allRequested {
+		mode = "all-independent-officers-explicit"
+	}
+	return jsonObject{
+		"mode":                          mode,
+		"default_state":                 "dormant-unless-triggered",
+		"explicit_requested":            len(oversightChain) > 0,
+		"all_officers_requested":        allRequested,
+		"officers":                      append([]string{}, oversightChain...),
+		"subagent_substitute_forbidden": len(oversightChain) > 0,
+		"merge_policy":                  "single-main-chain-merge",
+	}
+}
+
+func officerSeatMergeOrder(seat string) int {
+	switch seat {
+	case "white-hat":
+		return 10
+	case "guard-office":
+		return 20
+	case "root-cause-officer":
+		return 30
+	case "audit":
+		return 40
+	case "quality-inspection":
+		return 50
+	case "performance-benchmark-on-demand":
+		return 60
+	case "compliance-on-demand":
+		return 70
+	default:
+		return 99
+	}
+}
+
+func officerSeatStage(seat string) string {
+	switch seat {
+	case "white-hat":
+		return "preflight"
+	case "guard-office":
+		return "ingress"
+	case "root-cause-officer":
+		return "diagnosis"
+	case "audit":
+		return "process-evidence"
+	case "quality-inspection":
+		return "final-acceptance"
+	case "performance-benchmark-on-demand":
+		return "performance-dispute"
+	case "compliance-on-demand":
+		return "boundary-check"
+	default:
+		return "review"
+	}
+}
+
+func officerSeatVerdictKind(seat string) string {
+	switch seat {
+	case "white-hat":
+		return "assumption-and-safety-verdict"
+	case "guard-office":
+		return "source-ingress-safety-verdict"
+	case "root-cause-officer":
+		return "root-cause-verdict"
+	case "audit":
+		return "process-truth-and-evidence-verdict"
+	case "quality-inspection":
+		return "acceptance-verdict"
+	case "performance-benchmark-on-demand":
+		return "token-cost-speed-benchmark-verdict"
+	case "compliance-on-demand":
+		return "boundary-and-attribution-verdict"
+	default:
+		return "review-verdict"
+	}
+}
+
+func officerSeatDeliverable(seat string) string {
+	switch seat {
+	case "white-hat":
+		return "one concise blocking-or-pass verdict with assumption and fake-fusion checks"
+	case "guard-office":
+		return "one concise ingress verdict for external pages, repos, MCP, plugins, or dependencies"
+	case "root-cause-officer":
+		return "root-cause-radar.v1 report with same-class scan and repair-ready verdict"
+	case "audit":
+		return "one concise process and evidence-chain verdict"
+	case "quality-inspection":
+		return "one concise acceptance verdict plus real-run verification requirements when needed"
+	case "performance-benchmark-on-demand":
+		return "one concise benchmark verdict bound to bench-report and context-bloat findings"
+	case "compliance-on-demand":
+		return "one concise compliance verdict for license, source, privacy, or release boundary"
+	default:
+		return "one concise officer verdict"
+	}
+}
+
+func officerSeatRequiredAtoms(seat string) []string {
+	switch seat {
+	case "white-hat":
+		return []string{"assumption-ledger", "claim-fact-check"}
+	case "guard-office":
+		return []string{"guarded-realtime-source-search", "version-doc-mcp"}
+	case "root-cause-officer":
+		return []string{"root-cause-radar", "parallel-hypothesis-fanout", "patch-debt-root-cure"}
+	case "audit":
+		return []string{"reversible-evidence-handle", "research-evidence-pack"}
+	case "quality-inspection":
+		return []string{"disciplined-debug-loop", "terminal-real-run-verification"}
+	case "performance-benchmark-on-demand":
+		return []string{"content-type-compression-router", "terminal-real-run-verification", "reversible-evidence-handle"}
+	case "compliance-on-demand":
+		return []string{"claim-fact-check", "research-evidence-pack", "guarded-realtime-source-search"}
+	default:
+		return []string{}
+	}
+}
+
+func officerSeatCommandHints(seat string, routeID string, query string) []string {
+	hints := []string{}
+	switch seat {
+	case "guard-office":
+		if strings.EqualFold(routeID, "search") {
+			hints = append(hints, "mcp-guard")
+		}
+	case "root-cause-officer":
+		hints = append(hints, "root-cause-radar")
+	case "quality-inspection":
+		hints = append(hints, "quality-guard", "closeout-check")
+	case "performance-benchmark-on-demand":
+		hints = append(hints, "bench", "bench-report", "context-bloat-audit")
+		if runtimeContextAuditRequired(query) {
+			hints = append(hints, "runtime-context-audit")
+		}
+	}
+	return uniqueStrings(hints)
+}
+
+func officerSeatTriggerReason(seat string, routeID string, query string) string {
+	if strictExplicitAllOfficersRequested(query) {
+		return "explicit-all-independent-officers-request"
+	}
+	switch seat {
+	case "white-hat":
+		if analysisCompletenessRequired(query) {
+			return "analysis-completeness-or-architecture-risk"
+		}
+		if strings.EqualFold(routeID, "execution-base") || isQualityInspectionRoute(routeID) || strings.EqualFold(routeID, "evolve") {
+			return "direct-review-or-verification-route"
+		}
+	case "guard-office":
+		return "external-source-or-mcp-ingress"
+	case "root-cause-officer":
+		return "root-cause-low-efficiency-or-patch-debt-signal"
+	case "audit":
+		if analysisCompletenessRequired(query) {
+			return "analysis-completeness-and-evidence-discipline"
+		}
+		return "direct-review-or-verification-route"
+	case "quality-inspection":
+		return "quality-acceptance-or-real-run-signal"
+	case "performance-benchmark-on-demand":
+		if runtimeContextAuditRequired(query) {
+			return "token-cost-cache-or-runtime-usage-signal"
+		}
+		return "performance-or-benchmark-signal"
+	case "compliance-on-demand":
+		return "license-source-privacy-or-release-boundary-signal"
+	}
+	return "route-or-query-trigger"
+}
+
+func routeOfficerActivationLedger(routeID string, ownerProfile string, oversightChain []string, query string) jsonObject {
+	seats := make([]jsonObject, 0, len(oversightChain))
+	for _, seat := range oversightChain {
+		seats = append(seats, jsonObject{
+			"seat":                 seat,
+			"status":               "explicit-active",
+			"stage":                officerSeatStage(seat),
+			"merge_order":          officerSeatMergeOrder(seat),
+			"verdict_kind":         officerSeatVerdictKind(seat),
+			"deliverable":          officerSeatDeliverable(seat),
+			"trigger_reason":       officerSeatTriggerReason(seat, routeID, query),
+			"required_atoms":       officerSeatRequiredAtoms(seat),
+			"command_hints":        officerSeatCommandHints(seat, routeID, query),
+			"write_authority":      "none",
+			"may_edit_files":       false,
+			"may_enable_tools":     false,
+			"may_delete_content":   false,
+			"may_publish":          false,
+			"merge_target":         "staff-runtime",
+			"exit_policy":          "emit-concise-verdict-then-exit",
+			"evidence_mode":        "summary-plus-handle-only",
+			"substitute_forbidden": true,
+		})
+	}
+	return jsonObject{
+		"merge_owner":                           "staff-runtime",
+		"single_write_authority":                "main-chain-only",
+		"dispatch_owner_profile":                ownerProfile,
+		"default_state":                         "dormant-unless-triggered",
+		"parallel_allowed":                      len(oversightChain) > 1,
+		"conflict_resolution":                   "single-main-chain-merge",
+		"officers_exit_after_merge":             true,
+		"generic_subagent_substitute_forbidden": len(oversightChain) > 0,
+		"seat_count":                            len(seats),
+		"seats":                                 seats,
+	}
+}
+
+func routeSourceSupportClasses(routeID string) []string {
 	switch strings.ToLower(routeID) {
 	case "search":
-		return []string{"skill-discovery-filter", "session-routine", "memory-routine", "mcp-gateway-status-awareness"}
+		return []string{"external-research-scout", "evidence-pack-lineage"}
 	case "code":
-		return []string{"capability-gap-detection", "model-provider-routing-hint", "session-routine", "memory-routine"}
+		return []string{"version-doc-lineage", "debug-discipline-lineage"}
 	case "execution-base":
-		return []string{"context-minimization", "prefix-cache-discipline", "tool-output-compression"}
+		return []string{"context-efficiency-lineage"}
 	case "qa", "quality-inspection":
-		return []string{"tool-output-compression", "session-routine", "memory-routine"}
+		return []string{"acceptance-and-verification-lineage"}
 	case "evolve":
-		return []string{"skill-discovery-filter", "capability-gap-detection", "memory-routine"}
+		return []string{"distillation-and-eval-lineage"}
 	case "content":
-		return []string{"context-minimization"}
+		return []string{"content-naturalness-lineage"}
 	case "visual", "imagegen", "comfyui", "video":
-		return []string{"context-minimization"}
+		return []string{"visual-direction-lineage", "motion-visual-lineage"}
 	case "spreadsheet":
-		return []string{"context-minimization"}
+		return []string{"data-evidence-lineage"}
 	default:
-		return []string{"context-minimization"}
+		return []string{"legacy-kernel-lineage"}
 	}
 }
 
@@ -9090,7 +10798,7 @@ func routeDistilledAtoms(routeID string, oversightChain []string) []string {
 	}
 	switch routeID {
 	case "visual":
-		add("html-native-design-canvas", "brand-asset-protocol", "anti-ai-slop-visual-rules", "design-direction-triad", "html-deck-to-editable-pptx")
+		add("brand-asset-protocol", "anti-ai-slop-visual-rules", "design-direction-triad", "native-pptx-master-route")
 	case "imagegen":
 		add("brand-asset-protocol", "anti-ai-slop-visual-rules")
 	case "video":
@@ -9119,13 +10827,13 @@ func routeDistilledAtoms(routeID string, oversightChain []string) []string {
 	return uniqueStrings(atoms)
 }
 
-func mixedDistilledSourceLineageAtomFailures() []string {
+func mixedDistilledSourceSupportClassFailures() []string {
 	failures := []string{}
 	distilled := distilledAtomKnownMap()
 	for _, routeID := range []string{"search", "code", "execution-base", "quality-inspection", "evolve", "content", "prompt", "visual", "imagegen", "comfyui", "video", "spreadsheet"} {
-		for _, atom := range routeSourceLineageAtoms(routeID) {
+		for _, atom := range routeSourceSupportClasses(routeID) {
 			if distilled[atom] {
-				failures = append(failures, "source_lineage_atoms_contains_distilled_atom="+routeID+":"+atom)
+				failures = append(failures, "source_support_classes_contains_distilled_atom="+routeID+":"+atom)
 			}
 		}
 	}
@@ -9143,7 +10851,7 @@ func routeDistilledAtomCoverageFailures() []string {
 		"evolve":             {"skill-stocktake-daily-library", "verified-learning-loop"},
 		"content":            {"research-evidence-pack", "assumption-ledger"},
 		"prompt":             {"research-evidence-pack", "assumption-ledger"},
-		"visual":             {"html-native-design-canvas", "anti-ai-slop-visual-rules", "html-deck-to-editable-pptx"},
+		"visual":             {"brand-asset-protocol", "anti-ai-slop-visual-rules", "native-pptx-master-route"},
 		"imagegen":           {"brand-asset-protocol", "anti-ai-slop-visual-rules"},
 		"comfyui":            {"content-type-compression-router", "reversible-evidence-handle"},
 		"video":              {"motion-stage-sprite-engine", "anti-ai-slop-visual-rules"},
@@ -9202,11 +10910,11 @@ func distilledAtomRegistryFailures() []string {
 func routePluginCandidates(routeID string) []string {
 	switch strings.ToLower(routeID) {
 	case "search":
-		return []string{"GitHub", "Browser"}
+		return []string{"Browser"}
 	case "code":
-		return []string{"GitHub", "Browser"}
+		return []string{"Browser"}
 	case "visual":
-		return []string{"Presentations", "Canva", "Browser"}
+		return []string{"Presentations", "Browser"}
 	case "spreadsheet":
 		return []string{"Spreadsheets"}
 	case "content":
@@ -9232,6 +10940,9 @@ func routeMCPPolicy(routeID string, oversightChain []string) string {
 
 func routeDeterministicCommands(routeID string, codeMapRequired bool, oversightChain []string, query string) []string {
 	commands := []string{}
+	if len(oversightChain) > 0 {
+		commands = append(commands, "officer-run")
+	}
 	if codeMapRequired {
 		commands = append(commands, "code-map")
 	}
@@ -9261,6 +10972,7 @@ func routeDeterministicCommands(routeID string, codeMapRequired bool, oversightC
 
 func routeQueryDistilledAtoms(routeID string, oversightChain []string, query string) []string {
 	atoms := routeDistilledAtoms(routeID, oversightChain)
+	complexitySignals := routeComplexitySignalCount(routeID, query)
 	if analysisCompletenessRequired(query) {
 		atoms = append(atoms, "assumption-ledger", "claim-fact-check", "research-evidence-pack", "reversible-evidence-handle")
 	}
@@ -9269,7 +10981,7 @@ func routeQueryDistilledAtoms(routeID string, oversightChain []string, query str
 		"方案", "解决", "修复", "根因", "问题", "全网", "搜索", "借鉴", "现成", "开源", "工具", "不要从0", "不要从零",
 	}
 	priorArtMarkers = append(priorArtMarkers, "方案", "解决", "修复", "根因", "问题", "全网", "搜索", "借鉴", "现成", "开源", "工具", "不要从零")
-	if len(markerHits(query, priorArtMarkers)) > 0 {
+	if priorArtSearchRequired(routeID, query, complexitySignals) {
 		atoms = append(atoms, "prior-art-solution-search")
 	}
 	rootCauseMarkers := []string{
@@ -9278,7 +10990,10 @@ func routeQueryDistilledAtoms(routeID string, oversightChain []string, query str
 		"根因", "定位", "排查", "错误", "故障", "失败", "复现", "低效", "返工",
 	}
 	if len(markerHits(query, rootCauseMarkers)) > 0 {
-		atoms = append(atoms, "root-cause-radar")
+		atoms = append(atoms, "root-cause-radar", "disciplined-debug-loop")
+	}
+	if strings.Contains(strings.ToLower(query), "bugfix") || strings.Contains(strings.ToLower(query), "fix bug") {
+		atoms = append(atoms, "disciplined-debug-loop")
 	}
 	parallelHypothesisMarkers := []string{
 		"parallel", "fanout", "multiple candidates", "candidate", "hypothesis", "hypotheses", "nine places", "several places", "simultaneously", "concurrent",
@@ -9294,20 +11009,123 @@ func routeQueryDistilledAtoms(routeID string, oversightChain []string, query str
 	if len(markerHits(query, patchDebtMarkers)) > 0 {
 		atoms = append(atoms, "root-cause-radar", "patch-debt-root-cure")
 	}
+	restraintMarkers := []string{
+		"yagni", "overengineering", "over-engineering", "too clever", "clever code", "unnecessary abstraction", "premature abstraction",
+		"smallest working change", "minimal change", "delete before add", "reuse before add", "prove need", "less code", "code you never wrote",
+		"过度工程", "不必要抽象", "提前抽象", "最小改动", "最小可用", "少写代码", "删前加后", "先删再加", "证明必要",
+	}
+	if len(markerHits(query, restraintMarkers)) > 0 {
+		atoms = append(atoms, "disciplined-debug-loop", "patch-debt-root-cure")
+	}
+	codeMapMarkers := []string{
+		"impact", "call graph", "code map", "cross-file", "dependency map", "same-class scan",
+		"影响面", "代码地图", "跨文件", "依赖图", "调用链", "同类扫描",
+	}
+	if len(markerHits(query, codeMapMarkers)) > 0 {
+		atoms = append(atoms, "disciplined-debug-loop", "reversible-evidence-handle")
+	}
 	terminalVerificationMarkers := []string{
 		"complete", "completed", "done", "final", "real run", "real-run", "verification", "verify", "validated", "browser", "test", "command", "terminal", "local run",
 		"完成", "实测", "真实", "验证", "电脑", "权威", "浏览器", "命令", "本地运行", "通过", "别停", "继续到底",
 	}
-	if len(markerHits(query, terminalVerificationMarkers)) > 0 {
+	terminalVerificationExplicitMarkers := []string{
+		"real run", "real-run", "final verification", "final real run", "browser check", "browser test", "command evidence", "terminal verification", "local run proof",
+		"完成", "实测", "真实", "验证", "浏览器", "命令", "本地运行",
+	}
+	if len(markerHits(query, terminalVerificationMarkers)) > 0 && len(markerHits(query, terminalVerificationExplicitMarkers)) > 0 {
 		atoms = append(atoms, "terminal-real-run-verification")
+	}
+	browserProofMarkers := []string{
+		"browser", "ui test", "frontend verify", "render proof", "preview proof", "real page",
+		"浏览器", "页面验收", "前端验收", "真实页面", "预览验证", "渲染验证",
+	}
+	if len(markerHits(query, browserProofMarkers)) > 0 {
+		atoms = append(atoms, "terminal-real-run-verification")
+	}
+	dataLargeFileMarkers := []string{
+		"xlsx", "csv", "spreadsheet", "multi-sheet", "large file", "ocr table", "vector index",
+		"表格", "多表", "大文件", "OCR", "台账", "向量索引",
+	}
+	if len(markerHits(query, dataLargeFileMarkers)) > 0 {
+		atoms = append(atoms, "content-type-compression-router", "reversible-evidence-handle")
+	}
+	researchSynthesisMarkers := []string{
+		"compare dimensions", "dimension by dimension", "teardown", "historical analysis", "competitive analysis",
+		"维度分析", "维度对比", "拆解", "历史分析", "竞品分析", "竞争分析",
+	}
+	if len(markerHits(query, researchSynthesisMarkers)) > 0 {
+		atoms = append(atoms, "research-evidence-pack", "claim-fact-check")
 	}
 	if strings.EqualFold(routeID, "visual") {
 		motionMarkers := []string{"motion", "animated", "animation", "stage", "sprite", "timeline", "product demo", "demo video", "mp4", "gif", "动效", "动画", "视频"}
 		if len(markerHits(query, motionMarkers)) > 0 {
 			atoms = append(atoms, "motion-stage-sprite-engine")
 		}
+		visualRankingMarkers := []string{"highest quality", "visual ranking", "pick the best design", "compare layouts", "best-looking", "上限", "最高级", "对比版式", "最佳视觉"}
+		if len(markerHits(query, visualRankingMarkers)) > 0 {
+			atoms = append(atoms, "anti-ai-slop-visual-rules")
+		}
+	}
+	heavyOutputMarkers := []string{
+		"long output", "heavy logs", "huge output", "compress output", "sandbox output",
+		"长输出", "长日志", "大量输出", "压缩输出", "工具输出太大",
+	}
+	if len(markerHits(query, heavyOutputMarkers)) > 0 {
+		atoms = append(atoms, "content-type-compression-router", "reversible-evidence-handle")
+	}
+	reviewMarkers := []string{
+		"code review", "review findings", "line by line", "severity", "审查代码", "逐行", "严重级别", "代码评审",
+	}
+	if len(markerHits(query, reviewMarkers)) > 0 {
+		atoms = append(atoms, "claim-fact-check", "disciplined-debug-loop")
 	}
 	return uniqueStrings(atoms)
+}
+
+func routeDistilledAtomEvidence(workspace string, routeID string, oversightChain []string, query string) []jsonObject {
+	atoms := routeQueryDistilledAtoms(routeID, oversightChain, query)
+	registry := distilledAtomRegistryIndex()
+	decisionIndex := loadFusionDecisionIndex(workspace)
+	evidence := make([]jsonObject, 0, len(atoms))
+	for _, atom := range atoms {
+		item := jsonObject{
+			"atom":             atom,
+			"route_id":         routeID,
+			"triggered":        true,
+			"query_selected":   true,
+			"evidence_visible": true,
+			"workspace_bound":  strings.TrimSpace(workspace) != "",
+			"decision_surface": "fallback-registry-only",
+			"source_refs":      "unknown",
+			"decision":         "unknown",
+			"owner":            "",
+			"residency":        "unknown",
+			"reason":           "no-fusion-matrix-decision-found",
+			"fusion_policy":    "",
+			"selection_kind":   "route-atom",
+		}
+		if def, ok := registry[atom]; ok {
+			item["owner"] = def.Owner
+			item["residency"] = def.Residency
+		}
+		if decision, ok := decisionIndex[atom]; ok {
+			item["decision_surface"] = "fusion-matrix"
+			item["source_refs"] = objectStringWithAliases(decision, "source_refs", "source_pool")
+			item["decision"] = objectString(decision, "decision")
+			if item["owner"] == "" {
+				item["owner"] = objectString(decision, "owner")
+			}
+			if item["reason"] == "no-fusion-matrix-decision-found" || objectString(decision, "reason") != "" {
+				item["reason"] = objectString(decision, "reason")
+			}
+			item["fusion_policy"] = objectString(decision, "fusion_policy")
+		}
+		evidence = append(evidence, item)
+	}
+	sort.Slice(evidence, func(i, j int) bool {
+		return objectString(evidence[i], "atom") < objectString(evidence[j], "atom")
+	})
+	return evidence
 }
 
 func routeTaskCommand(args []string) int {
@@ -9333,9 +11151,11 @@ func routeTaskCommand(args []string) int {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
 	}
+	workspace := routeWorkspaceFromConfigPath(configPath)
 	rules := mergedRoutingRules(config)
 	modelProfiles := mergedModelProfiles(config)
 	defaultTier := resolvedDefaultModelTier(config)
+	enabledProviders := enabledProviderMap(config)
 	lowerQuery := strings.ToLower(query)
 	bestScore := -1
 	bestPriority := -1
@@ -9379,6 +11199,52 @@ func routeTaskCommand(args []string) int {
 		}
 	}
 	bestRouteID := strings.ToLower(fmt.Sprint(bestRule["id"]))
+	if bestRouteID == "code" && visualDeliveryPreferred(query) {
+		for _, rule := range rules {
+			if !strings.EqualFold(rule.ID, "visual") {
+				continue
+			}
+			bestRule = jsonObject{
+				"id":          rule.ID,
+				"name":        rule.Name,
+				"provider_id": rule.ProviderID,
+				"model":       rule.Model,
+				"priority":    rule.Priority,
+			}
+			bestPriority = rule.Priority
+			bestScore = maxInt([]int{bestScore, 1})
+			matches = routeKeywordMatches(lowerQuery, rule.Keywords)
+			bestRouteID = "visual"
+			break
+		}
+	}
+	if explicitAllOfficersRequested(query) {
+		for _, rule := range rules {
+			if !strings.EqualFold(rule.ID, "execution-base") {
+				continue
+			}
+			bestRule = jsonObject{
+				"id":          rule.ID,
+				"name":        rule.Name,
+				"provider_id": rule.ProviderID,
+				"model":       rule.Model,
+				"priority":    rule.Priority,
+			}
+			bestPriority = rule.Priority
+			bestScore = maxInt([]int{bestScore, 1})
+			matches = []string{"all-independent-officers-explicit"}
+			break
+		}
+	}
+	if overrideProviderID, overrideModel, overrideAlias, hasOverride := explicitProviderOverride(query, config, bestRouteID, rules, modelProfiles); hasOverride {
+		bestRule["provider_id"] = overrideProviderID
+		if strings.TrimSpace(overrideModel) != "" {
+			bestRule["model"] = overrideModel
+		}
+		bestRule["provider_override_applied"] = true
+		bestRule["provider_override_reason"] = "user-explicit-provider-request"
+		bestRule["provider_override_source"] = overrideAlias
+	}
 	comfyTechnicalMarkers := []string{"comfyui", "工作流", "workflow", "节点", "node", "插件", "plugin", "批量生成", "batch generation", "视频管线", "video pipeline", "animatediff", "controlnet", "技术美术", "主界面截图", "comfyui截图"}
 	if bestRouteID == "comfyui" && len(markerHits(query, comfyTechnicalMarkers)) == 0 {
 		for _, rule := range rules {
@@ -9427,15 +11293,70 @@ func routeTaskCommand(args []string) int {
 			}
 		}
 	}
+	selectedProviderID := strings.TrimSpace(fmt.Sprint(bestRule["provider_id"]))
+	providerFallbackApplied := false
+	providerFallbackFrom := selectedProviderID
+	providerFallbackTo := ""
+	providerFallbackReason := ""
+	if selectedProviderID != "" && !enabledProviders[selectedProviderID] {
+		if fallbackProfile, fallbackTier, ok := defaultStrongFallbackProfile(modelProfiles, enabledProviders, "agnes-openai-free"); ok {
+			fallbackModel := providerDefaultModel(config, fallbackProfile.ProviderID)
+			if fallbackModel == "" {
+				if routeModel := routeRuleModelForProvider(rules, bestRouteID, fallbackProfile.ProviderID); routeModel != "" {
+					fallbackModel = routeModel
+				} else {
+					fallbackModel = fallbackProfile.Model
+				}
+			}
+			bestRule["provider_id"] = fallbackProfile.ProviderID
+			bestRule["model"] = fallbackModel
+			bestRule["provider_fallback_applied"] = true
+			bestRule["provider_fallback_reason"] = "selected-provider-disabled-or-unavailable"
+			bestRule["provider_fallback_from"] = selectedProviderID
+			bestRule["provider_fallback_to"] = fallbackProfile.ProviderID
+			providerFallbackApplied = true
+			providerFallbackFrom = selectedProviderID
+			providerFallbackTo = fallbackProfile.ProviderID
+			providerFallbackReason = "selected-provider-disabled-or-unavailable"
+			if bestRouteID == "chat" || bestRouteID == "imagegen" || bestRouteID == "video" {
+				defaultTier = fallbackTier
+			}
+		}
+	}
+	providerOverrideApplied := bestRule["provider_override_applied"] == true
+	finalOversightPreview := routeOversightChain(bestRouteID, query)
+	if explicitAllOfficersRequested(query) || allIndependentOversightActive(finalOversightPreview) {
+		for _, rule := range rules {
+			if !strings.EqualFold(rule.ID, "execution-base") {
+				continue
+			}
+			bestRule = jsonObject{
+				"id":          rule.ID,
+				"name":        rule.Name,
+				"provider_id": rule.ProviderID,
+				"model":       rule.Model,
+				"priority":    rule.Priority,
+			}
+			bestPriority = rule.Priority
+			bestScore = maxInt([]int{bestScore, 1})
+			bestRouteID = "execution-base"
+			matches = []string{"all-independent-officers-explicit"}
+			break
+		}
+	}
 	tierSignalCount := routeTierSignalCount(bestRouteID, bestScore, query)
 	complexitySignals := routeComplexitySignalCount(bestRouteID, query)
 	complexityTier := defaultTier
 	reasoningEffort := "low"
 	tierReason := "default_low_cost_route"
-	if bestRouteID == "imagegen" {
+	if bestRouteID == "imagegen" || bestRouteID == "video" {
 		complexityTier = "low"
 		reasoningEffort = "low"
-		tierReason = "direct_image_task"
+		if bestRouteID == "video" {
+			tierReason = "direct_video_task"
+		} else {
+			tierReason = "direct_image_task"
+		}
 	} else if tierSignalCount >= 6 || complexitySignals >= 3 {
 		complexityTier = "high"
 		reasoningEffort = "high"
@@ -9460,15 +11381,34 @@ func routeTaskCommand(args []string) int {
 			reasoningEffort = profile.ReasoningEffort
 		}
 	}
+	shouldOverrideRecommendedProfile := providerFallbackApplied || bestRouteID == "search" || bestRouteID == "imagegen" || bestRouteID == "video" || (providerOverrideApplied && bestRouteID != "imagegen" && bestRouteID != "video")
+	if explicitProviderID, ok := bestRule["provider_id"].(string); ok && strings.TrimSpace(explicitProviderID) != "" && shouldOverrideRecommendedProfile {
+		explicitModel := strings.TrimSpace(fmt.Sprint(bestRule["model"]))
+		overrideEffort := reasoningEffort
+		if profile, _, ok := firstProfileWithTierForProvider(modelProfiles, explicitProviderID); ok {
+			if explicitModel == "" {
+				explicitModel = profile.Model
+			}
+			if profile.ReasoningEffort != "" {
+				overrideEffort = profile.ReasoningEffort
+			}
+		}
+		if explicitModel == "" {
+			explicitModel = providerDefaultModel(config, explicitProviderID)
+		}
+		selectedProfile = jsonObject{
+			"provider_id":      explicitProviderID,
+			"model":            explicitModel,
+			"reasoning_effort": overrideEffort,
+		}
+		reasoningEffort = overrideEffort
+	}
 	ownerProfile := routeOwnerProfile(bestRouteID)
-	taskState := routeTaskState(bestRouteID, tierSignalCount, complexitySignals)
+	taskState := routeTaskState(bestRouteID, query, tierSignalCount, complexitySignals)
 	oversightChain := routeOversightChain(bestRouteID, query)
+	specializedEntrypoints := routeSpecializedEntrypoints(bestRouteID, taskState, query)
 	executionBudget := routeExecutionBudget(bestRouteID, taskState, complexitySignals, oversightChain, query)
 	analysisRequired := analysisCompletenessRequired(query)
-	if taskState == "FAST_REPLY" && len(oversightChain) > 0 {
-		taskState = "SINGLE_COMMANDER"
-		executionBudget = routeExecutionBudget(bestRouteID, taskState, complexitySignals, oversightChain, query)
-	}
 	report := jsonObject{
 		"query_key":           privacyHash(query),
 		"query_length":        len(query),
@@ -9485,20 +11425,45 @@ func routeTaskCommand(args []string) int {
 		"canon_source":        "go-builtin+config-overlay",
 		"route_rule_count":    len(rules),
 	}
+	if bestRule["provider_override_applied"] == true {
+		report["provider_override_applied"] = true
+		report["provider_override_reason"] = bestRule["provider_override_reason"]
+		report["provider_override_source"] = bestRule["provider_override_source"]
+	}
+	if providerFallbackApplied {
+		report["provider_fallback_applied"] = true
+		report["provider_fallback_reason"] = providerFallbackReason
+		report["provider_fallback_from"] = providerFallbackFrom
+		report["provider_fallback_to"] = providerFallbackTo
+	}
 	report["analysis_completeness_required"] = analysisRequired
+	acceptanceLockRequired := strings.EqualFold(bestRouteID, "execution-base") || codePlanningRequired(query, complexitySignals) || explicitAllOfficersRequested(query)
+	report["acceptance_lock_required"] = acceptanceLockRequired
+	report["simplest_effective_path_required"] = true
+	priorArtRequired := priorArtSearchRequired(bestRouteID, query, complexitySignals)
+	report["prior_art_search_required"] = priorArtRequired
+	report["agnes_scout_preferred"] = priorArtRequired
 	codeMapRequired := false
-	if bestRouteID == "code" && (tierSignalCount >= 3 || complexitySignals >= 2) {
+	if bestRouteID == "code" && codePlanningRequired(query, complexitySignals) {
 		codeMapRequired = true
 	}
 	report["code_map_required"] = codeMapRequired
 	if codeMapRequired {
 		report["next_required_artifact"] = "code-map"
 	}
+	firstPassGuardRequired := directCodeFirstPassGuardRequired(bestRouteID, query, complexitySignals)
+	report["first_pass_guard_required"] = firstPassGuardRequired
+	if firstPassGuardRequired {
+		report["first_pass_guard_fields"] = []string{"acceptance_signal", "touched_surface", "smallest_change", "targeted_verification"}
+	}
+	goalBoundaryLockRequired := codePlanningRequired(query, complexitySignals) || analysisRequired || explicitAllOfficersRequested(query)
+	report["goal_boundary_lock_required"] = goalBoundaryLockRequired
+	if goalBoundaryLockRequired {
+		report["goal_boundary_required_fields"] = []string{"scope", "target_surface", "finish_line", "out_of_scope", "completion_evidence"}
+	}
 	prefixClass := "minimal"
 	if taskState == "FAST_REPLY" {
 		prefixClass = "small"
-	} else if taskState == "LEGION_TASK" {
-		prefixClass = "structured"
 	}
 	goGateClass := "light"
 	if bestRouteID == "execution-base" {
@@ -9507,23 +11472,58 @@ func routeTaskCommand(args []string) int {
 		goGateClass = "verification"
 	}
 	report["task_route"] = jsonObject{
-		"state":                 taskState,
-		"owner_profile":         ownerProfile,
-		"route_id":              bestRule["id"],
-		"route_name":            bestRule["name"],
-		"oversight_chain":       oversightChain,
-		"closeout_policy":       "finish-with-verification",
-		"resident_prefix_class": prefixClass,
+		"state":                       taskState,
+		"owner_profile":               ownerProfile,
+		"route_id":                    bestRule["id"],
+		"route_name":                  bestRule["name"],
+		"single_write_authority":      "main-chain-only",
+		"dispatch_owner_profile":      ownerProfile,
+		"oversight_chain":             oversightChain,
+		"specialized_entrypoints":     specializedEntrypoints,
+		"explicit_officer_activation": routeExplicitOfficerActivation(oversightChain, query),
+		"officer_activation_ledger":   routeOfficerActivationLedger(bestRouteID, ownerProfile, oversightChain, query),
+		"closeout_policy":             "finish-with-verification",
+		"resident_prefix_class":       prefixClass,
+	}
+	if bestRouteID == "code" {
+		if codePlanningRequired(query, complexitySignals) {
+			report["task_route"].(jsonObject)["execution_contract"] = "developer-plan-then-execution"
+			planningProvider := "deepseek-web"
+			planningModel := providerDefaultModel(config, planningProvider)
+			if planningModel == "" {
+				if profile, ok := firstProfileForProvider(modelProfiles, planningProvider); ok {
+					planningModel = profile.Model
+				}
+			}
+			report["task_route"].(jsonObject)["planning_profile"] = jsonObject{
+				"provider_id": planningProvider,
+				"model":       planningModel,
+				"role":        "task-clarification-plan-context-pack",
+			}
+		} else {
+			report["task_route"].(jsonObject)["execution_contract"] = "developer-direct-execution"
+			if firstPassGuardRequired {
+				report["task_route"].(jsonObject)["direct_execution_guard"] = jsonObject{
+					"mode":         "first-pass-minimal-lock",
+					"required":     true,
+					"fields":       []string{"acceptance_signal", "touched_surface", "smallest_change", "targeted_verification"},
+					"planning_mode": "forbidden-upshift",
+				}
+			}
+		}
 	}
 	report["execution_budget"] = executionBudget
+	distilledAtoms := routeQueryDistilledAtoms(bestRouteID, oversightChain, query)
 	report["capability_mounts"] = jsonObject{
-		"distilled_atoms":      routeQueryDistilledAtoms(bestRouteID, oversightChain, query),
-		"source_lineage_atoms": routeSourceLineageAtoms(bestRouteID),
-		"plugin_candidates":    routePluginCandidates(bestRouteID),
-		"mcp_policy":           routeMCPPolicy(bestRouteID, oversightChain),
-		"mount_strategy":       "minimal-gap-first",
-		"resident_policy":      "minimal-stable-skeleton-only",
-		"retire_policy":        "replace-weaker-atoms-instead-of-stacking",
+		"distilled_atoms":         distilledAtoms,
+		"distilled_atom_evidence": routeDistilledAtomEvidence(workspace, bestRouteID, oversightChain, query),
+		"current_audit_evidence":  currentAuditEvidenceRefs(workspace),
+		"source_support_classes":  routeSourceSupportClasses(bestRouteID),
+		"plugin_candidates":       routePluginCandidates(bestRouteID),
+		"mcp_policy":              routeMCPPolicy(bestRouteID, oversightChain),
+		"mount_strategy":          "minimal-gap-first",
+		"resident_policy":         "minimal-stable-skeleton-only",
+		"retire_policy":           "replace-weaker-atoms-instead-of-stacking",
 	}
 	capabilityMounts, _ := report["capability_mounts"].(jsonObject)
 	if bestRouteID == "search" || containsExactString(stringSlice(map[string]any(capabilityMounts), "distilled_atoms"), "prior-art-solution-search") {
@@ -9612,6 +11612,8 @@ func contextPackCommand(args []string) int {
 	if ironRulesVersion == "" {
 		ironRulesVersion = builtinIronRulesVersion
 	}
+	conciseContract := conciseExecutionContract()
+	executionBudgetContractObj := executionBudgetContract()
 	stablePrefix := jsonObject{
 		"iron_rules_version":       ironRulesVersion,
 		"route_id":                 objectString(routeInfo, "id"),
@@ -9634,45 +11636,80 @@ func contextPackCommand(args []string) int {
 	executionSummaries, auditSummaries := splitArtifactSummaries(artifactSummaries)
 	prefixCanon := stablePrefixCanon(stablePrefix)
 	assemblyReview := reviewOptimizationAssembly(stablePrefix, artifactSummaries, executionSummaries, auditSummaries)
+	distilledAtomEvidence, _ := objectSlice(capabilityMounts, "distilled_atom_evidence")
+	currentAuditEvidence, _ := objectSlice(capabilityMounts, "current_audit_evidence")
+	compactDistilledAtomEvidence := compactAtomEvidenceForContext(distilledAtomEvidence)
+	compactCurrentAuditEvidence := compactAuditEvidenceForContext(currentAuditEvidence)
 	dynamicContext := jsonObject{
-		"query_key":           privacyHash(query),
-		"query_length":        len(query),
-		"artifact_count":      len(artifacts),
-		"workspace_key":       privacyHash(absClean(workspace)),
-		"provider_id":         objectString(routeInfo, "provider_id"),
-		"model_tier":          objectString(routeReport, "recommended_tier"),
-		"reasoning_effort":    objectString(routeReport, "reasoning_effort"),
-		"volatile_tail_rule":  "timestamps-paths-temp-state-late",
-		"distilled_atoms":     capabilityMounts["distilled_atoms"],
-		"execution_summaries": executionSummaries,
-		"audit_summaries":     auditSummaries,
+		"query_key":               privacyHash(query),
+		"query_length":            len(query),
+		"artifact_count":          len(artifacts),
+		"workspace_key":           privacyHash(absClean(workspace)),
+		"provider_id":             objectString(routeInfo, "provider_id"),
+		"model_tier":              objectString(routeReport, "recommended_tier"),
+		"reasoning_effort":        objectString(routeReport, "reasoning_effort"),
+		"volatile_tail_rule":      "timestamps-paths-temp-state-late",
+		"distilled_atoms":         capabilityMounts["distilled_atoms"],
+		"distilled_atom_evidence": compactDistilledAtomEvidence,
+		"current_audit_evidence":  compactCurrentAuditEvidence,
+		"execution_summaries":     executionSummaries,
+		"audit_summaries":         auditSummaries,
 	}
 	cacheKey := objectString(prefixCanon, "canon_hash")
 	routeSummary := jsonObject{
-		"query_key":              objectString(routeReport, "query_key"),
-		"query_length":           routeReport["query_length"],
-		"route_id":               objectString(routeInfo, "id"),
-		"task_state":             objectString(taskRoute, "state"),
-		"execution_budget":       executionBudget,
-		"owner_profile":          objectString(taskRoute, "owner_profile"),
-		"oversight_chain":        taskRoute["oversight_chain"],
-		"recommended_tier":       objectString(routeReport, "recommended_tier"),
-		"reasoning_effort":       objectString(routeReport, "reasoning_effort"),
-		"complexity_signals":     routeReport["complexity_signals"],
-		"code_map_required":      routeReport["code_map_required"],
-		"analysis_required":      routeReport["analysis_completeness_required"],
-		"deterministic_required": deterministicExecution["required"],
-		"command_candidates":     deterministicExecution["command_candidates"],
+		"query_key":               objectString(routeReport, "query_key"),
+		"query_length":            routeReport["query_length"],
+		"route_id":                objectString(routeInfo, "id"),
+		"task_state":              objectString(taskRoute, "state"),
+		"execution_budget":        executionBudget,
+		"owner_profile":           objectString(taskRoute, "owner_profile"),
+		"single_write_authority":  taskRoute["single_write_authority"],
+		"oversight_chain":         taskRoute["oversight_chain"],
+		"specialized_entrypoints": taskRoute["specialized_entrypoints"],
+		"recommended_tier":        objectString(routeReport, "recommended_tier"),
+		"reasoning_effort":        objectString(routeReport, "reasoning_effort"),
+		"complexity_signals":      routeReport["complexity_signals"],
+		"code_map_required":       routeReport["code_map_required"],
+		"first_pass_guard_required": routeReport["first_pass_guard_required"],
+		"analysis_required":       routeReport["analysis_completeness_required"],
+		"deterministic_required":  deterministicExecution["required"],
+	}
+	if guardFields, ok := routeReport["first_pass_guard_fields"].([]any); ok && len(guardFields) > 0 {
+		routeSummary["first_pass_guard_fields"] = guardFields
+	}
+	if directGuard, ok := objectMap(taskRoute, "direct_execution_guard"); ok {
+		routeSummary["direct_execution_guard"] = jsonObject{
+			"mode":     directGuard["mode"],
+			"required": directGuard["required"],
+			"fields":   directGuard["fields"],
+		}
+	}
+	if explicitActivation, ok := objectMap(taskRoute, "explicit_officer_activation"); ok {
+		routeSummary["explicit_officer_activation"] = compactExplicitOfficerActivationForContext(explicitActivation)
+	}
+	if officerLedger, ok := objectMap(taskRoute, "officer_activation_ledger"); ok {
+		routeSummary["officer_activation_ledger"] = compactOfficerActivationLedgerForContext(officerLedger)
+	}
+	if len(compactDistilledAtomEvidence) > 0 {
+		routeSummary["distilled_atom_evidence_count"] = len(compactDistilledAtomEvidence)
+	}
+	if len(compactCurrentAuditEvidence) > 0 {
+		routeSummary["current_audit_evidence_count"] = len(compactCurrentAuditEvidence)
 	}
 	contextPack := jsonObject{
+		"command":                    "context-pack",
+		"generated_at":               time.Now().UTC().Format(time.RFC3339),
+		"wuji_version":               ironRulesVersion,
+		"tool_source_hash":           auditManifest(workspace, "context-pack", []string{"config.json", "tools/wuji_cli.go"})["tool_source_hash"],
+		"input_hashes":               auditInputHashes(workspace, []string{"config.json", "tools/wuji_cli.go"}),
 		"stable_prefix":              stablePrefix,
 		"stable_prefix_canon":        prefixCanon,
 		"dynamic_context":            dynamicContext,
 		"route_summary":              routeSummary,
 		"cache_key":                  cacheKey,
 		"cache_strategy":             "stable-prefix-first",
-		"concise_execution_contract": conciseExecutionContract(),
-		"execution_budget_contract":  executionBudgetContract(),
+		"concise_execution_contract": conciseExecutionContractContextView(conciseContract),
+		"execution_budget_contract":  executionBudgetContractContextView(executionBudgetContractObj),
 		"artifact_summaries":         artifactSummaries,
 		"review_gates": []jsonObject{
 			assemblyReview,
@@ -9686,7 +11723,7 @@ func contextPackCommand(args []string) int {
 		},
 	}
 	if objectBoolValue(routeReport, "analysis_completeness_required") {
-		contextPack["analysis_completeness_contract"] = analysisCompletenessContract()
+		contextPack["analysis_completeness_contract"] = analysisCompletenessContractContextView(analysisCompletenessContract())
 	}
 	outputPath := reportPath
 	if !hasReport {
@@ -9784,6 +11821,24 @@ func main() {
 		code = supplyChainCommand(args)
 	case "mcp-distill":
 		code = mcpDistill(args)
+	case "officer-review":
+		code = officerReviewCommand(args)
+	case "officer-run":
+		code = officerRunCommand(args)
+	case "white-hat":
+		code = officerReviewCommand(append([]string{"--seat", "white-hat"}, args...))
+	case "guard-office":
+		code = officerReviewCommand(append([]string{"--seat", "guard-office"}, args...))
+	case "root-cause-officer":
+		code = officerReviewCommand(append([]string{"--seat", "root-cause-officer"}, args...))
+	case "audit-officer":
+		code = officerReviewCommand(append([]string{"--seat", "audit"}, args...))
+	case "quality-inspection":
+		code = officerReviewCommand(append([]string{"--seat", "quality-inspection"}, args...))
+	case "performance-benchmark-on-demand":
+		code = officerReviewCommand(append([]string{"--seat", "performance-benchmark-on-demand"}, args...))
+	case "compliance-on-demand":
+		code = officerReviewCommand(append([]string{"--seat", "compliance-on-demand"}, args...))
 	case "canon-report":
 		code = canonReportCommand(args)
 	case "fusion-audit":

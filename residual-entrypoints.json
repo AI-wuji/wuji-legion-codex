@@ -84,7 +84,13 @@
       "path": "scripts/gen_experts.py",
       "type": "generation-script",
       "status": "on-demand",
-      "reason": "regenerates expert mirrors; not runtime doctrine"
+      "reason": "rebuilds the checked-in expert index only; legacy expert-card regeneration is retired so old role taxonomies cannot be replayed into runtime mirrors"
+    },
+    {
+      "path": "scripts/sync-active-skill.ps1",
+      "type": "sync-script",
+      "status": "on-demand",
+      "reason": "manually syncs the active runtime mirror into skill roots; not part of default task execution"
     },
     {
       "path": "scripts/beep.ps1",
@@ -109,6 +115,18 @@
       "type": "test-script",
       "status": "on-demand",
       "reason": "PPT runtime verification only when PPT pipeline is used"
+    },
+    {
+      "path": "scripts/test-wuji-officers.ps1",
+      "type": "test-script",
+      "status": "on-demand",
+      "reason": "validates explicit independent-officer activation and merge behavior when officer surfaces change"
+    },
+    {
+      "path": "scripts/test-wuji-sync.ps1",
+      "type": "test-script",
+      "status": "on-demand",
+      "reason": "validates expert-index regeneration and active-skill sync against legacy-regeneration rebound"
     },
     {
       "path": "scripts/wuji-install.ps1",
@@ -169,6 +187,18 @@
       "type": "repo-policy",
       "status": "main-chain",
       "reason": "prevents generated artifacts and sensitive files from entering repo state"
+    },
+    {
+      "path": ".rgignore",
+      "type": "context-control-ledger",
+      "status": "main-chain",
+      "reason": "keeps cold searches from loading generated tools, outputs, binaries, media, archives, logs, credentials-like files, and retired external state by default"
+    },
+    {
+      "path": "CONTEXT_RESET_HANDOFF.md",
+      "type": "context-reset-seed",
+      "status": "on-demand",
+      "reason": "minimal fresh-thread handoff for over-budget outer context; not resident doctrine or a second runtime source"
     },
     {
       "path": "units/*.md",
@@ -291,6 +321,24 @@
       "reason": "publishing requires explicit task intent and must not be a default script"
     },
     {
+      "path": "units/archive.md",
+      "type": "legacy-owner-doc",
+      "status": "retired-deleted",
+      "reason": "standalone archive ownership was retired; source traceability now stays with audit, evidence handles, and deterministic verification instead of a separate archive command seat"
+    },
+    {
+      "path": "experts/archive/归档主帅.md",
+      "type": "legacy-expert-doc",
+      "status": "retired-deleted",
+      "reason": "archive commander was removed after its useful traceability atoms were absorbed elsewhere and no active route or owner profile still depended on it"
+    },
+    {
+      "path": "units/proving_ground.md",
+      "type": "legacy-experiment-doc",
+      "status": "retired-deleted",
+      "reason": "standalone proving-ground doctrine was fused into evolution-profile so trial rules no longer live as a second experiment process"
+    },
+    {
       "path": "scripts/quick-imagegen.ps1",
       "type": "media-helper",
       "status": "retired-deleted",
@@ -303,10 +351,16 @@
       "reason": "deleted external QR/attachment asset; setup artifacts must not remain in Codex-only Wuji runtime or context assembly"
     },
     {
+      "path": "output",
+      "type": "legacy-generated-artifact-directory",
+      "status": "retired-deleted",
+      "reason": "legacy output directory is forbidden; all generated artifacts must stay under the single audited outputs/ surface"
+    },
+    {
       "path": "outputs",
       "type": "generated-artifact-directory",
       "status": "delete-now-except-latest-evidence",
-      "reason": "large generated files must not pollute default scans or context assembly"
+      "reason": "large generated files must not pollute default scans or context assembly; root outputs keeps only canonical current evidence while showcase/test subtrees remain on-demand"
     },
     {
       "path": ".wuji-tools",

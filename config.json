@@ -1,6 +1,20 @@
 {
   "providers": [
     {
+      "id": "agnes-openai-free",
+      "name": "Agnes AI (Current Free Tier)",
+      "provider_type": "openai",
+      "api_key": null,
+      "base_url": "https://apihub.agnes-ai.com",
+      "currency": "USD",
+      "enabled": true,
+      "priority": 1,
+      "model": "agnes-2.0-flash",
+      "api_key_env": "AGNES_API_KEY",
+      "free_tier_status": "current-free",
+      "notes": "Mirror only. Keep key outside repo and use only while official current price remains 0."
+    },
+    {
       "id": "deepseek-web",
       "name": "DeepSeek (免费网页)",
       "provider_type": "deepseek_web",
@@ -51,7 +65,7 @@
   "active_project": "wuji-legion-codex",
   "red_team_enabled": true,
   "iron_rules_version": "11.3",
-  "default_model_tier": "low",
+  "default_model_tier": "standard",
   "model_profiles": {
     "low": {
       "provider_id": "deepseek-web",
@@ -69,6 +83,18 @@
       "reasoning_effort": "high"
     }
   },
+  "routing_rules": [
+    {
+      "id": "imagegen",
+      "provider_id": "agnes-openai-free",
+      "model": "agnes-image-2.1-flash"
+    },
+    {
+      "id": "video",
+      "provider_id": "agnes-openai-free",
+      "model": "agnes-video-v2.0"
+    }
+  ],
   "cache_config": {
     "target_hit_rate": 0.95,
     "auto_compact_threshold": 0.8,
@@ -83,7 +109,27 @@
     "tool_output_policy": "compress-before-reuse-preserve-evidence",
     "evidence_retention_policy": "raw-handle-kept-summary-fed",
     "optimization_objective": "smaller-stable-prefix-with-equal-or-better-hit-rate",
-    "concise_execution_policy": "gate-cached-fresh-output-uncached-total-cost"
+    "concise_execution_policy": "gate-cached-fresh-output-uncached-total-cost",
+    "target_cached_tokens_p95_max": 30720,
+    "target_fresh_input_tokens_p95_max": 12000,
+    "target_uncached_tokens_p95_max": 14000,
+    "context_emergency_policy": "refresh CONTEXT_RESET_HANDOFF.md and start a fresh thread when cached/blue-hit stays above budget",
+    "cold_search_exclude_globs": [
+      ".git/**",
+      ".wuji-tools/**",
+      ".wuji-backups/**",
+      ".wuji-errors/**",
+      ".opensquilla/**",
+      ".codex/**",
+      ".agents/**",
+      "outputs/**",
+      "output/**",
+      "*.log",
+      "*.tmp",
+      "*credential*",
+      "*token*",
+      "*cookie*"
+    ]
   },
   "deepseek_session_path": null,
   "python_path": "python"

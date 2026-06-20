@@ -18,12 +18,16 @@ Use this order:
 4. approved MCP
 5. on-demand discovery only if a real gap remains
 
+There is no standing MCP candidate shelf anymore. MCP review is task-scoped and ad hoc.
+
 ## Rules
 
 - do not mount by default just because something is installed
 - do not let MCP or plugins become a second router
 - do not let external OpenSquilla surfaces reappear as runtime authority
 - networked or high-risk surfaces stay gated
+- host availability does not equal legion admission
+- only plugins explicitly admitted by the main chain may appear in route `plugin_candidates`
 
 ## Distilled posture
 
@@ -46,7 +50,7 @@ Only its distilled visual atoms may be mounted by `visual-profile`:
 - `brand-asset-protocol`
 - `anti-ai-slop-visual-rules`
 - `design-direction-triad`
-- `html-deck-to-editable-pptx`
+- `native-pptx-master-route`
 - `motion-stage-sprite-engine`
 
 Any external assets, scripts, npm packages, repositories, or browser automation brought in for those atoms must pass guard-office first.

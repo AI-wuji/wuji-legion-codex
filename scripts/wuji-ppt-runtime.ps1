@@ -57,6 +57,11 @@ function Get-WujiGoToolchain {
     param([hashtable]$Runtime)
 
     $binDir = $Runtime.BinDir
+    $manual = Join-Path $env:LOCALAPPDATA 'WujiLegion\go-manual\go\bin\go.exe'
+    if (Test-Path -LiteralPath $manual) {
+        return $manual
+    }
+
     $manual = Join-Path $binDir 'go-manual\go\bin\go.exe'
     if (Test-Path -LiteralPath $manual) {
         return $manual
@@ -95,7 +100,7 @@ function Ensure-WujiNativeUnzip {
     }
 
     $go = Get-WujiGoToolchain -Runtime $Runtime
-    $goEnvRoot = Join-Path $Runtime.BinDir 'go-env'
+    $goEnvRoot = Join-Path $env:LOCALAPPDATA 'WujiLegion\go-cache\go-env\unzip'
     $goCache = Join-Path $goEnvRoot 'cache'
     $goTmp = Join-Path $goEnvRoot 'tmp'
     $goModCache = Join-Path $goEnvRoot 'pkg\mod'

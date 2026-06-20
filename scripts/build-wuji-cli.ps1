@@ -7,12 +7,23 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $src = Join-Path $root 'tools\wuji_cli.go'
 $binDir = Join-Path $root '.wuji-tools'
+$cacheRoot = Join-Path $env:LOCALAPPDATA 'WujiLegion\go-cache'
 if (-not $Output) {
     $Output = Join-Path $binDir 'wuji-exec-base.exe'
 }
 $Output = [System.IO.Path]::GetFullPath($Output)
+$outputName = [System.IO.Path]::GetFileNameWithoutExtension($Output)
+if (-not $outputName) {
+    $outputName = 'default'
+}
+$outputName = ($outputName -replace '[^A-Za-z0-9._-]', '_')
 
 function Find-Go {
+    $externalManual = Join-Path $env:LOCALAPPDATA 'WujiLegion\go-manual\go\bin\go.exe'
+    if (Test-Path -LiteralPath $externalManual) {
+        return $externalManual
+    }
+
     $manual = Join-Path $binDir 'go-manual\go\bin\go.exe'
     if (Test-Path -LiteralPath $manual) {
         return $manual
@@ -38,7 +49,7 @@ if (-not (Test-Path -LiteralPath $src)) {
 }
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Output) | Out-Null
 $go = Find-Go
-$goEnvRoot = Join-Path $binDir 'go-env'
+$goEnvRoot = Join-Path $cacheRoot (Join-Path 'go-env' $outputName)
 $goCache = Join-Path $goEnvRoot 'cache'
 $goTmp = Join-Path $goEnvRoot 'tmp'
 $goModCache = Join-Path $goEnvRoot 'pkg\mod'
@@ -68,10 +79,6 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "go build failed with exit code $LASTEXITCODE"
     }
-    & $go clean -cache -testcache
-    if ($LASTEXITCODE -ne 0) {
-        throw "go clean cache failed with exit code $LASTEXITCODE"
-    }
 }
 finally {
     $env:GOCACHE = $previousGoCache
@@ -84,6 +91,18 @@ finally {
 }
 Write-Host "Built: $Output"
 
+$staleBins = @(
+    'wuji-cli-test.exe',
+    'wuji-cli-dormant.exe',
+    'wuji-cli-verify.exe'
+)
+foreach ($name in $staleBins) {
+    $stalePath = Join-Path $binDir $name
+    if ((Test-Path -LiteralPath $stalePath) -and ([System.IO.Path]::GetFullPath($stalePath) -ne $Output)) {
+        Remove-Item -LiteralPath $stalePath -Force -ErrorAction SilentlyContinue
+    }
+}
+
 if ([System.IO.Path]::GetFileName($Output) -eq 'wuji-exec-base.exe') {
     $shim = Join-Path ([System.IO.Path]::GetDirectoryName($Output)) 'wuji-cli.cmd'
     $shimContent = @"
@@ -93,7 +112,18 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0..\scripts\ensure-wuji
 if errorlevel 1 exit /b %errorlevel%
 "%~dp0wuji-exec-base.exe" %*
 "@
-    [System.IO.File]::WriteAllText($shim, $shimContent, [System.Text.ASCIIEncoding]::new())
+    $currentShim = ''
+    if (Test-Path -LiteralPath $shim) {
+        try {
+            $currentShim = [System.IO.File]::ReadAllText($shim, [System.Text.ASCIIEncoding]::new())
+        }
+        catch {
+            $currentShim = ''
+        }
+    }
+    if ($currentShim -ne $shimContent) {
+        [System.IO.File]::WriteAllText($shim, $shimContent, [System.Text.ASCIIEncoding]::new())
+    }
     Write-Host "Shim: $shim"
 
     $psShim = Join-Path ([System.IO.Path]::GetDirectoryName($Output)) 'wuji-cli.ps1'
@@ -110,6 +140,17 @@ if (-not $?) {
 & "$PSScriptRoot\wuji-exec-base.exe" @WujiArgs
 exit $LASTEXITCODE
 '@
-    [System.IO.File]::WriteAllText($psShim, $psShimContent, [System.Text.UTF8Encoding]::new($false))
+    $currentPsShim = ''
+    if (Test-Path -LiteralPath $psShim) {
+        try {
+            $currentPsShim = [System.IO.File]::ReadAllText($psShim, [System.Text.UTF8Encoding]::new($false))
+        }
+        catch {
+            $currentPsShim = ''
+        }
+    }
+    if ($currentPsShim -ne $psShimContent) {
+        [System.IO.File]::WriteAllText($psShim, $psShimContent, [System.Text.UTF8Encoding]::new($false))
+    }
     Write-Host "PowerShell Shim: $psShim"
 }
