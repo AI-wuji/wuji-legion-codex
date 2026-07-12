@@ -1,8 +1,38 @@
 # 无极军团 2.0 / Wuji Legion 2.0
 
-无极军团 2.0 是面向 ChatGPT Codex 的系统级运行 Skill。它把 Codex 作为唯一执行主机，由一个阿极主脑负责理解、路由、合并和完成判断，再按任务冷挂载完整能力包，并用 Go CLI 提供确定性路由、稀疏上下文选择、能力探针和进化门禁。
+无极军团 2.0 是一个面向 ChatGPT Codex 的系统级 Skill 中枢，也是一个有界的多 Agent 协作与能力进化系统。它不是一组领域 Skill 的简单集合，也不是多个 Agent 各自决策的聊天框架，而是负责理解任务、选择并调用合适的 Skill 和工具，组织彼此独立的 Agent 并行执行，再由唯一主脑统一合并结果、验证真实产物并完成交付。
 
-Wuji Legion 2.0 is a system-level runtime Skill for ChatGPT Codex. Codex remains the only execution host. One Aji brain owns routing, merge, write authority, and completion judgment; complete capability packages are mounted only when needed, while a deterministic Go CLI provides routing, sparse context selection, capability probes, and evolution gates.
+无极军团的另一项核心能力是对 Skill、插件和工作流进行蒸馏、融合与进化：保留有价值的脚本、模板、资产和入口，通过真实行为对照决定能力的接入、替换、升级或淘汰，让分散的外部能力逐步沉淀为可调用、可验证、可演化的系统能力。2.0 以冷挂载完整能力包、确定性 Go 路由、稀疏上下文选择和进化门禁支撑这条主链路。
+
+Wuji Legion 2.0 is a system-level Skill hub for ChatGPT Codex: a bounded multi-agent coordination and capability-evolution system. It does not replace domain Skills; it understands the task, selects and invokes the right Skills and tools, coordinates independent agents in parallel, and lets one main brain merge the work, verify real artifacts, and complete delivery.
+
+Its second core function is distilling, fusing, and evolving Skills, plugins, and workflows. Wuji retains valuable scripts, templates, assets, and entrypoints, then uses real behavioral comparisons to admit, upgrade, replace, or retire capabilities. Cold-mounted complete packages, deterministic Go routing, sparse context selection, and evolution gates keep this orchestration chain bounded and verifiable.
+
+## 项目演进 / Evolution
+
+无极军团的版本演进不是把旧项目原封不动搬到新平台，而是持续做能力清点、蒸馏、验证和架构纠偏。下面的时间线只记录无极军团本身的公开主线；同一账号下的其他仓库属于相关产品或能力实验，不自动等同于本项目的版本。
+
+| 阶段 | 主要变化 |
+| --- | --- |
+| `v6.0 - v6.1` · 2026-05-28 至 2026-05-30 | 建立轻量状态机和单主帅内核；将普通生图、真 PPTX 与 HTML 演示稿拆成清晰的能力路线。 |
+| `v8.0 - v9.2` · 2026-05-30 至 2026-05-31 | 对全局规则和入口做整流，明确“无极军团是总框架、领域能力是内部模块”；开始系统吸收工程流程、测试、审查和发布门禁。 |
+| `v9.3 - v10.8` · 2026-05-31 至 2026-06-03 | 建立蒸馏与进化闭环，压缩重复专家，落地执行底座、任务状态、证据等级、收口检查、工作流门禁和真实成品验证。 |
+| `v11.3` · 2026-06-09 至 2026-06-20 | 发布旧版运行内核，继续完成来源池融合、上下文膨胀诊断和首轮路由优化，为 2.0 重构保留可验证的经验与资产。 |
+| `2.0` · 2026-07-12 | 面向 Codex 重新设计：保留有价值的能力原子，剔除旧版弯路；收束为阿极单一主脑、单一写权限、冷挂载完整能力包、有界并行、确定性 Go 路由和基于真实行为的能力进化。旧版保留在 `legacy-v1-backup` 分支与 `legacy-v1-final` 标签中。 |
+
+## 无极生态 / Wuji Ecosystem
+
+这些仓库是“无极”生态的不同产品线和探索阶段，不是平行的军团中枢。它们只有通过 2.0 的能力契约、真实行为验证和进化门禁后，才可能进入当前主链。
+
+| 仓库 | 定位 |
+| --- | --- |
+| [ComfyUI-WujiToolbox](https://github.com/AI-wuji/ComfyUI-WujiToolbox) | 面向 ComfyUI 的官方 API 直连工具。 |
+| [wuji-dev-skill](https://github.com/AI-wuji/wuji-dev-skill) | 面向 Trae IDE 的开发 Skill 系统。 |
+| [wuji-AIMotionComic-PromptSet](https://github.com/AI-wuji/wuji-AIMotionComic-PromptSet) | 无极 AI 漫剧的标准化生产指令集。 |
+| [wuji-comfyui-skill](https://github.com/AI-wuji/wuji-comfyui-skill) | 面向 ComfyUI 插件开发、搜索、分析和融合的领域 Skill。 |
+| [wuji-lobster-legion](https://github.com/AI-wuji/wuji-lobster-legion) | 多 Agent 协作与指挥链的早期探索。 |
+| [wuji-dev-claude](https://github.com/AI-wuji/wuji-dev-claude) | 面向 Claude Code 的开发 Skill 系统。 |
+| [wuji-legion-codex](https://github.com/AI-wuji/wuji-legion-codex) | 面向 ChatGPT Codex 的系统级 Skill 中枢，本仓库当前主线。 |
 
 ## 2.0 的核心原则 / Core Principles
 
