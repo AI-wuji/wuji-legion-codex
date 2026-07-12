@@ -13,11 +13,12 @@ import (
 	"github.com/AI-wuji/wuji-legion-codex-2.0/internal/core"
 )
 
-const usage = `usage: wuji <route|context-select|verify|evolve> [flags]
+const usage = `usage: wuji <route|context-select|validate-receipt|verify|evolve> [flags]
 
 Commands:
   route           select a capability for a user request
   context-select  select ranked code excerpts within a byte budget
+  validate-receipt validate one worker execution receipt against a route
   verify          verify one or all capability manifests
   evolve          evaluate or apply a capability candidate`
 
@@ -44,6 +45,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		rootFlag := fs.String("root", root, "Wuji 2.0 root")
 		contextArtifact := fs.String("context-artifact", "", "verified context artifact for bounded delegation")
 		parentContextRequired := fs.Bool("parent-context-required", false, "keep execution on Aji because parent context must be replayed")
+		selfContainedHandoff := fs.Bool("self-contained-handoff", false, "confirm the compact worker contract contains all required task context")
 		if code := parseFlags(fs, args[1:], stderr); code >= 0 {
 			return code
 		}
@@ -54,13 +56,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if err != nil {
 			return reportError(stderr, 1, err)
 		}
-		delegationContext := core.DelegationContext{ParentContextRequired: *parentContextRequired}
+		delegationContext := core.DelegationContext{ParentContextRequired: *parentContextRequired, SelfContained: *selfContainedHandoff}
 		if strings.TrimSpace(*contextArtifact) != "" {
 			delegationContext, err = core.LoadContextArtifact(*contextArtifact)
 			if err != nil {
 				return reportError(stderr, 2, err)
 			}
 			delegationContext.ParentContextRequired = *parentContextRequired
+			delegationContext.SelfContained = *selfContainedHandoff
 		}
 		output = core.RouteWithContext(*query, items, delegationContext)
 
@@ -87,6 +90,48 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		result.ArtifactPath = artifactPath
 		output = result
+
+	case "validate-receipt":
+		fs := newFlagSet("validate-receipt", stderr)
+		routePath := fs.String("route", "", "route JSON file")
+		receiptPath := fs.String("receipt", "", "worker receipt JSON file")
+		workerID := fs.String("worker", "", "worker id from the route")
+		if code := parseFlags(fs, args[1:], stderr); code >= 0 {
+			return code
+		}
+		if strings.TrimSpace(*routePath) == "" || strings.TrimSpace(*receiptPath) == "" || strings.TrimSpace(*workerID) == "" {
+			return reportError(stderr, 2, errors.New("--route, --receipt and --worker are required"))
+		}
+		routeData, err := os.ReadFile(*routePath)
+		if err != nil {
+			return reportError(stderr, 1, err)
+		}
+		receiptData, err := os.ReadFile(*receiptPath)
+		if err != nil {
+			return reportError(stderr, 1, err)
+		}
+		var route core.RouteResult
+		if err := json.Unmarshal(routeData, &route); err != nil {
+			return reportError(stderr, 2, fmt.Errorf("decode route: %w", err))
+		}
+		var receipt core.WorkerExecutionReceipt
+		if err := json.Unmarshal(receiptData, &receipt); err != nil {
+			return reportError(stderr, 2, fmt.Errorf("decode receipt: %w", err))
+		}
+		var worker *core.WorkerTask
+		for index := range route.Workers {
+			if route.Workers[index].ID == *workerID {
+				worker = &route.Workers[index]
+				break
+			}
+		}
+		if worker == nil {
+			return reportError(stderr, 2, fmt.Errorf("worker not found in route: %s", *workerID))
+		}
+		if err := core.ValidateWorkerReceipt(*worker, receipt); err != nil {
+			return reportError(stderr, 1, err)
+		}
+		output = map[string]any{"valid": true, "worker_id": *workerID, "effective_model": receipt.EffectiveModel, "savings_microunits": receipt.SavingsMicrounits}
 
 	case "verify":
 		fs := newFlagSet("verify", stderr)

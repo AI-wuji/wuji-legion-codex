@@ -45,3 +45,11 @@ func TestUnexpectedArgumentsAreRejected(t *testing.T) {
 		t.Fatalf("unexpected argument was accepted: code=%d stderr=%q", code, stderr.String())
 	}
 }
+
+func TestValidateReceiptRequiresEvidenceFiles(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"validate-receipt"}, &stdout, &stderr)
+	if code != 2 || !strings.Contains(stderr.String(), "--route, --receipt and --worker are required") || stdout.Len() != 0 {
+		t.Fatalf("missing receipt evidence was not diagnosed: code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+}

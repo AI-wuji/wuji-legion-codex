@@ -2,12 +2,14 @@ $ErrorActionPreference = 'Stop'
 $root = if ($env:WUJI_ROOT) { $env:WUJI_ROOT } else { Split-Path $PSScriptRoot -Parent }
 $wuji = Join-Path $root 'bin\wuji.exe'
 if (-not (Test-Path -LiteralPath $wuji)) { & (Join-Path $root 'scripts\build.ps1') }
-$query = 'fix the code and verify it'
+$query = 'fix code workerPlan in internal/core/route.go'
 $raw = & $wuji context-select --workspace $root --query $query --max-bytes 2048
 if ($LASTEXITCODE -ne 0) { throw 'context-select failed' }
 $result = $raw | ConvertFrom-Json
 if ($result.selected_bytes -gt 2048) { throw "context budget exceeded: $($result.selected_bytes)" }
 if ($result.excerpts.Count -lt 1) { throw 'context selector returned no evidence' }
+if ($result.coverage_basis_points -lt 6000 -or $result.code_excerpt_count -lt 1 -or $result.content_anchor_count -lt 1) { throw 'context selector returned low-quality code evidence' }
+if ($result.selected_bytes -ne $result.payload_bytes -or -not $result.payload_sha256) { throw 'context selector did not expose deterministic prompt payload metadata' }
 if (-not $result.query_fingerprint -or -not $result.content_sha256 -or $result.context_handle -ne "wuji-context://sha256/$($result.content_sha256)") {
   throw 'context selector did not return a content-addressed handle'
 }
@@ -20,6 +22,22 @@ if (@($route.workers).Count -ne 1 -or $route.workers[0].model -ne 'gpt-5.6-terra
 }
 if ($route.workers[0].context_handles[0] -ne $result.context_handle -or $route.workers[0].allocated_context_bytes -ne $result.selected_bytes) {
   throw 'route did not preserve the verified context handoff'
+}
+$worker = @($route.workers)[0]
+if (-not $worker.context_payload -or $worker.context_payload_sha256 -ne $result.payload_sha256 -or ([Text.Encoding]::UTF8.GetByteCount([string]$worker.context_payload)) -ne $result.payload_bytes) {
+  throw 'route did not send the deterministic context payload'
+}
+if (-not $worker.task_contract -or $worker.allocated_task_contract_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$worker.task_contract)) -or -not $worker.task_contract_sha256) {
+  throw 'route did not send a measured task contract'
+}
+if (-not $worker.stable_capability_prefix -or $worker.stable_prefix_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$worker.stable_capability_prefix)) -or -not $worker.stable_prefix_sha256) {
+  throw 'route did not send a measured stable capability prefix'
+}
+if ($route.delegation_decision.estimated_replay_bytes -ne ($worker.stable_prefix_bytes + $worker.allocated_context_bytes + $worker.allocated_task_contract_bytes)) {
+  throw 'route replay estimate omitted a prompt component'
+}
+if (($worker.prompt_order -join ',') -ne 'stable_capability_prefix,context_payload,task_contract' -or ($worker.fallback_models -join ',') -ne 'gpt-5.6-sol' -or $worker.max_attempts -ne 2 -or ($worker.fallback_on -join ',') -ne 'model-unavailable,provider-error-before-generation') {
+  throw 'route emitted an unsafe prompt or retry policy'
 }
 $rtk = Join-Path $root 'tools\bin\rtk.exe'
 $rtkState = 'not-installed-optional'
@@ -43,6 +61,13 @@ $report = [ordered]@{
   artifact_path = [string]$result.artifact_path
   delegated_worker_count = @($route.workers).Count
   cross_model_cache_assumed = [bool]$route.delegation_policy.cross_model_cache_assumed
+  cache_scope = [string]$route.delegation_policy.cache_scope
+  coverage_basis_points = [int]$result.coverage_basis_points
+  code_excerpt_count = [int]$result.code_excerpt_count
+  content_anchor_count = [int]$result.content_anchor_count
+  payload_sha256 = [string]$result.payload_sha256
+  stable_prefix_bytes = [int]$worker.stable_prefix_bytes
+  task_contract_bytes = [int]$worker.allocated_task_contract_bytes
   rtk = $rtkState
 }
 [IO.File]::WriteAllText($reportPath, ($report | ConvertTo-Json -Compress), [Text.UTF8Encoding]::new($false))

@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-const contextArtifactSchemaVersion = 1
+const contextArtifactSchemaVersion = 3
 
 type contextDigestExcerpt struct {
 	Path          string   `json:"path"`
@@ -23,6 +23,7 @@ type contextDigestExcerpt struct {
 
 type contextDigest struct {
 	QueryFingerprint string                 `json:"query_fingerprint"`
+	RetrievalTerms   []string               `json:"retrieval_terms"`
 	Excerpts         []contextDigestExcerpt `json:"excerpts"`
 }
 
@@ -32,7 +33,9 @@ func queryFingerprint(terms []string) string {
 	return sha256Hex([]byte(strings.Join(values, "\n")))
 }
 
-func contextContentHash(fingerprint string, excerpts []ContextExcerpt) (string, error) {
+func contextContentHash(fingerprint string, retrievalTerms []string, excerpts []ContextExcerpt) (string, error) {
+	canonicalTerms := append([]string(nil), retrievalTerms...)
+	sort.Strings(canonicalTerms)
 	payload := make([]contextDigestExcerpt, 0, len(excerpts))
 	for _, excerpt := range excerpts {
 		payload = append(payload, contextDigestExcerpt{
@@ -40,7 +43,7 @@ func contextContentHash(fingerprint string, excerpts []ContextExcerpt) (string, 
 			SourceSHA256: excerpt.SourceSHA256, ContentSHA256: excerpt.ContentSHA256,
 		})
 	}
-	encoded, err := json.Marshal(contextDigest{QueryFingerprint: fingerprint, Excerpts: payload})
+	encoded, err := json.Marshal(contextDigest{QueryFingerprint: fingerprint, RetrievalTerms: canonicalTerms, Excerpts: payload})
 	if err != nil {
 		return "", fmt.Errorf("encode context digest: %w", err)
 	}
@@ -48,11 +51,7 @@ func contextContentHash(fingerprint string, excerpts []ContextExcerpt) (string, 
 }
 
 func selectedContextBytes(excerpts []ContextExcerpt) int {
-	total := 0
-	for _, excerpt := range excerpts {
-		total += len([]byte(excerpt.Path)) + 128 + len([]byte(excerpt.Text))
-	}
-	return total
+	return len([]byte(renderContextPayload(excerpts)))
 }
 
 func contextHandle(contentSHA256 string) string {
@@ -88,13 +87,20 @@ func WriteContextArtifact(result ContextResult, artifactDir string) (string, err
 		return "", err
 	}
 	artifact := ContextArtifact{
-		SchemaVersion:    contextArtifactSchemaVersion,
-		Workspace:        result.Workspace,
-		QueryFingerprint: result.QueryFingerprint,
-		Handle:           result.ContextHandle,
-		ContentSHA256:    result.ContentSHA256,
-		SelectedBytes:    result.SelectedBytes,
-		Excerpts:         result.Excerpts,
+		SchemaVersion:      contextArtifactSchemaVersion,
+		Workspace:          result.Workspace,
+		QueryFingerprint:   result.QueryFingerprint,
+		Handle:             result.ContextHandle,
+		ContentSHA256:      result.ContentSHA256,
+		SelectedBytes:      result.SelectedBytes,
+		RetrievalTerms:     append([]string(nil), result.RetrievalTerms...),
+		MatchedTerms:       append([]string(nil), result.MatchedTerms...),
+		CoverageBPS:        result.CoverageBPS,
+		CodeExcerptCount:   result.CodeExcerptCount,
+		ContentAnchorCount: result.ContentAnchorCount,
+		PayloadSHA256:      result.PayloadSHA256,
+		PayloadBytes:       result.PayloadBytes,
+		Excerpts:           result.Excerpts,
 	}
 	temporary, err := os.CreateTemp(artifactDir, result.ContentSHA256+"-*.tmp")
 	if err != nil {
@@ -144,6 +150,9 @@ func LoadContextArtifact(path string) (DelegationContext, error) {
 	if strings.TrimSpace(artifact.QueryFingerprint) == "" {
 		return DelegationContext{}, fmt.Errorf("context artifact query fingerprint is missing")
 	}
+	if len(artifact.RetrievalTerms) == 0 {
+		return DelegationContext{}, fmt.Errorf("context artifact retrieval terms are missing")
+	}
 	for _, excerpt := range artifact.Excerpts {
 		if excerpt.ContentSHA256 != sha256Hex([]byte(excerpt.Text)) {
 			return DelegationContext{}, fmt.Errorf("context artifact excerpt hash mismatch: %s", excerpt.Path)
@@ -162,10 +171,18 @@ func LoadContextArtifact(path string) (DelegationContext, error) {
 		}
 	}
 	actualBytes := selectedContextBytes(artifact.Excerpts)
-	if artifact.SelectedBytes != actualBytes {
+	payload := renderContextPayload(artifact.Excerpts)
+	if artifact.SelectedBytes != actualBytes || artifact.PayloadBytes != actualBytes {
 		return DelegationContext{}, fmt.Errorf("context artifact selected byte count mismatch")
 	}
-	digest, err := contextContentHash(artifact.QueryFingerprint, artifact.Excerpts)
+	if artifact.PayloadSHA256 != sha256Hex([]byte(payload)) {
+		return DelegationContext{}, fmt.Errorf("context artifact payload hash mismatch")
+	}
+	matchedTerms, coverage, codeFiles, contentAnchors := assessContextQuality(artifact.RetrievalTerms, artifact.Excerpts)
+	if !sameStringSlice(artifact.MatchedTerms, matchedTerms) || artifact.CoverageBPS != coverage || artifact.CodeExcerptCount != codeFiles || artifact.ContentAnchorCount != contentAnchors {
+		return DelegationContext{}, fmt.Errorf("context artifact quality metadata mismatch")
+	}
+	digest, err := contextContentHash(artifact.QueryFingerprint, artifact.RetrievalTerms, artifact.Excerpts)
 	if err != nil {
 		return DelegationContext{}, err
 	}
@@ -177,5 +194,21 @@ func LoadContextArtifact(path string) (DelegationContext, error) {
 	}
 	return DelegationContext{
 		Handle: artifact.Handle, ArtifactPath: path, QueryFingerprint: artifact.QueryFingerprint, SelectedBytes: artifact.SelectedBytes,
+		RetrievalTerms: append([]string(nil), artifact.RetrievalTerms...), MatchedTerms: append([]string(nil), artifact.MatchedTerms...),
+		CoverageBPS: artifact.CoverageBPS, CodeExcerptCount: artifact.CodeExcerptCount, ContentAnchorCount: artifact.ContentAnchorCount,
+		Payload: payload, PayloadSHA256: artifact.PayloadSHA256,
+		verified: true,
 	}, nil
+}
+
+func sameStringSlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }

@@ -108,24 +108,81 @@ type WorkerTask struct {
 	Model                      string   `json:"model"`
 	FallbackModels             []string `json:"fallback_models,omitempty"`
 	Inputs                     []string `json:"inputs"`
+	TaskContract               string   `json:"task_contract"`
+	TaskContractSHA256         string   `json:"task_contract_sha256"`
 	ContextMode                string   `json:"context_mode"`
 	ContextHandles             []string `json:"context_handles,omitempty"`
 	ContextArtifact            string   `json:"context_artifact,omitempty"`
+	ContextPayload             string   `json:"context_payload,omitempty"`
+	ContextPayloadSHA256       string   `json:"context_payload_sha256,omitempty"`
+	StableCapabilityPrefix     string   `json:"stable_capability_prefix"`
+	StablePrefixSHA256         string   `json:"stable_prefix_sha256"`
+	StablePrefixBytes          int      `json:"stable_prefix_bytes"`
+	PromptOrder                []string `json:"prompt_order"`
 	AllocatedContextBytes      int      `json:"allocated_context_bytes"`
 	AllocatedTaskContractBytes int      `json:"allocated_task_contract_bytes"`
 	MaxTaskContractBytes       int      `json:"max_task_contract_bytes"`
 	DelegationGateReason       string   `json:"delegation_gate_reason"`
+	MaxAttempts                int      `json:"max_attempts"`
+	FallbackOn                 []string `json:"fallback_on"`
 	Writes                     bool     `json:"writes"`
 	ExecutionEvidenceRequired  bool     `json:"execution_evidence_required"`
 	ExecutionEvidenceFields    []string `json:"execution_evidence_fields"`
 }
 
+type WorkerAttempt struct {
+	Model             string `json:"model"`
+	FailureKind       string `json:"failure_kind,omitempty"`
+	GenerationStarted bool   `json:"generation_started"`
+	InputTokens       int    `json:"input_tokens"`
+	CachedInputTokens int    `json:"cached_input_tokens"`
+	OutputTokens      int    `json:"output_tokens"`
+	ContextBytes      int    `json:"context_bytes"`
+	StablePrefixBytes int    `json:"stable_prefix_bytes"`
+	TaskContractBytes int    `json:"task_contract_bytes"`
+	CacheDomain       string `json:"cache_domain"`
+}
+
+type WorkerExecutionReceipt struct {
+	SchemaVersion         int             `json:"schema_version"`
+	WorkerID              string          `json:"worker_id"`
+	RequestedModel        string          `json:"requested_model"`
+	Attempts              []WorkerAttempt `json:"attempts"`
+	EffectiveModel        string          `json:"effective_model"`
+	ResultHandle          string          `json:"result_handle"`
+	ContextHandleIDs      []string        `json:"context_handle_ids"`
+	StablePrefixBytesSent int             `json:"stable_prefix_bytes"`
+	StablePrefixSHA256    string          `json:"stable_prefix_sha256"`
+	ContextBytesSent      int             `json:"context_bytes_sent"`
+	ContextPayloadSHA256  string          `json:"context_payload_sha256"`
+	TaskContractBytes     int             `json:"task_contract_bytes"`
+	TaskContractSHA256    string          `json:"task_contract_sha256"`
+	InputTokens           int             `json:"input_tokens"`
+	CachedInputTokens     int             `json:"cached_input_tokens"`
+	OutputTokens          int             `json:"output_tokens"`
+	RetryCount            int             `json:"retry_count"`
+	AcceptedByAji         bool            `json:"accepted_by_aji"`
+	AttemptFailureKinds   []string        `json:"attempt_failure_kinds"`
+	CacheDomain           string          `json:"cache_domain"`
+	DelegationGateReason  string          `json:"delegation_gate_reason"`
+	BillingUnit           string          `json:"billing_unit"`
+	TotalCostMicrounits   int64           `json:"total_cost_microunits"`
+	AjiBaselineMicrounits int64           `json:"aji_baseline_microunits"`
+	SavingsMicrounits     int64           `json:"savings_microunits"`
+}
+
 type DelegationPolicy struct {
-	CrossModelCacheAssumed bool   `json:"cross_model_cache_assumed"`
-	MaxTaskContractBytes   int    `json:"max_task_contract_bytes"`
-	MaxSharedContextBytes  int    `json:"max_shared_context_bytes"`
-	MaxTotalReplayBytes    int    `json:"max_total_replay_bytes"`
-	OnGateFailure          string `json:"on_gate_failure"`
+	CrossModelCacheAssumed          bool   `json:"cross_model_cache_assumed"`
+	CacheScope                      string `json:"cache_scope"`
+	MaxTaskContractBytes            int    `json:"max_task_contract_bytes"`
+	MaxSharedContextBytes           int    `json:"max_shared_context_bytes"`
+	MaxTotalReplayBytes             int    `json:"max_total_replay_bytes"`
+	MinContextCoverageBasisPoints   int    `json:"min_context_coverage_basis_points"`
+	RequireCodeExcerpt              bool   `json:"require_code_excerpt"`
+	RequireContentAnchor            bool   `json:"require_content_anchor"`
+	RequireSelfContainedHandoff     bool   `json:"require_self_contained_handoff"`
+	FallbackOnlyOnAvailabilityError bool   `json:"fallback_only_on_availability_error"`
+	OnGateFailure                   string `json:"on_gate_failure"`
 }
 
 type DelegationDecision struct {
@@ -133,8 +190,13 @@ type DelegationDecision struct {
 	Reason               string `json:"reason"`
 	ContextHandle        string `json:"context_handle,omitempty"`
 	TaskContractBytes    int    `json:"task_contract_bytes"`
+	TotalContractBytes   int    `json:"total_task_contract_bytes"`
 	SelectedContextBytes int    `json:"selected_context_bytes"`
 	EstimatedReplayBytes int    `json:"estimated_replay_bytes"`
+	ContextCoverageBPS   int    `json:"context_coverage_basis_points"`
+	CodeExcerptCount     int    `json:"code_excerpt_count"`
+	ContentAnchorCount   int    `json:"content_anchor_count"`
+	SelfContained        bool   `json:"self_contained"`
 }
 
 type ModelPolicy struct {
@@ -192,27 +254,41 @@ type ContextExcerpt struct {
 }
 
 type ContextResult struct {
-	Workspace        string           `json:"workspace"`
-	Query            string           `json:"query"`
-	QueryFingerprint string           `json:"query_fingerprint"`
-	BudgetBytes      int              `json:"budget_bytes"`
-	SelectedBytes    int              `json:"selected_bytes"`
-	ScannedFiles     int              `json:"scanned_files"`
-	ContextHandle    string           `json:"context_handle"`
-	ContentSHA256    string           `json:"content_sha256"`
-	ArtifactPath     string           `json:"artifact_path,omitempty"`
-	Excerpts         []ContextExcerpt `json:"excerpts"`
-	Policy           []string         `json:"policy"`
+	Workspace          string           `json:"workspace"`
+	Query              string           `json:"query"`
+	QueryFingerprint   string           `json:"query_fingerprint"`
+	BudgetBytes        int              `json:"budget_bytes"`
+	SelectedBytes      int              `json:"selected_bytes"`
+	ScannedFiles       int              `json:"scanned_files"`
+	ContextHandle      string           `json:"context_handle"`
+	ContentSHA256      string           `json:"content_sha256"`
+	ArtifactPath       string           `json:"artifact_path,omitempty"`
+	RetrievalTerms     []string         `json:"retrieval_terms"`
+	MatchedTerms       []string         `json:"matched_terms"`
+	CoverageBPS        int              `json:"coverage_basis_points"`
+	CodeExcerptCount   int              `json:"code_excerpt_count"`
+	ContentAnchorCount int              `json:"content_anchor_count"`
+	PayloadSHA256      string           `json:"payload_sha256"`
+	PayloadBytes       int              `json:"payload_bytes"`
+	Excerpts           []ContextExcerpt `json:"excerpts"`
+	Policy             []string         `json:"policy"`
 }
 
 type ContextArtifact struct {
-	SchemaVersion    int              `json:"schema_version"`
-	Workspace        string           `json:"workspace"`
-	QueryFingerprint string           `json:"query_fingerprint"`
-	Handle           string           `json:"handle"`
-	ContentSHA256    string           `json:"content_sha256"`
-	SelectedBytes    int              `json:"selected_bytes"`
-	Excerpts         []ContextExcerpt `json:"excerpts"`
+	SchemaVersion      int              `json:"schema_version"`
+	Workspace          string           `json:"workspace"`
+	QueryFingerprint   string           `json:"query_fingerprint"`
+	Handle             string           `json:"handle"`
+	ContentSHA256      string           `json:"content_sha256"`
+	SelectedBytes      int              `json:"selected_bytes"`
+	RetrievalTerms     []string         `json:"retrieval_terms"`
+	MatchedTerms       []string         `json:"matched_terms"`
+	CoverageBPS        int              `json:"coverage_basis_points"`
+	CodeExcerptCount   int              `json:"code_excerpt_count"`
+	ContentAnchorCount int              `json:"content_anchor_count"`
+	PayloadSHA256      string           `json:"payload_sha256"`
+	PayloadBytes       int              `json:"payload_bytes"`
+	Excerpts           []ContextExcerpt `json:"excerpts"`
 }
 
 type DelegationContext struct {
@@ -220,7 +296,16 @@ type DelegationContext struct {
 	ArtifactPath          string
 	QueryFingerprint      string
 	SelectedBytes         int
+	RetrievalTerms        []string
+	MatchedTerms          []string
+	CoverageBPS           int
+	CodeExcerptCount      int
+	ContentAnchorCount    int
+	Payload               string
+	PayloadSHA256         string
 	ParentContextRequired bool
+	SelfContained         bool
+	verified              bool
 }
 
 type EvolutionResult struct {

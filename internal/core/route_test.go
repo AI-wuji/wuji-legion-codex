@@ -30,7 +30,7 @@ func TestSearchFansOutIndependentSources(t *testing.T) {
 		if worker.Writes {
 			t.Fatal("research workers must not own writes")
 		}
-		if !worker.ExecutionEvidenceRequired || len(worker.ExecutionEvidenceFields) != 8 {
+		if !worker.ExecutionEvidenceRequired || len(worker.ExecutionEvidenceFields) != len(workerExecutionEvidenceFields) {
 			t.Fatalf("worker can be reported complete without execution evidence: %#v", worker)
 		}
 	}
@@ -274,7 +274,7 @@ func TestRouteDoesNotMountIncompleteSource(t *testing.T) {
 	}
 }
 
-func TestDefaultExpertFanoutAndSerialDisable(t *testing.T) {
+func TestPresentationDelegationRequiresExplicitSelfContainedHandoff(t *testing.T) {
 	items := []Manifest{{
 		ID: "presentation", Triggers: []string{"ppt"}, Status: "primary",
 		Experts: []Expert{
@@ -283,9 +283,21 @@ func TestDefaultExpertFanoutAndSerialDisable(t *testing.T) {
 			{ID: "qa", Purpose: "qa", Independent: false, ModelClass: "terra"},
 		},
 	}}
-	parallel := Route("做一个PPT", items)
+	direct := Route("做一个PPT", items)
+	if direct.Parallel || len(direct.Workers) != 0 || direct.DelegationDecision.Reason != "direct-route-by-default" {
+		t.Fatalf("presentation delegated by default: %#v", direct)
+	}
+	missingHandoff := Route("做一个PPT parallel", items)
+	if missingHandoff.Parallel || len(missingHandoff.Workers) != 0 || missingHandoff.DelegationDecision.Reason != "self-contained-handoff-required" {
+		t.Fatalf("parallel presentation accepted an implicit handoff: %#v", missingHandoff)
+	}
+	parallel := RouteWithContext("做一个PPT parallel", items, DelegationContext{SelfContained: true})
 	if !parallel.Parallel || len(parallel.Workers) != 2 {
-		t.Fatalf("expected default presentation fanout: %#v", parallel.Workers)
+		t.Fatalf("explicit self-contained presentation did not fan out: %#v", parallel.Workers)
+	}
+	parentDependent := RouteWithContext("create a PPT from the preceding meeting transcript parallel", items, DelegationContext{SelfContained: true})
+	if parentDependent.Parallel || len(parentDependent.Workers) != 0 || parentDependent.DelegationDecision.Reason != "parent-context-affinity-requires-Aji" {
+		t.Fatalf("parent-dependent presentation escaped to Terra: %#v", parentDependent)
 	}
 	serial := Route("做一个PPT 串行", items)
 	if serial.Parallel || len(serial.Workers) != 0 {

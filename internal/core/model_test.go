@@ -11,19 +11,23 @@ func TestRouteEmitsExecutableModelPolicy(t *testing.T) {
 			{ID: "verification", Purpose: "verify", Independent: false, ModelClass: "terra"},
 		},
 	}}
-	context := DelegationContext{
-		Handle: "wuji-context://sha256/test", ArtifactPath: "test.json",
-		QueryFingerprint: queryFingerprint(queryTerms(query)), SelectedBytes: 512,
-	}
+	context := delegationContextForTest(query, 512)
 	got := RouteWithContext(query, items, context)
 	if got.MainModel != "gpt-5.6-sol" || got.ModelPolicy.ClassModels["terra"] != "gpt-5.6-terra" {
 		t.Fatalf("main model policy is incomplete: %#v", got.ModelPolicy)
 	}
-	if len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-terra" || !equalStrings(got.Workers[0].FallbackModels, []string{"gpt-5.6-luna", "gpt-5.6-sol"}) {
+	if len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-terra" || !equalStrings(got.Workers[0].FallbackModels, []string{"gpt-5.6-sol"}) {
 		t.Fatalf("route did not emit an executable Terra policy: %#v", got.Workers)
 	}
 	if got.Workers[0].ContextMode != "shared-content-addressed-handle" || got.ExecutionLane != "bounded-delegation" {
 		t.Fatalf("Terra worker did not receive the bounded handoff: %#v", got)
+	}
+	worker := got.Workers[0]
+	if worker.MaxAttempts != 2 || !equalStrings(worker.FallbackOn, []string{"model-unavailable", "provider-error-before-generation"}) {
+		t.Fatalf("Terra retry policy can spend on quality retries: %#v", worker)
+	}
+	if got.DelegationPolicy.CrossModelCacheAssumed || got.DelegationPolicy.CacheScope != "model-local stable-prefix only" || !got.DelegationPolicy.FallbackOnlyOnAvailabilityError {
+		t.Fatalf("cross-model cache or fallback policy is unsafe: %#v", got.DelegationPolicy)
 	}
 }
 
@@ -37,8 +41,11 @@ func TestSearchWorkersUseConcreteLunaModel(t *testing.T) {
 		t.Fatalf("expected three research workers: %#v", got.Workers)
 	}
 	for _, worker := range got.Workers {
-		if worker.Model != "gpt-5.6-luna" || !equalStrings(worker.FallbackModels, []string{"gpt-5.6-terra", "gpt-5.6-sol"}) {
+		if worker.Model != "gpt-5.6-luna" || !equalStrings(worker.FallbackModels, []string{"gpt-5.6-sol"}) {
 			t.Fatalf("research worker did not receive an executable Luna policy: %#v", worker)
+		}
+		if worker.MaxAttempts != 2 || !equalStrings(worker.FallbackOn, []string{"model-unavailable", "provider-error-before-generation"}) {
+			t.Fatalf("research worker can retry after paid generation: %#v", worker)
 		}
 	}
 }

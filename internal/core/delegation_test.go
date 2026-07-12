@@ -26,10 +26,13 @@ func TestCodeDelegationRequiresVerifiedBoundedContext(t *testing.T) {
 		t.Fatalf("expected one independent Terra implementation worker: %#v", delegated.Workers)
 	}
 	worker := delegated.Workers[0]
-	if worker.AllocatedContextBytes != 1024 || worker.AllocatedTaskContractBytes != len([]byte(query)) || len(worker.ContextHandles) != 1 {
+	if worker.AllocatedContextBytes != 1024 || worker.AllocatedTaskContractBytes != len([]byte(worker.TaskContract)) || len(worker.ContextHandles) != 1 {
 		t.Fatalf("worker handoff costs are incomplete: %#v", worker)
 	}
-	if delegated.DelegationDecision.EstimatedReplayBytes != 1024+len([]byte(query)) || len(worker.ExecutionEvidenceFields) != 8 {
+	if worker.TaskContractSHA256 != sha256Hex([]byte(worker.TaskContract)) || worker.ContextPayload != context.Payload || worker.ContextPayloadSHA256 != context.PayloadSHA256 {
+		t.Fatalf("worker prompt payload is not content-addressed: %#v", worker)
+	}
+	if delegated.DelegationDecision.EstimatedReplayBytes != worker.StablePrefixBytes+1024+len([]byte(worker.TaskContract)) || len(worker.ExecutionEvidenceFields) != len(workerExecutionEvidenceFields) {
 		t.Fatalf("delegation cost/evidence contract is incomplete: %#v", delegated)
 	}
 }
@@ -47,8 +50,33 @@ func TestDelegationCostAndAffinityGatesStayOnAji(t *testing.T) {
 		reason  string
 	}{
 		{"parent context", query, DelegationContext{ParentContextRequired: true}, "parent-context-affinity-requires-Aji"},
+		{"unverified context struct", query, func() DelegationContext {
+			value := delegationContextForTest(query, 512)
+			value.verified = false
+			return value
+		}(), "verified-context-artifact-required"},
 		{"oversized context", query, delegationContextForTest(query, maxSharedContextBytes+1), "shared-context-exceeds-per-worker-budget"},
 		{"query mismatch", query, delegationContextForTest("another code task", 512), "context-query-fingerprint-mismatch"},
+		{"invalid payload", query, func() DelegationContext {
+			value := delegationContextForTest(query, 512)
+			value.PayloadSHA256 = "bad"
+			return value
+		}(), "verified-context-artifact-required"},
+		{"low coverage", query, func() DelegationContext {
+			value := delegationContextForTest(query, 512)
+			value.CoverageBPS = minContextCoverageBPS - 1
+			return value
+		}(), "context-coverage-below-delegation-threshold"},
+		{"no code excerpt", query, func() DelegationContext {
+			value := delegationContextForTest(query, 512)
+			value.CodeExcerptCount = 0
+			return value
+		}(), "code-context-excerpt-required"},
+		{"no content anchor", query, func() DelegationContext {
+			value := delegationContextForTest(query, 512)
+			value.ContentAnchorCount = 0
+			return value
+		}(), "code-content-anchor-required"},
 		{"oversized contract", "code " + strings.Repeat("x", maxTaskContractBytes), DelegationContext{}, "task-contract-exceeds-budget"},
 	}
 	for _, test := range tests {
@@ -75,7 +103,8 @@ func TestTotalReplayBudgetIncludesContractAndContextPerWorker(t *testing.T) {
 	if len(got.Workers) != 0 || got.DelegationDecision.Reason != "estimated-context-replay-exceeds-total-budget" {
 		t.Fatalf("total replay gate failed open: %#v", got)
 	}
-	want := (maxSharedContextBytes + len([]byte(query))) * 2
+	prefixBytes := len([]byte(stableCapabilityPrefix(items[0], "")))
+	want := prefixBytes*2 + maxSharedContextBytes*2 + len([]byte(marshalWorkerContract(query, "narrative", "", []string{context.Handle}))) + len([]byte(marshalWorkerContract(query, "visual", "", []string{context.Handle})))
 	if got.DelegationDecision.EstimatedReplayBytes != want {
 		t.Fatalf("wrong replay estimate: got %d want %d", got.DelegationDecision.EstimatedReplayBytes, want)
 	}
@@ -102,8 +131,14 @@ func TestSearchSerialGatePrecedesLunaFanout(t *testing.T) {
 }
 
 func delegationContextForTest(query string, selectedBytes int) DelegationContext {
+	prefix := "WUJI_CONTEXT_CAPSULE_V1\n"
+	if selectedBytes < len([]byte(prefix)) {
+		selectedBytes = len([]byte(prefix))
+	}
+	payload := prefix + strings.Repeat("x", selectedBytes-len([]byte(prefix)))
 	return DelegationContext{
 		Handle: "wuji-context://sha256/test", ArtifactPath: "test.json",
 		QueryFingerprint: queryFingerprint(queryTerms(query)), SelectedBytes: selectedBytes,
+		CoverageBPS: 10000, CodeExcerptCount: 1, ContentAnchorCount: 1, Payload: payload, PayloadSHA256: sha256Hex([]byte(payload)), SelfContained: true, verified: true,
 	}
 }

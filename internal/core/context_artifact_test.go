@@ -11,11 +11,11 @@ import (
 func TestContextArtifactIsStableAndVerifiable(t *testing.T) {
 	root := t.TempDir()
 	writeTestSource(t, root, "task.go", "package task\n\nfunc verifyCode() {}\n")
-	first, err := SelectContext(root, "fix code verify task", 2048)
+	first, err := SelectContext(root, "fix verifyCode task.go", 2048)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := SelectContext(root, "task verify code fix", 2048)
+	second, err := SelectContext(root, "task.go verifyCode fix", 2048)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,6 +32,9 @@ func TestContextArtifactIsStableAndVerifiable(t *testing.T) {
 	}
 	if loaded.Handle != first.ContextHandle || loaded.QueryFingerprint != first.QueryFingerprint || loaded.SelectedBytes != first.SelectedBytes {
 		t.Fatalf("loaded context changed: %#v", loaded)
+	}
+	if loaded.Payload != renderContextPayload(first.Excerpts) || loaded.PayloadSHA256 != first.PayloadSHA256 || loaded.SelectedBytes != len([]byte(loaded.Payload)) {
+		t.Fatalf("loaded prompt payload is not deterministic: %#v", loaded)
 	}
 }
 
@@ -54,6 +57,26 @@ func TestContextArtifactRejectsTamperingAndStaleSources(t *testing.T) {
 		writeTestContextArtifactJSON(t, path, artifact)
 		if _, err := LoadContextArtifact(path); err == nil || !strings.Contains(err.Error(), "content hash mismatch") {
 			t.Fatalf("tampered query fingerprint was accepted: %v", err)
+		}
+	})
+
+	t.Run("payload hash", func(t *testing.T) {
+		_, path := writeTestContextArtifact(t)
+		artifact := readTestContextArtifact(t, path)
+		artifact.PayloadSHA256 = strings.Repeat("0", 64)
+		writeTestContextArtifactJSON(t, path, artifact)
+		if _, err := LoadContextArtifact(path); err == nil || !strings.Contains(err.Error(), "payload hash mismatch") {
+			t.Fatalf("tampered payload hash was accepted: %v", err)
+		}
+	})
+
+	t.Run("quality metadata", func(t *testing.T) {
+		_, path := writeTestContextArtifact(t)
+		artifact := readTestContextArtifact(t, path)
+		artifact.CoverageBPS--
+		writeTestContextArtifactJSON(t, path, artifact)
+		if _, err := LoadContextArtifact(path); err == nil || !strings.Contains(err.Error(), "quality metadata mismatch") {
+			t.Fatalf("tampered quality metadata was accepted: %v", err)
 		}
 	})
 
@@ -92,7 +115,7 @@ func writeTestContextArtifact(t *testing.T) (string, string) {
 	t.Helper()
 	root := t.TempDir()
 	writeTestSource(t, root, "task.go", "package task\n\nfunc verifyCode() {}\n")
-	result, err := SelectContext(root, "task verify code", 2048)
+	result, err := SelectContext(root, "task.go verifyCode", 2048)
 	if err != nil {
 		t.Fatal(err)
 	}

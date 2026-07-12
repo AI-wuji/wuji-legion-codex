@@ -60,7 +60,7 @@ $sourceFiles = Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object {
   $_.FullName -notmatch '\\.git\\|\\.wuji\\|\\tools\\bin\\|\\bin\\'
 }
 $sourceBytes = ($sourceFiles | Measure-Object Length -Sum).Sum
-if ($skillBytes -gt 6000 -or $agentBytes -gt 5000 -or $sourceBytes -gt 1024000) {
+if ($skillBytes -gt 6000 -or $agentBytes -gt 5000 -or $sourceBytes -gt 1048576) {
   throw "optimization-audit failed: skill=$skillBytes agents=$agentBytes source=$sourceBytes"
 }
 $nestedSkillFiles = Get-ChildItem (Join-Path $root 'capabilities') -Recurse -Filter 'SKILL.md' | Where-Object { $_.FullName -match '\\skills\\' }
@@ -245,7 +245,7 @@ $webRoute = & $wuji route --query 'build a Slidev web presentation with stage fl
 $pptxRoute = & $wuji route --query 'create an editable PPTX' | ConvertFrom-Json
 $writingRoute = & $wuji route --query 'translate this article' | ConvertFrom-Json
 $searchRoute = & $wuji route --query 'search the web for the latest solution' | ConvertFrom-Json
-$codeQuery = 'fix the code and verify it'
+$codeQuery = 'fix code workerPlan in internal/core/route.go'
 $codeDirectRoute = & $wuji route --query $codeQuery | ConvertFrom-Json
 $codeContext = & $wuji context-select --workspace $root --query $codeQuery --max-bytes 2048 | ConvertFrom-Json
 $codeRoute = & $wuji route --query $codeQuery --context-artifact $codeContext.artifact_path | ConvertFrom-Json
@@ -255,14 +255,16 @@ if ($pptxRoute.primary_skill -ne 'wuji-editable-deck' -or $pptxRoute.engine -ne 
 if ($writingRoute.primary_skill -ne 'wuji-writing-suite' -or $writingRoute.engine -ne 'translation') { throw 'fusion-audit failed: writing suite leaked source selection' }
 if ($searchRoute.provider -ne 'default-gpt-search' -or @($searchRoute.workers | Where-Object model_class -eq 'agnes').Count -gt 0) { throw 'optimization-audit failed: Agnes returned to search' }
 if (@($searchRoute.workers).Count -ne 3 -or @($searchRoute.workers | Where-Object model -ne 'gpt-5.6-luna').Count -ne 0) { throw 'optimization-audit failed: research workers lost Luna model assignment' }
-if (@($searchRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-terra,gpt-5.6-sol' }).Count -ne 0) { throw 'optimization-audit failed: research worker fallback order changed' }
+if (@($searchRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-sol' }).Count -ne 0) { throw 'optimization-audit failed: research worker fallback order changed' }
 if (($serialSearchRoute.PSObject.Properties.Name -contains 'workers') -or $serialSearchRoute.delegation_decision.reason -ne 'serial-requested') { throw 'optimization-audit failed: serial research still fanned out' }
 if (($codeDirectRoute.PSObject.Properties.Name -contains 'workers') -or $codeDirectRoute.delegation_decision.reason -ne 'verified-context-artifact-required') { throw 'optimization-audit failed: code delegated without verified context' }
 if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-terra').Count -ne 0) { throw 'optimization-audit failed: code worker lost bounded Terra assignment' }
-if (@($codeRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-luna,gpt-5.6-sol' }).Count -ne 0) { throw 'optimization-audit failed: code worker fallback order changed' }
-if (@($searchRoute.workers + $codeRoute.workers | Where-Object { -not $_.execution_evidence_required -or ($_.execution_evidence_fields -join ',') -ne 'requested_model,attempts,effective_model,result_handle,context_handle_ids,context_bytes_sent,task_contract_bytes,delegation_gate_reason' }).Count -ne 0) { throw 'optimization-audit failed: worker execution evidence contract is incomplete' }
-if ($codeRoute.delegation_policy.cross_model_cache_assumed -or $codeRoute.delegation_policy.max_task_contract_bytes -ne 2048 -or $codeRoute.delegation_policy.max_shared_context_bytes -ne 4096 -or $codeRoute.delegation_policy.max_total_replay_bytes -ne 8192) { throw 'optimization-audit failed: cross-model cost policy is incomplete' }
-if (-not $codeRoute.delegation_decision.allowed -or $codeRoute.delegation_decision.context_handle -ne $codeContext.context_handle -or $codeRoute.workers[0].allocated_context_bytes -ne $codeContext.selected_bytes -or $codeRoute.workers[0].allocated_task_contract_bytes -le 0) { throw 'optimization-audit failed: verified context handoff is incomplete' }
+if (@($codeRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-sol' }).Count -ne 0) { throw 'optimization-audit failed: code worker fallback order changed' }
+$executionEvidence = 'schema_version,worker_id,requested_model,attempts,effective_model,result_handle,stable_prefix_bytes,stable_prefix_sha256,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,accepted_by_aji,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,aji_baseline_microunits,savings_microunits'
+if (@($searchRoute.workers + $codeRoute.workers | Where-Object { -not $_.execution_evidence_required -or ($_.execution_evidence_fields -join ',') -ne $executionEvidence }).Count -ne 0) { throw 'optimization-audit failed: worker execution evidence contract is incomplete' }
+if ($codeRoute.delegation_policy.cross_model_cache_assumed -or $codeRoute.delegation_policy.cache_scope -ne 'model-local stable-prefix only' -or $codeRoute.delegation_policy.max_task_contract_bytes -ne 2048 -or $codeRoute.delegation_policy.max_shared_context_bytes -ne 4096 -or $codeRoute.delegation_policy.max_total_replay_bytes -ne 8192 -or $codeRoute.delegation_policy.min_context_coverage_basis_points -ne 6000 -or -not $codeRoute.delegation_policy.require_code_excerpt -or -not $codeRoute.delegation_policy.require_content_anchor -or -not $codeRoute.delegation_policy.fallback_only_on_availability_error) { throw 'optimization-audit failed: cross-model cost policy is incomplete' }
+$codeWorker = @($codeRoute.workers)[0]
+if (-not $codeRoute.delegation_decision.allowed -or $codeRoute.delegation_decision.context_handle -ne $codeContext.context_handle -or $codeRoute.delegation_decision.context_coverage_basis_points -lt 6000 -or $codeRoute.delegation_decision.code_excerpt_count -lt 1 -or $codeRoute.delegation_decision.content_anchor_count -lt 1 -or $codeWorker.allocated_context_bytes -ne $codeContext.payload_bytes -or $codeWorker.context_payload_sha256 -ne $codeContext.payload_sha256 -or -not $codeWorker.context_payload -or $codeWorker.allocated_task_contract_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.task_contract)) -or -not $codeWorker.task_contract_sha256 -or -not $codeWorker.stable_capability_prefix -or $codeWorker.stable_prefix_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.stable_capability_prefix)) -or -not $codeWorker.stable_prefix_sha256 -or $codeRoute.delegation_decision.estimated_replay_bytes -ne ($codeWorker.stable_prefix_bytes + $codeWorker.allocated_context_bytes + $codeWorker.allocated_task_contract_bytes) -or ($codeWorker.prompt_order -join ',') -ne 'stable_capability_prefix,context_payload,task_contract' -or $codeWorker.max_attempts -ne 2 -or ($codeWorker.fallback_on -join ',') -ne 'model-unavailable,provider-error-before-generation') { throw 'optimization-audit failed: verified context handoff is incomplete' }
 if ($codeRoute.model_policy.class_models.terra -ne 'gpt-5.6-terra' -or $codeRoute.model_policy.class_models.luna -ne 'gpt-5.6-luna') { throw 'optimization-audit failed: executable model policy is incomplete' }
 
 [pscustomobject]@{

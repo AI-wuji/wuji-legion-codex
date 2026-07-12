@@ -99,3 +99,44 @@ func TestContextSelectIncludesFrontendSourcesAndPreservesIndent(t *testing.T) {
 		t.Fatalf("excerpt indentation was lost: %q", got.Excerpts[0].Text)
 	}
 }
+
+func TestContextSelectPrioritizesExplicitCodePathOverGeneratedLocks(t *testing.T) {
+	root := t.TempDir()
+	codeDir := filepath.Join(root, "internal", "core")
+	if err := os.MkdirAll(codeDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(codeDir, "route.go"), []byte("package core\n\nfunc delegationEconomics() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lockNoise := strings.Repeat("delegation economics internal/core/route.go ", 200)
+	if err := os.WriteFile(filepath.Join(root, "pnpm-lock.yaml"), []byte(lockNoise), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := SelectContext(root, "implement delegation economics in internal/core/route.go", 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Excerpts) == 0 || got.Excerpts[0].Path != "internal/core/route.go" {
+		t.Fatalf("explicit code path lost to generated noise: %#v", got.Excerpts)
+	}
+	for _, excerpt := range got.Excerpts {
+		if excerpt.Path == "pnpm-lock.yaml" {
+			t.Fatalf("generated lockfile entered context: %#v", got.Excerpts)
+		}
+	}
+}
+
+func TestContextQualityDoesNotTreatPathOnlyAsContentAnchor(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "auth.go"), []byte("package auth\n\nfunc Login() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := SelectContext(root, "fix auth.go", 1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ContentAnchorCount != 0 {
+		t.Fatalf("path-only match was counted as a content anchor: %#v", got)
+	}
+}

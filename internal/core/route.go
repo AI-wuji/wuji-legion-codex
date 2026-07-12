@@ -1,6 +1,7 @@
 package core
 
 import (
+	"encoding/json"
 	"sort"
 	"strings"
 )
@@ -10,19 +11,24 @@ var modelPolicies = map[string]struct {
 	fallbacks []string
 }{
 	"sol":   {model: "gpt-5.6-sol", fallbacks: []string{"gpt-5.6-terra", "gpt-5.6-luna"}},
-	"terra": {model: "gpt-5.6-terra", fallbacks: []string{"gpt-5.6-luna", "gpt-5.6-sol"}},
-	"luna":  {model: "gpt-5.6-luna", fallbacks: []string{"gpt-5.6-terra", "gpt-5.6-sol"}},
+	"terra": {model: "gpt-5.6-terra", fallbacks: []string{"gpt-5.6-sol"}},
+	"luna":  {model: "gpt-5.6-luna", fallbacks: []string{"gpt-5.6-sol"}},
 }
 
 var workerExecutionEvidenceFields = []string{
-	"requested_model", "attempts", "effective_model", "result_handle",
-	"context_handle_ids", "context_bytes_sent", "task_contract_bytes", "delegation_gate_reason",
+	"schema_version", "worker_id", "requested_model", "attempts", "effective_model", "result_handle",
+	"stable_prefix_bytes", "stable_prefix_sha256", "context_handle_ids", "context_bytes_sent", "context_payload_sha256",
+	"task_contract_bytes", "task_contract_sha256", "delegation_gate_reason",
+	"input_tokens", "cached_input_tokens", "output_tokens", "retry_count",
+	"accepted_by_aji", "attempt_failure_kinds", "cache_domain", "billing_unit",
+	"total_cost_microunits", "aji_baseline_microunits", "savings_microunits",
 }
 
 const (
 	maxTaskContractBytes  = 2048
 	maxSharedContextBytes = 4096
 	maxTotalReplayBytes   = 8192
+	minContextCoverageBPS = 6000
 )
 
 func modelSpec(modelClass string) (string, []string) {
@@ -86,11 +92,17 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 		MainModel:   policy.MainModel,
 		ModelPolicy: policy,
 		DelegationPolicy: DelegationPolicy{
-			CrossModelCacheAssumed: false,
-			MaxTaskContractBytes:   maxTaskContractBytes,
-			MaxSharedContextBytes:  maxSharedContextBytes,
-			MaxTotalReplayBytes:    maxTotalReplayBytes,
-			OnGateFailure:          "stay on Aji direct route",
+			CrossModelCacheAssumed:          false,
+			CacheScope:                      "model-local stable-prefix only",
+			MaxTaskContractBytes:            maxTaskContractBytes,
+			MaxSharedContextBytes:           maxSharedContextBytes,
+			MaxTotalReplayBytes:             maxTotalReplayBytes,
+			MinContextCoverageBasisPoints:   minContextCoverageBPS,
+			RequireCodeExcerpt:              true,
+			RequireContentAnchor:            true,
+			RequireSelfContainedHandoff:     true,
+			FallbackOnlyOnAvailabilityError: true,
+			OnGateFailure:                   "stay on Aji direct route",
 		},
 		DelegationDecision:      delegation,
 		Reasoning:               "max",
@@ -422,7 +434,7 @@ func selectProvider(query string, providers []Provider) (string, string) {
 
 func workerPlan(query string, capability Manifest, engine string, context DelegationContext) ([]WorkerTask, DelegationDecision) {
 	taskContractBytes := len([]byte(strings.TrimSpace(query)))
-	decision := DelegationDecision{TaskContractBytes: taskContractBytes, SelectedContextBytes: context.SelectedBytes}
+	decision := DelegationDecision{TaskContractBytes: taskContractBytes, SelectedContextBytes: context.SelectedBytes, ContextCoverageBPS: context.CoverageBPS, CodeExcerptCount: context.CodeExcerptCount, ContentAnchorCount: context.ContentAnchorCount, SelfContained: context.SelfContained}
 	if containsAny(query, "串行", "sequential", "serial only") {
 		decision.Reason = "serial-requested"
 		return nil, decision
@@ -431,8 +443,12 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 		decision.Reason = "task-contract-exceeds-budget"
 		return nil, decision
 	}
-	if context.ParentContextRequired {
+	if context.ParentContextRequired || requiresParentContext(query) {
 		decision.Reason = "parent-context-affinity-requires-Aji"
+		return nil, decision
+	}
+	if context.Handle != "" && !validContextHandoff(context) {
+		decision.Reason = "verified-context-artifact-required"
 		return nil, decision
 	}
 	if context.Handle != "" && context.QueryFingerprint != queryFingerprint(queryTerms(query)) {
@@ -441,29 +457,25 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 	}
 	if capability.ID == "search" && engine == "web-research" && isBroadSearch(query) {
 		model, fallbacks := modelSpec("luna")
-		decision.Allowed = true
 		decision.Reason = "task-contract-only-research"
+		prefix := stableCapabilityPrefix(capability, engine)
 		workers := []WorkerTask{
-			newWorkerTask("official", "official documentation and primary sources", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, taskContractBytes),
-			newWorkerTask("github", "repositories, releases, issues, and implementation evidence", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, taskContractBytes),
-			newWorkerTask("community", "independent reports and failure evidence", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, taskContractBytes),
+			newWorkerTask(query, "official", "official documentation and primary sources", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, prefix),
+			newWorkerTask(query, "github", "repositories, releases, issues, and implementation evidence", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, prefix),
+			newWorkerTask(query, "community", "independent reports and failure evidence", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, prefix),
 		}
-		decision.EstimatedReplayBytes = estimatedReplayBytes(workers)
-		return workers, decision
+		return finalizeWorkerPlan(workers, decision)
 	}
 	forceParallel := containsAny(query, "并行", "parallel")
 	defaultFanout := map[string]bool{
-		"presentation": true,
-		"writing":      true,
-		"code":         true,
-		"frontend":     true,
+		"code": true,
 	}
 	if !forceParallel && !defaultFanout[capability.ID] {
 		decision.Reason = "direct-route-by-default"
 		return nil, decision
 	}
 	if capability.ID == "code" {
-		if context.Handle == "" || context.ArtifactPath == "" || context.SelectedBytes <= 0 {
+		if !validContextHandoff(context) {
 			decision.Reason = "verified-context-artifact-required"
 			return nil, decision
 		}
@@ -471,37 +483,82 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 			decision.Reason = "shared-context-exceeds-per-worker-budget"
 			return nil, decision
 		}
+		if context.CoverageBPS < minContextCoverageBPS {
+			decision.Reason = "context-coverage-below-delegation-threshold"
+			return nil, decision
+		}
+		if context.CodeExcerptCount == 0 {
+			decision.Reason = "code-context-excerpt-required"
+			return nil, decision
+		}
+		if context.ContentAnchorCount == 0 {
+			decision.Reason = "code-content-anchor-required"
+			return nil, decision
+		}
+	} else if forceParallel && !context.SelfContained {
+		decision.Reason = "self-contained-handoff-required"
+		return nil, decision
 	}
 	workers := []WorkerTask{}
+	prefix := stableCapabilityPrefix(capability, engine)
 	for _, expert := range capability.Experts {
 		if expert.Independent {
 			model, fallbacks := modelSpec(expert.ModelClass)
-			workers = append(workers, newWorkerTask(expert.ID, expert.Purpose, expert.ModelClass, model, fallbacks, []string{"task contract", "selected context handle"}, contextMode(context), context, "bounded-context-handoff", taskContractBytes))
+			reason := "bounded-context-handoff"
+			if contextMode(context) == "task-contract-only" {
+				reason = "self-contained-task-contract"
+			}
+			workers = append(workers, newWorkerTask(query, expert.ID, expert.Purpose, expert.ModelClass, model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, reason, prefix))
 		}
 	}
 	if len(workers) == 0 {
 		decision.Reason = "no-independent-workers"
 		return nil, decision
 	}
-	decision.Allowed = true
-	decision.ContextHandle = context.Handle
+	sort.SliceStable(workers, func(i, j int) bool { return workers[i].ID < workers[j].ID })
+	return finalizeWorkerPlan(workers, decision)
+}
+
+func finalizeWorkerPlan(workers []WorkerTask, decision DelegationDecision) ([]WorkerTask, DelegationDecision) {
+	maxContract, totalContract := 0, 0
+	for _, worker := range workers {
+		if worker.AllocatedTaskContractBytes > maxContract {
+			maxContract = worker.AllocatedTaskContractBytes
+		}
+		totalContract += worker.AllocatedTaskContractBytes
+	}
+	decision.TaskContractBytes = maxContract
+	decision.TotalContractBytes = totalContract
+	decision.ContextHandle = ""
+	if len(workers) > 0 && len(workers[0].ContextHandles) > 0 {
+		decision.ContextHandle = workers[0].ContextHandles[0]
+	}
 	decision.EstimatedReplayBytes = estimatedReplayBytes(workers)
+	if maxContract > maxTaskContractBytes {
+		decision.Reason = "task-contract-exceeds-budget"
+		return nil, decision
+	}
 	if decision.EstimatedReplayBytes > maxTotalReplayBytes {
-		decision.Allowed = false
 		decision.Reason = "estimated-context-replay-exceeds-total-budget"
 		return nil, decision
 	}
-	decision.Reason = "bounded-context-handoff"
-	sort.SliceStable(workers, func(i, j int) bool { return workers[i].ID < workers[j].ID })
+	decision.Allowed = true
 	return workers, decision
 }
 
 func estimatedReplayBytes(workers []WorkerTask) int {
 	total := 0
 	for _, worker := range workers {
-		total += worker.AllocatedTaskContractBytes + worker.AllocatedContextBytes
+		total += worker.StablePrefixBytes + worker.AllocatedTaskContractBytes + worker.AllocatedContextBytes
 	}
 	return total
+}
+
+func validContextHandoff(context DelegationContext) bool {
+	if !context.verified || context.Handle == "" || context.ArtifactPath == "" || context.SelectedBytes <= 0 || context.Payload == "" {
+		return false
+	}
+	return context.SelectedBytes == len([]byte(context.Payload)) && context.PayloadSHA256 == sha256Hex([]byte(context.Payload))
 }
 
 func contextMode(context DelegationContext) string {
@@ -511,15 +568,20 @@ func contextMode(context DelegationContext) string {
 	return "task-contract-only"
 }
 
-func newWorkerTask(id, purpose, modelClass, model string, fallbacks, inputs []string, mode string, context DelegationContext, reason string, taskContractBytes int) WorkerTask {
+func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inputs []string, mode string, context DelegationContext, reason, stablePrefix string) WorkerTask {
 	handles := []string{}
 	artifact := ""
+	payload := ""
+	payloadHash := ""
 	allocated := 0
 	if mode == "shared-content-addressed-handle" {
 		handles = []string{context.Handle}
 		artifact = context.ArtifactPath
+		payload = context.Payload
+		payloadHash = context.PayloadSHA256
 		allocated = context.SelectedBytes
 	}
+	contract := marshalWorkerContract(query, id, purpose, handles)
 	return WorkerTask{
 		ID:                         id,
 		Purpose:                    purpose,
@@ -527,20 +589,85 @@ func newWorkerTask(id, purpose, modelClass, model string, fallbacks, inputs []st
 		Model:                      model,
 		FallbackModels:             append([]string(nil), fallbacks...),
 		Inputs:                     append([]string(nil), inputs...),
+		TaskContract:               contract,
+		TaskContractSHA256:         sha256Hex([]byte(contract)),
 		ContextMode:                mode,
 		ContextHandles:             handles,
 		ContextArtifact:            artifact,
+		ContextPayload:             payload,
+		ContextPayloadSHA256:       payloadHash,
+		StableCapabilityPrefix:     stablePrefix,
+		StablePrefixSHA256:         sha256Hex([]byte(stablePrefix)),
+		StablePrefixBytes:          len([]byte(stablePrefix)),
+		PromptOrder:                promptOrder(mode),
 		AllocatedContextBytes:      allocated,
-		AllocatedTaskContractBytes: taskContractBytes,
+		AllocatedTaskContractBytes: len([]byte(contract)),
 		MaxTaskContractBytes:       maxTaskContractBytes,
 		DelegationGateReason:       reason,
+		MaxAttempts:                2,
+		FallbackOn:                 []string{"model-unavailable", "provider-error-before-generation"},
 		ExecutionEvidenceRequired:  true,
 		ExecutionEvidenceFields:    append([]string(nil), workerExecutionEvidenceFields...),
 	}
 }
 
+func stableCapabilityPrefix(capability Manifest, engine string) string {
+	prefix := struct {
+		Schema       string `json:"schema"`
+		Capability   string `json:"capability"`
+		PrimarySkill string `json:"primary_skill"`
+		Engine       string `json:"engine,omitempty"`
+		WriteOwner   string `json:"write_owner"`
+	}{
+		Schema: "wuji-stable-capability-prefix-v1", Capability: capability.ID,
+		PrimarySkill: capability.PrimarySkill, Engine: engine, WriteOwner: "aji-only",
+	}
+	encoded, _ := json.Marshal(prefix)
+	return string(encoded)
+}
+
+type workerContract struct {
+	Schema        string   `json:"schema"`
+	Objective     string   `json:"objective"`
+	Branch        string   `json:"branch"`
+	Purpose       string   `json:"purpose"`
+	Boundaries    []string `json:"boundaries"`
+	Acceptance    []string `json:"acceptance"`
+	ContextHandle string   `json:"context_handle,omitempty"`
+}
+
+func marshalWorkerContract(query, id, purpose string, handles []string) string {
+	contract := workerContract{
+		Schema:     "wuji-worker-contract-v2",
+		Objective:  strings.TrimSpace(query),
+		Branch:     id,
+		Purpose:    purpose,
+		Boundaries: []string{"Aji is the only merger and writer", "do not infer missing parent conversation", "return evidence, not a completion claim"},
+		Acceptance: []string{"complete only the named branch", "cite the supplied context handle when used", "report model and token telemetry"},
+	}
+	if len(handles) > 0 {
+		contract.ContextHandle = handles[0]
+	}
+	encoded, _ := json.Marshal(contract)
+	return string(encoded)
+}
+
+func promptOrder(mode string) []string {
+	if mode == "shared-content-addressed-handle" {
+		return []string{"stable_capability_prefix", "context_payload", "task_contract"}
+	}
+	return []string{"stable_capability_prefix", "task_contract"}
+}
+
 func isBroadSearch(query string) bool {
 	return containsAny(query, "全网", "搜索", "检索", "调研", "research", "search the web", "github上看看")
+}
+
+func requiresParentContext(query string) bool {
+	return containsAny(query,
+		"preceding", "previous conversation", "above context", "earlier context", "parent transcript", "chat history",
+		"前文", "上文", "之前的对话", "前面的记录", "聊天记录", "会议原文", "刚才的内容",
+	)
 }
 
 func explicitOfficers(query string) []string {
