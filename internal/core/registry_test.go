@@ -49,6 +49,14 @@ func TestValidateManifestRejectsProviderAmbiguity(t *testing.T) {
 	}
 }
 
+func TestValidateManifestRejectsUnknownProviderFallback(t *testing.T) {
+	item := validManifest("provider-fallback", "callable")
+	item.Providers = []Provider{{ID: "one", Default: true, Fallback: "missing"}, {ID: "two", Triggers: []string{"two"}, Fallback: "one"}}
+	if err := ValidateManifest(item); err == nil {
+		t.Fatal("unknown provider fallback was accepted")
+	}
+}
+
 func TestValidateManifestRejectsDuplicateSourceIDs(t *testing.T) {
 	item := validManifest("sources", "callable")
 	item.Sources = []Source{
@@ -112,5 +120,39 @@ func TestValidateManifestRejectsSmokeBehaviorClaim(t *testing.T) {
 	item.Probe.Kind = "smoke"
 	if err := ValidateManifest(item); err == nil {
 		t.Fatal("smoke probe was accepted as behavior-verified evidence")
+	}
+}
+
+func TestValidateManifestRejectsBehaviorClaimWithoutEvidenceContract(t *testing.T) {
+	item := validBehaviorManifest("missing-evidence-contract", "pass")
+	item.Probe.RequiredEvidence = nil
+	item.Probe.ComparisonEvidence = ""
+	if err := ValidateManifest(item); err == nil {
+		t.Fatal("behavior claim without an evidence contract was accepted")
+	}
+}
+
+func TestValidateManifestRejectsCallableWithoutProbe(t *testing.T) {
+	item := validManifest("unprobed-callable", "callable")
+	item.Probe = nil
+	if err := ValidateManifest(item); err == nil {
+		t.Fatal("callable manifest without an executable probe was accepted into the registry")
+	}
+}
+
+func TestValidateManifestRejectsUnderclaimedBehaviorProbeWithoutEvidence(t *testing.T) {
+	item := validManifest("underclaimed-behavior", "callable")
+	item.Probe = &Probe{Command: "test", Kind: "behavior", Fixture: "fixture-v1"}
+	if err := ValidateManifest(item); err == nil {
+		t.Fatal("behavior probe without an evidence contract was accepted for a callable manifest")
+	}
+}
+
+func TestValidateManifestRejectsUnsafePromotionReceipt(t *testing.T) {
+	item := validBehaviorManifest("unsafe-promotion", "success")
+	item.Status = "primary"
+	item.PromotionReceipt = "../forged.json"
+	if err := ValidateManifest(item); err == nil {
+		t.Fatal("unsafe promotion receipt path was accepted")
 	}
 }

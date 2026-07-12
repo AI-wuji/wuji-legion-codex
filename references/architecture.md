@@ -26,15 +26,16 @@ The Evolution Commander is capability governance, not a content persona. It must
 
 ## Context
 
-The default path uses a small stable prefix plus task-local retrieval. `context-select` emits ranked excerpts within a hard byte budget. RTK is the preferred optional command-output filter. Codebase Memory MCP is a read-only cold index for large repositories. Context Mode is useful as a tool-output sandbox but remains optional because its license and host hooks make it unsuitable as copied core code. Heavy temporal GraphRAG remains off the hot path. Web scouting uses GPT/Luna, never Agnes.
+The default path uses a small stable prefix plus task-local retrieval. `context-select` emits ranked excerpts and a content-addressed artifact within a hard byte budget. The artifact binds the normalized query fingerprint and excerpt digest; loading it independently verifies the actual byte count, workspace boundary, excerpt hashes, and current source-file hashes. A stale artifact or an artifact selected for a different task cannot unlock code delegation. RTK is the preferred optional command-output filter. Codebase Memory MCP is a read-only cold index for large repositories. Context Mode is useful as a tool-output sandbox but remains optional because its license and host hooks make it unsuitable as copied core code. Heavy temporal GraphRAG remains off the hot path. Web scouting uses GPT/Luna, never Agnes.
 
 ## Model Policy
 
 - Aji planning, architecture, merge, and high-risk judgment: `gpt-5.6-sol`, highest available reasoning.
-- Bounded implementation and verification workers: `gpt-5.6-terra` whenever the route emits those independent worker branches.
+- A bounded independent implementation worker may use `gpt-5.6-terra`; verification that depends on the implementation remains sequential on Aji.
 - Broad web scouting uses the default GPT route for the final analysis, while independent source branches use `gpt-5.6-luna`.
 - Other mechanical extraction uses `gpt-5.6-luna` when the route emits a compact extraction branch and no project context replay is required.
 - `workers[].model` is the executable model id. `model_class` is metadata only; the host must not silently run a worker on the Aji model when a cheaper model is selected.
 - If a requested worker model is unavailable, retry using its ordered `fallback_models`; retain the effective model in execution evidence. Aji remains the sole merger and write authority.
+- A worker branch is not complete until the host returns `requested_model`, ordered `attempts`, `effective_model`, `result_handle`, `context_handle_ids`, `context_bytes_sent`, `task_contract_bytes`, and `delegation_gate_reason`; route metadata alone cannot prove that a cheaper model or fallback actually ran.
 
-Model switching is never used merely to save tokens when it would require replaying project context. Each worker receives a compact task handoff instead of the parent transcript.
+Sol, Terra, and Luna are treated as separate cache domains; cross-model prompt-cache hits are never assumed. The router measures the task contract and context assigned to every worker. It keeps execution on Aji when the contract exceeds 2048 bytes, shared context exceeds 4096 bytes per worker, total replay exceeds 8192 bytes, parent-context affinity is required, or the verified artifact is absent/mismatched. Model switching is never used merely to save tokens when replay cost can erase the model-price advantage.

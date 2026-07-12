@@ -8,6 +8,20 @@ function Get-LockedSourcePath([string]$Id) {
   if (-not (Test-Path -LiteralPath $path -PathType Container)) { throw "Locked source is missing: $Id ($path)" }
   return $path
 }
+function Add-ProbeArtifact([string]$Id, [string]$Source, [string]$Name) {
+  if (-not (Test-Path -LiteralPath $Source -PathType Leaf) -or (Get-Item -LiteralPath $Source).Length -lt 1) {
+    throw "Probe evidence is missing or empty: $Id ($Source)"
+  }
+  $target = Join-Path $env:WUJI_PROBE_EVIDENCE_DIR $Name
+  if ([IO.Path]::GetFullPath($Source) -ne [IO.Path]::GetFullPath($target)) {
+    Copy-Item -LiteralPath $Source -Destination $target -Force
+  }
+  [pscustomobject]@{
+    id = $Id
+    path = $Name
+    sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $target).Hash.ToLowerInvariant()
+  }
+}
 $skillRoot = Join-Path $env:USERPROFILE '.codex\plugins\cache\openai-primary-runtime\presentations'
 $version = Get-ChildItem -LiteralPath $skillRoot -Directory | Sort-Object -Property @{ Expression = {
   try { [version]$_.Name } catch { [version]'0.0' }
@@ -22,6 +36,10 @@ $previousHome = $env:HOME
 $env:HOME = $env:USERPROFILE
 $nodeModules = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\node\node_modules'
 $python = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+$evidenceDir = $env:WUJI_PROBE_EVIDENCE_DIR
+if (-not $evidenceDir -or -not (Test-Path -LiteralPath $evidenceDir -PathType Container)) {
+  throw 'WUJI_PROBE_EVIDENCE_DIR is required for a behavior probe'
+}
 
 $scratch = Join-Path $env:TEMP ('wuji-2-ppt-probe-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $scratch | Out-Null
@@ -145,6 +163,37 @@ try {
   $baoyuScripts = @(Get-ChildItem (Join-Path $baoyuDeck 'scripts') -Filter '*.ts').Count
   if ($baoyuStyles -lt 15 -or $baoyuScripts -lt 2) { throw "Baoyu slide-deck incomplete styles=$baoyuStyles scripts=$baoyuScripts" }
   Write-Output "baoyu-slide-deck-retained styles=$baoyuStyles scripts=$baoyuScripts"
+
+  $assertionsPath = Join-Path $evidenceDir 'presentation-assertions.json'
+  $assertions = [ordered]@{
+    fixture = 'unified-presentation-artifact-v1'
+    catalog_web_deck = [int]$catalog.counts.web_deck
+    catalog_editable_pptx = [int]$catalog.counts.editable_pptx
+    pptx_slides = 2
+    pptx_editable_shapes = [int]$shapeCount
+    html_themes = $themeCount
+    html_templates = $templateCount
+    html_effects = $fxCount
+    slidev_rendered = $true
+    stage_fluid_rendered = $true
+    humanize_qa = $true
+  }
+  [IO.File]::WriteAllText($assertionsPath, ($assertions | ConvertTo-Json -Compress), [Text.UTF8Encoding]::new($false))
+  $probeEvidence = @(
+    (Add-ProbeArtifact 'assertions' $assertionsPath 'presentation-assertions.json')
+    (Add-ProbeArtifact 'pptx' $pptx 'behavior-probe.pptx')
+    (Add-ProbeArtifact 'html-render' $htmlShot 'html-ppt.png')
+    (Add-ProbeArtifact 'slidev-render' $slidevShot 'slidev.png')
+    (Add-ProbeArtifact 'fluid-render' $fluidShot 'fluid.png')
+    (Add-ProbeArtifact 'humanize-qa' (Join-Path $humanizeOut 'outputs\qa\qa_report.md') 'humanize-qa.md')
+  )
+  $probeReceipt = [ordered]@{
+    wuji_probe = 'behavior'
+    fixture = 'unified-presentation-artifact-v1'
+    passed = $true
+    evidence = $probeEvidence
+    signature = 'unified-presentation-contract-v1'
+  } | ConvertTo-Json -Compress -Depth 5
   $env:NODE_PATH = $previousNodePath
   $env:CHROME_PATH = $previousChromePath
 } finally {
@@ -154,3 +203,4 @@ try {
   if (Get-Variable previousChromePath -ErrorAction SilentlyContinue) { $env:CHROME_PATH = $previousChromePath }
   if (Get-Variable previousPycache -ErrorAction SilentlyContinue) { $env:PYTHONPYCACHEPREFIX = $previousPycache }
 }
+Write-Output $probeReceipt

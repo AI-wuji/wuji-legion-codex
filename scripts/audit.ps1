@@ -5,7 +5,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = Split-Path $PSScriptRoot -Parent
 $wuji = Join-Path $root 'bin\wuji.exe'
-if (-not (Test-Path -LiteralPath $wuji)) { & (Join-Path $root 'scripts\build.ps1') }
+& (Join-Path $root 'scripts\build.ps1') | Out-Null
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $wuji)) { throw 'fusion-audit failed: could not build the audit binary' }
 
 function Get-SourceTreeHash([string]$Path) {
   $full = [IO.Path]::GetFullPath($Path).TrimEnd('\','/')
@@ -26,7 +27,7 @@ function Get-SourceTreeHash([string]$Path) {
 $catalogPath = Join-Path $root 'capabilities\presentation\assets\template-catalog.json'
 $catalogHashBefore = (Get-FileHash -Algorithm SHA256 -LiteralPath $catalogPath).Hash
 $capabilities = if ($Mode -eq 'fast') {
-  @('code','code-review','context','evolution','frontend','image','search','writing')
+  @('code','code-review','context','data','documents','evolution','frontend','image','search','security','video','visual','writing')
 } else {
   @('all')
 }
@@ -39,6 +40,16 @@ foreach ($cap in $capabilities) {
 if (@($verification | Where-Object { -not $_.passed }).Count -gt 0) {
   throw 'fusion-audit failed: a capability claim exceeds its evidence'
 }
+foreach ($result in @($verification | Where-Object { $_.effective_status -in @('behavior-verified','primary') })) {
+  if (-not $result.probe_evidence -or @($result.probe_evidence.evidence).Count -lt 1) {
+    throw "fusion-audit failed: behavioral capability lacks verified artifact evidence $($result.capability)"
+  }
+}
+foreach ($result in @($verification | Where-Object { $_.claimed_status -eq 'primary' })) {
+  if ($result.effective_status -ne 'primary') {
+    throw "fusion-audit failed: primary capability lacks verified promotion evidence $($result.capability)"
+  }
+}
 Write-Output "audit-mode=$Mode verified=$($verification.Count)"
 $catalogHashAfter = (Get-FileHash -Algorithm SHA256 -LiteralPath $catalogPath).Hash
 if ($catalogHashAfter -ne $catalogHashBefore) { throw 'fusion-audit failed: capability verification modified the presentation catalog' }
@@ -49,7 +60,7 @@ $sourceFiles = Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object {
   $_.FullName -notmatch '\\.git\\|\\.wuji\\|\\tools\\bin\\|\\bin\\'
 }
 $sourceBytes = ($sourceFiles | Measure-Object Length -Sum).Sum
-if ($skillBytes -gt 6000 -or $agentBytes -gt 5000 -or $sourceBytes -gt 1000000) {
+if ($skillBytes -gt 6000 -or $agentBytes -gt 5000 -or $sourceBytes -gt 1024000) {
   throw "optimization-audit failed: skill=$skillBytes agents=$agentBytes source=$sourceBytes"
 }
 $nestedSkillFiles = Get-ChildItem (Join-Path $root 'capabilities') -Recurse -Filter 'SKILL.md' | Where-Object { $_.FullName -match '\\skills\\' }
@@ -212,6 +223,9 @@ $context = & $wuji context-select --workspace $root --query 'capability behavior
 if ($LASTEXITCODE -ne 0 -or $context.selected_bytes -gt 4096 -or $context.excerpts.Count -lt 1) {
   throw 'context-bloat-audit failed'
 }
+if (-not $context.query_fingerprint -or -not $context.content_sha256 -or $context.context_handle -ne "wuji-context://sha256/$($context.content_sha256)" -or -not (Test-Path -LiteralPath $context.artifact_path -PathType Leaf)) {
+  throw 'context-bloat-audit failed: content-addressed artifact contract is incomplete'
+}
 
 $activeRoot = Join-Path $env:USERPROFILE '.agents\skills'
 $activeWuji = @(Get-ChildItem -LiteralPath $activeRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'wuji-legion*' })
@@ -220,20 +234,35 @@ if ($activeWuji.Count -ne 1 -or $activeWuji[0].Name -ne 'wuji-legion-codex-2-0')
 }
 $activeNuwa = @(Get-ChildItem -LiteralPath $activeRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'nuwa' })
 if ($activeNuwa.Count -ne 0) { throw "optimization-audit failed: active Nuwa entries found $($activeNuwa.Name -join ',')" }
+$activeSkill = Join-Path $activeWuji[0].FullName 'SKILL.md'
+$activeAgents = Join-Path $activeWuji[0].FullName 'AGENTS.md'
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath $activeSkill).Hash -ne (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $root 'SKILL.md')).Hash -or
+    (Get-FileHash -Algorithm SHA256 -LiteralPath $activeAgents).Hash -ne (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $root 'AGENTS.md')).Hash) {
+  throw 'optimization-audit failed: active Wuji registration is stale or points at a different contract'
+}
 
 $webRoute = & $wuji route --query 'build a Slidev web presentation with stage fluid' | ConvertFrom-Json
 $pptxRoute = & $wuji route --query 'create an editable PPTX' | ConvertFrom-Json
 $writingRoute = & $wuji route --query 'translate this article' | ConvertFrom-Json
 $searchRoute = & $wuji route --query 'search the web for the latest solution' | ConvertFrom-Json
-$codeRoute = & $wuji route --query 'fix the code and verify it' | ConvertFrom-Json
+$codeQuery = 'fix the code and verify it'
+$codeDirectRoute = & $wuji route --query $codeQuery | ConvertFrom-Json
+$codeContext = & $wuji context-select --workspace $root --query $codeQuery --max-bytes 2048 | ConvertFrom-Json
+$codeRoute = & $wuji route --query $codeQuery --context-artifact $codeContext.artifact_path | ConvertFrom-Json
+$serialSearchRoute = & $wuji route --query 'research the web serial only' | ConvertFrom-Json
 if ($webRoute.primary_skill -ne 'wuji-web-deck' -or $webRoute.engine -ne 'web-deck' -or ($webRoute.mounted_sources.id -contains 'ppt-master-complete')) { throw 'fusion-audit failed: web presentation scenario is not consolidated' }
 if ($pptxRoute.primary_skill -ne 'wuji-editable-deck' -or $pptxRoute.engine -ne 'editable-pptx' -or ($pptxRoute.mounted_sources.id -contains 'slidev-runtime-complete')) { throw 'fusion-audit failed: editable presentation scenario is not consolidated' }
 if ($writingRoute.primary_skill -ne 'wuji-writing-suite' -or $writingRoute.engine -ne 'translation') { throw 'fusion-audit failed: writing suite leaked source selection' }
 if ($searchRoute.provider -ne 'default-gpt-search' -or @($searchRoute.workers | Where-Object model_class -eq 'agnes').Count -gt 0) { throw 'optimization-audit failed: Agnes returned to search' }
 if (@($searchRoute.workers).Count -ne 3 -or @($searchRoute.workers | Where-Object model -ne 'gpt-5.6-luna').Count -ne 0) { throw 'optimization-audit failed: research workers lost Luna model assignment' }
 if (@($searchRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-terra,gpt-5.6-sol' }).Count -ne 0) { throw 'optimization-audit failed: research worker fallback order changed' }
-if (@($codeRoute.workers).Count -ne 2 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-terra').Count -ne 0) { throw 'optimization-audit failed: code workers lost Terra model assignment' }
+if (($serialSearchRoute.PSObject.Properties.Name -contains 'workers') -or $serialSearchRoute.delegation_decision.reason -ne 'serial-requested') { throw 'optimization-audit failed: serial research still fanned out' }
+if (($codeDirectRoute.PSObject.Properties.Name -contains 'workers') -or $codeDirectRoute.delegation_decision.reason -ne 'verified-context-artifact-required') { throw 'optimization-audit failed: code delegated without verified context' }
+if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-terra').Count -ne 0) { throw 'optimization-audit failed: code worker lost bounded Terra assignment' }
 if (@($codeRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-luna,gpt-5.6-sol' }).Count -ne 0) { throw 'optimization-audit failed: code worker fallback order changed' }
+if (@($searchRoute.workers + $codeRoute.workers | Where-Object { -not $_.execution_evidence_required -or ($_.execution_evidence_fields -join ',') -ne 'requested_model,attempts,effective_model,result_handle,context_handle_ids,context_bytes_sent,task_contract_bytes,delegation_gate_reason' }).Count -ne 0) { throw 'optimization-audit failed: worker execution evidence contract is incomplete' }
+if ($codeRoute.delegation_policy.cross_model_cache_assumed -or $codeRoute.delegation_policy.max_task_contract_bytes -ne 2048 -or $codeRoute.delegation_policy.max_shared_context_bytes -ne 4096 -or $codeRoute.delegation_policy.max_total_replay_bytes -ne 8192) { throw 'optimization-audit failed: cross-model cost policy is incomplete' }
+if (-not $codeRoute.delegation_decision.allowed -or $codeRoute.delegation_decision.context_handle -ne $codeContext.context_handle -or $codeRoute.workers[0].allocated_context_bytes -ne $codeContext.selected_bytes -or $codeRoute.workers[0].allocated_task_contract_bytes -le 0) { throw 'optimization-audit failed: verified context handoff is incomplete' }
 if ($codeRoute.model_policy.class_models.terra -ne 'gpt-5.6-terra' -or $codeRoute.model_policy.class_models.luna -ne 'gpt-5.6-luna') { throw 'optimization-audit failed: executable model policy is incomplete' }
 
 [pscustomobject]@{

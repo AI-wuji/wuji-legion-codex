@@ -35,6 +35,16 @@ func ValidateManifest(item Manifest) error {
 	if !lifecycleStatuses[item.Status] {
 		return fmt.Errorf("invalid lifecycle status %q", item.Status)
 	}
+	if item.Status == "primary" {
+		if strings.TrimSpace(item.PromotionReceipt) == "" {
+			return fmt.Errorf("primary capability requires a promotion_receipt")
+		}
+		if !safeRelativePath(item.PromotionReceipt) {
+			return fmt.Errorf("promotion_receipt must stay relative to the capability directory")
+		}
+	} else if strings.TrimSpace(item.PromotionReceipt) != "" {
+		return fmt.Errorf("promotion_receipt is valid only for primary capabilities")
+	}
 	if strings.TrimSpace(item.Description) == "" {
 		return fmt.Errorf("description is required")
 	}
@@ -49,6 +59,9 @@ func ValidateManifest(item Manifest) error {
 	}
 	if rank(item.Status) >= rank("callable") && !item.HostCallable && !item.DirectMount {
 		return fmt.Errorf("%s capability requires host_callable or direct_mount", item.Status)
+	}
+	if rank(item.Status) >= rank("callable") && item.Probe == nil {
+		return fmt.Errorf("%s capability requires an executable probe", item.Status)
 	}
 	if item.DirectMount && len(item.Sources) == 0 {
 		return fmt.Errorf("direct_mount requires at least one source")
@@ -81,21 +94,39 @@ func ValidateManifest(item Manifest) error {
 			return fmt.Errorf("probe kind %q is invalid", item.Probe.Kind)
 		}
 	}
-	if rank(item.Status) >= rank("behavior-verified") {
-		if item.Probe == nil {
-			return fmt.Errorf("%s capability requires a behavior probe", item.Status)
-		}
+	probeKind := ""
+	if item.Probe != nil {
+		probeKind = strings.ToLower(strings.TrimSpace(item.Probe.Kind))
+	}
+	if rank(item.Status) >= rank("behavior-verified") && probeKind != "behavior" {
+		return fmt.Errorf("%s capability requires probe kind behavior", item.Status)
+	}
+	if probeKind == "behavior" {
 		if strings.TrimSpace(item.Probe.Fixture) == "" {
-			return fmt.Errorf("%s capability probe requires a fixture id", item.Status)
+			return fmt.Errorf("behavior probe requires a fixture id")
 		}
 		if !componentIDPattern.MatchString(item.Probe.Fixture) {
 			return fmt.Errorf("probe fixture id %q is invalid", item.Probe.Fixture)
 		}
-		if strings.ToLower(strings.TrimSpace(item.Probe.Kind)) != "behavior" {
-			return fmt.Errorf("%s capability requires probe kind behavior", item.Status)
+		if err := validateStringList("probe required_evidence", item.Probe.RequiredEvidence, true); err != nil {
+			return err
+		}
+		evidenceIDs := map[string]bool{}
+		for _, id := range item.Probe.RequiredEvidence {
+			if err := validateComponentID("probe evidence", id, evidenceIDs); err != nil {
+				return err
+			}
+		}
+		if !evidenceIDs[item.Probe.ComparisonEvidence] {
+			return fmt.Errorf("probe comparison_evidence must name a required evidence id")
 		}
 	}
 	return nil
+}
+
+func safeRelativePath(value string) bool {
+	clean := filepath.Clean(filepath.FromSlash(strings.TrimSpace(value)))
+	return clean != "." && !filepath.IsAbs(clean) && filepath.VolumeName(clean) == "" && clean != ".." && !strings.HasPrefix(clean, ".."+string(filepath.Separator))
 }
 
 func validateSources(sources []Source, engines []Engine) error {
@@ -157,6 +188,17 @@ func validateProviders(providers []Provider) error {
 		}
 		if err := validateStringList("provider "+provider.ID+" triggers", provider.Triggers, false); err != nil {
 			return err
+		}
+	}
+	for _, provider := range providers {
+		if strings.TrimSpace(provider.Fallback) == "" {
+			continue
+		}
+		if !ids[provider.Fallback] {
+			return fmt.Errorf("provider %q references unknown fallback %q", provider.ID, provider.Fallback)
+		}
+		if provider.Fallback == provider.ID {
+			return fmt.Errorf("provider %q cannot fall back to itself", provider.ID)
 		}
 	}
 	if defaults != 1 {

@@ -2,6 +2,9 @@ package core
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,10 +15,12 @@ import (
 )
 
 type scoredFile struct {
-	path  string
-	score int
-	lines []string
-	hits  []int
+	path         string
+	score        int
+	lines        []string
+	hits         []int
+	sourceSHA256 string
+	pathHit      bool
 }
 
 func SelectContext(workspace, query string, budget int) (ContextResult, error) {
@@ -29,6 +34,10 @@ func SelectContext(workspace, query string, budget int) (ContextResult, error) {
 	if err != nil {
 		return ContextResult{}, err
 	}
+	if resolved, resolveErr := filepath.EvalSymlinks(workspace); resolveErr == nil {
+		workspace = resolved
+	}
+	workspace = filepath.Clean(workspace)
 	terms := queryTerms(query)
 	if len(terms) == 0 {
 		return ContextResult{}, fmt.Errorf("query contains no searchable terms")
@@ -72,8 +81,8 @@ func SelectContext(workspace, query string, budget int) (ContextResult, error) {
 		return files[i].score > files[j].score
 	})
 	result := ContextResult{
-		Workspace: workspace, Query: query, BudgetBytes: budget, ScannedFiles: scanned,
-		Policy: []string{"rank before read", "emit matched ranges only", "hard byte budget", "keep raw logs out of context"},
+		Workspace: workspace, Query: query, QueryFingerprint: queryFingerprint(terms), BudgetBytes: budget, ScannedFiles: scanned,
+		Policy: []string{"rank before read", "emit matched ranges only", "hard byte budget", "content-addressed handoff", "keep raw logs out of context"},
 	}
 	for _, file := range files {
 		remaining := budget - result.SelectedBytes
@@ -92,6 +101,14 @@ func SelectContext(workspace, query string, budget int) (ContextResult, error) {
 			break
 		}
 	}
+	if len(result.Excerpts) == 0 {
+		return ContextResult{}, fmt.Errorf("no matching context excerpts")
+	}
+	result.ContentSHA256, err = contextContentHash(result.QueryFingerprint, result.Excerpts)
+	if err != nil {
+		return ContextResult{}, err
+	}
+	result.ContextHandle = contextHandle(result.ContentSHA256)
 	return result, nil
 }
 
@@ -102,14 +119,16 @@ func scoreFile(root, path string, terms []string) (scoredFile, error) {
 	for _, term := range terms {
 		if strings.Contains(pathLower, term) {
 			item.score += 20
+			item.pathHit = true
 		}
 	}
-	file, err := os.Open(path)
+	content, err := os.ReadFile(path)
 	if err != nil {
 		return item, err
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+	sourceHash := sha256.Sum256(content)
+	item.sourceSHA256 = hex.EncodeToString(sourceHash[:])
+	scanner := bufio.NewScanner(bytes.NewReader(content))
 	buffer := make([]byte, 64*1024)
 	scanner.Buffer(buffer, 512*1024)
 	lineNo := 0
@@ -131,6 +150,9 @@ func scoreFile(root, path string, terms []string) (scoredFile, error) {
 	}
 	if err := scanner.Err(); err != nil {
 		return item, fmt.Errorf("scan %s: %w", item.path, err)
+	}
+	if len(item.hits) == 0 && item.pathHit && len(item.lines) > 0 {
+		item.hits = []int{1}
 	}
 	return item, nil
 }
@@ -175,7 +197,12 @@ func makeExcerpt(file scoredFile, maxTextBytes int) ContextExcerpt {
 	if start > 0 {
 		ranges = append(ranges, lineRange(start, last))
 	}
-	return ContextExcerpt{Path: file.path, Score: file.score, LineRanges: ranges, Text: b.String()}
+	text := b.String()
+	contentHash := sha256.Sum256([]byte(text))
+	return ContextExcerpt{
+		Path: file.path, Score: file.score, LineRanges: ranges, Text: text,
+		SourceSHA256: file.sourceSHA256, ContentSHA256: hex.EncodeToString(contentHash[:]),
+	}
 }
 
 func lineRange(start, end int) string {

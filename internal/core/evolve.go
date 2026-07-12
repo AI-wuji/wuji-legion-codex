@@ -1,6 +1,7 @@
 package core
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -50,10 +51,18 @@ func EvaluateCandidate(root, candidatePath string, apply bool) (EvolutionResult,
 			result.RequiredActions = []string{"declare the same representative fixture on current and candidate probes", "compare only equivalent behavior evidence"}
 			return result, nil
 		}
-		if rank(proof.Effective) < rank(existingProof.Effective) {
-			result.Decision = "reject"
-			result.Comparison = fmt.Sprintf("fixture %s: candidate %s is below existing %s", candidate.Probe.Fixture, proof.Effective, existingProof.Effective)
-			result.RequiredActions = []string{"retain the current capability", "improve the candidate without regressing required behavior"}
+		if existingProof.Probe == nil || proof.Probe == nil || existingProof.Probe.Signature != proof.Probe.Signature {
+			result.Decision = "hold"
+			result.Comparison = fmt.Sprintf("fixture %s produced different behavior signatures", candidate.Probe.Fixture)
+			result.RequiredActions = []string{"make candidate and current artifact behavior signatures equivalent", "compare a deliberately versioned fixture before replacement"}
+			return result, nil
+		}
+		existingComparison := findProbeArtifact(existingProof.Probe.Evidence, existing.Probe.ComparisonEvidence)
+		candidateComparison := findProbeArtifact(proof.Probe.Evidence, candidate.Probe.ComparisonEvidence)
+		if existing.Probe.ComparisonEvidence != candidate.Probe.ComparisonEvidence || existingComparison == nil || candidateComparison == nil || existingComparison.SHA256 != candidateComparison.SHA256 {
+			result.Decision = "hold"
+			result.Comparison = fmt.Sprintf("fixture %s produced different verified assertion evidence", candidate.Probe.Fixture)
+			result.RequiredActions = []string{"inspect the verified assertion reports", "accept a changed fixture contract explicitly before replacement"}
 			return result, nil
 		}
 		result.Decision = "replace"
@@ -70,16 +79,37 @@ func EvaluateCandidate(root, candidatePath string, apply bool) (EvolutionResult,
 		return result, err
 	}
 	target := filepath.Join(targetDir, "manifest.json")
+	installed := candidate
 	if overlap {
-		archive := filepath.Join(root, "retired", candidate.ID, time.Now().UTC().Format("20060102T150405.000000000Z"), "manifest.json")
+		archiveDir := filepath.Join(root, "retired", candidate.ID, time.Now().UTC().Format("20060102T150405.000000000Z"))
+		archive := filepath.Join(archiveDir, "manifest.json")
 		if err := os.MkdirAll(filepath.Dir(archive), 0o755); err != nil {
 			return result, err
 		}
 		if err := copyFile(target, archive); err != nil {
 			return result, err
 		}
+		if existing.PromotionReceipt != "" {
+			existingReceipt := filepath.Join(root, "capabilities", existing.ID, filepath.FromSlash(existing.PromotionReceipt))
+			if err := copyFile(existingReceipt, filepath.Join(archiveDir, "promotion-receipt.json")); err != nil {
+				return result, err
+			}
+		}
+		archiveRelative, err := filepath.Rel(root, archive)
+		if err != nil {
+			return result, err
+		}
+		receiptRelative, err := persistPromotionReceipt(root, existing, existingProofFrom(result), candidate, proof, filepath.ToSlash(archiveRelative))
+		if err != nil {
+			return result, err
+		}
+		installed.Status = "primary"
+		installed.PromotionReceipt = receiptRelative
+	} else {
+		installed.Status = "behavior-verified"
+		installed.PromotionReceipt = ""
 	}
-	pretty, err := json.MarshalIndent(candidate, "", "  ")
+	pretty, err := json.MarshalIndent(installed, "", "  ")
 	if err != nil {
 		return result, err
 	}
@@ -89,6 +119,81 @@ func EvaluateCandidate(root, candidatePath string, apply bool) (EvolutionResult,
 	}
 	result.Applied = true
 	return result, nil
+}
+
+func existingProofFrom(result EvolutionResult) VerifyResult {
+	if result.ExistingProof == nil {
+		return VerifyResult{}
+	}
+	return *result.ExistingProof
+}
+
+func persistPromotionReceipt(root string, baseline Manifest, baselineProof VerifyResult, candidate Manifest, candidateProof VerifyResult, baselineManifest string) (string, error) {
+	baselineSummary, err := promotionProof(baseline, baselineProof)
+	if err != nil {
+		return "", err
+	}
+	candidateSummary, err := promotionProof(candidate, candidateProof)
+	if err != nil {
+		return "", err
+	}
+	receipt := PromotionReceipt{
+		SchemaVersion:    1,
+		Capability:       candidate.ID,
+		Decision:         "replace",
+		Fixture:          candidate.Probe.Fixture,
+		BaselineManifest: baselineManifest,
+		Baseline:         baselineSummary,
+		Candidate:        candidateSummary,
+	}
+	data, err := json.MarshalIndent(receipt, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	data = append(data, '\n')
+	digest := fmt.Sprintf("%x", sha256.Sum256(data))
+	relative := filepath.ToSlash(filepath.Join("releases", digest+".json"))
+	target := filepath.Join(root, "capabilities", candidate.ID, filepath.FromSlash(relative))
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return "", err
+	}
+	if err := atomicWriteFile(target, data, 0o644); err != nil {
+		return "", err
+	}
+	return relative, nil
+}
+
+func promotionProof(manifest Manifest, proof VerifyResult) (PromotionProof, error) {
+	if manifest.Probe == nil || proof.Probe == nil || rank(proof.Effective) < rank("behavior-verified") {
+		return PromotionProof{}, fmt.Errorf("capability %s has no verified behavior proof", manifest.ID)
+	}
+	comparison := findProbeArtifact(proof.Probe.Evidence, manifest.Probe.ComparisonEvidence)
+	if comparison == nil {
+		return PromotionProof{}, fmt.Errorf("capability %s is missing comparison evidence %s", manifest.ID, manifest.Probe.ComparisonEvidence)
+	}
+	contractHash, err := manifestContractSHA256(manifest)
+	if err != nil {
+		return PromotionProof{}, err
+	}
+	return PromotionProof{
+		ContractSHA256:  contractHash,
+		EffectiveStatus: proof.Effective,
+		Signature:       proof.Probe.Signature,
+		ComparisonEvidence: PromotionArtifact{
+			ID:     comparison.ID,
+			SHA256: comparison.SHA256,
+			Size:   comparison.Size,
+		},
+	}, nil
+}
+
+func findProbeArtifact(items []ProbeArtifact, id string) *ProbeArtifact {
+	for index := range items {
+		if items[index].ID == id {
+			return &items[index]
+		}
+	}
+	return nil
 }
 
 func copyFile(source, target string) error {

@@ -14,6 +14,17 @@ var modelPolicies = map[string]struct {
 	"luna":  {model: "gpt-5.6-luna", fallbacks: []string{"gpt-5.6-terra", "gpt-5.6-sol"}},
 }
 
+var workerExecutionEvidenceFields = []string{
+	"requested_model", "attempts", "effective_model", "result_handle",
+	"context_handle_ids", "context_bytes_sent", "task_contract_bytes", "delegation_gate_reason",
+}
+
+const (
+	maxTaskContractBytes  = 2048
+	maxSharedContextBytes = 4096
+	maxTotalReplayBytes   = 8192
+)
+
 func modelSpec(modelClass string) (string, []string) {
 	if spec, ok := modelPolicies[strings.ToLower(strings.TrimSpace(modelClass))]; ok {
 		return spec.model, append([]string(nil), spec.fallbacks...)
@@ -32,11 +43,15 @@ func modelPolicy() ModelPolicy {
 		MainModel:      classes["sol"],
 		ClassModels:    classes,
 		FallbackModels: fallbacks,
-		Delegation:     "route-declared workers must be spawned with model and retried through fallback_models; main brain merges only",
+		Delegation:     "route-declared workers must be spawned with model, a bounded handoff, and fallback_models; main brain merges only",
 	}
 }
 
 func Route(query string, manifests []Manifest) RouteResult {
+	return RouteWithContext(query, manifests, DelegationContext{})
+}
+
+func RouteWithContext(query string, manifests []Manifest, context DelegationContext) RouteResult {
 	q := strings.ToLower(strings.TrimSpace(query))
 	policy := modelPolicy()
 	selected := Manifest{ID: "core", Status: "primary", PrimarySkill: "wuji-legion-codex-2-0"}
@@ -55,7 +70,7 @@ func Route(query string, manifests []Manifest) RouteResult {
 	mounted := mountSources(q, selected, engine)
 	secondary := secondaryCapabilities(q, selected.ID, manifests)
 	officers := explicitOfficers(q)
-	workers := workerPlan(q, selected, engine)
+	workers, delegation := workerPlan(q, selected, engine, context)
 	parallel := len(workers) > 1
 	provider, providerFallback := selectProvider(q, selected.Providers)
 	primarySkill := selected.PrimarySkill
@@ -66,10 +81,18 @@ func Route(query string, manifests []Manifest) RouteResult {
 		primarySkill = selected.Fallback
 	}
 	return RouteResult{
-		Version:                 "2.0",
-		Brain:                   "aji-general-staff",
-		MainModel:               policy.MainModel,
-		ModelPolicy:             policy,
+		Version:     "2.0",
+		Brain:       "aji-general-staff",
+		MainModel:   policy.MainModel,
+		ModelPolicy: policy,
+		DelegationPolicy: DelegationPolicy{
+			CrossModelCacheAssumed: false,
+			MaxTaskContractBytes:   maxTaskContractBytes,
+			MaxSharedContextBytes:  maxSharedContextBytes,
+			MaxTotalReplayBytes:    maxTotalReplayBytes,
+			OnGateFailure:          "stay on Aji direct route",
+		},
+		DelegationDecision:      delegation,
 		Reasoning:               "max",
 		WriteAuthority:          "aji-only",
 		Nuwa:                    false,
@@ -82,7 +105,7 @@ func Route(query string, manifests []Manifest) RouteResult {
 		ProviderFallback:        providerFallback,
 		SecondaryCapabilities:   secondary,
 		MountedSources:          mounted,
-		ExecutionLane:           "small-task-direct",
+		ExecutionLane:           executionLane(len(workers)),
 		Parallel:                parallel,
 		Workers:                 workers,
 		Officers:                officers,
@@ -92,8 +115,16 @@ func Route(query string, manifests []Manifest) RouteResult {
 			"selected capability behavior verified",
 			"task-local verification passes",
 			"do not claim fused unless capability_status is behavior-verified or primary",
+			"do not claim a worker branch completed without its execution evidence receipt",
 		},
 	}
+}
+
+func executionLane(workerCount int) string {
+	if workerCount > 0 {
+		return "bounded-delegation"
+	}
+	return "small-task-direct"
 }
 
 func scoreCapability(query string, item Manifest) int {
@@ -389,17 +420,36 @@ func selectProvider(query string, providers []Provider) (string, string) {
 	return selected.ID, selected.Fallback
 }
 
-func workerPlan(query string, capability Manifest, engine string) []WorkerTask {
+func workerPlan(query string, capability Manifest, engine string, context DelegationContext) ([]WorkerTask, DelegationDecision) {
+	taskContractBytes := len([]byte(strings.TrimSpace(query)))
+	decision := DelegationDecision{TaskContractBytes: taskContractBytes, SelectedContextBytes: context.SelectedBytes}
+	if containsAny(query, "串行", "sequential", "serial only") {
+		decision.Reason = "serial-requested"
+		return nil, decision
+	}
+	if taskContractBytes > maxTaskContractBytes {
+		decision.Reason = "task-contract-exceeds-budget"
+		return nil, decision
+	}
+	if context.ParentContextRequired {
+		decision.Reason = "parent-context-affinity-requires-Aji"
+		return nil, decision
+	}
+	if context.Handle != "" && context.QueryFingerprint != queryFingerprint(queryTerms(query)) {
+		decision.Reason = "context-query-fingerprint-mismatch"
+		return nil, decision
+	}
 	if capability.ID == "search" && engine == "web-research" && isBroadSearch(query) {
 		model, fallbacks := modelSpec("luna")
-		return []WorkerTask{
-			{ID: "official", Purpose: "official documentation and primary sources", ModelClass: "luna", Model: model, FallbackModels: append([]string(nil), fallbacks...), Inputs: []string{"query", "source boundary"}},
-			{ID: "github", Purpose: "repositories, releases, issues, and implementation evidence", ModelClass: "luna", Model: model, FallbackModels: append([]string(nil), fallbacks...), Inputs: []string{"query", "source boundary"}},
-			{ID: "community", Purpose: "independent reports and failure evidence", ModelClass: "luna", Model: model, FallbackModels: append([]string(nil), fallbacks...), Inputs: []string{"query", "source boundary"}},
+		decision.Allowed = true
+		decision.Reason = "task-contract-only-research"
+		workers := []WorkerTask{
+			newWorkerTask("official", "official documentation and primary sources", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, taskContractBytes),
+			newWorkerTask("github", "repositories, releases, issues, and implementation evidence", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, taskContractBytes),
+			newWorkerTask("community", "independent reports and failure evidence", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, taskContractBytes),
 		}
-	}
-	if containsAny(query, "串行", "sequential", "serial only") {
-		return nil
+		decision.EstimatedReplayBytes = estimatedReplayBytes(workers)
+		return workers, decision
 	}
 	forceParallel := containsAny(query, "并行", "parallel")
 	defaultFanout := map[string]bool{
@@ -409,27 +459,84 @@ func workerPlan(query string, capability Manifest, engine string) []WorkerTask {
 		"frontend":     true,
 	}
 	if !forceParallel && !defaultFanout[capability.ID] {
-		return nil
+		decision.Reason = "direct-route-by-default"
+		return nil, decision
+	}
+	if capability.ID == "code" {
+		if context.Handle == "" || context.ArtifactPath == "" || context.SelectedBytes <= 0 {
+			decision.Reason = "verified-context-artifact-required"
+			return nil, decision
+		}
+		if context.SelectedBytes > maxSharedContextBytes {
+			decision.Reason = "shared-context-exceeds-per-worker-budget"
+			return nil, decision
+		}
 	}
 	workers := []WorkerTask{}
 	for _, expert := range capability.Experts {
 		if expert.Independent {
 			model, fallbacks := modelSpec(expert.ModelClass)
-			workers = append(workers, WorkerTask{
-				ID:             expert.ID,
-				Purpose:        expert.Purpose,
-				ModelClass:     expert.ModelClass,
-				Model:          model,
-				FallbackModels: fallbacks,
-				Inputs:         []string{"task contract", "selected context handles"},
-			})
+			workers = append(workers, newWorkerTask(expert.ID, expert.Purpose, expert.ModelClass, model, fallbacks, []string{"task contract", "selected context handle"}, contextMode(context), context, "bounded-context-handoff", taskContractBytes))
 		}
 	}
-	if len(workers) < 2 {
-		return nil
+	if len(workers) == 0 {
+		decision.Reason = "no-independent-workers"
+		return nil, decision
 	}
+	decision.Allowed = true
+	decision.ContextHandle = context.Handle
+	decision.EstimatedReplayBytes = estimatedReplayBytes(workers)
+	if decision.EstimatedReplayBytes > maxTotalReplayBytes {
+		decision.Allowed = false
+		decision.Reason = "estimated-context-replay-exceeds-total-budget"
+		return nil, decision
+	}
+	decision.Reason = "bounded-context-handoff"
 	sort.SliceStable(workers, func(i, j int) bool { return workers[i].ID < workers[j].ID })
-	return workers
+	return workers, decision
+}
+
+func estimatedReplayBytes(workers []WorkerTask) int {
+	total := 0
+	for _, worker := range workers {
+		total += worker.AllocatedTaskContractBytes + worker.AllocatedContextBytes
+	}
+	return total
+}
+
+func contextMode(context DelegationContext) string {
+	if context.Handle != "" && context.ArtifactPath != "" {
+		return "shared-content-addressed-handle"
+	}
+	return "task-contract-only"
+}
+
+func newWorkerTask(id, purpose, modelClass, model string, fallbacks, inputs []string, mode string, context DelegationContext, reason string, taskContractBytes int) WorkerTask {
+	handles := []string{}
+	artifact := ""
+	allocated := 0
+	if mode == "shared-content-addressed-handle" {
+		handles = []string{context.Handle}
+		artifact = context.ArtifactPath
+		allocated = context.SelectedBytes
+	}
+	return WorkerTask{
+		ID:                         id,
+		Purpose:                    purpose,
+		ModelClass:                 modelClass,
+		Model:                      model,
+		FallbackModels:             append([]string(nil), fallbacks...),
+		Inputs:                     append([]string(nil), inputs...),
+		ContextMode:                mode,
+		ContextHandles:             handles,
+		ContextArtifact:            artifact,
+		AllocatedContextBytes:      allocated,
+		AllocatedTaskContractBytes: taskContractBytes,
+		MaxTaskContractBytes:       maxTaskContractBytes,
+		DelegationGateReason:       reason,
+		ExecutionEvidenceRequired:  true,
+		ExecutionEvidenceFields:    append([]string(nil), workerExecutionEvidenceFields...),
+	}
 }
 
 func isBroadSearch(query string) bool {

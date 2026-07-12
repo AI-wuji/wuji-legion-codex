@@ -3,19 +3,27 @@ package core
 import "testing"
 
 func TestRouteEmitsExecutableModelPolicy(t *testing.T) {
+	query := "code task parallel"
 	items := []Manifest{{
 		ID: "code", Triggers: []string{"code"}, Status: "callable", PrimarySkill: "native",
 		Experts: []Expert{
 			{ID: "implementation", Purpose: "implement", Independent: true, ModelClass: "terra"},
-			{ID: "verification", Purpose: "verify", Independent: true, ModelClass: "terra"},
+			{ID: "verification", Purpose: "verify", Independent: false, ModelClass: "terra"},
 		},
 	}}
-	got := Route("code task parallel", items)
+	context := DelegationContext{
+		Handle: "wuji-context://sha256/test", ArtifactPath: "test.json",
+		QueryFingerprint: queryFingerprint(queryTerms(query)), SelectedBytes: 512,
+	}
+	got := RouteWithContext(query, items, context)
 	if got.MainModel != "gpt-5.6-sol" || got.ModelPolicy.ClassModels["terra"] != "gpt-5.6-terra" {
 		t.Fatalf("main model policy is incomplete: %#v", got.ModelPolicy)
 	}
-	if len(got.Workers) != 2 || got.Workers[0].Model != "gpt-5.6-terra" || !equalStrings(got.Workers[0].FallbackModels, []string{"gpt-5.6-luna", "gpt-5.6-sol"}) {
+	if len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-terra" || !equalStrings(got.Workers[0].FallbackModels, []string{"gpt-5.6-luna", "gpt-5.6-sol"}) {
 		t.Fatalf("route did not emit an executable Terra policy: %#v", got.Workers)
+	}
+	if got.Workers[0].ContextMode != "shared-content-addressed-handle" || got.ExecutionLane != "bounded-delegation" {
+		t.Fatalf("Terra worker did not receive the bounded handoff: %#v", got)
 	}
 }
 

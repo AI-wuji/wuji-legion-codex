@@ -42,6 +42,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fs := newFlagSet("route", stderr)
 		query := fs.String("query", "", "user request")
 		rootFlag := fs.String("root", root, "Wuji 2.0 root")
+		contextArtifact := fs.String("context-artifact", "", "verified context artifact for bounded delegation")
+		parentContextRequired := fs.Bool("parent-context-required", false, "keep execution on Aji because parent context must be replayed")
 		if code := parseFlags(fs, args[1:], stderr); code >= 0 {
 			return code
 		}
@@ -52,13 +54,22 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if err != nil {
 			return reportError(stderr, 1, err)
 		}
-		output = core.Route(*query, items)
+		delegationContext := core.DelegationContext{ParentContextRequired: *parentContextRequired}
+		if strings.TrimSpace(*contextArtifact) != "" {
+			delegationContext, err = core.LoadContextArtifact(*contextArtifact)
+			if err != nil {
+				return reportError(stderr, 2, err)
+			}
+			delegationContext.ParentContextRequired = *parentContextRequired
+		}
+		output = core.RouteWithContext(*query, items, delegationContext)
 
 	case "context-select":
 		fs := newFlagSet("context-select", stderr)
 		workspace := fs.String("workspace", ".", "workspace to search")
 		query := fs.String("query", "", "retrieval query")
 		budget := fs.Int("max-bytes", 12288, "maximum emitted context bytes")
+		artifactDir := fs.String("artifact-dir", "", "content-addressed artifact directory (default: <workspace>/.wuji/context)")
 		if code := parseFlags(fs, args[1:], stderr); code >= 0 {
 			return code
 		}
@@ -66,6 +77,15 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if err != nil {
 			return reportError(stderr, 2, err)
 		}
+		targetDir := *artifactDir
+		if strings.TrimSpace(targetDir) == "" {
+			targetDir = filepath.Join(result.Workspace, ".wuji", "context")
+		}
+		artifactPath, err := core.WriteContextArtifact(result, targetDir)
+		if err != nil {
+			return reportError(stderr, 1, err)
+		}
+		result.ArtifactPath = artifactPath
 		output = result
 
 	case "verify":

@@ -20,7 +20,7 @@
     "做ppt",
     "做演示文稿"
   ],
-  "status": "primary",
+  "status": "behavior-verified",
   "primary_skill": "wuji-editable-deck",
   "direct_mount": true,
   "fallback": "default GPT route with the same artifact and render checks",
@@ -318,7 +318,16 @@
       "-File",
       "${ROOT}/scripts/verify-presentation.ps1"
     ],
-    "kind": "behavior"
+    "kind": "behavior",
+    "required_evidence": [
+      "assertions",
+      "pptx",
+      "html-render",
+      "slidev-render",
+      "fluid-render",
+      "humanize-qa"
+    ],
+    "comparison_evidence": "assertions"
   },
   "experts": [
     {

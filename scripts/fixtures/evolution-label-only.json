@@ -1,0 +1,11 @@
+{
+  "id": "evolution-smoke-candidate",
+  "description": "Negative fixture proving that labels cannot pass the evolution behavior gate.",
+  "triggers": [
+    "evolution smoke candidate"
+  ],
+  "status": "behavior-verified",
+  "primary_skill": "negative fixture",
+  "host_callable": true,
+  "fallback": "reject candidate"
+}

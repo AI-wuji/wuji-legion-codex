@@ -30,6 +30,9 @@ func TestSearchFansOutIndependentSources(t *testing.T) {
 		if worker.Writes {
 			t.Fatal("research workers must not own writes")
 		}
+		if !worker.ExecutionEvidenceRequired || len(worker.ExecutionEvidenceFields) != 8 {
+			t.Fatalf("worker can be reported complete without execution evidence: %#v", worker)
+		}
 	}
 }
 

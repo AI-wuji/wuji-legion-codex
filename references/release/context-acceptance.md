@@ -14,8 +14,9 @@ Reproduce with:
 
 ```powershell
 ./bin/wuji.exe context-select --workspace . --query "<query>" --max-bytes <budget>
+./bin/wuji.exe route --query "<query>" --context-artifact "<artifact_path>"
 ```
 
-Acceptance: every result remained within its hard byte budget, emitted ranked line ranges rather than whole files, and reported the policy `rank before read`, `hard byte budget`, and `keep raw logs out of context`. The full audit independently measured `context_selected_bytes=4039` for its 4096-byte fixture.
+Acceptance: every result remained within its hard byte budget, emitted ranked line ranges rather than whole files, and produced a `wuji-context://sha256/...` handle plus a verifiable artifact. Loading independently rejects a changed query fingerprint, falsified byte count, workspace escape, excerpt tampering, or changed source file. Code routing without the artifact remains on Aji; a matching artifact below 4096 bytes unlocks only the independent Terra implementation branch. Task contracts above 2048 bytes, total replay above 8192 bytes, and parent-context affinity also remain on Aji.
 
-Boundary: model choice is a routing policy (`gpt-5.6-sol` for Aji, Terra for bounded implementation/verification, Luna for mechanical extraction). This repository cannot prove provider-side model billing or token accounting.
+Boundary: model choice is a routing policy (`gpt-5.6-sol` for Aji, Terra for bounded independent implementation, Luna for bounded mechanical extraction). Sol, Terra, and Luna are treated as separate cache domains. This repository can prove handoff bytes and execution receipts, but cannot prove provider-side billing or cache accounting.

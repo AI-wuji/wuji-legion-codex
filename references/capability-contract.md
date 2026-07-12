@@ -20,6 +20,6 @@ Lifecycle:
 5. `behavior-verified`: representative fixture passes artifact checks.
 6. `primary`: verified winner against the prior route.
 
-Never promote directly from a prose summary. `behavior-verified` requires a probe command that exits successfully and leaves verifiable evidence.
+Never promote directly from a prose summary. `behavior-verified` requires a probe command that exits successfully, writes the declared evidence artifacts under `WUJI_PROBE_EVIDENCE_DIR`, and emits a structured receipt containing each artifact path and SHA-256. The verifier independently hashes those files; a self-attested label, signature, or exit code is not evidence. Replacement compares the manifest's declared assertion artifact hash on the same fixture. `primary` is written only by an applied replacement and must point to a content-addressed promotion receipt that binds the installed contract, live candidate evidence, and an archived baseline manifest.
 
 When multiple sources overlap, build one normalized catalog. Group duplicate template/style ids as variants, choose one preferred implementation, and retain provenance instead of copying every upstream tree into the runtime.

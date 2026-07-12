@@ -94,9 +94,86 @@ func TestEvolutionReplacesOnlyAfterSameFixtureComparison(t *testing.T) {
 	if installed.Description != "candidate" {
 		t.Fatalf("candidate was not installed: %#v", installed)
 	}
+	if installed.Status != "primary" || installed.PromotionReceipt == "" {
+		t.Fatalf("verified replacement was not promoted with evidence: %#v", installed)
+	}
+	verified := Verify(root, installed)
+	if !verified.Passed || verified.Effective != "primary" {
+		t.Fatalf("installed promotion receipt did not verify: %#v", verified)
+	}
+	receiptPath := filepath.Join(root, "capabilities", "shared", filepath.FromSlash(installed.PromotionReceipt))
+	if _, err := os.Stat(receiptPath); err != nil {
+		t.Fatalf("promotion receipt was not persisted: %v", err)
+	}
 	archives, err := filepath.Glob(filepath.Join(root, "retired", "shared", "*", "manifest.json"))
 	if err != nil || len(archives) != 1 {
 		t.Fatalf("existing manifest was not archived: %v %#v", err, archives)
+	}
+}
+
+func TestEvolutionAdmissionDoesNotSelfPromote(t *testing.T) {
+	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "capabilities", "base"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeManifest(t, filepath.Join(root, "capabilities", "base", "manifest.json"), validManifest("base", "known"))
+	candidate := validBehaviorManifest("new-pack", "success")
+	candidatePath := filepath.Join(root, "candidate.json")
+	writeManifest(t, candidatePath, candidate)
+
+	got, err := EvaluateCandidate(root, candidatePath, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Decision != "admit" || !got.Applied {
+		t.Fatalf("verified candidate was not admitted: %#v", got)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "capabilities", "new-pack", "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	installed, err := decodeManifest(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if installed.Status != "behavior-verified" || installed.PromotionReceipt != "" {
+		t.Fatalf("new admission self-promoted without a prior route: %#v", installed)
+	}
+}
+
+func TestVerifyRejectsTamperedPromotionReceipt(t *testing.T) {
+	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
+	root := t.TempDir()
+	target := filepath.Join(root, "capabilities", "shared", "manifest.json")
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeManifest(t, target, validBehaviorManifest("shared", "success"))
+	candidatePath := filepath.Join(root, "candidate.json")
+	writeManifest(t, candidatePath, validBehaviorManifest("shared", "success"))
+	if got, err := EvaluateCandidate(root, candidatePath, true); err != nil || !got.Applied {
+		t.Fatalf("replacement setup failed: %#v %v", got, err)
+	}
+	data, err := os.ReadFile(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	installed, err := decodeManifest(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	receiptPath := filepath.Join(root, "capabilities", "shared", filepath.FromSlash(installed.PromotionReceipt))
+	receipt, err := os.ReadFile(receiptPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(receiptPath, append(receipt, ' '), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := Verify(root, installed)
+	if got.Passed || got.Effective == "primary" {
+		t.Fatalf("tampered promotion receipt was accepted: %#v", got)
 	}
 }
 
@@ -111,6 +188,7 @@ func TestEvolutionHoldsMismatchedFixture(t *testing.T) {
 	writeManifest(t, target, existing)
 	candidate := validBehaviorManifest("shared", "success")
 	candidate.Probe.Fixture = "different-fixture"
+	candidate.Probe.Args[len(candidate.Probe.Args)-1] = candidate.Probe.Fixture
 	candidatePath := filepath.Join(root, "candidate.json")
 	writeManifest(t, candidatePath, candidate)
 
@@ -120,6 +198,48 @@ func TestEvolutionHoldsMismatchedFixture(t *testing.T) {
 	}
 	if got.Decision != "hold" || got.Applied {
 		t.Fatalf("mismatched fixture replaced current capability: %#v", got)
+	}
+}
+
+func TestEvolutionHoldsDifferentBehaviorSignature(t *testing.T) {
+	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
+	root := t.TempDir()
+	target := filepath.Join(root, "capabilities", "shared", "manifest.json")
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	existing := validBehaviorManifest("shared", "success")
+	writeManifest(t, target, existing)
+	candidate := validBehaviorManifest("shared", "different-signature")
+	candidatePath := filepath.Join(root, "candidate.json")
+	writeManifest(t, candidatePath, candidate)
+
+	got, err := EvaluateCandidate(root, candidatePath, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Decision != "hold" || got.Applied || got.ExistingProof == nil || got.CandidateProof.Probe == nil {
+		t.Fatalf("different behavior signature replaced current capability: %#v", got)
+	}
+}
+
+func TestEvolutionHoldsDifferentVerifiedEvidence(t *testing.T) {
+	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
+	root := t.TempDir()
+	target := filepath.Join(root, "capabilities", "shared", "manifest.json")
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeManifest(t, target, validBehaviorManifest("shared", "success"))
+	candidatePath := filepath.Join(root, "candidate.json")
+	writeManifest(t, candidatePath, validBehaviorManifest("shared", "different-evidence"))
+
+	got, err := EvaluateCandidate(root, candidatePath, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Decision != "hold" || got.Applied {
+		t.Fatalf("different verified assertion evidence replaced current capability: %#v", got)
 	}
 }
 

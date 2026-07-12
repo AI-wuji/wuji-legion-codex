@@ -55,9 +55,55 @@ if ($manifest.host_callable -and $Capability -in @('code','context','evolution')
     & (Join-Path $Root 'scripts\build.ps1') | Out-Null
   }
   if (-not (Test-Path -LiteralPath $wuji)) { throw "wuji binary missing for host-callable capability $Capability" }
+  if ($Capability -eq 'code') {
+    $codeQuery = 'fix the code and verify it'
+    $rawDirectRoute = (& $wuji route --query $codeQuery 2>&1) -join [Environment]::NewLine
+    if ($LASTEXITCODE -ne 0) { throw "wuji direct code route smoke failed: $rawDirectRoute" }
+    $directRoute = $rawDirectRoute | ConvertFrom-Json
+    if (($directRoute.PSObject.Properties.Name -contains 'workers') -or $directRoute.delegation_decision.reason -ne 'verified-context-artifact-required') {
+      throw 'code smoke delegated without a verified context artifact'
+    }
+    $rawContext = (& $wuji context-select --workspace $Root --query $codeQuery --max-bytes 2048 2>&1) -join [Environment]::NewLine
+    if ($LASTEXITCODE -ne 0) { throw "wuji code context smoke failed: $rawContext" }
+    $codeContext = $rawContext | ConvertFrom-Json
+    if (-not (Test-Path -LiteralPath $codeContext.artifact_path -PathType Leaf)) {
+      throw 'code smoke did not create a context artifact'
+    }
+    $rawRoute = (& $wuji route --query $codeQuery --context-artifact $codeContext.artifact_path 2>&1) -join [Environment]::NewLine
+    if ($LASTEXITCODE -ne 0) { throw "wuji code route smoke failed: $rawRoute" }
+    $codeRoute = $rawRoute | ConvertFrom-Json
+    if ($codeRoute.capability -ne 'code' -or $codeRoute.primary_skill -ne 'native Codex coding route') {
+      throw 'code smoke did not reach the declared native Codex entrypoint'
+    }
+    if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-terra').Count -ne 0) {
+      throw 'code smoke did not emit the bounded Terra worker plan'
+    }
+    $worker = @($codeRoute.workers)[0]
+    if (-not $worker.execution_evidence_required -or ($worker.execution_evidence_fields -join ',') -ne 'requested_model,attempts,effective_model,result_handle,context_handle_ids,context_bytes_sent,task_contract_bytes,delegation_gate_reason') {
+      throw 'code smoke emitted an incomplete execution evidence contract'
+    }
+    if ($worker.context_mode -ne 'shared-content-addressed-handle' -or $worker.context_handles[0] -ne $codeContext.context_handle -or $worker.context_artifact -ne $codeContext.artifact_path) {
+      throw 'code smoke did not hand off the verified content-addressed context'
+    }
+    if ($worker.allocated_context_bytes -ne $codeContext.selected_bytes -or $worker.allocated_task_contract_bytes -le 0 -or $worker.max_task_contract_bytes -ne 2048) {
+      throw 'code smoke did not expose bounded handoff costs'
+    }
+    if ($codeRoute.delegation_policy.cross_model_cache_assumed -or -not $codeRoute.delegation_decision.allowed -or $codeRoute.execution_lane -ne 'bounded-delegation') {
+      throw 'code smoke did not enforce the cross-model cost gate'
+    }
+  }
   if ($Capability -eq 'evolution') {
-    & $wuji help | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'wuji help failed' }
+    $candidate = Join-Path $Root 'scripts\fixtures\evolution-label-only.json'
+    if (-not (Test-Path -LiteralPath $candidate)) { throw "evolution smoke candidate missing: $candidate" }
+    $rawResult = (& $wuji evolve --root $Root --candidate $candidate 2>&1) -join [Environment]::NewLine
+    if ($LASTEXITCODE -ne 0) { throw "wuji evolve smoke failed: $rawResult" }
+    $evolutionResult = $rawResult | ConvertFrom-Json
+    if ($evolutionResult.decision -ne 'reject' -or $evolutionResult.applied -or $evolutionResult.candidate_proof.passed) {
+      throw 'evolution smoke did not enforce the behavior evidence gate'
+    }
+    if (Test-Path -LiteralPath (Join-Path $Root 'capabilities\evolution-smoke-candidate')) {
+      throw 'evolution smoke unexpectedly mutated the capability registry'
+    }
   }
   if ($Capability -eq 'context') {
     # real behavior probe already exists for context; smoke just confirms binary

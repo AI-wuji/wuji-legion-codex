@@ -1,6 +1,7 @@
 package core
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,10 +19,12 @@ func TestBehaviorClaimRequiresProbe(t *testing.T) {
 	}
 }
 
-func TestNativeHostCapabilityCanBeCallable(t *testing.T) {
-	got := Verify(t.TempDir(), validManifest("native", "callable"))
-	if !got.Passed || got.Effective != "callable" {
-		t.Fatalf("native host capability should be callable: %#v", got)
+func TestCallableClaimRequiresExecutableProbe(t *testing.T) {
+	manifest := validManifest("native", "callable")
+	manifest.Probe = nil
+	got := Verify(t.TempDir(), manifest)
+	if got.Passed || got.Effective == "callable" {
+		t.Fatalf("host_callable declaration promoted capability without a probe: %#v", got)
 	}
 }
 
@@ -84,6 +87,34 @@ func TestVerifyCapsProbeOutput(t *testing.T) {
 	}
 }
 
+func TestBehaviorProbeRequiresStructuredEvidence(t *testing.T) {
+	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
+	manifest := validBehaviorManifest("plain-output", "plain")
+	got := Verify(t.TempDir(), manifest)
+	if got.Passed || got.Effective == "behavior-verified" {
+		t.Fatalf("plain probe output was accepted as behavior evidence: %#v", got)
+	}
+}
+
+func TestBehaviorProbeRejectsSelfAttestedReceipt(t *testing.T) {
+	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
+	manifest := validBehaviorManifest("self-attested", "self-attested")
+	got := Verify(t.TempDir(), manifest)
+	if got.Passed || got.Effective == "behavior-verified" {
+		t.Fatalf("self-attested receipt was accepted without a verified artifact: %#v", got)
+	}
+}
+
+func TestPrimaryClaimRequiresVerifiedPromotionReceipt(t *testing.T) {
+	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
+	manifest := validBehaviorManifest("unpromoted", "success")
+	manifest.Status = "primary"
+	got := Verify(t.TempDir(), manifest)
+	if got.Passed || got.Effective == "primary" {
+		t.Fatalf("primary claim passed without a promotion receipt: %#v", got)
+	}
+}
+
 func TestLimitedOutputHandlesConcurrentWriters(t *testing.T) {
 	output := &limitedOutput{}
 	payload := []byte(strings.Repeat("x", 1024))
@@ -110,20 +141,54 @@ func TestProbeHelperProcess(t *testing.T) {
 	if os.Getenv("GO_WANT_WUJI_PROBE_HELPER") != "1" {
 		return
 	}
-	mode := os.Args[len(os.Args)-1]
+	mode := os.Args[len(os.Args)-2]
+	fixture := os.Args[len(os.Args)-1]
 	if mode == "hang" {
 		time.Sleep(30 * time.Second)
 	}
 	if mode == "large-output" {
+		path, digest := writeProbeArtifact(t, mode)
+		fmt.Printf(`{"wuji_probe":"behavior","fixture":"%s","passed":true,"evidence":[{"id":"artifact","path":"%s","sha256":"%s"}],"signature":"shared-behavior-v1"}`+"\n", fixture, path, digest)
 		fmt.Print(strings.Repeat("x", 128*1024))
 		os.Exit(0)
 	}
-	fmt.Print("probe-ok")
+	if mode == "plain" {
+		fmt.Print("probe-ok")
+		os.Exit(0)
+	}
+	if mode == "self-attested" {
+		fmt.Printf(`{"wuji_probe":"behavior","fixture":"%s","passed":true,"evidence":[{"id":"artifact","path":"missing.txt","sha256":"%s"}],"signature":"shared-behavior-v1"}`, fixture, strings.Repeat("0", 64))
+		os.Exit(0)
+	}
+	path, digest := writeProbeArtifact(t, mode)
+	signature := "shared-behavior-v1"
+	if mode == "different-signature" {
+		signature = "different-behavior-v1"
+	}
+	fmt.Printf(`{"wuji_probe":"behavior","fixture":"%s","passed":true,"evidence":[{"id":"artifact","path":"%s","sha256":"%s"}],"signature":"%s"}`, fixture, path, digest, signature)
 	os.Exit(0)
 }
 
+func writeProbeArtifact(t *testing.T, mode string) (string, string) {
+	t.Helper()
+	dir := os.Getenv("WUJI_PROBE_EVIDENCE_DIR")
+	if dir == "" {
+		t.Fatal("probe evidence directory is missing")
+	}
+	name := "artifact.txt"
+	payload := []byte("artifact:" + mode)
+	if mode == "different-evidence" {
+		payload = []byte("different artifact")
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), payload, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	digest := fmt.Sprintf("%x", sha256.Sum256(payload))
+	return name, digest
+}
+
 func validManifest(id, status string) Manifest {
-	return Manifest{
+	manifest := Manifest{
 		ID:           id,
 		Description:  "test capability",
 		Triggers:     []string{"test"},
@@ -132,15 +197,21 @@ func validManifest(id, status string) Manifest {
 		HostCallable: true,
 		Fallback:     "native fallback",
 	}
+	if status == "callable" {
+		manifest.Probe = &Probe{Command: "unavailable-test-probe", Kind: "smoke", Fixture: "callable-smoke-v1"}
+	}
+	return manifest
 }
 
 func validBehaviorManifest(id, mode string) Manifest {
 	manifest := validManifest(id, "behavior-verified")
 	manifest.Probe = &Probe{
-		Command: os.Args[0],
-		Args:    []string{"-test.run=TestProbeHelperProcess", "--", mode},
-		Fixture: "shared-test-fixture-v1",
-		Kind:    "behavior",
+		Command:            os.Args[0],
+		Args:               []string{"-test.run=TestProbeHelperProcess", "--", mode, "shared-test-fixture-v1"},
+		Fixture:            "shared-test-fixture-v1",
+		Kind:               "behavior",
+		RequiredEvidence:   []string{"artifact"},
+		ComparisonEvidence: "artifact",
 	}
 	return manifest
 }

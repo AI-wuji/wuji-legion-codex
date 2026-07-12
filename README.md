@@ -40,7 +40,7 @@ Its second core function is distilling, fusing, and evolving Skills, plugins, an
 - **能力包优先于摘要**：保留真实的 Skill、脚本、模板、资产、UI 和入口。规则摘要不能冒充已经融合的能力。
 - **冷挂载与有界并行**：专家不是常驻人格；只接收任务契约、必要上下文句柄和完整冷能力包。独立分支可以并行，依赖关系保持顺序。
 - **证据驱动的能力生命周期**：`known -> doctrine-only -> assets-retained -> callable -> behavior-verified -> primary`。只有通过真实行为验证的能力才会被称为已融合。
-- **上下文有预算**：默认使用小型稳定前缀和任务级检索，不把完整历史、原始日志或大型图谱常驻在上下文中。
+- **上下文与委派都有预算**：默认使用小型稳定前缀和任务级检索，不把完整历史、原始日志或大型图谱常驻在上下文中；跨模型不假设共享缓存，只有内容寻址工件和总重放成本同时通过门禁才委派。
 - **上游只作内部原子**：旧项目和外部 Skill 需要经过清点、对照测试和裁决；合适的部分蒸馏融合，不合适的部分剔除，不原封不动回迁。
 
 ## 当前状态 / Current Status
@@ -83,6 +83,13 @@ cd wuji-legion-codex
 ./bin/wuji.exe context-select --workspace . --query "capability verification" --max-bytes 12288
 ```
 
+代码任务需要先用同一查询生成工件，路由器才会评估 Terra 委派是否实际划算：
+
+```powershell
+$context = ./bin/wuji.exe context-select --workspace . --query "fix the code and verify it" --max-bytes 2048 | ConvertFrom-Json
+./bin/wuji.exe route --query "fix the code and verify it" --context-artifact $context.artifact_path
+```
+
 快速回归检查：
 
 ```powershell
@@ -121,10 +128,12 @@ cd wuji-legion-codex
 ## 模型与提供商边界 / Model Boundaries
 
 - 阿极负责规划、架构、合并、唯一写权限和高风险判断，控制面固定使用 `gpt-5.6-sol`；这不代表所有分支都应消耗 Sol。
-- `wuji route` 输出的每个 worker 都包含真实 `model` 与有序 `fallback_models`。有界实现和验证分支使用 `gpt-5.6-terra`，广域研究与机械提取分支使用 `gpt-5.6-luna`，执行宿主必须按结果真正委派。
+- `wuji route` 输出的每个 worker 都包含真实 `model` 与有序 `fallback_models`。通过成本门禁的独立实现分支可使用 `gpt-5.6-terra`，依赖实现的验证由阿极顺序完成；广域研究与机械提取分支可使用 `gpt-5.6-luna`，执行宿主必须按结果真正委派。
 - `model_class` 只是分类标签，不能作为模型切换已经发生的证据；只有后台出现对应模型调用，或者执行记录确认了实际 fallback，才算模型路由生效。
+- 每个 worker 还必须返回模型尝试、实际模型、结果句柄、上下文句柄与字节数、任务契约字节数和门禁原因；只有真实执行记录存在，才算该分支完成。
+- `primary` 不是 manifest 自报标签：只有演化替换生成并通过校验的内容寻址 promotion receipt，连同归档基线，才可进入 `primary`。
 - 图像和视频提供商按项目规则路由，并在失败时回退；凭据只从当前进程环境读取，绝不写入规则或仓库。
-- 模型选择服从任务边界和验证要求，不为了节省 token 而重复加载项目上下文或降低关键判断质量。
+- Sol、Terra、Luna 之间不假设共享提示缓存。任务契约超过 2048 字节、共享上下文超过 4096 字节、总重放超过 8192 字节、工件不匹配/已过期或需要父任务上下文时，一律留在阿极；不把“用了更便宜模型”直接等同于节省费用。
 
 ## 目录说明 / Repository Layout
 

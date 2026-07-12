@@ -16,7 +16,7 @@
     "codebase search",
     "项目上下文"
   ],
-  "status": "primary",
+  "status": "behavior-verified",
   "primary_skill": "wuji context-select",
   "host_callable": true,
   "fallback": "rg path narrowing plus range reads",
@@ -32,6 +32,8 @@
       "-File",
       "${ROOT}/scripts/verify-context.ps1"
     ],
-    "kind": "behavior"
+    "kind": "behavior",
+    "required_evidence": ["assertions"],
+    "comparison_evidence": "assertions"
   }
 }

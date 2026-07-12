@@ -72,6 +72,16 @@ func TestContextSelectSkipsExcerptThatCannotFit(t *testing.T) {
 	}
 }
 
+func TestContextSelectRejectsQueriesWithoutMatches(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "notes.md"), []byte("unrelated notes\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SelectContext(root, "missing symbol", 512); err == nil || !strings.Contains(err.Error(), "no matching context excerpts") {
+		t.Fatalf("empty context result was accepted: %v", err)
+	}
+}
+
 func TestContextSelectIncludesFrontendSourcesAndPreservesIndent(t *testing.T) {
 	root := t.TempDir()
 	content := "<template>\n  <section>\n    BoardAtmosphere stage atmosphere\n  </section>\n</template>\n"
