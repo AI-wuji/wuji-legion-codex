@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -61,24 +62,13 @@ func TestVerifyTimesOutHungProbe(t *testing.T) {
 
 func TestVerifyExpandsRootInProbeCommand(t *testing.T) {
 	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
-	root, err := os.MkdirTemp(".", ".probe-root-")
+	testBinary, err := filepath.Abs(os.Args[0])
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(root)
-	root, err = filepath.Abs(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	testBinary, err := os.ReadFile(os.Args[0])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "probe.exe"), testBinary, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	root := filepath.Dir(testBinary)
 	manifest := validBehaviorManifest("root-command", "root-command")
-	manifest.Probe.Command = "${ROOT}/probe.exe"
+	manifest.Probe.Command = "${ROOT}/" + filepath.Base(testBinary)
 	manifest.Probe.TimeoutSeconds = 5
 	if got := Verify(root, manifest); !got.Passed {
 		t.Fatalf("root-relative probe command failed: %#v", got)
@@ -91,6 +81,28 @@ func TestVerifyCapsProbeOutput(t *testing.T) {
 	got := Verify(t.TempDir(), manifest)
 	if !got.Passed || len(got.Checks) == 0 || !strings.Contains(got.Checks[len(got.Checks)-1], "output truncated") {
 		t.Fatalf("probe output was not capped: %#v", got)
+	}
+}
+
+func TestLimitedOutputHandlesConcurrentWriters(t *testing.T) {
+	output := &limitedOutput{}
+	payload := []byte(strings.Repeat("x", 1024))
+	var writers sync.WaitGroup
+	for range 16 {
+		writers.Add(1)
+		go func() {
+			defer writers.Done()
+			for range 16 {
+				if _, err := output.Write(payload); err != nil {
+					t.Errorf("write failed: %v", err)
+				}
+			}
+		}()
+	}
+	writers.Wait()
+	got := output.String()
+	if !strings.Contains(got, "output truncated") || len(output.data) != maxProbeOutputBytes {
+		t.Fatalf("concurrent output was not bounded: bytes=%d", len(output.data))
 	}
 }
 
