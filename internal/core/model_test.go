@@ -13,7 +13,7 @@ func TestRouteEmitsExecutableModelPolicy(t *testing.T) {
 	}}
 	context := delegationContextForTest(query, 512)
 	got := RouteWithContext(query, items, context)
-	if got.MainModel != "gpt-5.6-sol" || got.ModelPolicy.ClassModels["terra"] != "gpt-5.6-terra" {
+	if got.MainModel != "gpt-5.6-terra" || got.ModelPolicy.ClassModels["terra"] != "gpt-5.6-terra" {
 		t.Fatalf("main model policy is incomplete: %#v", got.ModelPolicy)
 	}
 	if len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-terra" || !equalStrings(got.Workers[0].FallbackModels, []string{"gpt-5.6-sol"}) {
@@ -41,7 +41,7 @@ func TestSearchWorkersUseConcreteLunaModel(t *testing.T) {
 		t.Fatalf("expected three research workers: %#v", got.Workers)
 	}
 	for _, worker := range got.Workers {
-		if worker.Model != "gpt-5.6-luna" || !equalStrings(worker.FallbackModels, []string{"gpt-5.6-sol"}) {
+		if worker.Model != "gpt-5.6-luna" || !equalStrings(worker.FallbackModels, []string{"gpt-5.6-terra"}) {
 			t.Fatalf("research worker did not receive an executable Luna policy: %#v", worker)
 		}
 		if worker.MaxAttempts != 2 || !equalStrings(worker.FallbackOn, []string{"model-unavailable", "provider-error-before-generation"}) {
@@ -57,6 +57,17 @@ func TestUnknownModelClassIsNotSilentlyRoutedToSol(t *testing.T) {
 	}
 	if err := validateExperts([]Expert{{ID: "bad", Purpose: "invalid model", ModelClass: "terra-"}}); err == nil {
 		t.Fatal("manifest validation accepted an unsupported model_class")
+	}
+}
+
+func TestHighReasoningJudgmentUsesOneSolWorker(t *testing.T) {
+	got := Route("architecture decision: use Sol", nil)
+	if got.MainModel != "gpt-5.6-terra" || len(got.Workers) != 1 {
+		t.Fatalf("high-reasoning route is incomplete: %#v", got)
+	}
+	worker := got.Workers[0]
+	if worker.ID != "sol-judgment" || worker.Model != "gpt-5.6-sol" || len(worker.FallbackModels) != 0 || len(worker.FallbackOn) != 0 || worker.MaxAttempts != 1 || worker.Writes {
+		t.Fatalf("Sol must be a bounded read-only, no-retry judgment worker: %#v", worker)
 	}
 }
 

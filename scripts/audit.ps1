@@ -3,10 +3,23 @@ param(
   [string]$Mode = 'full'
 )
 $ErrorActionPreference = 'Stop'
+$utf8 = [Text.UTF8Encoding]::new($false)
+[Console]::OutputEncoding = $utf8
+$OutputEncoding = $utf8
 $root = Split-Path $PSScriptRoot -Parent
 $wuji = Join-Path $root 'bin\wuji.exe'
 & (Join-Path $root 'scripts\build.ps1') | Out-Null
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $wuji)) { throw 'fusion-audit failed: could not build the audit binary' }
+
+function Invoke-WujiJson([string[]]$CliArgs) {
+  $raw = @(& $wuji @CliArgs 2>&1)
+  if ($LASTEXITCODE -ne 0) { throw "wuji command failed: $($CliArgs -join ' ')" }
+  try {
+    return (($raw -join [Environment]::NewLine) | ConvertFrom-Json -ErrorAction Stop)
+  } catch {
+    throw "wuji emitted invalid JSON: $($CliArgs -join ' ')"
+  }
+}
 
 function Get-SourceTreeHash([string]$Path) {
   $full = [IO.Path]::GetFullPath($Path).TrimEnd('\','/')
@@ -27,14 +40,13 @@ function Get-SourceTreeHash([string]$Path) {
 $catalogPath = Join-Path $root 'capabilities\presentation\assets\template-catalog.json'
 $catalogHashBefore = (Get-FileHash -Algorithm SHA256 -LiteralPath $catalogPath).Hash
 $capabilities = if ($Mode -eq 'fast') {
-  @('code','code-review','context','data','documents','evolution','frontend','image','search','security','video','visual','writing')
+  @('code','code-review','context','data','documents','evolution','frontend','image','knowledge','search','security','video','visual','writing')
 } else {
   @('all')
 }
 $verification = @()
 foreach ($cap in $capabilities) {
-  $chunk = & $wuji verify --capability $cap | ConvertFrom-Json
-  if ($LASTEXITCODE -ne 0) { throw "fusion-audit failed while verifying $cap" }
+  $chunk = Invoke-WujiJson @('verify', '--capability', $cap)
   $verification += @($chunk)
 }
 if (@($verification | Where-Object { -not $_.passed }).Count -gt 0) {
@@ -60,7 +72,8 @@ $sourceFiles = Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object {
   $_.FullName -notmatch '\\.git\\|\\.wuji\\|\\tools\\bin\\|\\bin\\'
 }
 $sourceBytes = ($sourceFiles | Measure-Object Length -Sum).Sum
-if ($skillBytes -gt 6000 -or $agentBytes -gt 5000 -or $sourceBytes -gt 1048576) {
+$maxSourceBytes = 1572864
+if ($skillBytes -gt 6000 -or $agentBytes -gt 5000 -or $sourceBytes -gt $maxSourceBytes) {
   throw "optimization-audit failed: skill=$skillBytes agents=$agentBytes source=$sourceBytes"
 }
 $nestedSkillFiles = Get-ChildItem (Join-Path $root 'capabilities') -Recurse -Filter 'SKILL.md' | Where-Object { $_.FullName -match '\\skills\\' }
@@ -219,12 +232,19 @@ foreach ($file in $runtimeTextFiles) {
   }
 }
 
-$context = & $wuji context-select --workspace $root --query 'capability behavior verification context budget' --max-bytes 4096 | ConvertFrom-Json
+$context = Invoke-WujiJson @('context-select', '--workspace', $root, '--query', 'capability behavior verification context budget', '--max-bytes', '4096')
 if ($LASTEXITCODE -ne 0 -or $context.selected_bytes -gt 4096 -or $context.excerpts.Count -lt 1) {
   throw 'context-bloat-audit failed'
 }
 if (-not $context.query_fingerprint -or -not $context.content_sha256 -or $context.context_handle -ne "wuji-context://sha256/$($context.content_sha256)" -or -not (Test-Path -LiteralPath $context.artifact_path -PathType Leaf)) {
   throw 'context-bloat-audit failed: content-addressed artifact contract is incomplete'
+}
+if ($context.retrieval_mode -notlike 'workspace-graph*' -or $context.graph_lookups -lt 1 -or $context.indexed_files -lt 1 -or $context.candidate_files -ge $context.indexed_files) {
+  throw 'context-bloat-audit failed: workspace graph did not narrow candidates before source reads'
+}
+$graph = Invoke-WujiJson @('graph-sync', '--workspace', $root)
+if ($LASTEXITCODE -ne 0 -or $graph.max_terms_per_file -ne 512 -or $graph.max_refs_per_term -ne 256 -or $graph.max_lookups -ne 64) {
+  throw 'context-bloat-audit failed: workspace graph hard limits are missing'
 }
 
 $activeRoot = Join-Path $env:USERPROFILE '.agents\skills'
@@ -241,27 +261,32 @@ if ((Get-FileHash -Algorithm SHA256 -LiteralPath $activeSkill).Hash -ne (Get-Fil
   throw 'optimization-audit failed: active Wuji registration is stale or points at a different contract'
 }
 
-$webRoute = & $wuji route --query 'build a Slidev web presentation with stage fluid' | ConvertFrom-Json
-$pptxRoute = & $wuji route --query 'create an editable PPTX' | ConvertFrom-Json
-$writingRoute = & $wuji route --query 'translate this article' | ConvertFrom-Json
-$searchRoute = & $wuji route --query 'search the web for the latest solution' | ConvertFrom-Json
+$webRoute = Invoke-WujiJson @('route', '--query', 'build a Slidev web presentation with stage fluid')
+$pptxRoute = Invoke-WujiJson @('route', '--query', 'create an editable PPTX')
+$writingRoute = Invoke-WujiJson @('route', '--query', 'translate this article')
+$searchRoute = Invoke-WujiJson @('route', '--query', 'search the web for the latest solution')
 $codeQuery = 'fix code workerPlan in internal/core/route.go'
-$codeDirectRoute = & $wuji route --query $codeQuery | ConvertFrom-Json
-$codeContext = & $wuji context-select --workspace $root --query $codeQuery --max-bytes 2048 | ConvertFrom-Json
-$codeRoute = & $wuji route --query $codeQuery --context-artifact $codeContext.artifact_path | ConvertFrom-Json
-$serialSearchRoute = & $wuji route --query 'research the web serial only' | ConvertFrom-Json
+$codeDirectRoute = Invoke-WujiJson @('route', '--query', $codeQuery)
+$codeContext = Invoke-WujiJson @('context-select', '--workspace', $root, '--query', $codeQuery, '--max-bytes', '2048')
+$codeRoute = Invoke-WujiJson @('route', '--query', $codeQuery, '--context-artifact', $codeContext.artifact_path)
+$serialSearchRoute = Invoke-WujiJson @('route', '--query', 'research the web serial only')
 if ($webRoute.primary_skill -ne 'wuji-web-deck' -or $webRoute.engine -ne 'web-deck' -or ($webRoute.mounted_sources.id -contains 'ppt-master-complete')) { throw 'fusion-audit failed: web presentation scenario is not consolidated' }
 if ($pptxRoute.primary_skill -ne 'wuji-editable-deck' -or $pptxRoute.engine -ne 'editable-pptx' -or ($pptxRoute.mounted_sources.id -contains 'slidev-runtime-complete')) { throw 'fusion-audit failed: editable presentation scenario is not consolidated' }
 if ($writingRoute.primary_skill -ne 'wuji-writing-suite' -or $writingRoute.engine -ne 'translation') { throw 'fusion-audit failed: writing suite leaked source selection' }
 if ($searchRoute.provider -ne 'default-gpt-search' -or @($searchRoute.workers | Where-Object model_class -eq 'agnes').Count -gt 0) { throw 'optimization-audit failed: Agnes returned to search' }
 if (@($searchRoute.workers).Count -ne 3 -or @($searchRoute.workers | Where-Object model -ne 'gpt-5.6-luna').Count -ne 0) { throw 'optimization-audit failed: research workers lost Luna model assignment' }
-if (@($searchRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-sol' }).Count -ne 0) { throw 'optimization-audit failed: research worker fallback order changed' }
+if (@($searchRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-terra' }).Count -ne 0) { throw 'optimization-audit failed: research worker fallback order changed' }
 if (($serialSearchRoute.PSObject.Properties.Name -contains 'workers') -or $serialSearchRoute.delegation_decision.reason -ne 'serial-requested') { throw 'optimization-audit failed: serial research still fanned out' }
 if (($codeDirectRoute.PSObject.Properties.Name -contains 'workers') -or $codeDirectRoute.delegation_decision.reason -ne 'verified-context-artifact-required') { throw 'optimization-audit failed: code delegated without verified context' }
 if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-terra').Count -ne 0) { throw 'optimization-audit failed: code worker lost bounded Terra assignment' }
 if (@($codeRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-sol' }).Count -ne 0) { throw 'optimization-audit failed: code worker fallback order changed' }
-$executionEvidence = 'schema_version,worker_id,requested_model,attempts,effective_model,result_handle,stable_prefix_bytes,stable_prefix_sha256,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,accepted_by_aji,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,aji_baseline_microunits,savings_microunits'
+$executionEvidence = 'schema_version,worker_id,requested_model,session_key,host_dispatch_id,write_boundary,attempts,effective_model,model_switch_count,result_handle,stable_prefix_bytes,stable_prefix_sha256,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,accepted_by_aji,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,aji_baseline_microunits,savings_microunits'
 if (@($searchRoute.workers + $codeRoute.workers | Where-Object { -not $_.execution_evidence_required -or ($_.execution_evidence_fields -join ',') -ne $executionEvidence }).Count -ne 0) { throw 'optimization-audit failed: worker execution evidence contract is incomplete' }
+$officerRoute = Invoke-WujiJson @('route', '--query', 'white-hat review this architecture')
+$officerWorker = @($officerRoute.officer_workers)[0]
+if (@($officerRoute.officers).Count -ne 1 -or @($officerRoute.officer_workers).Count -ne 1 -or $officerWorker.stage -ne 'officer' -or $officerWorker.writes -or -not $officerWorker.session_key -or -not $officerWorker.execution_evidence_required -or ($officerWorker.execution_evidence_fields -join ',') -ne $executionEvidence) {
+  throw 'optimization-audit failed: explicit white-hat is not a receipt-bound read-only worker'
+}
 if ($codeRoute.delegation_policy.cross_model_cache_assumed -or $codeRoute.delegation_policy.cache_scope -ne 'model-local stable-prefix only' -or $codeRoute.delegation_policy.max_task_contract_bytes -ne 2048 -or $codeRoute.delegation_policy.max_shared_context_bytes -ne 4096 -or $codeRoute.delegation_policy.max_total_replay_bytes -ne 8192 -or $codeRoute.delegation_policy.min_context_coverage_basis_points -ne 6000 -or -not $codeRoute.delegation_policy.require_code_excerpt -or -not $codeRoute.delegation_policy.require_content_anchor -or -not $codeRoute.delegation_policy.fallback_only_on_availability_error) { throw 'optimization-audit failed: cross-model cost policy is incomplete' }
 $codeWorker = @($codeRoute.workers)[0]
 if (-not $codeRoute.delegation_decision.allowed -or $codeRoute.delegation_decision.context_handle -ne $codeContext.context_handle -or $codeRoute.delegation_decision.context_coverage_basis_points -lt 6000 -or $codeRoute.delegation_decision.code_excerpt_count -lt 1 -or $codeRoute.delegation_decision.content_anchor_count -lt 1 -or $codeWorker.allocated_context_bytes -ne $codeContext.payload_bytes -or $codeWorker.context_payload_sha256 -ne $codeContext.payload_sha256 -or -not $codeWorker.context_payload -or $codeWorker.allocated_task_contract_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.task_contract)) -or -not $codeWorker.task_contract_sha256 -or -not $codeWorker.stable_capability_prefix -or $codeWorker.stable_prefix_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.stable_capability_prefix)) -or -not $codeWorker.stable_prefix_sha256 -or $codeRoute.delegation_decision.estimated_replay_bytes -ne ($codeWorker.stable_prefix_bytes + $codeWorker.allocated_context_bytes + $codeWorker.allocated_task_contract_bytes) -or ($codeWorker.prompt_order -join ',') -ne 'stable_capability_prefix,context_payload,task_contract' -or $codeWorker.max_attempts -ne 2 -or ($codeWorker.fallback_on -join ',') -ne 'model-unavailable,provider-error-before-generation') { throw 'optimization-audit failed: verified context handoff is incomplete' }

@@ -103,10 +103,18 @@ type MountedSource struct {
 
 type WorkerTask struct {
 	ID                         string   `json:"id"`
+	Stage                      string   `json:"stage"`
 	Purpose                    string   `json:"purpose"`
 	ModelClass                 string   `json:"model_class"`
 	Model                      string   `json:"model"`
 	FallbackModels             []string `json:"fallback_models,omitempty"`
+	SessionKey                 string   `json:"session_key"`
+	SessionAffinity            string   `json:"session_affinity"`
+	EscalationPolicy           string   `json:"escalation_policy"`
+	MaxModelSwitches           int      `json:"max_model_switches"`
+	MaxSources                 int      `json:"max_sources,omitempty"`
+	TimeBudgetSeconds          int      `json:"time_budget_seconds,omitempty"`
+	StopConditions             []string `json:"stop_conditions,omitempty"`
 	Inputs                     []string `json:"inputs"`
 	TaskContract               string   `json:"task_contract"`
 	TaskContractSHA256         string   `json:"task_contract_sha256"`
@@ -147,8 +155,12 @@ type WorkerExecutionReceipt struct {
 	SchemaVersion         int             `json:"schema_version"`
 	WorkerID              string          `json:"worker_id"`
 	RequestedModel        string          `json:"requested_model"`
+	SessionKey            string          `json:"session_key"`
+	HostDispatchID        string          `json:"host_dispatch_id"`
+	WriteBoundary         string          `json:"write_boundary"`
 	Attempts              []WorkerAttempt `json:"attempts"`
 	EffectiveModel        string          `json:"effective_model"`
+	ModelSwitchCount      int             `json:"model_switch_count"`
 	ResultHandle          string          `json:"result_handle"`
 	ContextHandleIDs      []string        `json:"context_handle_ids"`
 	StablePrefixBytesSent int             `json:"stable_prefix_bytes"`
@@ -185,6 +197,26 @@ type DelegationPolicy struct {
 	OnGateFailure                   string `json:"on_gate_failure"`
 }
 
+type TaskExecutionPolicy struct {
+	TaskShape                string `json:"task_shape"`
+	ModelSelectionTiming     string `json:"model_selection_timing"`
+	SessionAffinity          string `json:"session_affinity"`
+	EscalationPolicy         string `json:"escalation_policy"`
+	MaxModelSwitches         int    `json:"max_model_switches"`
+	DowngradeAfterGeneration bool   `json:"downgrade_after_generation"`
+	PreflightBeforeExecution bool   `json:"preflight_before_execution"`
+}
+
+type SearchFirstPolicy struct {
+	Required                 bool     `json:"required"`
+	Reason                   string   `json:"reason,omitempty"`
+	SourceOrder              []string `json:"source_order,omitempty"`
+	MaxSources               int      `json:"max_sources,omitempty"`
+	TimeBudgetSeconds        int      `json:"time_budget_seconds,omitempty"`
+	StopConditions           []string `json:"stop_conditions,omitempty"`
+	CancelStaleExecutionPlan bool     `json:"cancel_stale_execution_plan"`
+}
+
 type DelegationDecision struct {
 	Allowed              bool   `json:"allowed"`
 	Reason               string `json:"reason"`
@@ -207,30 +239,34 @@ type ModelPolicy struct {
 }
 
 type RouteResult struct {
-	Version                 string             `json:"version"`
-	Brain                   string             `json:"brain"`
-	MainModel               string             `json:"main_model"`
-	ModelPolicy             ModelPolicy        `json:"model_policy"`
-	DelegationPolicy        DelegationPolicy   `json:"delegation_policy"`
-	DelegationDecision      DelegationDecision `json:"delegation_decision"`
-	Reasoning               string             `json:"reasoning"`
-	WriteAuthority          string             `json:"write_authority"`
-	Nuwa                    bool               `json:"nuwa"`
-	Capability              string             `json:"capability"`
-	CapabilityStatus        string             `json:"capability_status"`
-	PrimarySkill            string             `json:"primary_skill"`
-	Fallback                string             `json:"fallback,omitempty"`
-	Engine                  string             `json:"engine,omitempty"`
-	Provider                string             `json:"provider,omitempty"`
-	ProviderFallback        string             `json:"provider_fallback,omitempty"`
-	SecondaryCapabilities   []string           `json:"secondary_capabilities,omitempty"`
-	MountedSources          []MountedSource    `json:"mounted_sources"`
-	ExecutionLane           string             `json:"execution_lane"`
-	Parallel                bool               `json:"parallel"`
-	Workers                 []WorkerTask       `json:"workers,omitempty"`
-	Officers                []string           `json:"officers,omitempty"`
-	InternalAdversarialPass bool               `json:"internal_adversarial_pass"`
-	FinishLine              []string           `json:"finish_line"`
+	Version                 string              `json:"version"`
+	Brain                   string              `json:"brain"`
+	MainModel               string              `json:"main_model"`
+	ModelPolicy             ModelPolicy         `json:"model_policy"`
+	DelegationPolicy        DelegationPolicy    `json:"delegation_policy"`
+	DelegationDecision      DelegationDecision  `json:"delegation_decision"`
+	TaskExecutionPolicy     TaskExecutionPolicy `json:"task_execution_policy"`
+	SearchFirstPolicy       SearchFirstPolicy   `json:"search_first_policy"`
+	Reasoning               string              `json:"reasoning"`
+	WriteAuthority          string              `json:"write_authority"`
+	Nuwa                    bool                `json:"nuwa"`
+	Capability              string              `json:"capability"`
+	CapabilityStatus        string              `json:"capability_status"`
+	PrimarySkill            string              `json:"primary_skill"`
+	Fallback                string              `json:"fallback,omitempty"`
+	Engine                  string              `json:"engine,omitempty"`
+	Provider                string              `json:"provider,omitempty"`
+	ProviderFallback        string              `json:"provider_fallback,omitempty"`
+	SecondaryCapabilities   []string            `json:"secondary_capabilities,omitempty"`
+	MountedSources          []MountedSource     `json:"mounted_sources"`
+	ExecutionLane           string              `json:"execution_lane"`
+	Parallel                bool                `json:"parallel"`
+	PreflightWorkers        []WorkerTask        `json:"preflight_workers,omitempty"`
+	Workers                 []WorkerTask        `json:"workers,omitempty"`
+	Officers                []string            `json:"officers,omitempty"`
+	OfficerWorkers          []WorkerTask        `json:"officer_workers,omitempty"`
+	InternalAdversarialPass bool                `json:"internal_adversarial_pass"`
+	FinishLine              []string            `json:"finish_line"`
 }
 
 type VerifyResult struct {
@@ -260,6 +296,13 @@ type ContextResult struct {
 	BudgetBytes        int              `json:"budget_bytes"`
 	SelectedBytes      int              `json:"selected_bytes"`
 	ScannedFiles       int              `json:"scanned_files"`
+	IndexedFiles       int              `json:"indexed_files"`
+	CandidateFiles     int              `json:"candidate_files"`
+	GraphLookups       int              `json:"graph_lookups"`
+	RetrievalTruncated bool             `json:"retrieval_truncated"`
+	GraphSourceBytes   int64            `json:"graph_source_bytes"`
+	RetrievalMode      string           `json:"retrieval_mode"`
+	FallbackReason     string           `json:"fallback_reason,omitempty"`
 	ContextHandle      string           `json:"context_handle"`
 	ContentSHA256      string           `json:"content_sha256"`
 	ArtifactPath       string           `json:"artifact_path,omitempty"`

@@ -15,6 +15,9 @@ func TestRoutePresentationAndNoNuwa(t *testing.T) {
 	if len(got.Officers) != 0 {
 		t.Fatalf("officers must stay cold: %#v", got.Officers)
 	}
+	if len(got.OfficerWorkers) != 0 {
+		t.Fatalf("officer workers must stay cold: %#v", got.OfficerWorkers)
+	}
 	if len(got.FinishLine) < 4 {
 		t.Fatalf("finish line missing fused claim guard: %#v", got.FinishLine)
 	}
@@ -53,9 +56,19 @@ func TestOfficerRequiresExplicitTerm(t *testing.T) {
 	if len(quiet.Officers) != 0 {
 		t.Fatal("routine repair launched an officer")
 	}
+	if len(quiet.OfficerWorkers) != 0 {
+		t.Fatal("routine repair created an officer task")
+	}
 	explicit := Route("白帽检查这个修复", items)
 	if len(explicit.Officers) != 1 || explicit.Officers[0] != "white-hat" {
 		t.Fatalf("explicit officer not routed: %#v", explicit.Officers)
+	}
+	if len(explicit.OfficerWorkers) != 1 {
+		t.Fatalf("explicit officer has no executable task: %#v", explicit.OfficerWorkers)
+	}
+	worker := explicit.OfficerWorkers[0]
+	if worker.ID != "officer-white-hat" || worker.Stage != "officer" || worker.Writes || !worker.ExecutionEvidenceRequired || worker.SessionKey == "" || worker.TaskContractSHA256 == "" {
+		t.Fatalf("explicit officer task is not independently executable: %#v", worker)
 	}
 }
 

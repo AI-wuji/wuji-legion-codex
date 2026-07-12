@@ -9,6 +9,12 @@ func TestValidateWorkerReceiptEnforcesFallbackAndSavings(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	missingDispatch := receipt
+	missingDispatch.HostDispatchID = ""
+	if err := ValidateWorkerReceipt(worker, missingDispatch); err == nil {
+		t.Fatal("receipt without a host dispatch identifier was accepted")
+	}
+
 	paidRetry := receipt
 	paidRetry.Attempts = append([]WorkerAttempt(nil), receipt.Attempts...)
 	paidRetry.Attempts[0].GenerationStarted = true
@@ -24,20 +30,77 @@ func TestValidateWorkerReceiptEnforcesFallbackAndSavings(t *testing.T) {
 	}
 }
 
+func TestValidateWorkerReceiptEnforcesSessionAndUpgradeOnlySwitching(t *testing.T) {
+	worker := testReceiptWorker()
+	receipt := validReceipt(worker)
+
+	wrongSession := receipt
+	wrongSession.SessionKey = "wuji-session://sha256/wrong"
+	if err := ValidateWorkerReceipt(worker, wrongSession); err == nil {
+		t.Fatal("receipt with a different task session was accepted")
+	}
+
+	wrongSwitchCount := receipt
+	wrongSwitchCount.ModelSwitchCount = 0
+	if err := ValidateWorkerReceipt(worker, wrongSwitchCount); err == nil {
+		t.Fatal("receipt with false model-switch telemetry was accepted")
+	}
+
+	downgradeWorker := worker
+	downgradeWorker.Model = "gpt-5.6-sol"
+	downgradeWorker.FallbackModels = []string{"gpt-5.6-luna"}
+	downgradeReceipt := validReceipt(downgradeWorker)
+	if err := ValidateWorkerReceipt(downgradeWorker, downgradeReceipt); err == nil {
+		t.Fatal("Sol-to-Luna downgrade was accepted")
+	}
+}
+
+func TestValidateWorkerReceiptRequiresContentAddressedResult(t *testing.T) {
+	worker := testReceiptWorker()
+	receipt := validReceipt(worker)
+	receipt.ResultHandle = "completed"
+	if err := ValidateWorkerReceipt(worker, receipt); err == nil {
+		t.Fatal("arbitrary result claim was accepted as a receipt")
+	}
+}
+
+func TestValidateSolJudgmentReceiptAllowsBoundedCostEscalation(t *testing.T) {
+	worker := Route("architecture decision: use Sol", nil).Workers[0]
+	receipt := validReceipt(worker)
+	receipt.TotalCostMicrounits = 160
+	receipt.AjiBaselineMicrounits = 100
+	receipt.SavingsMicrounits = -60
+	if err := ValidateWorkerReceipt(worker, receipt); err != nil {
+		t.Fatalf("bounded Sol judgment was rejected for costing more than Terra: %v", err)
+	}
+}
+
 func validReceipt(worker WorkerTask) WorkerExecutionReceipt {
-	fallback := worker.FallbackModels[0]
-	return WorkerExecutionReceipt{
-		SchemaVersion: workerReceiptSchemaVersion, WorkerID: worker.ID, RequestedModel: worker.Model,
-		Attempts: []WorkerAttempt{
+	attempts := []WorkerAttempt{{Model: worker.Model, GenerationStarted: true, InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, CacheDomain: "model-local:" + worker.Model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, TaskContractBytes: worker.AllocatedTaskContractBytes}}
+	effectiveModel := worker.Model
+	modelSwitches := 0
+	retryCount := 0
+	failureKinds := []string{}
+	if len(worker.FallbackModels) > 0 {
+		fallback := worker.FallbackModels[0]
+		attempts = []WorkerAttempt{
 			{Model: worker.Model, FailureKind: "model-unavailable", CacheDomain: "model-local:" + worker.Model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, TaskContractBytes: worker.AllocatedTaskContractBytes},
 			{Model: fallback, GenerationStarted: true, InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, CacheDomain: "model-local:" + fallback, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, TaskContractBytes: worker.AllocatedTaskContractBytes},
-		},
-		EffectiveModel: fallback, ResultHandle: "wuji-result://sha256/result", ContextHandleIDs: worker.ContextHandles,
-		StablePrefixBytesSent: worker.StablePrefixBytes * 2, StablePrefixSHA256: worker.StablePrefixSHA256,
-		ContextBytesSent: worker.AllocatedContextBytes * 2, ContextPayloadSHA256: worker.ContextPayloadSHA256,
-		TaskContractBytes: worker.AllocatedTaskContractBytes * 2, TaskContractSHA256: worker.TaskContractSHA256,
-		InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, RetryCount: 1, AcceptedByAji: true,
-		AttemptFailureKinds: []string{"model-unavailable"}, CacheDomain: "model-local:" + fallback, DelegationGateReason: worker.DelegationGateReason,
+		}
+		effectiveModel = fallback
+		modelSwitches = 1
+		retryCount = 1
+		failureKinds = []string{"model-unavailable"}
+	}
+	return WorkerExecutionReceipt{
+		SchemaVersion: workerReceiptSchemaVersion, WorkerID: worker.ID, RequestedModel: worker.Model, SessionKey: worker.SessionKey,
+		HostDispatchID: "codex-agent://test/worker", WriteBoundary: "read-only", Attempts: attempts,
+		EffectiveModel: effectiveModel, ModelSwitchCount: modelSwitches, ResultHandle: "wuji-result://sha256/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", ContextHandleIDs: worker.ContextHandles,
+		StablePrefixBytesSent: worker.StablePrefixBytes * len(attempts), StablePrefixSHA256: worker.StablePrefixSHA256,
+		ContextBytesSent: worker.AllocatedContextBytes * len(attempts), ContextPayloadSHA256: worker.ContextPayloadSHA256,
+		TaskContractBytes: worker.AllocatedTaskContractBytes * len(attempts), TaskContractSHA256: worker.TaskContractSHA256,
+		InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, RetryCount: retryCount, AcceptedByAji: true,
+		AttemptFailureKinds: failureKinds, CacheDomain: "model-local:" + effectiveModel, DelegationGateReason: worker.DelegationGateReason,
 		BillingUnit: "usd-micro", TotalCostMicrounits: 60, AjiBaselineMicrounits: 100, SavingsMicrounits: 40,
 	}
 }

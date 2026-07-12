@@ -20,6 +20,16 @@ Large domains expose one scenario-oriented suite, or a very small number when ou
 
 Parallelize independent branches. Keep dependency edges sequential. Workers never merge each other and never become a second command chain.
 
+## Task Lifecycle
+
+Every request starts as one small task. The router may emit two ordered stages, but they remain inside the single Codex execution chain:
+
+1. `preflight_workers`: one bounded Luna prior-art scan for non-trivial solution work, ordered official -> GitHub -> community, capped at 3 sources and 90 seconds. Deterministic edits and explicit offline requests skip it.
+2. `workers`: bounded execution branches selected only after preflight completes. Preflight and execution never run in parallel. If evidence changes the approach, the host discards the stale execution plan and routes again.
+3. Aji merge and verification: Aji remains the only writer and completion judge.
+
+This is not a second scheduler. The Go CLI declares deterministic stage contracts; Codex performs the actual calls. A route is effective only when the host runs the declared model and returns a valid execution receipt.
+
 ## Evolution Commander
 
 The Evolution Commander is capability governance, not a content persona. It must inventory the upstream package, retain execution assets, map overlaps, run the same fixture against upstream and integrated routes, compare artifacts, and then admit, replace, or reject. A name, rule list, or passing registry assertion is not capability evidence.
@@ -30,12 +40,35 @@ The default path uses a small stable prefix plus task-local retrieval. `context-
 
 ## Model Policy
 
-- Aji planning, architecture, merge, and high-risk judgment: `gpt-5.6-sol`, highest available reasoning.
+- Aji routing, merge, writes, and completion judgment: `gpt-5.6-terra`, using the configured reasoning effort.
 - A bounded independent implementation worker may use `gpt-5.6-terra`; verification that depends on the implementation remains sequential on Aji.
 - Broad web scouting uses the default GPT route for the final analysis, while independent source branches use `gpt-5.6-luna`.
 - Other mechanical extraction uses `gpt-5.6-luna` when the route emits a compact extraction branch and no project context replay is required.
-- `workers[].model` is the executable model id. `model_class` is metadata only; the host must not silently run a worker on the Aji model when a cheaper model is selected.
-- Terra and Luna have only a direct Sol fallback. Retry only for model unavailability or provider failure before generation, with at most two total attempts; a generated but rejected result never triggers another paid model call. Aji remains the sole merger and write authority.
-- A worker branch is not complete until the host returns the model attempts and effective model, token/cache telemetry, retry and failure kinds, Aji acceptance, result/context handles and bytes, task-contract bytes, cache domain, and delegation reason; route metadata alone cannot prove that a cheaper model or fallback actually ran.
+- Sol is reserved for an explicit, bounded high-reasoning judgment worker. It is read-only, has one attempt, and returns evidence and options for Aji on Terra to merge.
+- `preflight_workers[].model` and `workers[].model` are executable model ids. `model_class` is metadata only; the host must not silently run a worker on the Aji model when a cheaper model is selected, or report route JSON as execution.
+- Luna may fall back only to Terra; Terra may fall back only to Sol. Retry only for model unavailability or provider failure before generation, with at most two total attempts; a generated but rejected result never triggers another paid model call. Aji remains the sole merger and write authority.
+- Each worker gets a deterministic task `session_key`; model selection happens once at task start and remains sticky inside that session. The only permitted switches are Luna -> Terra and Terra -> Sol before generation after an allowed availability failure. Downgrades and post-generation switches are invalid.
+- A worker branch is not complete until the host returns the session key, model attempts and effective model, model-switch count, token/cache telemetry, retry and failure kinds, Aji acceptance, result/context handles and bytes, task-contract bytes, cache domain, and delegation reason; route metadata alone cannot prove that a cheaper model or fallback actually ran.
 
 Sol, Terra, and Luna are separate cache domains; cross-model prompt-cache hits are never assumed. Every worker receives a stable model-local capability prefix followed by its deterministic context payload and JSON task contract. The router measures those actual payloads and keeps execution on Aji when retrieval coverage is below 60%, no code excerpt exists, a contract exceeds 2048 bytes, shared context exceeds 4096 bytes per worker, total replay exceeds 8192 bytes, parent-context affinity is required, or the verified artifact is absent/mismatched. Presentation and writing remain direct by default because their worker handoffs usually depend on parent context. Model switching is never used merely to save tokens when replay cost can erase the model-price advantage.
+
+## Bounded Relation Graphs
+
+The project uses a pyramid-shaped retrieval path, but not a pyramid-shaped duplicate database:
+
+```text
+workspace / explicit knowledge scope
+        -> bounded index terms and relation keys
+        -> candidate files or verified node locations
+        -> source/evidence reads on demand
+```
+
+The workspace graph is derived and disposable. It stores file metadata, source hashes, bounded retrieval terms, and a small set of symbol/test relations. It is regenerated as a disposable snapshot when the index is absent or stale. A workspace query performs at most 64 index lookups; a knowledge query performs at most 12 index lookups, reads at most 128 candidate nodes, and returns at most 10 matches. Each workspace file contributes at most 512 terms, each workspace term and knowledge reverse index retains at most 256 references, and workspace fallback scans at most 512 source files. These limits are deliberately boring: they make worst-case behavior visible and testable.
+
+The experience graph is not consulted for every task. It is an incident and reuse index, activated only by a failure, a reported failure, explicit reuse, a capability miss, or a verification trace. Each node is keyed by `(kind, normalized key, explicit scope)`, updated in place for the same identity, and linked to a compact summary, solution location, root cause when applicable, and a local verification artifact whose current SHA-256 is checked again at query time. Raw transcripts, secrets, and full solution bodies do not belong in the graph.
+
+This design incorporates the useful parts of public GraphRAG, Graphiti, and hierarchical code-retrieval work: community or scope summaries for routing, temporal/provenance validity, and bottom-up candidate selection. It rejects their heavier graph database and broad indexing behavior from the default hot path. A hierarchy reduces expansion and prompt size; it does not by itself bound fact growth. That requires replacement, deduplication, stale invalidation, evidence expiry/retirement policy, and hard I/O/result budgets.
+
+## Independent Opposition
+
+Routine opposition is an Aji adversarial pass. A real white-hat officer is a cold independent review seat and is started only by an explicit request or a high-risk contract. `internal_adversarial_pass: true` is not execution evidence. The host must run the officer, retain a content-addressed review result, and include its status in completion evidence; otherwise the correct status is `not executed`.

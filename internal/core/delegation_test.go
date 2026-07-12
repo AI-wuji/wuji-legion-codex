@@ -104,7 +104,7 @@ func TestTotalReplayBudgetIncludesContractAndContextPerWorker(t *testing.T) {
 		t.Fatalf("total replay gate failed open: %#v", got)
 	}
 	prefixBytes := len([]byte(stableCapabilityPrefix(items[0], "")))
-	want := prefixBytes*2 + maxSharedContextBytes*2 + len([]byte(marshalWorkerContract(query, "narrative", "", []string{context.Handle}))) + len([]byte(marshalWorkerContract(query, "visual", "", []string{context.Handle})))
+	want := prefixBytes*2 + maxSharedContextBytes*2 + len([]byte(marshalWorkerContract(query, "narrative", "", []string{context.Handle}, taskSessionKey(query, "narrative", context.Handle)))) + len([]byte(marshalWorkerContract(query, "visual", "", []string{context.Handle}, taskSessionKey(query, "visual", context.Handle))))
 	if got.DelegationDecision.EstimatedReplayBytes != want {
 		t.Fatalf("wrong replay estimate: got %d want %d", got.DelegationDecision.EstimatedReplayBytes, want)
 	}

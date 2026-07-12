@@ -1,0 +1,34 @@
+{
+  "id": "knowledge",
+  "description": "Event-triggered, bounded retrieval over verified solution locations plus a rebuildable workspace relation graph.",
+  "triggers": [
+    "knowledge graph",
+    "relation graph",
+    "failure reuse",
+    "solution reuse",
+    "graph sync",
+    "knowledge query"
+  ],
+  "status": "behavior-verified",
+  "primary_skill": "wuji knowledge-query",
+  "host_callable": true,
+  "fallback": "bounded workspace scan or a new verified investigation after an allowed miss",
+  "sources": [],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-knowledge.ps1"
+    ],
+    "fixture": "bounded-knowledge-retrieval-v1",
+    "kind": "behavior",
+    "timeout_seconds": 60,
+    "required_evidence": [
+      "assertions"
+    ],
+    "comparison_evidence": "assertions"
+  }
+}

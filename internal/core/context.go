@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,48 +31,16 @@ func SelectContext(workspace, query string, budget int) (ContextResult, error) {
 	if budget <= 0 {
 		return ContextResult{}, fmt.Errorf("max-bytes must be greater than zero")
 	}
-	workspace, err := filepath.Abs(workspace)
+	workspace, err := normalizeWorkspacePath(workspace)
 	if err != nil {
 		return ContextResult{}, err
 	}
-	if resolved, resolveErr := filepath.EvalSymlinks(workspace); resolveErr == nil {
-		workspace = resolved
-	}
-	workspace = filepath.Clean(workspace)
 	fingerprintTerms := queryTerms(query)
 	terms := retrievalTerms(query)
 	if len(terms) == 0 {
 		return ContextResult{}, fmt.Errorf("query contains no retrieval anchors")
 	}
-	files := []scoredFile{}
-	scanned := 0
-	err = filepath.WalkDir(workspace, func(path string, entry os.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if entry.IsDir() {
-			if path != workspace && excludedDir(entry.Name()) {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		info, statErr := entry.Info()
-		if statErr != nil {
-			return statErr
-		}
-		if info.Size() > 2*1024*1024 || !sourceLike(path) {
-			return nil
-		}
-		scanned++
-		item, scoreErr := scoreFile(workspace, path, terms)
-		if scoreErr != nil {
-			return scoreErr
-		}
-		if item.score > 0 {
-			files = append(files, item)
-		}
-		return nil
-	})
+	files, scanned, graphStats, err := retrieveWorkspaceFiles(workspace, terms)
 	if err != nil {
 		return ContextResult{}, err
 	}
@@ -84,7 +53,10 @@ func SelectContext(workspace, query string, budget int) (ContextResult, error) {
 	result := ContextResult{
 		Workspace: workspace, Query: query, QueryFingerprint: queryFingerprint(fingerprintTerms), BudgetBytes: budget, ScannedFiles: scanned,
 		RetrievalTerms: terms,
-		Policy:         []string{"rank unique anchors before read", "exclude generated dependency locks", "emit matched ranges only", "hard byte budget", "deterministic prompt payload", "content-addressed handoff", "keep raw logs out of context"},
+		IndexedFiles:   graphStats.IndexedFiles, CandidateFiles: graphStats.CandidateFiles, GraphLookups: graphStats.GraphLookups,
+		RetrievalTruncated: graphStats.Truncated, GraphSourceBytes: graphStats.SourceBytes,
+		RetrievalMode: graphStats.Mode, FallbackReason: graphStats.FallbackReason,
+		Policy: []string{"route through workspace relation graph before reading files", "keep graph summaries and indexes out of model context", "rebuild stale derived indexes", "rank unique anchors before read", "exclude generated dependency locks", "emit matched ranges only", "hard byte budget", "deterministic prompt payload", "content-addressed handoff", "keep raw logs out of context"},
 	}
 	for _, file := range files {
 		remaining := budget - len([]byte(renderContextPayload(result.Excerpts)))
@@ -117,6 +89,75 @@ func SelectContext(workspace, query string, budget int) (ContextResult, error) {
 	}
 	result.ContextHandle = contextHandle(result.ContentSHA256)
 	return result, nil
+}
+
+func retrieveWorkspaceFiles(workspace string, terms []string) ([]scoredFile, int, workspaceGraphStats, error) {
+	files, stats, err := queryWorkspaceGraph(workspace, terms)
+	if err == nil && len(files) > 0 {
+		return files, stats.CandidateFiles, stats, nil
+	}
+	if errors.Is(err, errWorkspaceGraphMissing) {
+		reason := stats.FallbackReason
+		if _, syncErr := SyncWorkspaceGraph(workspace); syncErr == nil {
+			files, rebuiltStats, queryErr := queryWorkspaceGraph(workspace, terms)
+			if queryErr == nil && len(files) > 0 {
+				rebuiltStats.Mode = "workspace-graph-rebuilt"
+				if reason != "" {
+					rebuiltStats.FallbackReason = reason
+				}
+				return files, rebuiltStats.CandidateFiles, rebuiltStats, nil
+			}
+			stats = rebuiltStats
+		}
+		if reason == "" {
+			reason = "graph-missing"
+		}
+		stats.FallbackReason = reason
+	} else if err != nil {
+		stats.FallbackReason = "graph-error"
+	}
+	files, scanned, scanErr := boundedWorkspaceScan(workspace, terms, 512)
+	stats.Mode = "bounded-fallback"
+	if stats.FallbackReason == "" {
+		stats.FallbackReason = "graph-no-match"
+	}
+	return files, scanned, stats, scanErr
+}
+
+func boundedWorkspaceScan(workspace string, terms []string, limit int) ([]scoredFile, int, error) {
+	files := []scoredFile{}
+	scanned := 0
+	err := filepath.WalkDir(workspace, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			if path != workspace && excludedDir(entry.Name()) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if scanned >= limit {
+			return filepath.SkipAll
+		}
+		info, statErr := entry.Info()
+		if statErr != nil {
+			return statErr
+		}
+		if info.Size() > 2*1024*1024 || !sourceLike(path) {
+			return nil
+		}
+		scanned++
+		item, scoreErr := scoreFile(workspace, path, terms)
+		if scoreErr != nil {
+			return scoreErr
+		}
+		if item.score > 0 {
+			files = append(files, item)
+		}
+		return nil
+	})
+	return files, scanned, err
 }
 
 func scoreFile(root, path string, terms []string) (scoredFile, error) {

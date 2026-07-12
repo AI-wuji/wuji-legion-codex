@@ -10,13 +10,13 @@ var modelPolicies = map[string]struct {
 	model     string
 	fallbacks []string
 }{
-	"sol":   {model: "gpt-5.6-sol", fallbacks: []string{"gpt-5.6-terra", "gpt-5.6-luna"}},
+	"sol":   {model: "gpt-5.6-sol"},
 	"terra": {model: "gpt-5.6-terra", fallbacks: []string{"gpt-5.6-sol"}},
-	"luna":  {model: "gpt-5.6-luna", fallbacks: []string{"gpt-5.6-sol"}},
+	"luna":  {model: "gpt-5.6-luna", fallbacks: []string{"gpt-5.6-terra"}},
 }
 
 var workerExecutionEvidenceFields = []string{
-	"schema_version", "worker_id", "requested_model", "attempts", "effective_model", "result_handle",
+	"schema_version", "worker_id", "requested_model", "session_key", "host_dispatch_id", "write_boundary", "attempts", "effective_model", "model_switch_count", "result_handle",
 	"stable_prefix_bytes", "stable_prefix_sha256", "context_handle_ids", "context_bytes_sent", "context_payload_sha256",
 	"task_contract_bytes", "task_contract_sha256", "delegation_gate_reason",
 	"input_tokens", "cached_input_tokens", "output_tokens", "retry_count",
@@ -29,6 +29,8 @@ const (
 	maxSharedContextBytes = 4096
 	maxTotalReplayBytes   = 8192
 	minContextCoverageBPS = 6000
+	priorArtMaxSources    = 3
+	priorArtTimeBudgetSec = 90
 )
 
 func modelSpec(modelClass string) (string, []string) {
@@ -46,10 +48,10 @@ func modelPolicy() ModelPolicy {
 		fallbacks[class] = append([]string(nil), spec.fallbacks...)
 	}
 	return ModelPolicy{
-		MainModel:      classes["sol"],
+		MainModel:      classes["terra"],
 		ClassModels:    classes,
 		FallbackModels: fallbacks,
-		Delegation:     "route-declared workers must be spawned with model, a bounded handoff, and fallback_models; main brain merges only",
+		Delegation:     "the host must spawn each route-declared worker with its exact model, bounded handoff, and fallback_models; route JSON alone is not execution; Aji on Terra merges only",
 	}
 }
 
@@ -76,6 +78,12 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 	mounted := mountSources(q, selected, engine)
 	secondary := secondaryCapabilities(q, selected.ID, manifests)
 	officers := explicitOfficers(q)
+	officerWorkers := officerWorkerPlan(q, officers, selected, engine, context)
+	searchFirst, preflightWorkers := searchFirstPlan(q, selected, engine, context)
+	if searchFirst.Required && !containsString(secondary, "search") && selected.ID != "search" {
+		secondary = append(secondary, "search")
+		sort.Strings(secondary)
+	}
 	workers, delegation := workerPlan(q, selected, engine, context)
 	parallel := len(workers) > 1
 	provider, providerFallback := selectProvider(q, selected.Providers)
@@ -104,7 +112,13 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 			FallbackOnlyOnAvailabilityError: true,
 			OnGateFailure:                   "stay on Aji direct route",
 		},
-		DelegationDecision:      delegation,
+		DelegationDecision: delegation,
+		TaskExecutionPolicy: TaskExecutionPolicy{
+			TaskShape: "small", ModelSelectionTiming: "once-at-task-start", SessionAffinity: "sticky-per-worker",
+			EscalationPolicy: "upgrade-only-before-generation-on-availability-error", MaxModelSwitches: 1,
+			DowngradeAfterGeneration: false, PreflightBeforeExecution: len(preflightWorkers) > 0,
+		},
+		SearchFirstPolicy:       searchFirst,
 		Reasoning:               "max",
 		WriteAuthority:          "aji-only",
 		Nuwa:                    false,
@@ -117,10 +131,12 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 		ProviderFallback:        providerFallback,
 		SecondaryCapabilities:   secondary,
 		MountedSources:          mounted,
-		ExecutionLane:           executionLane(len(workers)),
+		ExecutionLane:           executionLane(len(preflightWorkers), len(workers)),
 		Parallel:                parallel,
+		PreflightWorkers:        preflightWorkers,
 		Workers:                 workers,
 		Officers:                officers,
+		OfficerWorkers:          officerWorkers,
 		InternalAdversarialPass: len(officers) == 0 && needsInternalChallenge(q),
 		FinishLine: []string{
 			"requested active target changed in place",
@@ -128,15 +144,61 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 			"task-local verification passes",
 			"do not claim fused unless capability_status is behavior-verified or primary",
 			"do not claim a worker branch completed without its execution evidence receipt",
+			"do not claim an officer executed without a validated officer receipt",
 		},
 	}
 }
 
-func executionLane(workerCount int) string {
+func officerWorkerPlan(query string, officers []string, capability Manifest, engine string, context DelegationContext) []WorkerTask {
+	if len(officers) == 0 {
+		return nil
+	}
+	model, fallbacks := modelSpec("terra")
+	prefix := stableCapabilityPrefix(capability, engine)
+	workers := make([]WorkerTask, 0, len(officers))
+	for _, officer := range officers {
+		purpose := "independent read-only adversarial review; identify unsupported assumptions, failure modes, and missing verification"
+		worker := newWorkerTask(query, "officer-"+officer, purpose, "terra", model, fallbacks,
+			[]string{"task contract", "selected evidence handles", "implementation under review"}, contextMode(context), context,
+			"explicit independent officer requested", prefix)
+		worker.Stage = "officer"
+		worker.Writes = false
+		workers = append(workers, worker)
+	}
+	return workers
+}
+
+func executionLane(preflightCount, workerCount int) string {
+	if preflightCount > 0 {
+		return "bounded-search-first"
+	}
 	if workerCount > 0 {
 		return "bounded-delegation"
 	}
 	return "small-task-direct"
+}
+
+func searchFirstPlan(query string, capability Manifest, engine string, context DelegationContext) (SearchFirstPolicy, []WorkerTask) {
+	policy := SearchFirstPolicy{}
+	if !needsPriorArtSearch(query, capability.ID, engine) || context.ParentContextRequired || requiresParentContext(query) {
+		return policy, nil
+	}
+	policy = SearchFirstPolicy{
+		Required: true, Reason: "existing-solution-scan-before-local-reasoning",
+		SourceOrder: []string{"official", "github", "community"}, MaxSources: priorArtMaxSources,
+		TimeBudgetSeconds:        priorArtTimeBudgetSec,
+		StopConditions:           []string{"official solution found", "maintainer-confirmed implementation found", "source or time budget exhausted"},
+		CancelStaleExecutionPlan: true,
+	}
+	model, fallbacks := modelSpec("luna")
+	searchCapability := Manifest{ID: "search", PrimarySkill: "wuji-research-suite"}
+	prefix := stableCapabilityPrefix(searchCapability, "web-research")
+	worker := newWorkerTask(query, "prior-art", "find an existing solution before local reasoning; official sources first, then GitHub, then community", "luna", model, fallbacks, []string{"query", "technology names", "error signature"}, "task-contract-only", context, policy.Reason, prefix)
+	worker.Stage = "preflight"
+	worker.MaxSources = policy.MaxSources
+	worker.TimeBudgetSeconds = policy.TimeBudgetSeconds
+	worker.StopConditions = append([]string(nil), policy.StopConditions...)
+	return policy, []WorkerTask{worker}
 }
 
 func scoreCapability(query string, item Manifest) int {
@@ -466,7 +528,25 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 		}
 		return finalizeWorkerPlan(workers, decision)
 	}
+	if isMechanicalTask(query) {
+		model, fallbacks := modelSpec("luna")
+		decision.Reason = "bounded-mechanical-task"
+		prefix := stableCapabilityPrefix(capability, engine)
+		workers := []WorkerTask{
+			newWorkerTask(query, "mechanical", "bounded read-only extraction, inventory, counting, or log parsing", "luna", model, fallbacks, []string{"task contract", "workspace tools"}, "task-contract-only", context, decision.Reason, prefix),
+		}
+		return finalizeWorkerPlan(workers, decision)
+	}
 	forceParallel := containsAny(query, "并行", "parallel")
+	if needsSolJudgment(query) {
+		model, fallbacks := modelSpec("sol")
+		decision.Reason = "explicit-high-reasoning-judgment"
+		prefix := stableCapabilityPrefix(capability, engine)
+		workers := []WorkerTask{
+			newWorkerTask(query, "sol-judgment", "bounded independent high-reasoning judgment; return options, evidence, and risks for Aji on Terra to merge", "sol", model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, decision.Reason, prefix),
+		}
+		return finalizeWorkerPlan(workers, decision)
+	}
 	defaultFanout := map[string]bool{
 		"code": true,
 	}
@@ -581,13 +661,29 @@ func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inpu
 		payloadHash = context.PayloadSHA256
 		allocated = context.SelectedBytes
 	}
-	contract := marshalWorkerContract(query, id, purpose, handles)
+	sessionKey := taskSessionKey(query, id, context.Handle)
+	contract := marshalWorkerContract(query, id, purpose, handles, sessionKey)
+	maxModelSwitches := 0
+	if len(fallbacks) > 0 {
+		maxModelSwitches = 1
+	}
+	maxAttempts := 1
+	fallbackOn := []string{}
+	if len(fallbacks) > 0 {
+		maxAttempts = 2
+		fallbackOn = []string{"model-unavailable", "provider-error-before-generation"}
+	}
 	return WorkerTask{
 		ID:                         id,
+		Stage:                      "execution",
 		Purpose:                    purpose,
 		ModelClass:                 modelClass,
 		Model:                      model,
 		FallbackModels:             append([]string(nil), fallbacks...),
+		SessionKey:                 sessionKey,
+		SessionAffinity:            "sticky-per-worker",
+		EscalationPolicy:           "upgrade-only-before-generation-on-availability-error",
+		MaxModelSwitches:           maxModelSwitches,
 		Inputs:                     append([]string(nil), inputs...),
 		TaskContract:               contract,
 		TaskContractSHA256:         sha256Hex([]byte(contract)),
@@ -604,8 +700,9 @@ func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inpu
 		AllocatedTaskContractBytes: len([]byte(contract)),
 		MaxTaskContractBytes:       maxTaskContractBytes,
 		DelegationGateReason:       reason,
-		MaxAttempts:                2,
-		FallbackOn:                 []string{"model-unavailable", "provider-error-before-generation"},
+		MaxAttempts:                maxAttempts,
+		FallbackOn:                 fallbackOn,
+		Writes:                     false,
 		ExecutionEvidenceRequired:  true,
 		ExecutionEvidenceFields:    append([]string(nil), workerExecutionEvidenceFields...),
 	}
@@ -634,9 +731,10 @@ type workerContract struct {
 	Boundaries    []string `json:"boundaries"`
 	Acceptance    []string `json:"acceptance"`
 	ContextHandle string   `json:"context_handle,omitempty"`
+	SessionKey    string   `json:"session_key"`
 }
 
-func marshalWorkerContract(query, id, purpose string, handles []string) string {
+func marshalWorkerContract(query, id, purpose string, handles []string, sessionKey string) string {
 	contract := workerContract{
 		Schema:     "wuji-worker-contract-v2",
 		Objective:  strings.TrimSpace(query),
@@ -644,12 +742,18 @@ func marshalWorkerContract(query, id, purpose string, handles []string) string {
 		Purpose:    purpose,
 		Boundaries: []string{"Aji is the only merger and writer", "do not infer missing parent conversation", "return evidence, not a completion claim"},
 		Acceptance: []string{"complete only the named branch", "cite the supplied context handle when used", "report model and token telemetry"},
+		SessionKey: sessionKey,
 	}
 	if len(handles) > 0 {
 		contract.ContextHandle = handles[0]
 	}
 	encoded, _ := json.Marshal(contract)
 	return string(encoded)
+}
+
+func taskSessionKey(query, workerID, contextHandle string) string {
+	payload := strings.Join([]string{"wuji-task-session-v1", strings.TrimSpace(query), workerID, contextHandle}, "\n")
+	return "wuji-session://sha256/" + sha256Hex([]byte(payload))
 }
 
 func promptOrder(mode string) []string {
@@ -661,6 +765,47 @@ func promptOrder(mode string) []string {
 
 func isBroadSearch(query string) bool {
 	return containsAny(query, "全网", "搜索", "检索", "调研", "research", "search the web", "github上看看")
+}
+
+func needsPriorArtSearch(query, capabilityID, engine string) bool {
+	if capabilityID == "search" || engine == "web-research" || containsAny(query, "不要联网", "不要搜索", "do not search", "offline only") {
+		return false
+	}
+	if isDeterministicEdit(query) {
+		return false
+	}
+	return containsAny(query,
+		"现成方案", "现有方案", "有没有项目", "官方资料", "社区教程", "最佳实践",
+		"bug", "报错", "错误", "异常", "崩溃", "失败", "根因", "修复", "调试",
+		"api", "sdk", "依赖", "插件", "框架", "模型路由", "缓存", "上下文共享",
+		"架构", "重构", "迁移", "升级", "性能", "安全", "集成", "兼容",
+		"existing solution", "prior art", "official docs", "best practice", "error", "exception", "crash", "debug",
+		"integration", "dependency", "plugin", "framework", "routing", "cache", "migration", "upgrade", "performance", "security",
+	)
+}
+
+func isDeterministicEdit(query string) bool {
+	return containsAny(query,
+		"错别字", "拼写", "改文案", "修改文案", "改文字", "修改文字", "重命名", "格式化", "改颜色", "修改颜色", "删除注释",
+		"typo", "spelling", "copy change", "rename", "format only", "change the text", "update the text", "delete comment",
+	)
+}
+
+func isMechanicalTask(query string) bool {
+	if containsAny(query, "修改", "修复", "实现", "重构", "写入", "删除", "change", "fix", "implement", "refactor", "write", "delete") {
+		return false
+	}
+	return containsAny(query,
+		"列出文件", "文件清单", "统计数量", "统计行数", "提取日志", "解析日志", "查找所有", "扫描所有", "汇总日志",
+		"list files", "inventory files", "count lines", "count occurrences", "extract logs", "parse logs", "find all", "scan all", "summarize logs",
+	)
+}
+
+func needsSolJudgment(query string) bool {
+	return containsAny(query,
+		"explicit sol", "use sol", "high-reasoning", "high reasoning", "architecture decision", "root-cause adjudication", "threat model",
+		"使用sol", "调用sol", "高推理", "架构取舍", "根因裁决", "威胁建模",
+	)
 }
 
 func requiresParentContext(query string) bool {
@@ -694,6 +839,15 @@ func needsInternalChallenge(query string) bool {
 func containsAny(query string, terms ...string) bool {
 	for _, term := range terms {
 		if term != "" && strings.Contains(query, strings.ToLower(term)) {
+			return true
+		}
+	}
+	return false
+}
+
+func containsString(values []string, target string) bool {
+	for _, value := range values {
+		if value == target {
 			return true
 		}
 	}

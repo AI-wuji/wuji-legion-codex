@@ -13,11 +13,14 @@ import (
 	"github.com/AI-wuji/wuji-legion-codex-2.0/internal/core"
 )
 
-const usage = `usage: wuji <route|context-select|validate-receipt|verify|evolve> [flags]
+const usage = `usage: wuji <route|context-select|graph-sync|knowledge-record|knowledge-query|validate-receipt|verify|evolve> [flags]
 
 Commands:
   route           select a capability for a user request
   context-select  select ranked code excerpts within a byte budget
+  graph-sync      build or refresh the local workspace relation graph
+  knowledge-record record a verified cross-project knowledge node
+  knowledge-query  query the event-triggered cross-project knowledge graph
   validate-receipt validate one worker execution receipt against a route
   verify          verify one or all capability manifests
   evolve          evaluate or apply a capability candidate`
@@ -91,6 +94,80 @@ func run(args []string, stdout, stderr io.Writer) int {
 		result.ArtifactPath = artifactPath
 		output = result
 
+	case "graph-sync":
+		fs := newFlagSet("graph-sync", stderr)
+		workspace := fs.String("workspace", ".", "workspace to index")
+		if code := parseFlags(fs, args[1:], stderr); code >= 0 {
+			return code
+		}
+		result, err := core.SyncWorkspaceGraph(*workspace)
+		if err != nil {
+			return reportError(stderr, 1, err)
+		}
+		output = result
+
+	case "knowledge-record":
+		fs := newFlagSet("knowledge-record", stderr)
+		store := fs.String("store", core.DefaultKnowledgeStore(), "knowledge store")
+		kind := fs.String("kind", "", "knowledge node kind")
+		key := fs.String("key", "", "stable knowledge key")
+		scope := fs.String("scope", "", "canonical scope: global or workspace:<sha256>")
+		workspace := fs.String("workspace", "", "workspace path used to derive a canonical scope")
+		summary := fs.String("summary", "", "compact verified summary")
+		rootCause := fs.String("root-cause", "", "verified root cause for a failure node")
+		location := fs.String("location", "", "solution location or HTTPS URL")
+		verification := fs.String("verification", "", "local verification evidence file")
+		tags := fs.String("tags", "", "comma-separated tags")
+		relations := fs.String("relations", "", "comma-separated predicate=target relations")
+		if code := parseFlags(fs, args[1:], stderr); code >= 0 {
+			return code
+		}
+		scopeValue, err := resolveKnowledgeScope(*scope, *workspace)
+		if err != nil {
+			return reportError(stderr, 2, err)
+		}
+		record, err := core.RecordKnowledge(*store, core.KnowledgeRecordInput{
+			Kind: *kind, Key: *key, Scope: scopeValue, Summary: *summary, RootCause: *rootCause,
+			Location: *location, Verification: *verification, Tags: splitCSV(*tags), Relations: parseKnowledgeRelations(*relations),
+		})
+		if err != nil {
+			return reportError(stderr, 2, err)
+		}
+		output = record
+
+	case "knowledge-query":
+		fs := newFlagSet("knowledge-query", stderr)
+		store := fs.String("store", core.DefaultKnowledgeStore(), "knowledge store")
+		trigger := fs.String("trigger", "", "event trigger: failure, explicit-reuse, capability-miss, or verification-trace")
+		kind := fs.String("kind", "", "optional knowledge node kind")
+		key := fs.String("key", "", "knowledge key")
+		scope := fs.String("scope", "", "canonical scope: global or workspace:<sha256>")
+		workspace := fs.String("workspace", "", "workspace path used to derive a canonical scope")
+		tags := fs.String("tags", "", "comma-separated tags")
+		relatedTo := fs.String("related-to", "", "relation target")
+		relation := fs.String("relation", "", "optional relation predicate")
+		limit := fs.Int("limit", 3, "maximum matches")
+		if code := parseFlags(fs, args[1:], stderr); code >= 0 {
+			return code
+		}
+		scopeValue := strings.TrimSpace(*scope)
+		var err error
+		if scopeValue == "" && strings.TrimSpace(*workspace) == "" && strings.TrimSpace(*trigger) == "" {
+			scopeValue = "global"
+		} else {
+			scopeValue, err = resolveKnowledgeScope(*scope, *workspace)
+		}
+		if err != nil {
+			return reportError(stderr, 2, err)
+		}
+		result, err := core.QueryKnowledge(*store, core.KnowledgeQuery{
+			Trigger: *trigger, Kind: *kind, Key: *key, Scope: scopeValue, Tags: splitCSV(*tags), RelatedTo: *relatedTo, Relation: *relation, Limit: *limit,
+		})
+		if err != nil {
+			return reportError(stderr, 2, err)
+		}
+		output = result
+
 	case "validate-receipt":
 		fs := newFlagSet("validate-receipt", stderr)
 		routePath := fs.String("route", "", "route JSON file")
@@ -118,13 +195,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if err := json.Unmarshal(receiptData, &receipt); err != nil {
 			return reportError(stderr, 2, fmt.Errorf("decode receipt: %w", err))
 		}
-		var worker *core.WorkerTask
-		for index := range route.Workers {
-			if route.Workers[index].ID == *workerID {
-				worker = &route.Workers[index]
-				break
-			}
-		}
+		worker := findRouteWorker(route, *workerID)
 		if worker == nil {
 			return reportError(stderr, 2, fmt.Errorf("worker not found in route: %s", *workerID))
 		}
@@ -191,6 +262,38 @@ func run(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+func resolveKnowledgeScope(scope, workspace string) (string, error) {
+	if strings.TrimSpace(workspace) != "" {
+		if strings.TrimSpace(scope) != "" {
+			return "", errors.New("use --workspace or --scope, not both")
+		}
+		return core.KnowledgeWorkspaceScope(workspace)
+	}
+	if strings.TrimSpace(scope) == "" {
+		return "", errors.New("--scope or --workspace is required")
+	}
+	return strings.ToLower(strings.TrimSpace(scope)), nil
+}
+
+func findRouteWorker(route core.RouteResult, workerID string) *core.WorkerTask {
+	for index := range route.PreflightWorkers {
+		if route.PreflightWorkers[index].ID == workerID {
+			return &route.PreflightWorkers[index]
+		}
+	}
+	for index := range route.Workers {
+		if route.Workers[index].ID == workerID {
+			return &route.Workers[index]
+		}
+	}
+	for index := range route.OfficerWorkers {
+		if route.OfficerWorkers[index].ID == workerID {
+			return &route.OfficerWorkers[index]
+		}
+	}
+	return nil
+}
+
 func newFlagSet(name string, stderr io.Writer) *flag.FlagSet {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -217,6 +320,28 @@ func writeJSON(writer io.Writer, value any) error {
 	}
 	_, err = fmt.Fprintln(writer, string(data))
 	return err
+}
+
+func splitCSV(value string) []string {
+	values := strings.Split(value, ",")
+	result := make([]string, 0, len(values))
+	for _, item := range values {
+		if item = strings.TrimSpace(item); item != "" {
+			result = append(result, item)
+		}
+	}
+	return result
+}
+
+func parseKnowledgeRelations(value string) []core.KnowledgeRelation {
+	result := []core.KnowledgeRelation{}
+	for _, item := range splitCSV(value) {
+		parts := strings.SplitN(item, "=", 2)
+		if len(parts) == 2 {
+			result = append(result, core.KnowledgeRelation{Predicate: strings.TrimSpace(parts[0]), Target: strings.TrimSpace(parts[1])})
+		}
+	}
+	return result
 }
 
 func reportError(writer io.Writer, code int, err error) int {

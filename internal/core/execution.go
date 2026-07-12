@@ -1,11 +1,12 @@
 package core
 
 import (
+	"encoding/hex"
 	"fmt"
 	"strings"
 )
 
-const workerReceiptSchemaVersion = 1
+const workerReceiptSchemaVersion = 2
 
 func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) error {
 	if receipt.SchemaVersion != workerReceiptSchemaVersion {
@@ -13,6 +14,15 @@ func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) er
 	}
 	if receipt.WorkerID != worker.ID || receipt.RequestedModel != worker.Model {
 		return fmt.Errorf("worker receipt identity does not match route")
+	}
+	if receipt.SessionKey == "" || receipt.SessionKey != worker.SessionKey {
+		return fmt.Errorf("worker receipt session key does not match route")
+	}
+	if strings.TrimSpace(receipt.HostDispatchID) == "" {
+		return fmt.Errorf("worker receipt lacks a host dispatch identifier")
+	}
+	if worker.Writes || receipt.WriteBoundary != "read-only" {
+		return fmt.Errorf("worker receipt violates Aji-only write authority")
 	}
 	if len(receipt.Attempts) == 0 || len(receipt.Attempts) > worker.MaxAttempts {
 		return fmt.Errorf("worker receipt attempt count exceeds route policy")
@@ -33,6 +43,7 @@ func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) er
 	totalInput, totalCached, totalOutput := 0, 0, 0
 	totalContext, totalPrefix, totalContract := 0, 0, 0
 	failureKinds := make([]string, 0, len(receipt.Attempts))
+	modelSwitches := 0
 	for index, attempt := range receipt.Attempts {
 		if attempt.Model == "" || attempt.CacheDomain != "model-local:"+attempt.Model {
 			return fmt.Errorf("attempt %d has an invalid model-local cache domain", index+1)
@@ -48,6 +59,12 @@ func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) er
 			if !allowedFallback[attempt.Model] || previous.GenerationStarted || !allowedFailure[previous.FailureKind] {
 				return fmt.Errorf("attempt %d violates generation-before-fallback policy", index+1)
 			}
+			if attempt.Model != previous.Model {
+				modelSwitches++
+			}
+			if modelStrength(attempt.Model) <= modelStrength(previous.Model) {
+				return fmt.Errorf("attempt %d violates upgrade-only model policy", index+1)
+			}
 		}
 		if index < len(receipt.Attempts)-1 && attempt.FailureKind == "" {
 			return fmt.Errorf("attempt %d has no fallback-eligible failure", index+1)
@@ -62,9 +79,12 @@ func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) er
 		totalPrefix += attempt.StablePrefixBytes
 		totalContract += attempt.TaskContractBytes
 	}
+	if receipt.ModelSwitchCount != modelSwitches || modelSwitches > worker.MaxModelSwitches {
+		return fmt.Errorf("worker receipt model switch count violates route policy")
+	}
 
 	last := receipt.Attempts[len(receipt.Attempts)-1]
-	if last.FailureKind != "" || !last.GenerationStarted || strings.TrimSpace(receipt.ResultHandle) == "" {
+	if last.FailureKind != "" || !last.GenerationStarted || !validResultHandle(receipt.ResultHandle) {
 		return fmt.Errorf("worker receipt has no successful generated result")
 	}
 	if receipt.EffectiveModel != last.Model || receipt.RetryCount != len(receipt.Attempts)-1 {
@@ -95,10 +115,36 @@ func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) er
 	if receipt.SavingsMicrounits != wantSavings {
 		return fmt.Errorf("worker receipt savings calculation is inconsistent")
 	}
-	if receipt.SavingsMicrounits <= 0 {
+	if worker.ModelClass != "sol" && receipt.SavingsMicrounits <= 0 {
 		return fmt.Errorf("delegation did not beat the Aji cost baseline")
 	}
 	return nil
+}
+
+func validResultHandle(handle string) bool {
+	const prefix = "wuji-result://sha256/"
+	if !strings.HasPrefix(handle, prefix) {
+		return false
+	}
+	digest := strings.TrimPrefix(handle, prefix)
+	if len(digest) != 64 || strings.ToLower(digest) != digest {
+		return false
+	}
+	_, err := hex.DecodeString(digest)
+	return err == nil
+}
+
+func modelStrength(model string) int {
+	switch model {
+	case "gpt-5.6-luna":
+		return 1
+	case "gpt-5.6-terra":
+		return 2
+	case "gpt-5.6-sol":
+		return 3
+	default:
+		return 0
+	}
 }
 
 func equalStringSlices(a, b []string) bool {

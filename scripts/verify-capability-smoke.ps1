@@ -79,7 +79,7 @@ if ($manifest.host_callable -and $Capability -in @('code','context','evolution')
       throw 'code smoke did not emit the bounded Terra worker plan'
     }
     $worker = @($codeRoute.workers)[0]
-    if (-not $worker.execution_evidence_required -or ($worker.execution_evidence_fields -join ',') -ne 'schema_version,worker_id,requested_model,attempts,effective_model,result_handle,stable_prefix_bytes,stable_prefix_sha256,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,accepted_by_aji,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,aji_baseline_microunits,savings_microunits') {
+    if (-not $worker.execution_evidence_required -or ($worker.execution_evidence_fields -join ',') -ne 'schema_version,worker_id,requested_model,session_key,host_dispatch_id,write_boundary,attempts,effective_model,model_switch_count,result_handle,stable_prefix_bytes,stable_prefix_sha256,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,accepted_by_aji,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,aji_baseline_microunits,savings_microunits') {
       throw 'code smoke emitted an incomplete execution evidence contract'
     }
     if ($worker.context_mode -ne 'shared-content-addressed-handle' -or $worker.context_handles[0] -ne $codeContext.context_handle -or $worker.context_artifact -ne $codeContext.artifact_path) {
