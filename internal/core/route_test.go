@@ -2,6 +2,7 @@ package core
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -228,6 +229,11 @@ func TestSparseSourceMount(t *testing.T) {
 	if err := os.MkdirAll(secondaryDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	for _, dir := range []string{primaryDir, secondaryDir} {
+		if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte("# test"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
 	items := []Manifest{{
 		ID: "presentation", Triggers: []string{"ppt"}, Status: "primary", PrimarySkill: "wuji-editable-deck", Root: root,
 		Sources: []Source{
@@ -236,7 +242,6 @@ func TestSparseSourceMount(t *testing.T) {
 			{ID: "optional-atom", Priority: "optional", Globs: []string{secondaryDir}, Required: []string{"SKILL.md"}},
 		},
 	}}
-	// Write dummy required files so ResolveSource works (dirs only needed).
 	sparse := Route("做一个PPT", items)
 	if len(sparse.MountedSources) != 1 || sparse.MountedSources[0].ID != "wuji-editable-deck-unified" {
 		t.Fatalf("sparse mount failed: %#v", sparse.MountedSources)
@@ -248,6 +253,21 @@ func TestSparseSourceMount(t *testing.T) {
 	full := Route("做一个PPT 完整能力", items)
 	if len(full.MountedSources) != 3 {
 		t.Fatalf("full mount should include optional: %#v", full.MountedSources)
+	}
+}
+
+func TestRouteDoesNotMountIncompleteSource(t *testing.T) {
+	root := t.TempDir()
+	incomplete := filepath.Join(root, "incomplete")
+	if err := os.MkdirAll(incomplete, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	items := []Manifest{{
+		ID: "code", Triggers: []string{"code"}, Status: "callable", PrimarySkill: "native", Root: root,
+		Sources: []Source{{ID: "broken", Priority: "primary", Globs: []string{incomplete}, Required: []string{"SKILL.md"}}},
+	}}
+	if got := Route("code task", items); len(got.MountedSources) != 0 {
+		t.Fatalf("incomplete source was mounted: %#v", got.MountedSources)
 	}
 }
 

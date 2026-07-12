@@ -314,16 +314,36 @@ func ResolveSource(source Source) (string, bool) {
 }
 
 func ResolveSourceAt(root string, source Source) (string, bool) {
+	return resolveSourceAt(root, source, false)
+}
+
+func ResolveCompleteSourceAt(root string, source Source) (string, bool) {
+	return resolveSourceAt(root, source, true)
+}
+
+func resolveSourceAt(root string, source Source, requireComplete bool) (string, bool) {
 	for _, raw := range source.Globs {
 		matches, _ := filepath.Glob(ExpandPathAt(root, raw))
 		sort.Slice(matches, func(i, j int) bool { return naturalCompare(matches[i], matches[j]) > 0 })
 		for _, match := range matches {
 			if info, err := os.Stat(match); err == nil && info.IsDir() {
-				return match, true
+				if !requireComplete || sourceComplete(match, source.Required) {
+					return match, true
+				}
 			}
 		}
 	}
 	return "", false
+}
+
+func sourceComplete(path string, required []string) bool {
+	for _, pattern := range required {
+		matches, err := filepath.Glob(filepath.Join(path, filepath.FromSlash(pattern)))
+		if err != nil || len(matches) == 0 {
+			return false
+		}
+	}
+	return true
 }
 
 func decodeManifest(data []byte) (Manifest, error) {

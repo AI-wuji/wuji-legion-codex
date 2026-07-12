@@ -161,7 +161,7 @@ func makeExcerpt(file scoredFile, maxTextBytes int) ContextExcerpt {
 		if b.Len()+len([]byte(piece))+1 > maxTextBytes {
 			break
 		}
-		b.WriteString(strings.TrimSpace(piece))
+		b.WriteString(piece)
 		b.WriteByte('\n')
 		if start == 0 {
 			start, last = n, n
@@ -233,7 +233,7 @@ func excludedDir(name string) bool {
 func sourceLike(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {
-	case ".go", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".py", ".rs", ".java", ".kt", ".cs", ".cpp", ".c", ".h", ".md", ".json", ".yaml", ".yml", ".toml", ".ps1", ".sh", ".html", ".css", ".sql":
+	case ".go", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".vue", ".svelte", ".astro", ".py", ".rs", ".java", ".kt", ".cs", ".cpp", ".c", ".h", ".md", ".json", ".yaml", ".yml", ".toml", ".ps1", ".sh", ".html", ".css", ".scss", ".less", ".sql":
 		return true
 	}
 	return false

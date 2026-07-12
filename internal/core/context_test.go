@@ -71,3 +71,21 @@ func TestContextSelectSkipsExcerptThatCannotFit(t *testing.T) {
 		t.Fatalf("later fitting excerpt was skipped: %#v", got.Excerpts)
 	}
 }
+
+func TestContextSelectIncludesFrontendSourcesAndPreservesIndent(t *testing.T) {
+	root := t.TempDir()
+	content := "<template>\n  <section>\n    BoardAtmosphere stage atmosphere\n  </section>\n</template>\n"
+	if err := os.WriteFile(filepath.Join(root, "BoardAtmosphere.vue"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := SelectContext(root, "BoardAtmosphere stage atmosphere", 1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Excerpts) != 1 || got.Excerpts[0].Path != "BoardAtmosphere.vue" {
+		t.Fatalf("frontend source was not selected: %#v", got.Excerpts)
+	}
+	if !strings.Contains(got.Excerpts[0].Text, "    BoardAtmosphere") {
+		t.Fatalf("excerpt indentation was lost: %q", got.Excerpts[0].Text)
+	}
+}

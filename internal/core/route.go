@@ -246,7 +246,7 @@ func mountSources(query string, selected Manifest, engine string) []MountedSourc
 		if !shouldMountSource(query, source, priority, fullMount) {
 			continue
 		}
-		if path, ok := ResolveSourceAt(selected.Root, source); ok {
+		if path, ok := ResolveCompleteSourceAt(selected.Root, source); ok {
 			mounted = append(mounted, MountedSource{ID: source.ID, Path: path, Priority: priority})
 		}
 	}
