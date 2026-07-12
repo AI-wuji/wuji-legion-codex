@@ -1,63 +1,111 @@
 # 无极军团 2.0 / Wuji Legion 2.0
 
-面向最新 ChatGPT Codex 的系统级总 Skill：由一个最强阿极主脑按需挂载完整能力包，调度可并行专家，并以真实产物和行为测试完成闭环。
+无极军团 2.0 是面向 ChatGPT Codex 的系统级运行 Skill。它把 Codex 作为唯一执行主机，由一个阿极主脑负责理解、路由、合并和完成判断，再按任务冷挂载完整能力包，并用 Go CLI 提供确定性路由、稀疏上下文选择、能力探针和进化门禁。
 
-A system-level Skill for modern ChatGPT Codex: one strongest Aji brain cold-mounts complete capability packages, dispatches bounded parallel experts, and closes work with real artifact and behavior verification.
+Wuji Legion 2.0 is a system-level runtime Skill for ChatGPT Codex. Codex remains the only execution host. One Aji brain owns routing, merge, write authority, and completion judgment; complete capability packages are mounted only when needed, while a deterministic Go CLI provides routing, sparse context selection, capability probes, and evolution gates.
 
-## 关键变化 / What Changed
+## 2.0 的核心原则 / Core Principles
 
-- 单主脑、单写权限，不再保留女娲或第二工作流。
-- Skill 保留完整脚本、模板、资产和入口；摘要不再冒充蒸馏。
-- 专家按任务冷启动，可并行，但只接收紧凑契约和必要证据句柄。
-- 进化主帅用原版对照测试决定吸收、替换或淘汰。
-- 同名能力只有在现有路线与候选路线声明同一 `fixture`、均通过真实探针且候选不降级时才允许替换；应用前会归档旧 manifest。
-- 项目检索使用小预算上下文选择；命令输出优先在上下文外压缩。
-- 冷来源、Go 工具链和可选上下文工具均由 `sources.lock.json` 固定版本、路径与完整性证据。
-- PPT 对外只保留两个新 Skill：`wuji-web-deck` 与 `wuji-editable-deck`。HTML-PPT、Slidev、流体舞台、PPT Master、Huashu、Humanize PPT、Baoyu 等已成为内部模板、组件、脚本和规划层。
-- 写作、视觉、研究、前端、数据、文档、安全、图像和视频也各自收束为一个场景型统一 Skill。
-- 旧版 104 个对象和 52 条工作树路径已逐项重新裁决；每项明确标记为更新、蒸馏、补落地或剔除，详见 `migration/legacy-verdict-ledger.json` 与 `migration/legacy-worktree-ledger.json`。
+- **单一主脑，单一写权限**：阿极负责需求归一化、依赖分析、并行分发、最终合并和完成判断。2.0 不再使用 Nuwa、第二路由、默认会审或常驻桥接。
+- **能力包优先于摘要**：保留真实的 Skill、脚本、模板、资产、UI 和入口。规则摘要不能冒充已经融合的能力。
+- **冷挂载与有界并行**：专家不是常驻人格；只接收任务契约、必要上下文句柄和完整冷能力包。独立分支可以并行，依赖关系保持顺序。
+- **证据驱动的能力生命周期**：`known -> doctrine-only -> assets-retained -> callable -> behavior-verified -> primary`。只有通过真实行为验证的能力才会被称为已融合。
+- **上下文有预算**：默认使用小型稳定前缀和任务级检索，不把完整历史、原始日志或大型图谱常驻在上下文中。
+- **上游只作内部原子**：旧项目和外部 Skill 需要经过清点、对照测试和裁决；合适的部分蒸馏融合，不合适的部分剔除，不原封不动回迁。
 
-- One brain and one write authority; no Nuwa or parallel workflow.
-- Skills retain complete scripts, templates, assets, and entrypoints.
-- Experts are cold, bounded, parallel when independent, and receive compact contracts.
-- Evolution uses upstream-vs-integrated behavioral comparison.
-- Replacement requires the same declared fixture on both routes, passing probes, and no lifecycle regression; the previous manifest is archived before apply.
-- Retrieval is budgeted; command output is compressed outside the model context.
-- Cold sources, the Go toolchain, and optional context tools are pinned by `sources.lock.json`.
-- Presentation exposes only unified web-deck and editable-deck Skills; upstream projects are internal atoms.
-- Other domains expose one scenario-oriented suite each.
-- All 104 legacy objects and 52 legacy worktree paths are reclassified by evidence.
+## 当前状态 / Current Status
 
+2.0 已完成一次完整基线审计和发布前验收：
 
+- 14 个能力包完成旧版迁移裁决；104 个旧版对象和 52 条工作树路径均有明确的更新、蒸馏、补落地或剔除结论。
+- `fusion_audit`、`optimization_audit`、`context_bloat_audit` 均通过。
+- Go 单元测试、静态检查、Skill 校验、依赖安全审计和并发输出压力测试通过。
+- 生产仓库不保存 API Key、Token、会话内容、`node_modules`、`dist` 或临时缓存。
 
-## Capability Honesty
+能力的具体可信度以 `capabilities/*/manifest.json` 为准。`callable` 表示宿主可以挂载并调用；`behavior-verified` 和 `primary` 才表示已经通过对应行为验证，项目不会把 smoke 探针结果包装成完整融合。
 
-- Lifecycle: `known -> doctrine-only -> assets-retained -> callable -> behavior-verified -> primary`.
-- Say “fused” only for `behavior-verified` or `primary`.
-- Current verified/primary surfaces: `presentation` (primary) and `context` (primary).
-- Other suites, including `code-review`, are `callable` with smoke/mount probes; they are host-usable but not claimed fused.
-- Sparse mount: primary sources mount by default; secondary/optional only when named or when the query asks for 完整能力.
-- Multi-intent: `SecondaryCapabilities` may list follow-on suites (e.g. writing + image).
-- Install CLI on PATH: `./scripts/install-wuji-path.ps1` (session) or `-User` (persistent).
-- Fast audit: `./scripts/audit.ps1 -Mode fast` (skips slow presentation full probe set when used intentionally).
-- Fast regression: `./scripts/test.ps1`; full acceptance: `./scripts/test.ps1 -Full`.
+## 能力表面 / Capability Surfaces
 
-## 受控更新 / Controlled Updates
+2.0 将用户面能力收束为按场景挂载的统一入口：
 
-- 只检查上游：`./scripts/update-cold-sources.ps1`。
-- 更新指定冷源：`./scripts/update-cold-sources.ps1 -SourceId ppt-master -Apply -Transport TreeDelta`。小型仓库可使用 `Archive`；更新成功后会写入精确 commit 与完整树哈希。
-- Slidev 与流体舞台是经过筛选的 2.0 内置运行资产，位于 `capabilities/presentation/assets/`；验证时在临时目录安装和构建，不提交 `node_modules` 或 `dist`。
-- Open Design 的新 daemon/auth/provider 平台明确不接入；旧仓库仅用于迁移证据，绝不作为 2.0 运行时。
-- Xiaobai Image2 仅通过 `capabilities/image/providers/xiaobai-image2/invoke.ps1` 按次调用，凭据只从当前进程环境读取，不提供常驻 bridge、GUI 或服务。
+| 场景 | 统一能力包 |
+| --- | --- |
+| 编码与审查 | `code`、`code-review` |
+| 上下文与进化 | `context`、`evolution` |
+| 研究与数据 | `search`、`data` |
+| 文档与演示 | `documents`、`presentation` |
+| 前端与视觉 | `frontend`、`visual` |
+| 图像与视频 | `image`、`video` |
+| 写作与安全 | `writing`、`security` |
 
-## Quick Start
+演示能力对外只暴露 `wuji-web-deck` 和 `wuji-editable-deck` 两个统一 Skill；HTML-PPT、Slidev、PPT Master、Huashu 等只作为内部模板、组件或验证资产，不再作为用户需要选择的并行产品。
+
+## 快速开始 / Quick Start
+
+在 PowerShell 中：
 
 ```powershell
+git clone https://github.com/AI-wuji/wuji-legion-codex.git
+cd wuji-legion-codex
+
 ./scripts/build.ps1
 ./bin/wuji.exe route --query "修改登录页并验证真实路由"
 ./bin/wuji.exe context-select --workspace . --query "capability verification" --max-bytes 12288
-./bin/wuji.exe verify --capability presentation
+```
+
+快速回归检查：
+
+```powershell
+./scripts/test.ps1
+```
+
+完整验收（包含较慢的演示能力探针）：
+
+```powershell
+./scripts/test.ps1 -Full
+```
+
+安装 CLI 到当前会话或用户 PATH：
+
+```powershell
+./scripts/install-wuji-path.ps1
+./scripts/install-wuji-path.ps1 -User
+```
+
+## 受控进化 / Controlled Evolution
+
+只检查冷源：
+
+```powershell
+./scripts/update-cold-sources.ps1
+```
+
+评估候选能力（默认不写入）：
+
+```powershell
 ./bin/wuji.exe evolve --candidate ./candidate-manifest.json
 ```
 
-`evolve` 默认只评估；确认结果后加 `--apply` 才会写入。运行 `./scripts/test.ps1 -Full` 完成全套验收。
+只有在同一 fixture 下完成上游与现有路线的真实对照、候选不降级并明确确认后，才使用 `--apply`。应用替换前会归档旧 manifest。
+
+## 模型与提供商边界 / Model Boundaries
+
+- 阿极负责规划、架构、合并和高风险判断，使用项目约定的最高可用推理路线。
+- 有界实现和验证工作可以按任务契约使用 Terra；机械提取才允许在不需要重放项目上下文时使用 Luna。
+- 图像和视频提供商按项目规则路由，并在失败时回退；凭据只从当前进程环境读取，绝不写入规则或仓库。
+- 模型选择服从任务边界和验证要求，不为了节省 token 而重复加载项目上下文或降低关键判断质量。
+
+## 目录说明 / Repository Layout
+
+- `SKILL.md`：系统级热路径规则。
+- `capabilities/*/manifest.json`：能力生命周期、来源、入口和探针的事实源。
+- `cmd/`、`internal/`：确定性 Go CLI 和运行时核心。
+- `scripts/`：构建、审计、测试、安装和冷源更新脚本。
+- `migration/`：旧版对象与工作树路径的逐项迁移裁决证据。
+- `references/`：架构、能力契约和运行时边界文档。
+
+旧版已从当前主线退出，但发布时会保留在 `legacy-v1-backup` 分支和 `legacy-v1-final` 标签中，便于回溯和对照；主分支只承载 2.0。
+
+## 许可与凭据 / License and Credentials
+
+本仓库不包含 API Key、Token 或 Codex 会话内容。使用外部提供商时，请通过当前进程环境或宿主的安全凭据机制提供密钥，并在发布前检查工作树和构建产物。
