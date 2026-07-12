@@ -1,0 +1,115 @@
+{
+    "version":  "2.0",
+    "policy":  "Cold sources are pinned evidence packages. They are mounted on demand and never copied into the hot prompt.",
+    "toolchains":  [
+                       {
+                           "id":  "go",
+                           "version":  "1.25.5",
+                           "path":  "${LOCALAPPDATA}/WujiLegion/go-manual/go/bin/go.exe"
+                       }
+                   ],
+    "context_tools":  [
+                          {
+                              "id":  "rtk",
+                              "version":  "0.43.0",
+                              "asset":  "rtk-x86_64-pc-windows-msvc.zip",
+                              "url":  "https://github.com/rtk-ai/rtk/releases/download/v0.43.0/rtk-x86_64-pc-windows-msvc.zip",
+                              "sha256":  "7c5e4a2ef816a4d4ed947ddd74ca3df851fc39ea87d49a3ca2bf3abc515a016b",
+                              "binary":  "rtk.exe",
+                              "path":  "tools/bin/rtk.exe",
+                              "version_args":  [
+                                                   "--version"
+                                               ],
+                              "optional":  true
+                          },
+                          {
+                              "id":  "codebase-memory-mcp",
+                              "version":  "0.9.0",
+                              "asset":  "codebase-memory-mcp-windows-amd64.zip",
+                              "url":  "https://github.com/DeusData/codebase-memory-mcp/releases/download/v0.9.0/codebase-memory-mcp-windows-amd64.zip",
+                              "sha256":  "92f96896f952e539f0d6cb34d7892a25064b677ccbf808b8f8310ad897e86f2c",
+                              "binary":  "codebase-memory-mcp.exe",
+                              "path":  "tools/bin/codebase-memory/codebase-memory-mcp.exe",
+                              "version_args":  [
+                                                   "--version"
+                                               ],
+                              "optional":  true
+                          }
+                      ],
+    "sources":  [
+                    {
+                        "id":  "humanize-ppt",
+                        "repo":  "https://github.com/LearnPrompt/humanize-ppt",
+                        "commit":  "938bcd53158494daab523ea15d43d06d7de3278d",
+                        "tree_sha256":  "9f9bb3998d53d6622cbbc8ca61830f7aceddf3eabb97c819547b1d21e8de3d41",
+                        "path":  "${WUJI_PROJECTS}/wuji-capability-sources/humanize-ppt"
+                    },
+                    {
+                        "id":  "baoyu-skills",
+                        "repo":  "https://github.com/JimLiu/baoyu-skills",
+                        "commit":  "6b7a2e417500561a5ecdd0b168332f4142584617",
+                        "tree_sha256":  "3576a5a2775466453787b2f7240f98742fbdecc6ab266f3671ccb580d0705df0",
+                        "path":  "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills"
+                    },
+                    {
+                        "id":  "open-code-review",
+                        "repo":  "https://github.com/alibaba/open-code-review",
+                        "commit":  "c3da87885086ff41ed8f2f77b65c7a3c471e01aa",
+                        "tree_sha256":  "fbc07f0410c53d403f1b0037e7fa72100d5ebf1f71563d73016c93c8a3fb9b83",
+                        "path":  "${WUJI_PROJECTS}/wuji-capability-sources/open-code-review"
+                    },
+                    {
+                        "id":  "khazix-writer",
+                        "repo":  "https://github.com/macrochen/khazix-writer",
+                        "commit":  "5b59f6c1baf0c96e7459239ac77515e29e811e98",
+                        "path":  "${WUJI_PROJECTS}/wuji-capability-sources/khazix-writer"
+                    },
+                    {
+                        "id":  "html-ppt-skill",
+                        "repo":  "https://github.com/lewislulu/html-ppt-skill",
+                        "commit":  "f3a8435d3901697d5ac5e64d356c933637e43107",
+                        "path":  "${WUJI_PROJECTS}/_official_skill_audit/html-ppt-skill"
+                    },
+                    {
+                        "id":  "ppt-master",
+                        "repo":  "https://github.com/hugohe3/ppt-master",
+                        "commit":  "fa3161cf7bb1cb858be0cfe694f8f45d3e87d4eb",
+                        "path":  "${WUJI_PROJECTS}/wuji-capability-sources/upstream-snapshots/ppt-master",
+                        "tree_sha256":  "3d3e81fe15186e9e2c546599d77f960fb1899a350121ce1c0eb02b285ead3b65"
+                    },
+                    {
+                        "id":  "huashu-design",
+                        "repo":  "https://github.com/alchaincyf/huashu-design",
+                        "commit":  "0e7ec8aca0058184c1a9e06e57697e84f68a3f0f",
+                        "path":  "${WUJI_PROJECTS}/wuji-capability-sources/upstream-snapshots/huashu-design",
+                        "tree_sha256":  "04a4b621023259ecf98b580a196c1e4fad4cd0c69394d52c7a856ff014ae6edd"
+                    },
+                    {
+                        "id":  "frontend-slides",
+                        "repo":  "https://github.com/zarazhangrui/frontend-slides",
+                        "commit":  "9906a34d640d2111f724544cbc50f7f130569ae1",
+                        "path":  "${WUJI_PROJECTS}/wuji-capability-sources/upstream-snapshots/frontend-slides",
+                        "tree_sha256":  "1409fd478f756f86ddb5a2f4d2d28d32bed78fc068e7b3461feb984b023acd4a"
+                    },
+                    {
+                        "id":  "open-design",
+                        "repo":  "https://github.com/nexu-io/open-design",
+                        "commit":  "9a3424d68c342e6392ab4c9f4722d2b535707787",
+                        "path":  "${WUJI_PROJECTS}/_official_skill_audit/open-design"
+                    },
+                    {
+                        "id":  "slidev-runtime",
+                        "repo":  "local-proven-project",
+                        "commit":  "local",
+                        "path":  "${ROOT}/capabilities/presentation/assets/slidev-source",
+                        "tree_sha256":  "c01d646731992f5ec2308985c145de8f54fb8a938ffa22b133148f6d06c39825"
+                    },
+                    {
+                        "id":  "stage-fluid",
+                        "repo":  "local-approved-asset",
+                        "commit":  "local",
+                        "path":  "${ROOT}/capabilities/presentation/assets/stage-fluid-source",
+                        "tree_sha256":  "14c62e2c4cec49d86225b1c8819ff4300b2018896feace9fd3c663761cb308e3"
+                    }
+                ]
+}

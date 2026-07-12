@@ -1,0 +1,131 @@
+{
+  "id": "search",
+  "description": "Multi-source web research with parallel official, GitHub, and community evidence branches.",
+  "triggers": [
+    "全网搜索",
+    "全网检索",
+    "搜索",
+    "检索",
+    "调研",
+    "github上看看",
+    "网址转markdown",
+    "youtube字幕",
+    "electron提取",
+    "research",
+    "search the web",
+    "url to markdown",
+    "youtube transcript",
+    "web research",
+    "look up online",
+    "browse the web",
+    "联网搜索",
+    "在线调研"
+  ],
+  "status": "callable",
+  "primary_skill": "wuji-research-suite",
+  "host_callable": false,
+  "direct_mount": true,
+  "fallback": "default GPT web/search surface",
+  "providers": [
+    {
+      "id": "default-gpt-search",
+      "default": true
+    }
+  ],
+  "engines": [
+    {
+      "id": "web-research",
+      "default": true,
+      "primary_skill": "wuji-research-suite"
+    },
+    {
+      "id": "content-extraction",
+      "primary_skill": "wuji-research-suite",
+      "triggers": [
+        "网址转markdown",
+        "url to markdown",
+        "youtube字幕",
+        "youtube transcript",
+        "electron提取",
+        "electron extract"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "wuji-research-suite-unified",
+      "globs": [
+        "${ROOT}/capabilities/search/skills/wuji-research-suite"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "browser-control-complete",
+      "engine": "web-research",
+      "globs": [
+        "${USERPROFILE}/.codex/plugins/cache/openai-bundled/browser/*/skills/control-in-app-browser"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "baoyu-url-to-markdown-complete",
+      "engine": "content-extraction",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills/skills/baoyu-url-to-markdown"
+      ],
+      "required": [
+        "SKILL.md",
+        "scripts/*",
+        "references/*"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "baoyu-youtube-transcript-complete",
+      "engine": "content-extraction",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills/skills/baoyu-youtube-transcript"
+      ],
+      "required": [
+        "SKILL.md",
+        "scripts/*",
+        "prompts/*"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "baoyu-electron-extract-complete",
+      "engine": "content-extraction",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills/skills/baoyu-electron-extract"
+      ],
+      "required": [
+        "SKILL.md",
+        "scripts/*"
+      ],
+      "priority": "optional"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-capability-smoke.ps1",
+      "-Capability",
+      "search"
+    ],
+    "fixture": "search-smoke-v1",
+    "kind": "smoke",
+    "timeout_seconds": 60
+  }
+}

@@ -1,0 +1,7 @@
+/bin/
+/.wuji/
+/outputs/
+/tools/bin/
+*.tmp
+node_modules/
+dist/

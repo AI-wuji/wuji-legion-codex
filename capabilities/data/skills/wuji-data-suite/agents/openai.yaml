@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极数据套件"
+  short_description: "Unified statistics, datasets, sheets, and RAG"
+  default_prompt: "使用统一数据能力完成并验证当前分析。"

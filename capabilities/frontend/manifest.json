@@ -1,0 +1,84 @@
+{
+  "id": "frontend",
+  "description": "Build, redesign, test, and verify active frontend pages in place.",
+  "triggers": [
+    "页面",
+    "前端",
+    "网页",
+    "ui",
+    "ux",
+    "frontend",
+    "dashboard",
+    "电子看板",
+    "build page",
+    "web page",
+    "react page",
+    "改页面",
+    "做页面",
+    "美化这个页面",
+    "美化页面"
+  ],
+  "status": "callable",
+  "primary_skill": "wuji-frontend-suite",
+  "host_callable": false,
+  "direct_mount": true,
+  "fallback": "native Codex frontend route",
+  "sources": [
+    {
+      "id": "wuji-frontend-suite-unified",
+      "globs": [
+        "${ROOT}/capabilities/frontend/skills/wuji-frontend-suite"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "frontend-builder-complete",
+      "globs": [
+        "${USERPROFILE}/.codex/plugins/cache/openai-curated/build-web-apps/*/skills/frontend-app-builder"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "frontend-testing-complete",
+      "globs": [
+        "${USERPROFILE}/.codex/plugins/cache/openai-curated/build-web-apps/*/skills/frontend-testing-debugging"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "dynamic-board-complete",
+      "globs": [
+        "${USERPROFILE}/.codex/skills/dynamic-electronic-board"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-capability-smoke.ps1",
+      "-Capability",
+      "frontend"
+    ],
+    "fixture": "frontend-smoke-v1",
+    "kind": "smoke",
+    "timeout_seconds": 60
+  }
+}

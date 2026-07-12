@@ -1,0 +1,83 @@
+{
+  "id": "security",
+  "description": "Run scoped security, secrets, SAST, dependency, IaC, and CI/CD review through complete cold Skills.",
+  "triggers": [
+    "安全扫描",
+    "漏洞",
+    "secret scan",
+    "sast",
+    "sca",
+    "iac",
+    "devsecops",
+    "安全审查",
+    "security scan",
+    "security review",
+    "vulnerability scan",
+    "secrets scan",
+    "漏洞扫描"
+  ],
+  "status": "callable",
+  "primary_skill": "wuji-security-suite",
+  "host_callable": false,
+  "direct_mount": true,
+  "fallback": "native Codex security review with available local scanners",
+  "sources": [
+    {
+      "id": "wuji-security-suite-unified",
+      "globs": [
+        "${ROOT}/capabilities/security/skills/wuji-security-suite"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "full-security-scan-complete",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/full-security-scan"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "ci-cd-complete",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/ci-cd"
+      ],
+      "required": [
+        "SKILL.md",
+        "assets/templates/*"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "cicd-expert-complete",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/cicd-expert"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-capability-smoke.ps1",
+      "-Capability",
+      "security"
+    ],
+    "fixture": "security-smoke-v1",
+    "kind": "smoke",
+    "timeout_seconds": 60
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极军团 2.0"
+  short_description: "单主脑、冷能力包、行为验证的系统级 Codex Skill"
+  default_prompt: "使用无极军团 2.0 按最短有效路径完成当前任务，并只挂载必要能力。"

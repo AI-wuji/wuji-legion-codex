@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极研究套件"
+  short_description: "Unified web research and content extraction"
+  default_prompt: "使用统一研究能力收集证据并完成分析。"

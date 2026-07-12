@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极视频套件"
+  short_description: "Unified video generation, composition, motion, and fallback"
+  default_prompt: "使用统一视频能力完成当前生成或编辑任务。"

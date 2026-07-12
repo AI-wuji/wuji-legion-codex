@@ -1,0 +1,82 @@
+{
+  "id": "documents",
+  "description": "Create, edit, inspect, render, and verify Word, PDF, and spreadsheet artifacts through complete official packages.",
+  "triggers": [
+    "word",
+    "docx",
+    "pdf",
+    "文档",
+    "报告文件",
+    "电子表格",
+    "xlsx",
+    "excel",
+    "word document",
+    "pdf report",
+    "create document",
+    "生成文档",
+    "写报告"
+  ],
+  "status": "callable",
+  "primary_skill": "wuji-document-suite",
+  "host_callable": false,
+  "direct_mount": true,
+  "fallback": "native GPT artifact route",
+  "sources": [
+    {
+      "id": "wuji-document-suite-unified",
+      "globs": [
+        "${ROOT}/capabilities/documents/skills/wuji-document-suite"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "documents-complete",
+      "globs": [
+        "${USERPROFILE}/.codex/plugins/cache/openai-primary-runtime/documents/*/skills/documents"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "pdf-complete",
+      "globs": [
+        "${USERPROFILE}/.codex/plugins/cache/openai-primary-runtime/pdf/*/skills/pdf"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "spreadsheets-complete",
+      "globs": [
+        "${USERPROFILE}/.codex/plugins/cache/openai-primary-runtime/spreadsheets/*/skills/spreadsheets"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-capability-smoke.ps1",
+      "-Capability",
+      "documents"
+    ],
+    "fixture": "documents-smoke-v1",
+    "kind": "smoke",
+    "timeout_seconds": 60
+  }
+}

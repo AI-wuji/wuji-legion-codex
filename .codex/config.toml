@@ -1,0 +1,12 @@
+model = "gpt-5.6-sol"
+model_reasoning_effort = "max"
+model_auto_compact_token_limit = 90000
+model_auto_compact_token_limit_scope = "body_after_prefix"
+tool_output_token_limit = 6000
+
+[history]
+max_bytes = 1048576
+
+[agents]
+max_threads = 6
+max_depth = 1

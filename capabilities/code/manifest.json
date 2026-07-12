@@ -1,0 +1,60 @@
+{
+  "id": "code",
+  "description": "Direct code changes, bug fixes, and targeted verification with sparse project context.",
+  "triggers": [
+    "代码",
+    "编程",
+    "bug",
+    "修复",
+    "接口",
+    "api",
+    "组件",
+    "函数",
+    "开发",
+    "refactor",
+    "implement",
+    "fix",
+    "code",
+    "coding",
+    "bugfix",
+    "implement feature",
+    "write code",
+    "改代码",
+    "修bug",
+    "实现功能"
+  ],
+  "status": "callable",
+  "primary_skill": "native Codex coding route",
+  "host_callable": true,
+  "fallback": "native Codex coding route",
+  "sources": [],
+  "experts": [
+    {
+      "id": "implementation",
+      "purpose": "smallest complete implementation",
+      "independent": true,
+      "model_class": "terra"
+    },
+    {
+      "id": "verification",
+      "purpose": "targeted regression verification",
+      "independent": true,
+      "model_class": "terra"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-capability-smoke.ps1",
+      "-Capability",
+      "code"
+    ],
+    "fixture": "code-smoke-v1",
+    "kind": "smoke",
+    "timeout_seconds": 60
+  }
+}

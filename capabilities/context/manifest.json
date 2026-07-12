@@ -1,0 +1,37 @@
+{
+  "id": "context",
+  "description": "Budgeted project retrieval and command-output compression without resident graph dumps.",
+  "triggers": [
+    "上下文",
+    "token",
+    "项目检索",
+    "代码库检索",
+    "context",
+    "repo map",
+    "关系图谱",
+    "context select",
+    "context-select",
+    "token usage",
+    "search code",
+    "codebase search",
+    "项目上下文"
+  ],
+  "status": "primary",
+  "primary_skill": "wuji context-select",
+  "host_callable": true,
+  "fallback": "rg path narrowing plus range reads",
+  "sources": [],
+  "probe": {
+    "command": "powershell",
+    "fixture": "context-selection-budget-v1",
+    "timeout_seconds": 60,
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-context.ps1"
+    ],
+    "kind": "behavior"
+  }
+}

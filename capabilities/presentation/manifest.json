@@ -1,0 +1,343 @@
+{
+  "id": "presentation",
+  "description": "Create, edit, render, inspect, and visually verify editable PPTX or Google Slides deliverables.",
+  "triggers": [
+    "ppt",
+    "pptx",
+    "powerpoint",
+    "演示文稿",
+    "幻灯片",
+    "slide",
+    "keynote",
+    "slidev",
+    "流体背景",
+    "烟雾背景",
+    "humanize-ppt",
+    "ppt master",
+    "make a ppt",
+    "create slides",
+    "做一份ppt",
+    "做ppt",
+    "做演示文稿"
+  ],
+  "status": "primary",
+  "primary_skill": "wuji-editable-deck",
+  "direct_mount": true,
+  "fallback": "default GPT route with the same artifact and render checks",
+  "engines": [
+    {
+      "id": "editable-pptx",
+      "default": true,
+      "primary_skill": "wuji-editable-deck",
+      "triggers": [
+        "可编辑ppt",
+        "pptx",
+        "powerpoint",
+        "原生ppt",
+        "ppt master",
+        "学术ppt",
+        "keynote风格"
+      ]
+    },
+    {
+      "id": "web-deck",
+      "primary_skill": "wuji-web-deck",
+      "triggers": [
+        "html-ppt",
+        "html演示",
+        "网页演示",
+        "浏览器动态ppt",
+        "slidev",
+        "markdown演示",
+        "开发者演示",
+        "流体背景",
+        "烟雾背景",
+        "stage fluid",
+        "stage smoke"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "presentation-template-catalog-unified",
+      "globs": [
+        "${ROOT}/capabilities/presentation/assets"
+      ],
+      "required": [
+        "template-catalog.json"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "wuji-web-deck-unified",
+      "engine": "web-deck",
+      "globs": [
+        "${ROOT}/capabilities/presentation/skills/wuji-web-deck"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "wuji-editable-deck-unified",
+      "engine": "editable-pptx",
+      "globs": [
+        "${ROOT}/capabilities/presentation/skills/wuji-editable-deck"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "openai-presentations-complete",
+      "engine": "editable-pptx",
+      "globs": [
+        "${USERPROFILE}/.codex/plugins/cache/openai-primary-runtime/presentations/*/skills/presentations"
+      ],
+      "required": [
+        "SKILL.md",
+        "references/content-rules.md",
+        "container_tools/render_slides.py",
+        "container_tools/slides_test.py",
+        "container_tools/setup_artifact_tool_workspace.mjs",
+        "assets/builtin_templates/codex-grid-layout-library/artifact-tool-compose/slide-*.mjs",
+        "assets/builtin_templates/codex-grid-layout-library/assets/previews/*.png"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "elite-powerpoint-design-complete",
+      "engine": "editable-pptx",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/elite-powerpoint-designer"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "slide-studio-complete",
+      "engine": "editable-pptx",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/slide-studio"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "pptx-generation-complete",
+      "engine": "editable-pptx",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/pptx-generation"
+      ],
+      "required": [
+        "SKILL.md",
+        "references/*.md"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "html-ppt-complete",
+      "engine": "web-deck",
+      "globs": [
+        "${WUJI_PROJECTS}/_official_skill_audit/html-ppt-skill"
+      ],
+      "required": [
+        "SKILL.md",
+        "assets/base.css",
+        "assets/runtime.js",
+        "assets/themes/*.css",
+        "assets/animations/fx/*.js",
+        "templates/single-page/*.html",
+        "templates/full-decks/*/index.html",
+        "scripts/render.sh"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "ppt-master-complete",
+      "engine": "editable-pptx",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/upstream-snapshots/ppt-master"
+      ],
+      "required": [
+        "skills/ppt-master/SKILL.md",
+        "skills/ppt-master/scripts/pptx_to_svg.py",
+        "skills/ppt-master/scripts/svg_to_pptx.py",
+        "skills/ppt-master/scripts/svg_editor/static/index.html",
+        "examples/ppt169_*"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "huashu-design-complete",
+      "engine": "editable-pptx",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/upstream-snapshots/huashu-design"
+      ],
+      "required": [
+        "SKILL.md",
+        "scripts/export_deck_pptx.mjs",
+        "scripts/html2pptx.js",
+        "scripts/render-video.js",
+        "scripts/verify.py",
+        "assets/showcases/ppt/*"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "frontend-slides-complete",
+      "engine": "web-deck",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/upstream-snapshots/frontend-slides/plugins/frontend-slides/skills/frontend-slides"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "ppt-keynote-complete",
+      "engine": "editable-pptx",
+      "globs": [
+        "${WUJI_PROJECTS}/_official_skill_audit/open-design/skills/ppt-keynote"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "guizang-ppt-complete",
+      "engine": "editable-pptx",
+      "globs": [
+        "${WUJI_PROJECTS}/_official_skill_audit/guizang-ppt-skill"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "academic-pptx-complete",
+      "engine": "editable-pptx",
+      "globs": [
+        "${WUJI_PROJECTS}/_official_skill_audit/academic-pptx-skill"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "slidev-runtime-complete",
+      "engine": "web-deck",
+      "globs": [
+        "${ROOT}/capabilities/presentation/assets/slidev-source"
+      ],
+      "required": [
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml",
+        "slides.md",
+        "slidev.config.ts",
+        "components/*.vue",
+        "styles/index.css"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "ppt-stage-fluid-complete",
+      "engine": "web-deck",
+      "globs": [
+        "${USERPROFILE}/.codex/skills/ppt-stage-smoke"
+      ],
+      "required": [
+        "SKILL.md",
+        "references/approved-profile.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "ppt-stage-fluid-runtime",
+      "engine": "web-deck",
+      "globs": [
+        "${ROOT}/capabilities/presentation/assets/stage-fluid-source"
+      ],
+      "required": [
+        "stage-fluid.js",
+        "stage-fluid.css"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "humanize-ppt-complete",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/humanize-ppt"
+      ],
+      "required": [
+        "SKILL.md",
+        "scripts/humanize_ppt.py",
+        "scripts/smoke_check.py",
+        "adapters/*",
+        "contracts/*",
+        "tests/test_main_entrypoint.py"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "baoyu-slide-deck-complete",
+      "engine": "editable-pptx",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills/skills/baoyu-slide-deck"
+      ],
+      "required": [
+        "SKILL.md",
+        "scripts/*.ts",
+        "references/*.md",
+        "references/styles/*.md"
+      ],
+      "priority": "secondary"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "fixture": "unified-presentation-artifact-v1",
+    "timeout_seconds": 300,
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-presentation.ps1"
+    ],
+    "kind": "behavior"
+  },
+  "experts": [
+    {
+      "id": "narrative",
+      "purpose": "audience narrative and slide plan",
+      "independent": true,
+      "model_class": "terra"
+    },
+    {
+      "id": "visual",
+      "purpose": "visual system and editable composition",
+      "independent": true,
+      "model_class": "terra"
+    },
+    {
+      "id": "qa",
+      "purpose": "render, overflow, and artifact inspection",
+      "independent": false,
+      "model_class": "terra"
+    }
+  ]
+}

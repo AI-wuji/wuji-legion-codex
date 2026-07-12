@@ -1,0 +1,84 @@
+{
+  "id": "video",
+  "description": "Generate or edit video using Agnes by default and verified GPT/HyperFrames fallback.",
+  "triggers": [
+    "视频",
+    "生视频",
+    "动画视频",
+    "video",
+    "hyperframes",
+    "remotion",
+    "generate video",
+    "make a video",
+    "image to video",
+    "生成视频",
+    "图生视频"
+  ],
+  "status": "callable",
+  "primary_skill": "wuji-video-suite",
+  "host_callable": false,
+  "direct_mount": true,
+  "fallback": "default GPT video route",
+  "providers": [
+    {
+      "id": "agnes-video-v2.0",
+      "default": true,
+      "fallback": "default-gpt-video"
+    },
+    {
+      "id": "default-gpt-video",
+      "triggers": [
+        "用gpt生成视频",
+        "不用agnes"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "wuji-video-suite-unified",
+      "globs": [
+        "${ROOT}/capabilities/video/skills/wuji-video-suite"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "hyperframes-complete",
+      "globs": [
+        "${USERPROFILE}/.codex/plugins/cache/openai-curated/hyperframes/*/skills/hyperframes"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "remotion-complete",
+      "globs": [
+        "${USERPROFILE}/.codex/plugins/cache/openai-curated/remotion/*/skills/remotion"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "optional"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-capability-smoke.ps1",
+      "-Capability",
+      "video"
+    ],
+    "fixture": "video-smoke-v1",
+    "kind": "smoke",
+    "timeout_seconds": 60
+  }
+}

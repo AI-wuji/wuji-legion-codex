@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极网页动态演示"
+  short_description: "统一 HTML、Slidev、演播者模式和流体舞台组件"
+  default_prompt: "使用统一网页演示能力创建并验证当前演示。"

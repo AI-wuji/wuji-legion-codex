@@ -1,0 +1,238 @@
+{
+  "id": "writing",
+  "description": "Write, rewrite, humanize, score, and adapt long-form content through complete cold Skill packages.",
+  "triggers": [
+    "写文章",
+    "文章",
+    "文案",
+    "改写",
+    "润色",
+    "翻译",
+    "去ai味",
+    "人性化",
+    "公众号",
+    "微信文章",
+    "微博",
+    "x帖子",
+    "头条",
+    "writer",
+    "humanize",
+    "copywriting",
+    "translate",
+    "write article",
+    "write an article",
+    "blog post",
+    "rewrite",
+    "写文案",
+    "写一篇文章"
+  ],
+  "status": "callable",
+  "primary_skill": "wuji-writing-suite",
+  "host_callable": false,
+  "direct_mount": true,
+  "fallback": "native GPT writing route",
+  "engines": [
+    {
+      "id": "long-form",
+      "default": true,
+      "primary_skill": "wuji-writing-suite",
+      "triggers": [
+        "写文章",
+        "长文",
+        "article",
+        "khazix"
+      ]
+    },
+    {
+      "id": "humanize",
+      "primary_skill": "wuji-writing-suite",
+      "triggers": [
+        "去ai味",
+        "人性化",
+        "humanize"
+      ]
+    },
+    {
+      "id": "translation",
+      "primary_skill": "wuji-writing-suite",
+      "triggers": [
+        "翻译",
+        "translate"
+      ]
+    },
+    {
+      "id": "social-publish",
+      "primary_skill": "wuji-writing-suite",
+      "triggers": [
+        "公众号",
+        "微信文章",
+        "wechat",
+        "微博",
+        "weibo",
+        "x帖子",
+        "twitter帖子",
+        "post to x"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "wuji-writing-suite-unified",
+      "globs": [
+        "${ROOT}/capabilities/writing/skills/wuji-writing-suite"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "article-writer-complete",
+      "engine": "long-form",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/article-writer"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "human-articles-complete",
+      "engine": "long-form",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/human-articles"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "creative-writing-craft-complete",
+      "engine": "long-form",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/creative-writing-craft"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "khazix-writer-complete",
+      "engine": "long-form",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/khazix-writer"
+      ],
+      "required": [
+        "SKILL.md",
+        "references/*"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "humanizer-complete",
+      "engine": "humanize",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/humanizer"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "human-authorship-score-complete",
+      "engine": "humanize",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/human-authorship-score"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "baoyu-translate-complete",
+      "engine": "translation",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills/skills/baoyu-translate"
+      ],
+      "required": [
+        "SKILL.md",
+        "references/*",
+        "scripts/*"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "baoyu-wechat-complete",
+      "engine": "social-publish",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills/skills/baoyu-post-to-wechat"
+      ],
+      "required": [
+        "SKILL.md",
+        "references/*",
+        "scripts/*"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "baoyu-weibo-complete",
+      "engine": "social-publish",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills/skills/baoyu-post-to-weibo"
+      ],
+      "required": [
+        "SKILL.md",
+        "scripts/*"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "baoyu-x-complete",
+      "engine": "social-publish",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills/skills/baoyu-post-to-x"
+      ],
+      "required": [
+        "SKILL.md",
+        "references/*",
+        "scripts/*"
+      ],
+      "priority": "secondary"
+    }
+  ],
+  "experts": [
+    {
+      "id": "structure",
+      "purpose": "audience, structure, and narrative",
+      "independent": true,
+      "model_class": "terra"
+    },
+    {
+      "id": "voice",
+      "purpose": "human voice and platform fit",
+      "independent": true,
+      "model_class": "terra"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-capability-smoke.ps1",
+      "-Capability",
+      "writing"
+    ],
+    "fixture": "writing-smoke-v1",
+    "kind": "smoke",
+    "timeout_seconds": 60
+  }
+}

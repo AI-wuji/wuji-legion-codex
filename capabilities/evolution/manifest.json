@@ -1,0 +1,38 @@
+{
+  "id": "evolution",
+  "description": "Admit, compare, replace, and retire complete capability packages through evidence gates.",
+  "triggers": [
+    "蒸馏",
+    "融合",
+    "进化",
+    "替换skill",
+    "能力包",
+    "evolve",
+    "distill",
+    "capability candidate",
+    "admit capability",
+    "replace capability",
+    "能力进化",
+    "能力替换"
+  ],
+  "status": "callable",
+  "primary_skill": "wuji evolve",
+  "host_callable": true,
+  "fallback": "reject candidate and retain current verified route",
+  "sources": [],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-capability-smoke.ps1",
+      "-Capability",
+      "evolution"
+    ],
+    "fixture": "evolution-smoke-v1",
+    "kind": "smoke",
+    "timeout_seconds": 60
+  }
+}

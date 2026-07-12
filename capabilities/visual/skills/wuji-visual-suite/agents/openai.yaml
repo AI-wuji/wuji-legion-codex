@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极视觉套件"
+  short_description: "Unified interface, dashboard, and editorial design"
+  default_prompt: "使用统一视觉能力完成并验证当前设计任务。"

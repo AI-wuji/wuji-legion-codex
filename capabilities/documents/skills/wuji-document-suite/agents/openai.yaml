@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极文档套件"
+  short_description: "Unified Word, PDF, and spreadsheet artifacts"
+  default_prompt: "使用统一文档能力创建或编辑当前文件。"

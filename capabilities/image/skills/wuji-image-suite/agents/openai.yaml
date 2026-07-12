@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极图像套件"
+  short_description: "Unified image planning, generation, editing, and fallback"
+  default_prompt: "使用统一图像能力完成当前生图或编辑任务。"

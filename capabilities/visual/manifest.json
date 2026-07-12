@@ -1,0 +1,162 @@
+{
+  "id": "visual",
+  "description": "Design, critique, polish, animate, and verify visual systems with complete design Skills and reusable assets.",
+  "triggers": [
+    "视觉设计",
+    "审美",
+    "设计系统",
+    "视觉优化",
+    "美化",
+    "电子看板",
+    "动态看板",
+    "文章配图",
+    "信息图",
+    "taste",
+    "design critique",
+    "polish design",
+    "infographic",
+    "design system",
+    "polish the design",
+    "visual polish",
+    "视觉系统",
+    "审美审查",
+    "hud"
+  ],
+  "status": "callable",
+  "primary_skill": "wuji-visual-suite",
+  "host_callable": false,
+  "direct_mount": true,
+  "fallback": "native GPT visual design route",
+  "engines": [
+    {
+      "id": "interface-design",
+      "default": true,
+      "primary_skill": "wuji-visual-suite",
+      "triggers": [
+        "视觉设计",
+        "界面",
+        "审美",
+        "taste",
+        "huashu"
+      ]
+    },
+    {
+      "id": "dynamic-board",
+      "primary_skill": "wuji-visual-suite",
+      "triggers": [
+        "电子看板",
+        "动态看板",
+        "hud"
+      ]
+    },
+    {
+      "id": "editorial-visual",
+      "primary_skill": "wuji-visual-suite",
+      "triggers": [
+        "文章配图",
+        "article illustrator",
+        "信息图",
+        "infographic"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "wuji-visual-suite-unified",
+      "globs": [
+        "${ROOT}/capabilities/visual/skills/wuji-visual-suite"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "impeccable-complete",
+      "engine": "interface-design",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/impeccable"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "taste-skill-complete",
+      "engine": "interface-design",
+      "globs": [
+        "${WUJI_PROJECTS}/_official_skill_audit/open-design/skills/taste-skill"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "dynamic-board-complete",
+      "engine": "dynamic-board",
+      "globs": [
+        "${USERPROFILE}/.codex/skills/dynamic-electronic-board"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "huashu-design-complete",
+      "engine": "interface-design",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/upstream-snapshots/huashu-design"
+      ],
+      "required": [
+        "SKILL.md",
+        "assets/showcases/*",
+        "scripts/verify.py"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "baoyu-article-illustrator-complete",
+      "engine": "editorial-visual",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills/skills/baoyu-article-illustrator"
+      ],
+      "required": [
+        "SKILL.md",
+        "prompts/*",
+        "references/*"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "baoyu-infographic-complete",
+      "engine": "editorial-visual",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills/skills/baoyu-infographic"
+      ],
+      "required": [
+        "SKILL.md",
+        "references/*"
+      ],
+      "priority": "secondary"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-capability-smoke.ps1",
+      "-Capability",
+      "visual"
+    ],
+    "fixture": "visual-smoke-v1",
+    "kind": "smoke",
+    "timeout_seconds": 60
+  }
+}

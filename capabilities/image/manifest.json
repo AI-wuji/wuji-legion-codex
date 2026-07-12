@@ -1,0 +1,119 @@
+{
+  "id": "image",
+  "description": "Generate or edit images through the explicit provider router.",
+  "triggers": [
+    "生图",
+    "生成图",
+    "生成一张图",
+    "生成一个图",
+    "图片",
+    "插图",
+    "image2",
+    "agnes-image",
+    "baoyu image",
+    "宝玉生图",
+    "image generation",
+    "generate an image",
+    "create image",
+    "draw image",
+    "make an image",
+    "配图",
+    "生成图片",
+    "出图"
+  ],
+  "status": "callable",
+  "primary_skill": "wuji-image-suite",
+  "host_callable": false,
+  "direct_mount": true,
+  "fallback": "default GPT image route",
+  "providers": [
+    {
+      "id": "agnes-image-2.1-flash",
+      "default": true,
+      "fallback": "default-gpt-image"
+    },
+    {
+      "id": "xiaobai-image2",
+      "triggers": [
+        "小白",
+        "xiaobai"
+      ],
+      "fallback": "default-gpt-image"
+    },
+    {
+      "id": "soullens-image2",
+      "triggers": [
+        "image2",
+        "soullens"
+      ],
+      "fallback": "default-gpt-image"
+    },
+    {
+      "id": "default-gpt-image",
+      "triggers": [
+        "gpt直出",
+        "默认生图",
+        "用gpt生图"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "wuji-image-suite-unified",
+      "globs": [
+        "${ROOT}/capabilities/image/skills/wuji-image-suite"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "imagegen-complete",
+      "globs": [
+        "${USERPROFILE}/.codex/skills/.system/imagegen"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "xiaobai-image2-direct",
+      "globs": [
+        "${ROOT}/capabilities/image/providers/xiaobai-image2"
+      ],
+      "required": [
+        "README.md",
+        "invoke.ps1"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "baoyu-image-gen-complete",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/baoyu-skills/skills/baoyu-image-gen"
+      ],
+      "required": [
+        "SKILL.md",
+        "references/*",
+        "scripts/*"
+      ],
+      "priority": "secondary"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-image.ps1"
+    ],
+    "fixture": "xiaobai-image2-direct-v1",
+    "kind": "smoke",
+    "timeout_seconds": 90
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "id": "data",
+  "description": "Analyze datasets, statistics, evidence tables, and retrieval-heavy research with complete installed Skills.",
+  "triggers": [
+    "数据分析",
+    "统计",
+    "表格分析",
+    "异常检测",
+    "数据集",
+    "dataset",
+    "analyze data",
+    "correlation",
+    "rag",
+    "spreadsheet analysis",
+    "统计表",
+    "数据异常",
+    "analyze spreadsheet"
+  ],
+  "status": "callable",
+  "primary_skill": "wuji-data-suite",
+  "host_callable": false,
+  "direct_mount": true,
+  "fallback": "native GPT data analysis route",
+  "sources": [
+    {
+      "id": "wuji-data-suite-unified",
+      "globs": [
+        "${ROOT}/capabilities/data/skills/wuji-data-suite"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml"
+      ],
+      "priority": "primary"
+    },
+    {
+      "id": "analyzing-data-complete",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/analyzing-data"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "data-analyst-complete",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/data-analyst"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    },
+    {
+      "id": "agentic-rag-complete",
+      "globs": [
+        "${USERPROFILE}/.agents/skills/agentic-rag"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "optional"
+    },
+    {
+      "id": "spreadsheets-complete",
+      "globs": [
+        "${USERPROFILE}/.codex/plugins/cache/openai-primary-runtime/spreadsheets/*/skills/spreadsheets"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "priority": "secondary"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-capability-smoke.ps1",
+      "-Capability",
+      "data"
+    ],
+    "fixture": "data-smoke-v1",
+    "kind": "smoke",
+    "timeout_seconds": 60
+  }
+}

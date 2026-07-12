@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极安全套件"
+  short_description: "Unified secrets, code, dependency, and IaC review"
+  default_prompt: "使用统一安全能力完成当前扫描或审查。"

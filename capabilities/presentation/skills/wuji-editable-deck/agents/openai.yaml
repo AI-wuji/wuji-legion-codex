@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极可编辑演示"
+  short_description: "Unified editable PPTX creation and conversion"
+  default_prompt: "使用统一可编辑 PPTX 能力创建并验证当前演示。"

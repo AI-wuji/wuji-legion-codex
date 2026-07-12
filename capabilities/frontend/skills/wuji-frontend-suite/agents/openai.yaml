@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极前端套件"
+  short_description: "Unified page building, replacement, and browser QA"
+  default_prompt: "使用统一前端能力修改真实页面并完成浏览器验证。"

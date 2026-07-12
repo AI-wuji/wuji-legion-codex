@@ -1,0 +1,51 @@
+{
+  "id": "code-review",
+  "description": "Run deterministic and line-anchored code review using the complete Open Code Review package plus native Codex judgment.",
+  "triggers": [
+    "代码审查",
+    "代码评审",
+    "code review",
+    "review code",
+    "行级评论",
+    "pull request",
+    "pr review",
+    "review this pr",
+    "review this pull request",
+    "merge request",
+    "审查pr",
+    "评审代码"
+  ],
+  "status": "callable",
+  "primary_skill": "open-code-review",
+  "direct_mount": true,
+  "fallback": "native Codex review with line references",
+  "sources": [
+    {
+      "id": "open-code-review-complete",
+      "globs": [
+        "${WUJI_PROJECTS}/wuji-capability-sources/open-code-review"
+      ],
+      "required": [
+        "go.mod",
+        "cmd/opencodereview/*.go",
+        "internal/*",
+        "skills/open-code-review/SKILL.md",
+        "plugins/*"
+      ],
+      "priority": "primary"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "fixture": "open-code-review-cli-smoke-v1",
+    "timeout_seconds": 120,
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-code-review.ps1"
+    ],
+    "kind": "smoke"
+  }
+}

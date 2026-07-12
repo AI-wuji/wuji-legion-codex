@@ -1,0 +1,4 @@
+interface:
+  display_name: "无极写作套件"
+  short_description: "Unified long-form, humanization, and publishing"
+  default_prompt: "使用统一写作能力完成当前内容任务。"
