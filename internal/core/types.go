@@ -61,17 +61,27 @@ type MountedSource struct {
 }
 
 type WorkerTask struct {
-	ID         string   `json:"id"`
-	Purpose    string   `json:"purpose"`
-	ModelClass string   `json:"model_class"`
-	Inputs     []string `json:"inputs"`
-	Writes     bool     `json:"writes"`
+	ID             string   `json:"id"`
+	Purpose        string   `json:"purpose"`
+	ModelClass     string   `json:"model_class"`
+	Model          string   `json:"model"`
+	FallbackModels []string `json:"fallback_models,omitempty"`
+	Inputs         []string `json:"inputs"`
+	Writes         bool     `json:"writes"`
+}
+
+type ModelPolicy struct {
+	MainModel      string              `json:"main_model"`
+	ClassModels    map[string]string   `json:"class_models"`
+	FallbackModels map[string][]string `json:"fallback_models"`
+	Delegation     string              `json:"delegation"`
 }
 
 type RouteResult struct {
 	Version                 string          `json:"version"`
 	Brain                   string          `json:"brain"`
 	MainModel               string          `json:"main_model"`
+	ModelPolicy             ModelPolicy     `json:"model_policy"`
 	Reasoning               string          `json:"reasoning"`
 	WriteAuthority          string          `json:"write_authority"`
 	Nuwa                    bool            `json:"nuwa"`

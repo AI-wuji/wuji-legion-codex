@@ -157,7 +157,7 @@ $worktreeDocument = [ordered]@{
 foreach ($group in @($worktreeEntries | Group-Object action_2_0 | Sort-Object Name)) { $worktreeDocument.action_counts[$group.Name] = $group.Count }
 
 New-Item -ItemType Directory -Force -Path (Split-Path $VerdictOutput -Parent),(Split-Path $WorktreeOutput -Parent) | Out-Null
-[IO.File]::WriteAllText($VerdictOutput, ($verdictDocument | ConvertTo-Json -Depth 10), [Text.UTF8Encoding]::new($false))
-[IO.File]::WriteAllText($WorktreeOutput, ($worktreeDocument | ConvertTo-Json -Depth 8), [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText($VerdictOutput, ($verdictDocument | ConvertTo-Json -Depth 10 -Compress), [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText($WorktreeOutput, ($worktreeDocument | ConvertTo-Json -Depth 8 -Compress), [Text.UTF8Encoding]::new($false))
 Write-Output $VerdictOutput
 Write-Output $WorktreeOutput

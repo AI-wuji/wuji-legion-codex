@@ -31,8 +31,10 @@ The default path uses a small stable prefix plus task-local retrieval. `context-
 ## Model Policy
 
 - Aji planning, architecture, merge, and high-risk judgment: `gpt-5.6-sol`, highest available reasoning.
-- Bounded implementation and verification workers: Terra when explicitly delegated.
-- Broad web scouting uses the default GPT route. Independent mechanical source branches may use Luna; Aji performs the final analysis.
-- Other mechanical extraction uses Luna only when explicitly delegated and no project context replay is required.
+- Bounded implementation and verification workers: `gpt-5.6-terra` whenever the route emits those independent worker branches.
+- Broad web scouting uses the default GPT route for the final analysis, while independent source branches use `gpt-5.6-luna`.
+- Other mechanical extraction uses `gpt-5.6-luna` when the route emits a compact extraction branch and no project context replay is required.
+- `workers[].model` is the executable model id. `model_class` is metadata only; the host must not silently run a worker on the Aji model when a cheaper model is selected.
+- If a requested worker model is unavailable, retry using its ordered `fallback_models`; retain the effective model in execution evidence. Aji remains the sole merger and write authority.
 
 Model switching is never used merely to save tokens when it would require replaying project context. Each worker receives a compact task handoff instead of the parent transcript.

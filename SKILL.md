@@ -17,6 +17,16 @@ Use one chain only:
 4. Use parallel workers only for independent branches with compact task contracts. Honor SecondaryCapabilities for multi-intent requests without switching write authority away from Aji. Mount primary sources by default; mount secondary/optional atoms only when named or when the user asks for full capability packages. Aji alone merges and writes the final decision.
 5. Run the selected package probe plus task-local verification before claiming completion.
 
+## Model Execution
+
+The route result has two different levels of model use:
+
+- `main_model` is the Aji control-plane model: `gpt-5.6-sol` owns routing, architecture, merge, writes, and completion judgment.
+- Every item in `workers` is an executable delegation, not a description. Spawn it with the exact `model` value, pass only its compact contract and selected context handles, and keep `writes` false unless the route explicitly grants a disjoint write scope.
+- `model_class` is only a label. The host must use `model`; if that model is unavailable, retry in the listed `fallback_models` order and record the effective model in the task result.
+- The default mapping is `sol -> gpt-5.6-sol`, `terra -> gpt-5.6-terra`, and `luna -> gpt-5.6-luna`. Code implementation and verification branches use Terra; broad research and mechanical extraction branches use Luna.
+- Do not execute a route-declared worker branch in Aji after merely printing the route JSON. If no worker is emitted, the task stays on the Aji model by design.
+
 Nuwa does not exist in 2.0. Officers are cold review seats. Routine opposition is an internal Aji adversarial pass that reuses current context; launch a real officer only when explicitly requested or when the risk contract requires independent evidence.
 
 ## Capability Truth

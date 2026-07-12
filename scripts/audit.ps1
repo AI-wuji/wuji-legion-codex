@@ -225,10 +225,16 @@ $webRoute = & $wuji route --query 'build a Slidev web presentation with stage fl
 $pptxRoute = & $wuji route --query 'create an editable PPTX' | ConvertFrom-Json
 $writingRoute = & $wuji route --query 'translate this article' | ConvertFrom-Json
 $searchRoute = & $wuji route --query 'search the web for the latest solution' | ConvertFrom-Json
+$codeRoute = & $wuji route --query 'fix the code and verify it' | ConvertFrom-Json
 if ($webRoute.primary_skill -ne 'wuji-web-deck' -or $webRoute.engine -ne 'web-deck' -or ($webRoute.mounted_sources.id -contains 'ppt-master-complete')) { throw 'fusion-audit failed: web presentation scenario is not consolidated' }
 if ($pptxRoute.primary_skill -ne 'wuji-editable-deck' -or $pptxRoute.engine -ne 'editable-pptx' -or ($pptxRoute.mounted_sources.id -contains 'slidev-runtime-complete')) { throw 'fusion-audit failed: editable presentation scenario is not consolidated' }
 if ($writingRoute.primary_skill -ne 'wuji-writing-suite' -or $writingRoute.engine -ne 'translation') { throw 'fusion-audit failed: writing suite leaked source selection' }
 if ($searchRoute.provider -ne 'default-gpt-search' -or @($searchRoute.workers | Where-Object model_class -eq 'agnes').Count -gt 0) { throw 'optimization-audit failed: Agnes returned to search' }
+if (@($searchRoute.workers).Count -ne 3 -or @($searchRoute.workers | Where-Object model -ne 'gpt-5.6-luna').Count -ne 0) { throw 'optimization-audit failed: research workers lost Luna model assignment' }
+if (@($searchRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-terra,gpt-5.6-sol' }).Count -ne 0) { throw 'optimization-audit failed: research worker fallback order changed' }
+if (@($codeRoute.workers).Count -ne 2 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-terra').Count -ne 0) { throw 'optimization-audit failed: code workers lost Terra model assignment' }
+if (@($codeRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-luna,gpt-5.6-sol' }).Count -ne 0) { throw 'optimization-audit failed: code worker fallback order changed' }
+if ($codeRoute.model_policy.class_models.terra -ne 'gpt-5.6-terra' -or $codeRoute.model_policy.class_models.luna -ne 'gpt-5.6-luna') { throw 'optimization-audit failed: executable model policy is incomplete' }
 
 [pscustomobject]@{
   fusion_audit = 'pass'

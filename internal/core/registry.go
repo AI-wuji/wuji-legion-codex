@@ -211,6 +211,9 @@ func validateExperts(experts []Expert) error {
 		if strings.TrimSpace(expert.Purpose) == "" || strings.TrimSpace(expert.ModelClass) == "" {
 			return fmt.Errorf("expert %q requires purpose and model_class", expert.ID)
 		}
+		if _, ok := modelPolicies[strings.ToLower(strings.TrimSpace(expert.ModelClass))]; !ok {
+			return fmt.Errorf("expert %q uses unsupported model_class %q", expert.ID, expert.ModelClass)
+		}
 	}
 	return nil
 }

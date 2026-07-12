@@ -5,8 +5,40 @@ import (
 	"strings"
 )
 
+var modelPolicies = map[string]struct {
+	model     string
+	fallbacks []string
+}{
+	"sol":   {model: "gpt-5.6-sol", fallbacks: []string{"gpt-5.6-terra", "gpt-5.6-luna"}},
+	"terra": {model: "gpt-5.6-terra", fallbacks: []string{"gpt-5.6-luna", "gpt-5.6-sol"}},
+	"luna":  {model: "gpt-5.6-luna", fallbacks: []string{"gpt-5.6-terra", "gpt-5.6-sol"}},
+}
+
+func modelSpec(modelClass string) (string, []string) {
+	if spec, ok := modelPolicies[strings.ToLower(strings.TrimSpace(modelClass))]; ok {
+		return spec.model, append([]string(nil), spec.fallbacks...)
+	}
+	return "", nil
+}
+
+func modelPolicy() ModelPolicy {
+	classes := map[string]string{}
+	fallbacks := map[string][]string{}
+	for class, spec := range modelPolicies {
+		classes[class] = spec.model
+		fallbacks[class] = append([]string(nil), spec.fallbacks...)
+	}
+	return ModelPolicy{
+		MainModel:      classes["sol"],
+		ClassModels:    classes,
+		FallbackModels: fallbacks,
+		Delegation:     "route-declared workers must be spawned with model and retried through fallback_models; main brain merges only",
+	}
+}
+
 func Route(query string, manifests []Manifest) RouteResult {
 	q := strings.ToLower(strings.TrimSpace(query))
+	policy := modelPolicy()
 	selected := Manifest{ID: "core", Status: "primary", PrimarySkill: "wuji-legion-codex-2-0"}
 	bestScore := 0
 	bestPriority := -1
@@ -36,7 +68,8 @@ func Route(query string, manifests []Manifest) RouteResult {
 	return RouteResult{
 		Version:                 "2.0",
 		Brain:                   "aji-general-staff",
-		MainModel:               "gpt-5.6-sol",
+		MainModel:               policy.MainModel,
+		ModelPolicy:             policy,
 		Reasoning:               "max",
 		WriteAuthority:          "aji-only",
 		Nuwa:                    false,
@@ -358,10 +391,11 @@ func selectProvider(query string, providers []Provider) (string, string) {
 
 func workerPlan(query string, capability Manifest, engine string) []WorkerTask {
 	if capability.ID == "search" && engine == "web-research" && isBroadSearch(query) {
+		model, fallbacks := modelSpec("luna")
 		return []WorkerTask{
-			{ID: "official", Purpose: "official documentation and primary sources", ModelClass: "luna", Inputs: []string{"query", "source boundary"}},
-			{ID: "github", Purpose: "repositories, releases, issues, and implementation evidence", ModelClass: "luna", Inputs: []string{"query", "source boundary"}},
-			{ID: "community", Purpose: "independent reports and failure evidence", ModelClass: "luna", Inputs: []string{"query", "source boundary"}},
+			{ID: "official", Purpose: "official documentation and primary sources", ModelClass: "luna", Model: model, FallbackModels: append([]string(nil), fallbacks...), Inputs: []string{"query", "source boundary"}},
+			{ID: "github", Purpose: "repositories, releases, issues, and implementation evidence", ModelClass: "luna", Model: model, FallbackModels: append([]string(nil), fallbacks...), Inputs: []string{"query", "source boundary"}},
+			{ID: "community", Purpose: "independent reports and failure evidence", ModelClass: "luna", Model: model, FallbackModels: append([]string(nil), fallbacks...), Inputs: []string{"query", "source boundary"}},
 		}
 	}
 	if containsAny(query, "串行", "sequential", "serial only") {
@@ -380,11 +414,14 @@ func workerPlan(query string, capability Manifest, engine string) []WorkerTask {
 	workers := []WorkerTask{}
 	for _, expert := range capability.Experts {
 		if expert.Independent {
+			model, fallbacks := modelSpec(expert.ModelClass)
 			workers = append(workers, WorkerTask{
-				ID:         expert.ID,
-				Purpose:    expert.Purpose,
-				ModelClass: expert.ModelClass,
-				Inputs:     []string{"task contract", "selected context handles"},
+				ID:             expert.ID,
+				Purpose:        expert.Purpose,
+				ModelClass:     expert.ModelClass,
+				Model:          model,
+				FallbackModels: fallbacks,
+				Inputs:         []string{"task contract", "selected context handles"},
 			})
 		}
 	}
