@@ -139,13 +139,33 @@ func validateSources(sources []Source, engines []Engine) error {
 		if err := validateComponentID("source", source.ID, ids); err != nil {
 			return err
 		}
+		if source.Lifecycle != "" && !lifecycleStatuses[source.Lifecycle] {
+			return fmt.Errorf("source %q has invalid lifecycle %q", source.ID, source.Lifecycle)
+		}
 		if source.Engine != "" && !engineIDs[source.Engine] {
 			return fmt.Errorf("source %q references unknown engine %q", source.ID, source.Engine)
+		}
+		if err := validateStringList("source "+source.ID+" activation", source.Activation, false); err != nil {
+			return err
+		}
+		if strings.TrimSpace(source.Entrypoint) != "" && !safeRelativePath(source.Entrypoint) {
+			return fmt.Errorf("source %q entrypoint must stay relative: %q", source.ID, source.Entrypoint)
+		}
+		if len(source.Activation) > 0 && strings.TrimSpace(source.Entrypoint) == "" {
+			return fmt.Errorf("source %q activation requires an entrypoint", source.ID)
 		}
 		switch strings.ToLower(strings.TrimSpace(source.Priority)) {
 		case "", "primary", "secondary", "optional":
 		default:
 			return fmt.Errorf("source %q has invalid priority %q", source.ID, source.Priority)
+		}
+		if sourceAutomaticallySelected(source) {
+			if rank(sourceLifecycle(source)) < rank("callable") {
+				return fmt.Errorf("automatic source %q must be callable or better", source.ID)
+			}
+			if strings.TrimSpace(source.Entrypoint) == "" {
+				return fmt.Errorf("automatic source %q requires an explicit entrypoint", source.ID)
+			}
 		}
 		if err := validateStringList("source "+source.ID+" globs", source.Globs, true); err != nil {
 			return err
@@ -169,6 +189,78 @@ func validateSources(sources []Source, engines []Engine) error {
 		}
 	}
 	return nil
+}
+
+func sourceLifecycle(source Source) string {
+	if lifecycle := strings.TrimSpace(source.Lifecycle); lifecycle != "" {
+		return lifecycle
+	}
+	return "assets-retained"
+}
+
+func sourceAutomaticallySelected(source Source) bool {
+	return sourcePriority(source) == "primary" || len(source.Activation) > 0
+}
+
+func AuditSources(manifests []Manifest) []SourceAuditEntry {
+	entries := make([]SourceAuditEntry, 0)
+	for _, manifest := range manifests {
+		for _, source := range manifest.Sources {
+			lifecycle := sourceLifecycle(source)
+			entry := SourceAuditEntry{
+				Capability: manifest.ID,
+				Source:     source.ID,
+				Lifecycle:  lifecycle,
+				Entrypoint: source.Entrypoint,
+			}
+			if _, ok := ResolveCompleteSourceAt(manifest.Root, source); !ok {
+				entry.State = "unavailable"
+				entry.ExecutionMode = "not-executed"
+				entry.ExecutionEvidence = "unavailable"
+				entry.Reason = "required files are unavailable"
+			} else if source.Entrypoint != "" {
+				if _, _, err := resolveTrustedSourceEntrypoint([]Manifest{manifest}, manifest.ID, source.ID, source.Entrypoint); err != nil {
+					entry.State = "unavailable"
+					entry.ExecutionMode = "not-executed"
+					entry.ExecutionEvidence = "unavailable"
+					entry.Reason = "entrypoint is not a trusted regular file: " + err.Error()
+				} else if sourceAutomaticallySelected(source) && rank(lifecycle) >= rank("callable") {
+					entry.State = "auto-selectable"
+					entry.ExecutionMode = "native-host-entrypoint-contract"
+					entry.ExecutionEvidence = "host-native-agent-or-tool-result-required"
+					entry.Reason = "primary source or semantic activation with a trusted entrypoint; the host must attest a native agent or real tool result plus task evidence. A receipt file only proves contract consistency."
+				} else if rank(lifecycle) >= rank("callable") {
+					entry.State = "on-request"
+					entry.ExecutionMode = "explicit-native-host-entrypoint-contract"
+					entry.ExecutionEvidence = "host-native-agent-or-tool-result-required"
+					entry.Reason = "callable source has no automatic semantic activation; an explicit host-native contract and real execution attestation are required"
+				} else {
+					entry.State = "cold-retained"
+					entry.ExecutionMode = "not-executed"
+					entry.ExecutionEvidence = "not-applicable"
+					entry.Reason = "retained material is not an executable route"
+				}
+			} else if rank(lifecycle) >= rank("callable") {
+				entry.State = "on-request"
+				entry.ExecutionMode = "explicit-native-host-entrypoint-contract"
+				entry.ExecutionEvidence = "host-native-agent-or-tool-result-required"
+				entry.Reason = "callable source has no automatic semantic activation; an explicit host-native contract and real execution attestation are required"
+			} else {
+				entry.State = "cold-retained"
+				entry.ExecutionMode = "not-executed"
+				entry.ExecutionEvidence = "not-applicable"
+				entry.Reason = "retained material is not an executable route"
+			}
+			entries = append(entries, entry)
+		}
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].Capability != entries[j].Capability {
+			return entries[i].Capability < entries[j].Capability
+		}
+		return entries[i].Source < entries[j].Source
+	})
+	return entries
 }
 
 func validateProviders(providers []Provider) error {

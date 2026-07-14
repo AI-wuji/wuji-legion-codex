@@ -60,8 +60,12 @@ if ($manifest.host_callable -and $Capability -in @('code','context','evolution')
     $rawDirectRoute = (& $wuji route --query $codeQuery 2>&1) -join [Environment]::NewLine
     if ($LASTEXITCODE -ne 0) { throw "wuji direct code route smoke failed: $rawDirectRoute" }
     $directRoute = $rawDirectRoute | ConvertFrom-Json
-    if (($directRoute.PSObject.Properties.Name -contains 'workers') -or $directRoute.delegation_decision.reason -ne 'verified-context-artifact-required') {
-      throw 'code smoke delegated without a verified context artifact'
+    if ($directRoute.delegation_decision.reason -ne 'verified-context-artifact-required' -or @($directRoute.workers).Count -ne 1) {
+      throw 'code smoke did not create the bounded no-context task judgment'
+    }
+    $directWorker = @($directRoute.workers)[0]
+    if ($directWorker.id -ne 'task-judgment' -or $directWorker.model -ne 'gpt-5.6-sol' -or $directWorker.writes -or $directWorker.context_mode -ne 'task-contract-only' -or $directWorker.allocated_context_bytes -ne 0) {
+      throw 'code smoke did not keep the no-context judgment bounded and read-only'
     }
     $rawContext = (& $wuji context-select --workspace $Root --query $codeQuery --max-bytes 2048 2>&1) -join [Environment]::NewLine
     if ($LASTEXITCODE -ne 0) { throw "wuji code context smoke failed: $rawContext" }
@@ -75,8 +79,8 @@ if ($manifest.host_callable -and $Capability -in @('code','context','evolution')
     if ($codeRoute.capability -ne 'code' -or $codeRoute.primary_skill -ne 'native Codex coding route') {
       throw 'code smoke did not reach the declared native Codex entrypoint'
     }
-    if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-terra').Count -ne 0) {
-      throw 'code smoke did not emit the bounded Terra worker plan'
+    if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-sol').Count -ne 0) {
+      throw 'code smoke did not emit the bounded Sol worker plan'
     }
     $worker = @($codeRoute.workers)[0]
     if (-not $worker.execution_evidence_required -or ($worker.execution_evidence_fields -join ',') -ne 'schema_version,worker_id,requested_model,session_key,host_dispatch_id,write_boundary,attempts,effective_model,model_switch_count,result_handle,stable_prefix_bytes,stable_prefix_sha256,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,accepted_by_aji,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,aji_baseline_microunits,savings_microunits') {
@@ -91,7 +95,7 @@ if ($manifest.host_callable -and $Capability -in @('code','context','evolution')
     if (-not $worker.stable_capability_prefix -or $worker.stable_prefix_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$worker.stable_capability_prefix)) -or -not $worker.stable_prefix_sha256 -or $codeRoute.delegation_decision.estimated_replay_bytes -ne ($worker.stable_prefix_bytes + $worker.allocated_context_bytes + $worker.allocated_task_contract_bytes)) {
       throw 'code smoke omitted the stable prefix from replay costs'
     }
-    if (($worker.fallback_models -join ',') -ne 'gpt-5.6-sol' -or $worker.max_attempts -ne 2 -or ($worker.fallback_on -join ',') -ne 'model-unavailable,provider-error-before-generation' -or ($worker.prompt_order -join ',') -ne 'stable_capability_prefix,context_payload,task_contract') {
+    if (@($worker.fallback_models | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $worker.max_attempts -ne 1 -or @($worker.fallback_on | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $worker.max_model_switches -ne 0 -or ($worker.prompt_order -join ',') -ne 'stable_capability_prefix,context_payload,task_contract') {
       throw 'code smoke emitted an unsafe fallback or prompt policy'
     }
     if ($codeRoute.delegation_policy.cross_model_cache_assumed -or $codeRoute.delegation_policy.cache_scope -ne 'model-local stable-prefix only' -or $codeRoute.delegation_decision.context_coverage_basis_points -lt 6000 -or $codeRoute.delegation_decision.code_excerpt_count -lt 1 -or $codeRoute.delegation_decision.content_anchor_count -lt 1 -or -not $codeRoute.delegation_decision.allowed -or $codeRoute.execution_lane -ne 'bounded-delegation') {

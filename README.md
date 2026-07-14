@@ -20,9 +20,13 @@ Its second core function is distilling, fusing, and evolving Skills, plugins, an
 | `v11.3` · 2026-06-09 至 2026-06-20 | 发布旧版运行内核，继续完成来源池融合、上下文膨胀诊断和首轮路由优化，为 2.0 重构保留可验证的经验与资产。 |
 | `2.0` · 2026-07-12 | 面向 Codex 重新设计：保留有价值的能力原子，剔除旧版弯路；收束为阿极单一主脑、单一写权限、冷挂载完整能力包、有界并行、确定性 Go 路由和基于真实行为的能力进化。旧版保留在 `legacy-v1-backup` 分支与 `legacy-v1-final` 标签中。 |
 | `2.0.1` · 2026-07-12 | 修复模型降级的真实经济性：排除锁文件检索噪声，增加上下文覆盖率与代码证据门禁，向 worker 发送确定性上下文 capsule 和真实任务契约，按实际重放字节计费，并将失败回退限制为生成前不可用错误。 |
-| `2.0.2` · 2026-07-12 | 落地搜索优先与任务内模型粘性：非平凡解决方案任务先做最多 3 来源、90 秒的 Luna 预检；机械只读任务使用 Luna，合格独立实现使用 Terra；每个 worker 固定 session key，只允许生成前因可用性错误按 Luna -> Terra -> Sol 的层级升级，并以 schema v2 回执验证真实模型调用。 |
+| `2.0.2` · 2026-07-12 | 落地搜索优先与任务内模型粘性：非平凡解决方案任务先做最多 3 来源、90 秒的 Luna 预检；机械只读任务使用 Luna，独立高推理判断交给 Sol；每个 worker 固定 session key，并以 schema v2 回执验证真实模型调用。 |
 | `2.0.3` · 2026-07-12 | 落地有界关系图：工作区图先定位文件/符号，经验图只在失败、复用、能力缺失和验证事件触发；记录带显式 scope、根因和验证哈希，查询、索引词和候选展开均有硬上限。新增真实行为探针，并修复同大小同时间源码变化导致的陈旧索引风险。 |
-| `2.0.4` · 2026-07-13 | 纠正模型执行面：阿极默认改为 Terra；Luna 机械/检索分支仅可生成前升级至 Terra；Sol 限为显式高推理、只读、单次裁决子代理。路由 JSON 不再被视为模型切换证据，宿主必须创建对应模型的真实子代理。 |
+| `2.0.4` · 2026-07-13 | 纠正模型执行面：阿极默认改为 Terra；Luna 用于机械/检索分支，Sol 限为显式高推理、只读、单次裁决子代理。路由 JSON 不再被视为模型切换证据，宿主必须创建对应模型的真实子代理。 |
+| `2.0.5` · 2026-07-13 | 曾补入 `wuji dispatch` 作为 CLI 契约检查适配器；随后确认它不能证明原生模型执行。CLI 请求模型、已生成结果与提供商侧实际模型、token、缓存、计费遥测必须严格区分。 |
+| `2.0.6` · 2026-07-13 | 收紧 GPT 5.6 执行面：Terra 固定为阿极主脑与唯一写入者；子代理只允许精确调用 Sol 或 Luna，均单次、无自动回退。执行器在启动前拒绝 `gpt-5.4`、`gpt-5.4-mini`、Terra 和其他 GPT worker 名称；用户显式选择 Grok 或其他非 GPT 供应商/模型时不受此策略限制。 |
+| `2.0.7` · 2026-07-13 | 主动路由与真实宿主收口：除简单问答外任务均路由；新增 `orchestrate` 与高风险 `change-capsule`，预检后有界并发执行。Windows 宿主改为直接调用 npm 的 Node 入口，避免包装层截断多行契约；拒收泛化问句和“被沙箱阻断/结果不可用”的伪交付。CLI 模型请求与供应商后台实际模型、token、计费继续严格分开陈述。 |
+| `2.0.8` · 2026-07-13 | 修正真实模型执行面：Go CLI 只负责路由、上下文和契约校验；当前 Codex 宿主必须以路由声明的精确 Sol/Luna 模型创建原生子代理。原生 agent 标识与请求模型才是执行证据，CLI 参数不再冒充后台实际调用。 |
 
 ## 无极生态 / Wuji Ecosystem
 
@@ -84,11 +88,13 @@ git clone https://github.com/AI-wuji/wuji-legion-codex.git
 cd wuji-legion-codex
 
 ./scripts/build.ps1
-./bin/wuji.exe route --query "修改登录页并验证真实路由"
+./bin/wuji.exe route --query "修改登录页并验证真实路由" --workspace . > .wuji/route.json
 ./bin/wuji.exe context-select --workspace . --query "fix code workerPlan in internal/core/route.go" --max-bytes 2048
 ```
 
-代码任务需要先用同一查询生成工件，路由器才会评估 Terra 委派是否实际划算：
+随后由当前 Codex 宿主读取 `.wuji/route.json`，对每个符合条件的 `preflight_workers` / `workers` 以其精确 `model`、`session_key` 创建原生只读子代理；预检完成前不得启动后续 worker。`wuji dispatch` 和 `codex exec` 仅可用于本地契约兼容检查，不能作为模型已切换或已执行的证据。
+
+代码任务需要先用同一查询生成工件，路由器才会评估 Sol 委派是否实际划算：
 
 ```powershell
 $query = "fix code workerPlan in internal/core/route.go"
@@ -144,13 +150,13 @@ $context = ./bin/wuji.exe context-select --workspace . --query $query --max-byte
 
 ## 模型与提供商边界 / Model Boundaries
 
-- 阿极负责路由、合并、唯一写权限和收口判断，控制面固定使用 `gpt-5.6-terra`；Sol 只用于明确的高推理裁决分支，不得成为默认执行器。
-- `wuji route` 输出的 `preflight_workers` 必须先于 `workers` 执行，两阶段禁止并行；预检改变方案时必须作废旧计划并重新路由。每个 worker 都包含真实 `model`、稳定 `session_key` 与有序 `fallback_models`。通过成本门禁的独立实现分支可使用 `gpt-5.6-terra`；广域研究、受限现成方案预检与机械提取分支可使用 `gpt-5.6-luna`，其失败只可在生成前升级至 Terra；只有显式高推理判断分支可使用单次、只读的 `gpt-5.6-sol`。执行宿主必须按结果真正委派；路由 JSON 不等于执行。演示与写作默认不分发，只有显式并行且交接自包含时才允许委派。
-- `model_class` 只是分类标签，不能作为模型切换已经发生的证据；只有后台出现对应模型调用，或者执行记录确认了实际 fallback，才算模型路由生效。
-- 每个 worker 必须返回 schema v2 执行回执，包括宿主派发标识、只读边界、session key、模型尝试、实际模型、模型切换次数、payload 哈希/字节、token/cache、计费基线、实际成本、节省额和阿极验收；只有回执通过 `validate-receipt`，才算该分支完成。Sol 裁决仍须完整记账，但不以节省成本为验收条件。
+- 阿极负责路由、合并、唯一写权限和收口判断，控制面固定使用 `gpt-5.6-terra`；Terra 不得作为子代理模型。Sol 只用于有界高推理、只读分支，Luna 用于不依赖父上下文的机械提取、检索和验证。
+- 除简单、自包含问答外，所有任务均积极路由。`wuji route` 输出的 `preflight_workers` 必须先于 `workers` 执行，两阶段禁止并行；预检改变方案时必须作废旧计划并重新路由。每个 worker 都包含真实 `model` 和稳定 `session_key`，且在 GPT 5.6 策略内只允许 `gpt-5.6-sol` 或 `gpt-5.6-luna`，单次执行、无自动回退。执行器会拒绝 `gpt-5.4`、`gpt-5.4-mini`、Terra 和其他 GPT worker 名称；用户显式指定 Grok 或其他非 GPT 供应商/模型时不受该策略限制。执行宿主必须按结果真正委派；路由 JSON 不等于执行。演示与写作默认不分发，只有显式并行且交接自包含时才允许委派。
+- `model_class` 只是分类标签，不能作为模型切换已经发生的证据。只有当前 Codex 宿主按精确模型创建的原生 agent 标识与结果，才能证明该分支被真实委派；`wuji dispatch`、`codex exec` 的参数或输出仅能证明 CLI 契约。后台对应模型调用可进一步佐证提供商侧实际模型；当前 CLI 不提供 token、缓存和计费遥测，不能伪造节省。
+- 每个 worker 必须保留宿主派发标识、只读边界、session key、模型尝试、payload 哈希/字节、失败种类和阿极验收；没有供应商遥测时模型实际标识、token/cache、计费基线、实际成本和节省额必须明确为不可用，不能伪造。泛化问句或“被沙箱阻断/结果不可用”的内容即使有输出文件也不得算该分支完成。Sol 裁决仍须完整记账，但不以节省成本为验收条件。
 - `primary` 不是 manifest 自报标签：只有演化替换生成并通过校验的内容寻址 promotion receipt，连同归档基线，才可进入 `primary`。
 - 图像和视频提供商按项目规则路由，并在失败时回退；凭据只从当前进程环境读取，绝不写入规则或仓库。
-- Sol、Terra、Luna 之间不假设共享提示缓存。代码上下文覆盖率低于 60%、没有代码摘录、任务契约超过 2048 字节、共享上下文超过 4096 字节、总重放超过 8192 字节、工件不匹配/已过期或需要父任务上下文时，一律留在阿极。worker 按“稳定能力前缀、上下文 capsule、任务契约”的固定顺序接收确定性 prompt，并在任务开始选定模型后保持 session 粘性；Luna 只在模型不可用或生成前 provider 错误时升级至 Terra，Terra 才可在相同条件下升级至 Sol，最多一次模型切换；Sol 一次尝试且无回退。生成后的低质量结果由阿极拒绝，不再降级、切换模型或付费重试。
+- Sol、Terra、Luna 之间不假设共享提示缓存。代码上下文覆盖率低于 60%、没有代码摘录、任务契约超过 2048 字节、共享上下文超过 4096 字节、总重放超过 8192 字节、工件不匹配/已过期或需要父任务上下文时，一律留在阿极。worker 按“稳定能力前缀、上下文 capsule、任务契约”的固定顺序接收确定性 prompt，并在任务开始选定模型后保持 session 粘性；GPT 5.6 worker 一次尝试、无模型切换。生成后的低质量结果由阿极拒绝，不再降级、切换模型或付费重试。
 
 ## 目录说明 / Repository Layout
 

@@ -42,18 +42,12 @@ $entries = foreach ($item in @($legacy.object_verdicts)) {
   $evidence = @('legacy fusion-matrix rationale and boundary')
   $ruling = 'Excluded because it does not fill a current 2.0 capability gap.'
 
-  if ($behavior.ContainsKey($name)) {
-    $status = 'behavior-verified'
-    $action = if ($updatedSources -contains $name) { 'update' } else { 'distill' }
-    $capability = $behavior[$name]
-    $evidence = @("capabilities/$capability/manifest.json", "scripts/verify-$capability.ps1")
-    $ruling = 'Retained through the 2.0 scenario surface and covered by a real behavior probe.'
-  } elseif ($callable.ContainsKey($name)) {
-    $status = 'callable'
-    $action = 'distill'
-    $capability = $callable[$name]
-    $evidence = @("capabilities/$($capability.Split('+')[0])/manifest.json")
-    $ruling = 'Retained only through the current bounded route or complete cold package; no legacy shell survives.'
+  if ($behavior.ContainsKey($name) -or $callable.ContainsKey($name)) {
+    $status = 'assets-retained'
+    $action = 'retain-cold'
+    $capability = 'cold-reference'
+    $evidence = @('sources.lock.json','references/source-execution-status.md')
+    $ruling = 'The scenario adapter may be verified separately; this upstream object remains cold until it has its own callable adapter and behavior evidence.'
   } elseif ($assets.ContainsKey($name)) {
     $status = 'assets-retained'
     $action = if ($updatedSources -contains $name) { 'update' } else { 'retain-cold' }

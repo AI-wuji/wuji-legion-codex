@@ -8,7 +8,13 @@ import (
 
 const workerReceiptSchemaVersion = 2
 
-func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) error {
+// ValidateWorkerReceiptConsistency checks a receipt against its route contract.
+// It cannot attest that the Desktop host created the worker or that a model,
+// Skill, or MCP call actually ran: receipt fields are caller supplied.
+func ValidateWorkerReceiptConsistency(worker WorkerTask, receipt WorkerExecutionReceipt) error {
+	if err := validateDelegatedModel(worker.Model); err != nil {
+		return err
+	}
 	if receipt.SchemaVersion != workerReceiptSchemaVersion {
 		return fmt.Errorf("unsupported worker receipt schema: %d", receipt.SchemaVersion)
 	}
@@ -23,6 +29,9 @@ func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) er
 	}
 	if worker.Writes || receipt.WriteBoundary != "read-only" {
 		return fmt.Errorf("worker receipt violates Aji-only write authority")
+	}
+	if len(worker.FallbackModels) != 0 || len(worker.FallbackOn) != 0 || worker.MaxAttempts != 1 || worker.MaxModelSwitches != 0 {
+		return fmt.Errorf("worker receipt violates the single-model no-fallback policy")
 	}
 	if len(receipt.Attempts) == 0 || len(receipt.Attempts) > worker.MaxAttempts {
 		return fmt.Errorf("worker receipt attempt count exceeds route policy")
@@ -41,7 +50,7 @@ func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) er
 	}
 
 	totalInput, totalCached, totalOutput := 0, 0, 0
-	totalContext, totalPrefix, totalContract := 0, 0, 0
+	totalContext, totalPrefix, totalSources, totalContract := 0, 0, 0, 0
 	failureKinds := make([]string, 0, len(receipt.Attempts))
 	modelSwitches := 0
 	for index, attempt := range receipt.Attempts {
@@ -51,7 +60,7 @@ func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) er
 		if attempt.InputTokens < 0 || attempt.CachedInputTokens < 0 || attempt.OutputTokens < 0 || attempt.CachedInputTokens > attempt.InputTokens {
 			return fmt.Errorf("attempt %d has invalid token accounting", index+1)
 		}
-		if attempt.ContextBytes != worker.AllocatedContextBytes || attempt.StablePrefixBytes != worker.StablePrefixBytes || attempt.TaskContractBytes != worker.AllocatedTaskContractBytes {
+		if attempt.ContextBytes != worker.AllocatedContextBytes || attempt.StablePrefixBytes != worker.StablePrefixBytes || attempt.SourceExecutionBytes != worker.SourceExecutionBytes || attempt.TaskContractBytes != worker.AllocatedTaskContractBytes {
 			return fmt.Errorf("attempt %d replay bytes do not match route payload", index+1)
 		}
 		if index > 0 {
@@ -77,6 +86,7 @@ func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) er
 		totalOutput += attempt.OutputTokens
 		totalContext += attempt.ContextBytes
 		totalPrefix += attempt.StablePrefixBytes
+		totalSources += attempt.SourceExecutionBytes
 		totalContract += attempt.TaskContractBytes
 	}
 	if receipt.ModelSwitchCount != modelSwitches || modelSwitches > worker.MaxModelSwitches {
@@ -90,7 +100,7 @@ func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) er
 	if receipt.EffectiveModel != last.Model || receipt.RetryCount != len(receipt.Attempts)-1 {
 		return fmt.Errorf("worker receipt effective model or retry count is inconsistent")
 	}
-	if receipt.StablePrefixBytesSent != totalPrefix || receipt.ContextBytesSent != totalContext || receipt.TaskContractBytes != totalContract {
+	if receipt.StablePrefixBytesSent != totalPrefix || receipt.SourceExecutionBytesSent != totalSources || receipt.ContextBytesSent != totalContext || receipt.TaskContractBytes != totalContract {
 		return fmt.Errorf("worker receipt replay byte totals are inconsistent")
 	}
 	if receipt.InputTokens != totalInput || receipt.CachedInputTokens != totalCached || receipt.OutputTokens != totalOutput {
@@ -119,6 +129,23 @@ func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) er
 		return fmt.Errorf("delegation did not beat the Aji cost baseline")
 	}
 	return nil
+}
+
+// ValidateWorkerReceipt is retained for existing callers. It checks contract
+// consistency only and must not be used as native execution verification.
+func ValidateWorkerReceipt(worker WorkerTask, receipt WorkerExecutionReceipt) error {
+	return ValidateWorkerReceiptConsistency(worker, receipt)
+}
+
+func validateDelegatedModel(model string) error {
+	model = strings.ToLower(strings.TrimSpace(model))
+	if !strings.Contains(model, "gpt-") {
+		return nil
+	}
+	if model == "gpt-5.6-sol" || model == "gpt-5.6-luna" {
+		return nil
+	}
+	return fmt.Errorf("GPT worker model %q is disallowed: use gpt-5.6-sol or gpt-5.6-luna; explicit non-GPT provider choices are unaffected", model)
 }
 
 func validResultHandle(handle string) bool {

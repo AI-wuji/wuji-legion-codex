@@ -31,6 +31,8 @@
         "SKILL.md",
         "agents/openai.yaml"
       ],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
       "priority": "primary"
     },
     {

@@ -1,62 +1,48 @@
 ---
 name: wuji-legion-codex-2-0
-description: System-level Codex router with one Aji main brain, cold capability packages, bounded workers, sparse context, verified evolution, and deterministic Go routing.
+description: System-level Codex router: one Aji brain, cold capability packages, bounded workers, sparse context, and verified evolution.
 ---
 
 # Wuji Legion 2.0
 
-One chain only:
-
-`Aji -> cold capability mount -> bounded execution -> real verification`
+One chain: `Aji -> cold capability mount -> bounded execution -> real verification`.
 
 ## Runtime
 
-1. Run `wuji route --query "<request>"` when routing is unclear.
-2. Mount one user-facing scenario Skill and only its required internal atoms. Do not expose upstream projects as choices or load complete catalogs without need.
-3. Treat every request as small. For non-trivial troubleshooting, API/SDK, dependency, framework, routing, cache, architecture, migration, performance, security, or integration work, run one `preflight_workers`: official -> GitHub -> community; <=3 sources/90 seconds; stop on decisive evidence. Skip deterministic edits and offline requests.
-4. Run preflight before execution. If evidence changes the approach, discard the stale worker plan and route again. Make the smallest complete change on the active target; do not create compatibility or parallel v2 implementations unless requested.
-5. Parallelize only independent branches with compact task contracts. Honor `SecondaryCapabilities`, but Aji remains the only merger and writer.
-6. Run the selected capability probe and task-local verification before completion.
+1. Keep simple self-contained Q&A on Aji. For all other tasks run `wuji route --query "<request>"`; route JSON, mount, `wuji dispatch`, and `codex exec` are not execution evidence.
+2. Mount one scenario Skill plus needed atoms. Automatic sources need callable lifecycle, entrypoint, and activation. Pass a verified entrypoint to the selected native worker; selection, mount, preparation, and injection are not execution. Accept only a native agent ID plus command/tool/artifact result. Keep other catalogs cold; use `wuji source-audit` for repair/admission.
+3. Every task is small. For non-trivial troubleshooting, API/SDK, dependency, framework, routing, cache, architecture, migration, performance, security, or integration work, run one preflight in order: official -> GitHub -> community; at most 3 sources/90 seconds; stop on decisive evidence. Skip deterministic or offline work.
+4. Complete preflight before workers. If it changes the approach, discard the old plan and reroute. Change only the active target, with the smallest complete fix; do not create compatibility or parallel v2 paths unless asked.
+5. When `route.change_capsule.required`, create a strict `wuji change-capsule` with scope-out, acceptance, verification, and rollback before edits. A passing capsule is evidence, not a second workflow.
+6. Parallelize independent branches only, with compact contracts. Aji alone merges and writes. Run the selected capability probe and task-local verification before completion.
 
 ## Models
 
-- Aji uses `gpt-5.6-terra` for routing, merge, writes, and completion judgment. Sol is a bounded, read-only escalation worker for explicitly requested high-reasoning judgment; it never becomes the default control plane.
-- Route workers are executable. When subagents exist, spawn each with exact `model`, `session_key`, hashes, handles, and write boundary. JSON alone is not execution; report any active-host/`main_model` mismatch.
-- Default classes are Terra, Luna, and Sol. Terra is the control plane and handles bounded independent implementation/verification; Luna handles mechanical extraction or broad independent research only when parent-context replay is unnecessary; Sol handles only explicit high-reasoning judgment.
-- Select a model once. Luna -> Terra and Terra -> Sol only before generation on `model-unavailable` or `provider-error-before-generation`, within retry limits. Sol gets one attempt/no fallback. Never pay to retry weak output, downgrade, or assume cross-model cache.
-- Completion requires route evidence: session, attempts/model/switches, payload hashes/bytes, token/cache/cost telemetry, result handle, and Aji acceptance.
-- Delegate only when the deterministic context artifact and task contract pass replay gates. Presentation/writing remain on Aji unless an explicit self-contained handoff passes.
+- Aji is `gpt-5.6-terra`: routing, merge, writes, and completion only. Terra never appears in a worker route.
+- A worker is real only when this Codex host creates a native read-only child with its exact `model`, `session_key`, and `fallback_models`, then returns agent identity, requested model, result handle, and Aji acceptance. The Go CLI prepares native-host contracts only; external `codex exec` is an explicit local compatibility diagnostic and is never execution evidence. Do not claim execution from a plan, source injection, generic/unavailable output, or CLI output.
+- Luna is context-free mechanical/research work; Sol is bounded high-reasoning review or judgment. GPT workers are only `gpt-5.6-luna` or `gpt-5.6-sol`, one model and one attempt, no automatic fallback or switching. Explicit non-GPT choices bypass this policy.
+- Sol, Terra, and Luna do not share prompt cache. Delegate only after replay gates pass; presentation/writing remain on Aji unless the handoff is explicitly self-contained. Provider billing/cache telemetry is unavailable unless the host exposes it.
 
-Nuwa does not exist. Officers are cold review seats. Routine opposition is an Aji self-check; a real officer runs only when explicitly requested or required by risk.
+For code, trace the flow, then use Ponytail's first valid rung: skip, reuse local code, standard library, native platform, installed dependency, then minimum code. Fix the common root cause, reject unrequested abstractions, preserve safety/requirements, and run one proportionate check for nontrivial logic.
+
+Nuwa does not exist. Officers are cold: routine opposition is Aji self-check; a real officer needs explicit/risk-required independent execution evidence.
 
 ## Capability Truth
 
-Lifecycle:
-
 `known -> doctrine-only -> assets-retained -> callable -> behavior-verified -> primary`
 
-Only `callable`, `behavior-verified`, or `primary` may activate. A manifest or mount is not evidence. Smoke proves only callable. Behavior verification requires real probes plus content-addressed artifacts and independent hash checks. `primary` additionally requires an Evolution Commander comparison, archived baseline, and verified promotion receipt. Say fused only for `behavior-verified` or `primary`.
+Only `callable`, `behavior-verified`, and `primary` activate. A manifest or mount is not evidence; smoke proves callable only. Behavior requires a real probe, content-addressed artifacts, and independent hashes; primary also needs comparison, baseline, and promotion receipt. A source without semantic activation plus entrypoint is cold reference material. Say "fused" only for behavior-verified/primary.
 
-## Context
+For a named external Skill, MCP, or repo, inspect source entrypoints, scripts/config, tests/probes, and license, not README claims. Retain the smallest compatible callable slice and behavior-verify it; otherwise record rejection. An MCP without a proven host adapter and invocation stays cold/unavailable.
 
-Keep the stable prefix small. For code, run `wuji context-select` with the same query and concrete path/symbol anchors, then pass its verified artifact to `wuji route --context-artifact`. Query fingerprint, bytes/SHA-256, paths, source/excerpt hashes, coverage, and code count must match.
+## Context And Graphs
 
-Stay on Aji when context is absent, stale, mismatched, over 4096 bytes, below 6000 BPS, has no code/content anchor, has a contract over 2048 bytes, exceeds 8192 replay bytes, or needs parent conversation. Keep logs, histories, graph dumps, and full Skill bodies outside the prompt. Prefer RTK filtering; Codebase Memory is a read-only cold index. GraphRAG is off the default path.
+Keep the stable prefix small. For code use `wuji context-select` with the same query and concrete path/symbol anchors, then pass its verified artifact to `wuji route --context-artifact`. Fingerprint, bytes/SHA-256, paths, excerpt hashes, coverage, and code count must match.
 
-## Relation Graphs
+Stay on Aji for absent/stale/mismatched context, >4096 bytes, <6000 BPS, no code/content anchor, contract >2048 bytes, replay >8192 bytes, or parent-context affinity. Keep logs, histories, graphs, and full Skill bodies out of prompts. RTK is preferred; Codebase Memory is a cold read-only index; GraphRAG is off by default.
 
-Use two bounded cold layers:
+Use bounded cold graphs only: a disposable workspace graph (`workspace -> files -> symbols/tests`) with 512 terms/file, 256 refs/term, 64 lookups, 128 candidates, and 16 MiB reads; and a cross-project graph only for failure/reuse events, with 12 lookups, 128 candidates, and 10 results. Store compact, scoped, content-addressed pointers with root cause and verification hash, never transcripts. Pyramid levels are routing indexes, not copies; enforce quotas, TTL, replacement/deduplication, locking, repair, GC, stale rebuilds, and bounded fan-out. Query experience only on matching failure/reuse, never every task.
 
-- Workspace graph: disposable `workspace -> files -> symbols/tests` index. Query terms/relations before reading candidates. Rebuild stale generations atomically. Enforce relative-path and symlink boundaries, 512 terms/file, 256 refs/term, 64 lookups, 128 candidates, 16 MiB source reads, and bounded graph files.
-- Cross-project knowledge graph: query only on `failure`, `reported-failure`, `explicit-reuse`, `capability-miss`, or `verification-trace`. Require canonical `global` or `workspace:<sha256>` scope. Store compact summaries and content-addressed solution/verification objects, replace `(kind,key,scope)`, and cap queries at 12 lookups, 128 candidates, and 10 results.
-- Enforce node/byte quotas, TTL, deduplication, revisions, locking, transaction repair, garbage collection, stale-index rebuilds, bounded fan-out, and evidence hash checks.
+`internal_adversarial_pass` is not white-hat execution. An explicit officer needs a compact read-only task, content-addressed result, and Aji-accepted receipt; otherwise report `not executed`.
 
-Pyramid levels are routing indexes, not copies of facts. A hierarchy reduces retrieval expansion but cannot stop storage growth. After a failure is resolved, record root cause and verification once; on a matching later failure, query before experimenting. Never scan all history by default.
-
-## White-Hat Evidence
-
-`internal_adversarial_pass` is only an Aji self-check declaration. An explicit officer must appear as a read-only `officer_workers` task with an independent session, compact contract, content-addressed result, and receipt accepted by Aji. A label, route flag, empty list, or unvalidated receipt means `not executed`.
-
-Agnes is image/video-only. Web scouting uses the default GPT route; bounded independent source branches may use Luna. Explicit provider/model choices win, and keys never enter rules or repositories.
-
-Read `references/architecture.md` only for architecture/evolution work. Read `references/capability-contract.md` only when admitting or repairing a capability.
+Agnes is image/video-only. Web scouting uses default GPT, with bounded Luna source branches. Feishu links/tasks mount the official `feishu-lark` Skill and default to read-only. Explicit provider/model wins; never store keys in rules or repositories. Read `references/architecture.md` for architecture/evolution and `references/capability-contract.md` for capability admission/repair.

@@ -85,6 +85,8 @@
         "SKILL.md",
         "agents/openai.yaml"
       ],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
       "priority": "primary"
     },
     {
@@ -211,13 +213,13 @@
       "id": "structure",
       "purpose": "audience, structure, and narrative",
       "independent": true,
-      "model_class": "terra"
+      "model_class": "sol"
     },
     {
       "id": "voice",
       "purpose": "human voice and platform fit",
       "independent": true,
-      "model_class": "terra"
+      "model_class": "sol"
     }
   ],
   "probe": {

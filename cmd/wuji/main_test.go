@@ -45,6 +45,41 @@ func TestRouteRequiresQuery(t *testing.T) {
 	}
 }
 
+func TestChangeCapsuleRequiresIntentAndProducesBoundedArtifact(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"change-capsule"}, &stdout, &stderr)
+	if code != 2 || !strings.Contains(stderr.String(), "--intent is required") {
+		t.Fatalf("missing capsule intent was not diagnosed: code=%d stderr=%q", code, stderr.String())
+	}
+	stdout.Reset()
+	stderr.Reset()
+	code = run([]string{"change-capsule", "--intent", "replace adapter", "--acceptance", "route passes; receipt persists"}, &stdout, &stderr)
+	if code != 0 || stderr.Len() != 0 || !strings.Contains(stdout.String(), "wuji-change-capsule-v1") {
+		t.Fatalf("change capsule command did not produce an artifact: code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestStrictChangeCapsuleReturnsMachineReadableGateEvidence(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	code := run([]string{"change-capsule", "--intent", "replace adapter", "--strict"}, &stdout, &stderr)
+	if code != 1 || stderr.Len() != 0 {
+		t.Fatalf("incomplete strict capsule did not fail cleanly: code=%d stderr=%q", code, stderr.String())
+	}
+	var invalid core.ChangeCapsuleValidationResult
+	if err := json.Unmarshal(stdout.Bytes(), &invalid); err != nil || invalid.Validation.Valid || len(invalid.Validation.Issues) != 4 {
+		t.Fatalf("strict failure did not return validation evidence: result=%#v err=%v", invalid, err)
+	}
+	stdout.Reset()
+	code = run([]string{"change-capsule", "--intent", "replace adapter", "--scope-out", "no provider migration", "--acceptance", "route passes", "--verification", "go test ./...", "--rollback", "restore prior adapter", "--strict"}, &stdout, &stderr)
+	if code != 0 || stderr.Len() != 0 {
+		t.Fatalf("complete strict capsule failed: code=%d stderr=%q", code, stderr.String())
+	}
+	var valid core.ChangeCapsuleValidationResult
+	if err := json.Unmarshal(stdout.Bytes(), &valid); err != nil || !valid.Validation.Valid || valid.Capsule.Intent != "replace adapter" {
+		t.Fatalf("strict success did not return validation evidence: result=%#v err=%v", valid, err)
+	}
+}
+
 func TestContextSelectReportsInvalidBudget(t *testing.T) {
 	var stdout, stderr bytes.Buffer
 	code := run([]string{"context-select", "--query", "valid query", "--max-bytes", "-1"}, &stdout, &stderr)
@@ -74,6 +109,39 @@ func TestValidateReceiptRequiresEvidenceFiles(t *testing.T) {
 	code := run([]string{"validate-receipt"}, &stdout, &stderr)
 	if code != 2 || !strings.Contains(stderr.String(), "--route, --receipt and --worker are required") || stdout.Len() != 0 {
 		t.Fatalf("missing receipt evidence was not diagnosed: code=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestDispatchPreparesExactRouteSelectedNativeHostContract(t *testing.T) {
+	routePath := filepath.Join(t.TempDir(), "route.json")
+	route := core.RouteResult{Workers: []core.WorkerTask{{
+		ID: "mechanical", Model: "gpt-5.6-luna", SessionKey: "session-1", Writes: false,
+	}}}
+	routeData, err := json.Marshal(route)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(routePath, routeData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	code := run([]string{
+		"dispatch", "--route", routePath, "--worker", "mechanical", "--workspace", t.TempDir(),
+		"--output-dir", filepath.Join(t.TempDir(), "dispatch"), "--dry-run",
+	}, &stdout, &stderr)
+	if code != 0 || stderr.Len() != 0 {
+		t.Fatalf("dispatch dry run failed: code=%d stderr=%q", code, stderr.String())
+	}
+	var result core.DispatchResult
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result.Status != "native-host-dispatch-required" || !result.NativeHostRequired || result.RequestedModel != "gpt-5.6-luna" || result.PreparedPromptSHA256 == "" {
+		t.Fatalf("dispatch did not preserve worker route: result=%#v err=%v", result, err)
+	}
+}
+
+func TestDecodeRouteAcceptsPowerShellUTF8BOM(t *testing.T) {
+	route, err := decodeRoute(append([]byte{0xEF, 0xBB, 0xBF}, []byte(`{"workers":[{"id":"mechanical"}]}`)...))
+	if err != nil || len(route.Workers) != 1 || route.Workers[0].ID != "mechanical" {
+		t.Fatalf("BOM route was not decoded: route=%#v err=%v", route, err)
 	}
 }
 

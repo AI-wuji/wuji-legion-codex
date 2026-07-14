@@ -2,6 +2,8 @@ package core
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -10,14 +12,15 @@ var modelPolicies = map[string]struct {
 	model     string
 	fallbacks []string
 }{
-	"sol":   {model: "gpt-5.6-sol"},
-	"terra": {model: "gpt-5.6-terra", fallbacks: []string{"gpt-5.6-sol"}},
-	"luna":  {model: "gpt-5.6-luna", fallbacks: []string{"gpt-5.6-terra"}},
+	"sol":  {model: "gpt-5.6-sol"},
+	"luna": {model: "gpt-5.6-luna"},
 }
+
+const ajiMainModel = "gpt-5.6-terra"
 
 var workerExecutionEvidenceFields = []string{
 	"schema_version", "worker_id", "requested_model", "session_key", "host_dispatch_id", "write_boundary", "attempts", "effective_model", "model_switch_count", "result_handle",
-	"stable_prefix_bytes", "stable_prefix_sha256", "context_handle_ids", "context_bytes_sent", "context_payload_sha256",
+	"stable_prefix_bytes", "stable_prefix_sha256", "source_execution_bytes", "context_handle_ids", "context_bytes_sent", "context_payload_sha256",
 	"task_contract_bytes", "task_contract_sha256", "delegation_gate_reason",
 	"input_tokens", "cached_input_tokens", "output_tokens", "retry_count",
 	"accepted_by_aji", "attempt_failure_kinds", "cache_domain", "billing_unit",
@@ -48,10 +51,10 @@ func modelPolicy() ModelPolicy {
 		fallbacks[class] = append([]string(nil), spec.fallbacks...)
 	}
 	return ModelPolicy{
-		MainModel:      classes["terra"],
+		MainModel:      ajiMainModel,
 		ClassModels:    classes,
 		FallbackModels: fallbacks,
-		Delegation:     "the host must spawn each route-declared worker with its exact model, bounded handoff, and fallback_models; route JSON alone is not execution; Aji on Terra merges only",
+		Delegation:     "within the GPT 5.6 policy, the host must spawn each route-declared worker with its exact Sol or Luna model and no fallback; Aji on Terra merges and writes only. Explicit non-GPT provider/model choices bypass this GPT worker policy.",
 	}
 }
 
@@ -76,6 +79,15 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 	selectedEngine := selectEngine(q, selected.Engines)
 	engine := selectedEngine.ID
 	mounted := mountSources(q, selected, engine)
+	sourceExecution, sourceErr := BuildSourceExecutionContracts(selected, mounted)
+	sourceActivationError := ""
+	if sourceErr != nil {
+		// Do not advertise an unreadable source as an active capability. The
+		// source remains in the audit inventory and dispatch will not run it.
+		mounted = nil
+		sourceExecution = nil
+		sourceActivationError = sourceErr.Error()
+	}
 	secondary := secondaryCapabilities(q, selected.ID, manifests)
 	officers := explicitOfficers(q)
 	officerWorkers := officerWorkerPlan(q, officers, selected, engine, context)
@@ -85,6 +97,25 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 		sort.Strings(secondary)
 	}
 	workers, delegation := workerPlan(q, selected, engine, context)
+	if sourceActivationError != "" {
+		preflightWorkers = nil
+		workers = nil
+		officerWorkers = nil
+		delegation.Allowed = false
+		delegation.Reason = "selected-source-entrypoint-unavailable"
+	}
+	attachSourceExecution(workers, sourceExecution)
+	// workerPlan may already have declined the fan-out because its original
+	// replay estimate exceeded the hard limit. Do not overwrite that useful
+	// evidence with a misleading zero after it clears the worker slice.
+	if len(workers) > 0 {
+		delegation.EstimatedReplayBytes = estimatedReplayBytes(workers)
+	}
+	if len(workers) > 0 && delegation.EstimatedReplayBytes > maxTotalReplayBytes {
+		workers = nil
+		delegation.Allowed = false
+		delegation.Reason = "estimated-context-replay-exceeds-total-budget"
+	}
 	parallel := len(workers) > 1
 	provider, providerFallback := selectProvider(q, selected.Providers)
 	primarySkill := selected.PrimarySkill
@@ -109,16 +140,17 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 			RequireCodeExcerpt:              true,
 			RequireContentAnchor:            true,
 			RequireSelfContainedHandoff:     true,
-			FallbackOnlyOnAvailabilityError: true,
+			FallbackOnlyOnAvailabilityError: false,
 			OnGateFailure:                   "stay on Aji direct route",
 		},
 		DelegationDecision: delegation,
 		TaskExecutionPolicy: TaskExecutionPolicy{
 			TaskShape: "small", ModelSelectionTiming: "once-at-task-start", SessionAffinity: "sticky-per-worker",
-			EscalationPolicy: "upgrade-only-before-generation-on-availability-error", MaxModelSwitches: 1,
+			EscalationPolicy: "single-model-no-automatic-fallback", MaxModelSwitches: 0,
 			DowngradeAfterGeneration: false, PreflightBeforeExecution: len(preflightWorkers) > 0,
 		},
 		SearchFirstPolicy:       searchFirst,
+		ChangeCapsule:           changeCapsuleGate(q, selected),
 		Reasoning:               "max",
 		WriteAuthority:          "aji-only",
 		Nuwa:                    false,
@@ -131,6 +163,8 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 		ProviderFallback:        providerFallback,
 		SecondaryCapabilities:   secondary,
 		MountedSources:          mounted,
+		SourceExecution:         sourceExecution,
+		SourceActivationError:   sourceActivationError,
 		ExecutionLane:           executionLane(len(preflightWorkers), len(workers)),
 		Parallel:                parallel,
 		PreflightWorkers:        preflightWorkers,
@@ -149,16 +183,39 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 	}
 }
 
+func attachSourceExecution(workers []WorkerTask, contracts []SourceExecutionContract) {
+	if len(contracts) == 0 {
+		return
+	}
+	for index := range workers {
+		workers[index].SourceExecution = append([]SourceExecutionContract(nil), contracts...)
+		for _, contract := range contracts {
+			workers[index].SourceExecutionBytes += contract.EntrypointBytes
+		}
+		workers[index].PromptOrder = append([]string{"stable_capability_prefix", "source_execution"}, workers[index].PromptOrder[1:]...)
+	}
+}
+
+func changeCapsuleGate(query string, capability Manifest) ChangeCapsuleGate {
+	if capability.ID != "code" && capability.ID != "evolution" && capability.ID != "security" && capability.ID != "context" {
+		return ChangeCapsuleGate{}
+	}
+	if containsAny(query, "架构", "architecture", "迁移", "migration", "路由", "routing", "provider", "供应商", "模型策略", "model policy", "依赖升级", "dependency upgrade", "权限", "permission", "安全策略", "security policy") {
+		return ChangeCapsuleGate{Required: true, Strict: true, Reason: "high-risk-change-boundary"}
+	}
+	return ChangeCapsuleGate{}
+}
+
 func officerWorkerPlan(query string, officers []string, capability Manifest, engine string, context DelegationContext) []WorkerTask {
 	if len(officers) == 0 {
 		return nil
 	}
-	model, fallbacks := modelSpec("terra")
+	model, fallbacks := modelSpec("sol")
 	prefix := stableCapabilityPrefix(capability, engine)
 	workers := make([]WorkerTask, 0, len(officers))
 	for _, officer := range officers {
 		purpose := "independent read-only adversarial review; identify unsupported assumptions, failure modes, and missing verification"
-		worker := newWorkerTask(query, "officer-"+officer, purpose, "terra", model, fallbacks,
+		worker := newWorkerTask(query, "officer-"+officer, purpose, "sol", model, fallbacks,
 			[]string{"task contract", "selected evidence handles", "implementation under review"}, contextMode(context), context,
 			"explicit independent officer requested", prefix)
 		worker.Stage = "officer"
@@ -180,7 +237,7 @@ func executionLane(preflightCount, workerCount int) string {
 
 func searchFirstPlan(query string, capability Manifest, engine string, context DelegationContext) (SearchFirstPolicy, []WorkerTask) {
 	policy := SearchFirstPolicy{}
-	if !needsPriorArtSearch(query, capability.ID, engine) || context.ParentContextRequired || requiresParentContext(query) {
+	if !needsPriorArtSearch(query, capability.ID, engine) || context.ParentContextRequired {
 		return policy, nil
 	}
 	policy = SearchFirstPolicy{
@@ -227,6 +284,9 @@ func intentBoosts(query, capabilityID string) int {
 		if containsAny(query, "pull request", "code review", "pr review", "review this pr", "review this pull", "代码审查", "代码评审", "行级评论") {
 			boost += 80
 		}
+		if containsAny(query, "审查", "评审", "review") && containsAny(query, "代码", "code", "diff", "patch") {
+			boost += 80
+		}
 		if containsAny(query, "review") && containsAny(query, "pr", "pull request", "merge request", "diff", "patch") {
 			boost += 50
 		}
@@ -240,6 +300,9 @@ func intentBoosts(query, capabilityID string) int {
 		}
 	case "image":
 		if containsAny(query, "generate an image", "create image", "image generation", "生图", "生成图", "生成一张图", "生成一个图", "生成图片", "插图") {
+			boost += 45
+		}
+		if containsAny(query, "生成", "绘制", "制作") && containsAny(query, "图", "海报", "封面") {
 			boost += 45
 		}
 		// When the true deliverable is video, stay secondary.
@@ -258,7 +321,7 @@ func intentBoosts(query, capabilityID string) int {
 			boost += 40
 		}
 	case "data":
-		if containsAny(query, "analyze data", "dataset", "correlation", "数据分析", "异常检测", "统计") {
+		if containsAny(query, "analyze data", "dataset", "correlation", "csv", "数据", "数据分析", "异常检测", "统计") {
 			boost += 40
 		}
 	case "writing":
@@ -298,12 +361,12 @@ func intentBoosts(query, capabilityID string) int {
 		if containsAny(query, "search code", "token usage", "代码库", "repo map", "context") && !containsAny(query, "全网", "web", "research", "github上看看") {
 			boost -= 60
 		}
-		if containsAny(query, "全网", "research", "search the web", "url to markdown", "youtube") {
+		if !containsAny(query, "search code", "token usage", "代码库", "项目检索", "context") && containsAny(query, "全网", "搜索", "检索", "调研", "github", "官方文档", "联网", "research", "search the web", "url to markdown", "youtube") {
 			boost += 30
 		}
 	case "code":
 		// Avoid stealing specialized review/security/search phrasing.
-		if containsAny(query, "pull request", "code review", "pr review", "security scan", "search code") {
+		if containsAny(query, "pull request", "code review", "pr review", "security scan", "search code") || (containsAny(query, "审查", "评审", "review") && containsAny(query, "代码", "code", "diff", "patch")) {
 			boost -= 40
 		}
 		if containsAny(query, "review this") && !containsAny(query, "code review", "pull request", "pr ") {
@@ -381,11 +444,19 @@ func mountSources(query string, selected Manifest, engine string) []MountedSourc
 			continue
 		}
 		priority := sourcePriority(source)
-		if !shouldMountSource(query, source, priority, fullMount) {
+		if rank(sourceLifecycle(source)) < rank("callable") {
+			continue
+		}
+		reason, ok := sourceActivationReason(query, source, priority, fullMount)
+		if !ok {
 			continue
 		}
 		if path, ok := ResolveCompleteSourceAt(selected.Root, source); ok {
-			mounted = append(mounted, MountedSource{ID: source.ID, Path: path, Priority: priority})
+			entrypoint := source.Entrypoint
+			if entrypoint != "" && !isSourceEntrypoint(path, entrypoint) {
+				continue
+			}
+			mounted = append(mounted, MountedSource{ID: source.ID, Path: path, Priority: priority, Lifecycle: sourceLifecycle(source), Entrypoint: entrypoint, ActivationReason: reason})
 		}
 	}
 	return mounted
@@ -404,19 +475,29 @@ func sourcePriority(source Source) string {
 	return "secondary"
 }
 
-func shouldMountSource(query string, source Source, priority string, fullMount bool) bool {
+func sourceActivationReason(query string, source Source, priority string, fullMount bool) (string, bool) {
 	if fullMount {
-		return true
+		return "full-capability-request", true
 	}
-	named := sourceNamedInQuery(query, source)
 	switch priority {
 	case "primary":
-		return true
-	case "optional":
-		return named
-	default: // secondary
-		return named
+		return "primary-source", true
 	}
+	for _, trigger := range source.Activation {
+		if strings.Contains(query, strings.ToLower(trigger)) {
+			return "semantic-trigger:" + trigger, true
+		}
+	}
+	if sourceNamedInQuery(query, source) {
+		return "explicit-source-request", true
+	}
+	return "", false
+}
+
+func isSourceEntrypoint(root, entrypoint string) bool {
+	path := filepath.Join(root, filepath.FromSlash(entrypoint))
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
 
 func sourceNamedInQuery(query string, source Source) bool {
@@ -498,24 +579,20 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 	taskContractBytes := len([]byte(strings.TrimSpace(query)))
 	decision := DelegationDecision{TaskContractBytes: taskContractBytes, SelectedContextBytes: context.SelectedBytes, ContextCoverageBPS: context.CoverageBPS, CodeExcerptCount: context.CodeExcerptCount, ContentAnchorCount: context.ContentAnchorCount, SelfContained: context.SelfContained}
 	if containsAny(query, "串行", "sequential", "serial only") {
-		decision.Reason = "serial-requested"
-		return nil, decision
+		decision.Reason = "serial-task-reasoning"
+		return taskJudgmentPlan(query, capability, engine, decision)
 	}
 	if taskContractBytes > maxTaskContractBytes {
 		decision.Reason = "task-contract-exceeds-budget"
 		return nil, decision
 	}
-	if context.ParentContextRequired || requiresParentContext(query) {
-		decision.Reason = "parent-context-affinity-requires-Aji"
-		return nil, decision
-	}
 	if context.Handle != "" && !validContextHandoff(context) {
 		decision.Reason = "verified-context-artifact-required"
-		return nil, decision
+		return taskJudgmentPlan(query, capability, engine, decision)
 	}
 	if context.Handle != "" && context.QueryFingerprint != queryFingerprint(queryTerms(query)) {
 		decision.Reason = "context-query-fingerprint-mismatch"
-		return nil, decision
+		return taskJudgmentPlan(query, capability, engine, decision)
 	}
 	if capability.ID == "search" && engine == "web-research" && isBroadSearch(query) {
 		model, fallbacks := modelSpec("luna")
@@ -537,7 +614,32 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 		}
 		return finalizeWorkerPlan(workers, decision)
 	}
+	if isSimpleQuestion(query) {
+		decision.Reason = "simple-question-direct"
+		return nil, decision
+	}
 	forceParallel := containsAny(query, "并行", "parallel")
+	if isFailureTask(query) {
+		decision.Reason = "systematic-failure-analysis"
+		prefix := stableCapabilityPrefix(capability, engine)
+		sol, solFallbacks := modelSpec("sol")
+		luna, lunaFallbacks := modelSpec("luna")
+		workers := []WorkerTask{
+			newWorkerTask(query, "root-cause", "reproduce, narrow, form falsifiable hypotheses, and identify the smallest evidence-backed root cause; return fix options and regression criteria", "sol", sol, solFallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, decision.Reason, prefix),
+			newWorkerTask(query, "failure-evidence", "mechanically collect the smallest reproducible evidence set: affected files, exact error signatures, relevant tests, and existing verification commands", "luna", luna, lunaFallbacks, []string{"task contract", "workspace tools"}, "task-contract-only", DelegationContext{}, decision.Reason, prefix),
+		}
+		return finalizeWorkerPlan(workers, decision)
+	}
+	if capability.ID == "code-review" {
+		decision.Reason = "two-axis-code-review"
+		prefix := stableCapabilityPrefix(capability, engine)
+		model, fallbacks := modelSpec("sol")
+		workers := []WorkerTask{
+			newWorkerTask(query, "spec-conformance", "review only whether the change satisfies the stated behavior, acceptance scenarios, and edge cases; return line-anchored findings", "sol", model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, decision.Reason, prefix),
+			newWorkerTask(query, "engineering-quality", "review only correctness, maintainability, security, performance, error recovery, and verification gaps; return line-anchored findings", "sol", model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, decision.Reason, prefix),
+		}
+		return finalizeWorkerPlan(workers, decision)
+	}
 	if needsSolJudgment(query) {
 		model, fallbacks := modelSpec("sol")
 		decision.Reason = "explicit-high-reasoning-judgment"
@@ -547,37 +649,37 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 		}
 		return finalizeWorkerPlan(workers, decision)
 	}
-	defaultFanout := map[string]bool{
-		"code": true,
-	}
-	if !forceParallel && !defaultFanout[capability.ID] {
-		decision.Reason = "direct-route-by-default"
-		return nil, decision
+	// Every non-conversational task receives a bounded, read-only reasoning
+	// branch.  Aji still writes and merges, but routing is now the default for
+	// tasks rather than an opt-in reserved for code changes.
+	if !forceParallel && capability.ID != "code" {
+		decision.Reason = "default-task-reasoning"
+		return taskJudgmentPlan(query, capability, engine, decision)
 	}
 	if capability.ID == "code" {
 		if !validContextHandoff(context) {
 			decision.Reason = "verified-context-artifact-required"
-			return nil, decision
+			return taskJudgmentPlan(query, capability, engine, decision)
 		}
 		if context.SelectedBytes > maxSharedContextBytes {
 			decision.Reason = "shared-context-exceeds-per-worker-budget"
-			return nil, decision
+			return taskJudgmentPlan(query, capability, engine, decision)
 		}
 		if context.CoverageBPS < minContextCoverageBPS {
 			decision.Reason = "context-coverage-below-delegation-threshold"
-			return nil, decision
+			return taskJudgmentPlan(query, capability, engine, decision)
 		}
 		if context.CodeExcerptCount == 0 {
 			decision.Reason = "code-context-excerpt-required"
-			return nil, decision
+			return taskJudgmentPlan(query, capability, engine, decision)
 		}
 		if context.ContentAnchorCount == 0 {
 			decision.Reason = "code-content-anchor-required"
-			return nil, decision
+			return taskJudgmentPlan(query, capability, engine, decision)
 		}
 	} else if forceParallel && !context.SelfContained {
 		decision.Reason = "self-contained-handoff-required"
-		return nil, decision
+		return taskJudgmentPlan(query, capability, engine, decision)
 	}
 	workers := []WorkerTask{}
 	prefix := stableCapabilityPrefix(capability, engine)
@@ -596,6 +698,19 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 		return nil, decision
 	}
 	sort.SliceStable(workers, func(i, j int) bool { return workers[i].ID < workers[j].ID })
+	return finalizeWorkerPlan(workers, decision)
+}
+
+// taskJudgmentPlan is the safe fallback when a task cannot replay enough
+// workspace context for implementation fan-out. It still activates routing,
+// but gives Sol only the self-contained user contract rather than leaking a
+// stale or incomplete context capsule.
+func taskJudgmentPlan(query string, capability Manifest, engine string, decision DelegationDecision) ([]WorkerTask, DelegationDecision) {
+	model, fallbacks := modelSpec("sol")
+	prefix := stableCapabilityPrefix(capability, engine)
+	workers := []WorkerTask{
+		newWorkerTask(query, "task-judgment", "bounded independent task analysis; return an actionable approach, evidence needs, risks, and verification criteria for Aji to execute", "sol", model, fallbacks, []string{"task contract"}, "task-contract-only", DelegationContext{}, decision.Reason, prefix),
+	}
 	return finalizeWorkerPlan(workers, decision)
 }
 
@@ -629,7 +744,7 @@ func finalizeWorkerPlan(workers []WorkerTask, decision DelegationDecision) ([]Wo
 func estimatedReplayBytes(workers []WorkerTask) int {
 	total := 0
 	for _, worker := range workers {
-		total += worker.StablePrefixBytes + worker.AllocatedTaskContractBytes + worker.AllocatedContextBytes
+		total += worker.StablePrefixBytes + worker.SourceExecutionBytes + worker.AllocatedTaskContractBytes + worker.AllocatedContextBytes
 	}
 	return total
 }
@@ -662,7 +777,8 @@ func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inpu
 		allocated = context.SelectedBytes
 	}
 	sessionKey := taskSessionKey(query, id, context.Handle)
-	contract := marshalWorkerContract(query, id, purpose, handles, sessionKey)
+	protocol := workerProtocol(query, id, purpose, stablePrefix)
+	contract := marshalWorkerContract(query, id, purpose, handles, sessionKey, protocol)
 	maxModelSwitches := 0
 	if len(fallbacks) > 0 {
 		maxModelSwitches = 1
@@ -682,9 +798,10 @@ func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inpu
 		FallbackModels:             append([]string(nil), fallbacks...),
 		SessionKey:                 sessionKey,
 		SessionAffinity:            "sticky-per-worker",
-		EscalationPolicy:           "upgrade-only-before-generation-on-availability-error",
+		EscalationPolicy:           "single-model-no-automatic-fallback",
 		MaxModelSwitches:           maxModelSwitches,
 		Inputs:                     append([]string(nil), inputs...),
+		Protocol:                   append([]string(nil), protocol...),
 		TaskContract:               contract,
 		TaskContractSHA256:         sha256Hex([]byte(contract)),
 		ContextMode:                mode,
@@ -710,17 +827,30 @@ func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inpu
 
 func stableCapabilityPrefix(capability Manifest, engine string) string {
 	prefix := struct {
-		Schema       string `json:"schema"`
-		Capability   string `json:"capability"`
-		PrimarySkill string `json:"primary_skill"`
-		Engine       string `json:"engine,omitempty"`
-		WriteOwner   string `json:"write_owner"`
+		Schema                 string `json:"schema"`
+		Capability             string `json:"capability"`
+		PrimarySkill           string `json:"primary_skill"`
+		Engine                 string `json:"engine,omitempty"`
+		ImplementationDoctrine string `json:"implementation_doctrine,omitempty"`
+		WriteOwner             string `json:"write_owner"`
 	}{
 		Schema: "wuji-stable-capability-prefix-v1", Capability: capability.ID,
-		PrimarySkill: capability.PrimarySkill, Engine: engine, WriteOwner: "aji-only",
+		PrimarySkill: primarySkillForEngine(capability, engine), Engine: engine, WriteOwner: "aji-only",
+	}
+	if capability.ID == "code" {
+		prefix.ImplementationDoctrine = "ponytail-v2: structured-code-worker-protocol"
 	}
 	encoded, _ := json.Marshal(prefix)
 	return string(encoded)
+}
+
+func primarySkillForEngine(capability Manifest, engineID string) string {
+	for _, engine := range capability.Engines {
+		if engine.ID == engineID && strings.TrimSpace(engine.PrimarySkill) != "" {
+			return engine.PrimarySkill
+		}
+	}
+	return capability.PrimarySkill
 }
 
 type workerContract struct {
@@ -730,11 +860,12 @@ type workerContract struct {
 	Purpose       string   `json:"purpose"`
 	Boundaries    []string `json:"boundaries"`
 	Acceptance    []string `json:"acceptance"`
+	Protocol      []string `json:"protocol,omitempty"`
 	ContextHandle string   `json:"context_handle,omitempty"`
 	SessionKey    string   `json:"session_key"`
 }
 
-func marshalWorkerContract(query, id, purpose string, handles []string, sessionKey string) string {
+func marshalWorkerContract(query, id, purpose string, handles []string, sessionKey string, protocol []string) string {
 	contract := workerContract{
 		Schema:     "wuji-worker-contract-v2",
 		Objective:  strings.TrimSpace(query),
@@ -742,6 +873,7 @@ func marshalWorkerContract(query, id, purpose string, handles []string, sessionK
 		Purpose:    purpose,
 		Boundaries: []string{"Aji is the only merger and writer", "do not infer missing parent conversation", "return evidence, not a completion claim"},
 		Acceptance: []string{"complete only the named branch", "cite the supplied context handle when used", "report model and token telemetry"},
+		Protocol:   append([]string(nil), protocol...),
 		SessionKey: sessionKey,
 	}
 	if len(handles) > 0 {
@@ -749,6 +881,40 @@ func marshalWorkerContract(query, id, purpose string, handles []string, sessionK
 	}
 	encoded, _ := json.Marshal(contract)
 	return string(encoded)
+}
+
+func workerProtocol(query, id, purpose, stablePrefix string) []string {
+	value := strings.ToLower(query + " " + id + " " + purpose)
+	protocol := []string{}
+	failureTask := isFailureTask(query) || id == "root-cause" || id == "failure-evidence"
+	if failureTask {
+		protocol = append(protocol, "reproduce or state why reproduction is unavailable", "minimize the failing surface", "separate observations from hypotheses", "do not propose a fix before the observation and hypothesis are separately evidenced", "test the smallest falsifiable hypothesis", "after two disproven hypotheses, stop iterative patching and return an architecture-reassessment decision", "tie each proposed fix to evidence", "name a fresh regression verification")
+	}
+	if strings.Contains(value, "review") || strings.Contains(value, "审查") || strings.Contains(value, "评审") {
+		protocol = append(protocol, "separate specification conformance from engineering quality", "anchor findings to concrete files, symbols, or evidence", "rank findings by user impact and likelihood", "do not report stylistic preference as a defect")
+	}
+	if hasPonytailCodeDoctrine(stablePrefix) {
+		protocol = append(protocol,
+			"trace the actual flow and cite affected file or symbol anchors before choosing",
+			"choose the first valid rung: skip, reuse local code, standard library, native platform, installed dependency, one line, minimum code",
+			"for bugs, inspect every caller and fix the common root cause once, not each symptom",
+			"prefer deletion, fewest files, and the smallest correct diff; no unrequested abstraction, scaffolding, or dependency",
+			"for nontrivial logic, name one smallest runnable regression check; trivial one-line edits need no new test",
+			"do not weaken validation, error handling, data safety, security, accessibility, or explicit requirements",
+		)
+	}
+	return protocol
+}
+
+func hasPonytailCodeDoctrine(stablePrefix string) bool {
+	var prefix struct {
+		Capability             string `json:"capability"`
+		ImplementationDoctrine string `json:"implementation_doctrine"`
+	}
+	if json.Unmarshal([]byte(stablePrefix), &prefix) != nil {
+		return false
+	}
+	return prefix.Capability == "code" && strings.HasPrefix(prefix.ImplementationDoctrine, "ponytail-v2:")
 }
 
 func taskSessionKey(query, workerID, contextHandle string) string {
@@ -776,6 +942,7 @@ func needsPriorArtSearch(query, capabilityID, engine string) bool {
 	}
 	return containsAny(query,
 		"现成方案", "现有方案", "有没有项目", "官方资料", "社区教程", "最佳实践",
+		"skill", "mcp", "自动执行", "能力融合",
 		"bug", "报错", "错误", "异常", "崩溃", "失败", "根因", "修复", "调试",
 		"api", "sdk", "依赖", "插件", "框架", "模型路由", "缓存", "上下文共享",
 		"架构", "重构", "迁移", "升级", "性能", "安全", "集成", "兼容",
@@ -795,16 +962,47 @@ func isMechanicalTask(query string) bool {
 	if containsAny(query, "修改", "修复", "实现", "重构", "写入", "删除", "change", "fix", "implement", "refactor", "write", "delete") {
 		return false
 	}
+	value := strings.ToLower(query)
+	if strings.Contains(value, "list") && containsAny(value, "file", "path", "directory") {
+		return true
+	}
 	return containsAny(query,
 		"列出文件", "文件清单", "统计数量", "统计行数", "提取日志", "解析日志", "查找所有", "扫描所有", "汇总日志",
 		"list files", "inventory files", "count lines", "count occurrences", "extract logs", "parse logs", "find all", "scan all", "summarize logs",
 	)
 }
 
+// isSimpleQuestion deliberately keeps only lightweight conversational Q&A on
+// Aji. Requests to inspect, compare, diagnose, plan, search, create, or alter
+// anything are tasks and therefore enter the worker routing path.
+func isSimpleQuestion(query string) bool {
+	value := strings.TrimSpace(strings.ToLower(query))
+	if len([]rune(value)) == 0 || len([]rune(value)) > 240 {
+		return false
+	}
+	if value == "hi" || value == "hello" || value == "你好" || value == "谢谢" || value == "thank you" || containsAny(value,
+		"你是谁", "who are you",
+		"是什么", "什么意思", "what is", "what does", "how are you",
+	) && !containsAny(value,
+		"检查", "分析", "比较", "诊断", "调试", "搜索", "调研", "设计", "计划", "实现", "修改", "修复", "创建", "安装", "审查", "验证",
+		"inspect", "analy", "compare", "diagnos", "debug", "search", "research", "design", "plan", "implement", "change", "fix", "create", "install", "review", "verify",
+	) {
+		return true
+	}
+	return false
+}
+
 func needsSolJudgment(query string) bool {
 	return containsAny(query,
 		"explicit sol", "use sol", "high-reasoning", "high reasoning", "architecture decision", "root-cause adjudication", "threat model",
 		"使用sol", "调用sol", "高推理", "架构取舍", "根因裁决", "威胁建模",
+	)
+}
+
+func isFailureTask(query string) bool {
+	return containsAny(query,
+		"bug", "error", "exception", "crash", "failure", "debug", "root cause", "timeout", "regression",
+		"报错", "错误", "异常", "崩溃", "失败", "调试", "根因", "超时", "回归问题",
 	)
 }
 

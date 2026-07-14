@@ -14,8 +14,18 @@
     "烟雾背景",
     "humanize-ppt",
     "ppt master",
+    "html演示",
+    "可编辑html演示",
+    "可编辑的html演示",
+    "在线编辑演示",
+    "浏览器编辑演示",
+    "浏览器可编辑演示",
+    "网页演示",
     "make a ppt",
     "create slides",
+    "editable html deck",
+    "browser editable deck",
+    "template html deck",
     "做一份ppt",
     "做ppt",
     "做演示文稿"
@@ -46,6 +56,11 @@
         "html-ppt",
         "html演示",
         "网页演示",
+        "可编辑html演示",
+        "可编辑的html演示",
+        "在线编辑演示",
+        "浏览器编辑演示",
+        "浏览器可编辑演示",
         "浏览器动态ppt",
         "slidev",
         "markdown演示",
@@ -53,7 +68,10 @@
         "流体背景",
         "烟雾背景",
         "stage fluid",
-        "stage smoke"
+        "stage smoke",
+        "editable html deck",
+        "browser editable deck",
+        "template html deck"
       ]
     }
   ],
@@ -66,7 +84,8 @@
       "required": [
         "template-catalog.json"
       ],
-      "priority": "primary"
+      "lifecycle": "assets-retained",
+      "priority": "secondary"
     },
     {
       "id": "wuji-web-deck-unified",
@@ -78,6 +97,8 @@
         "SKILL.md",
         "agents/openai.yaml"
       ],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
       "priority": "primary"
     },
     {
@@ -90,6 +111,8 @@
         "SKILL.md",
         "agents/openai.yaml"
       ],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
       "priority": "primary"
     },
     {
@@ -159,6 +182,48 @@
         "templates/full-decks/*/index.html",
         "scripts/render.sh"
       ],
+      "priority": "secondary"
+    },
+    {
+      "id": "dashiai-ppt-local",
+      "engine": "web-deck",
+      "globs": [
+        "${USERPROFILE}/.codex/skills/dashiai-ppt-skill"
+      ],
+      "required": [
+        "SKILL.md",
+        "agents/openai.yaml",
+        "project/package.json",
+        "project/scripts/layout-query.mjs",
+        "project/scripts/inspect-layout.mjs"
+      ],
+      "lifecycle": "assets-retained",
+      "priority": "secondary"
+    },
+    {
+      "id": "wuji-dashiai-deck-adapter",
+      "engine": "web-deck",
+      "activation": [
+        "可编辑html演示",
+        "可编辑的html演示",
+        "在线编辑演示",
+        "浏览器编辑演示",
+        "浏览器可编辑演示",
+        "模板化html ppt",
+        "editable html deck",
+        "browser editable deck",
+        "template html deck",
+        "dashiai"
+      ],
+      "globs": [
+        "${ROOT}/capabilities/presentation/skills/wuji-dashiai-deck"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "lifecycle": "behavior-verified",
+      "entrypoint": "SKILL.md",
+      "fallback": "wuji-web-deck-unified",
       "priority": "secondary"
     },
     {
@@ -323,9 +388,8 @@
       "assertions",
       "pptx",
       "html-render",
-      "slidev-render",
       "fluid-render",
-      "humanize-qa"
+      "dashiai-assertions"
     ],
     "comparison_evidence": "assertions"
   },
@@ -334,19 +398,19 @@
       "id": "narrative",
       "purpose": "audience narrative and slide plan",
       "independent": true,
-      "model_class": "terra"
+      "model_class": "sol"
     },
     {
       "id": "visual",
       "purpose": "visual system and editable composition",
       "independent": true,
-      "model_class": "terra"
+      "model_class": "sol"
     },
     {
       "id": "qa",
       "purpose": "render, overflow, and artifact inspection",
       "independent": false,
-      "model_class": "terra"
+      "model_class": "luna"
     }
   ]
 }

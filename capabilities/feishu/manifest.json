@@ -1,0 +1,45 @@
+{
+  "id": "feishu",
+  "description": "Read and search user-authorized Feishu/Lark content through the official authenticated lark-cli; existing content stays read-only unless an explicit edit is requested.",
+  "triggers": [
+    "feishu",
+    "lark",
+    "my.feishu.cn",
+    "feishu.cn",
+    "larksuite.com",
+    "飞书",
+    "飞书文档",
+    "飞书知识库"
+  ],
+  "status": "callable",
+  "primary_skill": "feishu-lark",
+  "direct_mount": true,
+  "fallback": "ask the user to authenticate the official lark-cli or provide accessible content",
+  "sources": [
+    {
+      "id": "official-lark-cli-skill",
+      "globs": [
+        "${USERPROFILE}/.codex/skills/feishu-lark"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
+      "priority": "primary"
+    }
+  ],
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-feishu.ps1"
+    ],
+    "fixture": "official-lark-cli-auth-v1",
+    "kind": "smoke",
+    "timeout_seconds": 30
+  }
+}

@@ -2,8 +2,8 @@ package core
 
 import "testing"
 
-func TestValidateWorkerReceiptEnforcesFallbackAndSavings(t *testing.T) {
-	worker := testReceiptWorker()
+func TestValidateWorkerReceiptEnforcesSingleAttemptAndSavings(t *testing.T) {
+	worker := testLunaReceiptWorker()
 	receipt := validReceipt(worker)
 	if err := ValidateWorkerReceipt(worker, receipt); err != nil {
 		t.Fatal(err)
@@ -15,11 +15,10 @@ func TestValidateWorkerReceiptEnforcesFallbackAndSavings(t *testing.T) {
 		t.Fatal("receipt without a host dispatch identifier was accepted")
 	}
 
-	paidRetry := receipt
-	paidRetry.Attempts = append([]WorkerAttempt(nil), receipt.Attempts...)
-	paidRetry.Attempts[0].GenerationStarted = true
-	if err := ValidateWorkerReceipt(worker, paidRetry); err == nil {
-		t.Fatal("paid retry was accepted")
+	extraAttempt := receipt
+	extraAttempt.Attempts = append(append([]WorkerAttempt(nil), receipt.Attempts...), receipt.Attempts[0])
+	if err := ValidateWorkerReceipt(worker, extraAttempt); err == nil {
+		t.Fatal("second worker attempt was accepted")
 	}
 
 	noSaving := receipt
@@ -30,7 +29,7 @@ func TestValidateWorkerReceiptEnforcesFallbackAndSavings(t *testing.T) {
 	}
 }
 
-func TestValidateWorkerReceiptEnforcesSessionAndUpgradeOnlySwitching(t *testing.T) {
+func TestValidateWorkerReceiptEnforcesSessionAndGPTWorkerAllowlist(t *testing.T) {
 	worker := testReceiptWorker()
 	receipt := validReceipt(worker)
 
@@ -41,17 +40,23 @@ func TestValidateWorkerReceiptEnforcesSessionAndUpgradeOnlySwitching(t *testing.
 	}
 
 	wrongSwitchCount := receipt
-	wrongSwitchCount.ModelSwitchCount = 0
+	wrongSwitchCount.ModelSwitchCount = 1
 	if err := ValidateWorkerReceipt(worker, wrongSwitchCount); err == nil {
 		t.Fatal("receipt with false model-switch telemetry was accepted")
 	}
 
-	downgradeWorker := worker
-	downgradeWorker.Model = "gpt-5.6-sol"
-	downgradeWorker.FallbackModels = []string{"gpt-5.6-luna"}
-	downgradeReceipt := validReceipt(downgradeWorker)
-	if err := ValidateWorkerReceipt(downgradeWorker, downgradeReceipt); err == nil {
-		t.Fatal("Sol-to-Luna downgrade was accepted")
+	legacyWorker := worker
+	legacyWorker.Model = "gpt-5.4"
+	legacyReceipt := validReceipt(legacyWorker)
+	if err := ValidateWorkerReceipt(legacyWorker, legacyReceipt); err == nil {
+		t.Fatal("legacy GPT worker model was accepted")
+	}
+
+	externalWorker := worker
+	externalWorker.Model = "grok-4.5"
+	externalReceipt := validReceipt(externalWorker)
+	if err := ValidateWorkerReceipt(externalWorker, externalReceipt); err != nil {
+		t.Fatalf("explicit non-GPT provider was incorrectly blocked: %v", err)
 	}
 }
 
@@ -76,7 +81,7 @@ func TestValidateSolJudgmentReceiptAllowsBoundedCostEscalation(t *testing.T) {
 }
 
 func validReceipt(worker WorkerTask) WorkerExecutionReceipt {
-	attempts := []WorkerAttempt{{Model: worker.Model, GenerationStarted: true, InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, CacheDomain: "model-local:" + worker.Model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, TaskContractBytes: worker.AllocatedTaskContractBytes}}
+	attempts := []WorkerAttempt{{Model: worker.Model, GenerationStarted: true, InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, CacheDomain: "model-local:" + worker.Model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, SourceExecutionBytes: worker.SourceExecutionBytes, TaskContractBytes: worker.AllocatedTaskContractBytes}}
 	effectiveModel := worker.Model
 	modelSwitches := 0
 	retryCount := 0
@@ -84,8 +89,8 @@ func validReceipt(worker WorkerTask) WorkerExecutionReceipt {
 	if len(worker.FallbackModels) > 0 {
 		fallback := worker.FallbackModels[0]
 		attempts = []WorkerAttempt{
-			{Model: worker.Model, FailureKind: "model-unavailable", CacheDomain: "model-local:" + worker.Model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, TaskContractBytes: worker.AllocatedTaskContractBytes},
-			{Model: fallback, GenerationStarted: true, InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, CacheDomain: "model-local:" + fallback, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, TaskContractBytes: worker.AllocatedTaskContractBytes},
+			{Model: worker.Model, FailureKind: "model-unavailable", CacheDomain: "model-local:" + worker.Model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, SourceExecutionBytes: worker.SourceExecutionBytes, TaskContractBytes: worker.AllocatedTaskContractBytes},
+			{Model: fallback, GenerationStarted: true, InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, CacheDomain: "model-local:" + fallback, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, SourceExecutionBytes: worker.SourceExecutionBytes, TaskContractBytes: worker.AllocatedTaskContractBytes},
 		}
 		effectiveModel = fallback
 		modelSwitches = 1
@@ -97,7 +102,8 @@ func validReceipt(worker WorkerTask) WorkerExecutionReceipt {
 		HostDispatchID: "codex-agent://test/worker", WriteBoundary: "read-only", Attempts: attempts,
 		EffectiveModel: effectiveModel, ModelSwitchCount: modelSwitches, ResultHandle: "wuji-result://sha256/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", ContextHandleIDs: worker.ContextHandles,
 		StablePrefixBytesSent: worker.StablePrefixBytes * len(attempts), StablePrefixSHA256: worker.StablePrefixSHA256,
-		ContextBytesSent: worker.AllocatedContextBytes * len(attempts), ContextPayloadSHA256: worker.ContextPayloadSHA256,
+		SourceExecutionBytesSent: worker.SourceExecutionBytes * len(attempts),
+		ContextBytesSent:         worker.AllocatedContextBytes * len(attempts), ContextPayloadSHA256: worker.ContextPayloadSHA256,
 		TaskContractBytes: worker.AllocatedTaskContractBytes * len(attempts), TaskContractSHA256: worker.TaskContractSHA256,
 		InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, RetryCount: retryCount, AcceptedByAji: true,
 		AttemptFailureKinds: failureKinds, CacheDomain: "model-local:" + effectiveModel, DelegationGateReason: worker.DelegationGateReason,
@@ -107,6 +113,10 @@ func validReceipt(worker WorkerTask) WorkerExecutionReceipt {
 
 func testReceiptWorker() WorkerTask {
 	query := "code task parallel"
-	items := []Manifest{{ID: "code", Triggers: []string{"code"}, Status: "callable", PrimarySkill: "native", Experts: []Expert{{ID: "implementation", Independent: true, ModelClass: "terra"}}}}
+	items := []Manifest{{ID: "code", Triggers: []string{"code"}, Status: "callable", PrimarySkill: "native", Experts: []Expert{{ID: "implementation", Independent: true, ModelClass: "sol"}}}}
 	return RouteWithContext(query, items, delegationContextForTest(query, 512)).Workers[0]
+}
+
+func testLunaReceiptWorker() WorkerTask {
+	return RouteWithContext("list files and count occurrences", nil, DelegationContext{SelfContained: true}).Workers[0]
 }

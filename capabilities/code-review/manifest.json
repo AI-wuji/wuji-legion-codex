@@ -1,6 +1,6 @@
 {
   "id": "code-review",
-  "description": "Run deterministic and line-anchored code review using the complete Open Code Review package plus native Codex judgment.",
+  "description": "Run line-anchored code review with native Codex judgment; retain Open Code Review only as an optional external CLI integration.",
   "triggers": [
     "代码审查",
     "代码评审",
@@ -16,7 +16,7 @@
     "评审代码"
   ],
   "status": "callable",
-  "primary_skill": "open-code-review",
+  "primary_skill": "wuji-code-review-suite",
   "direct_mount": true,
   "fallback": "native Codex review with line references",
   "sources": [
@@ -32,6 +32,19 @@
         "skills/open-code-review/SKILL.md",
         "plugins/*"
       ],
+      "lifecycle": "assets-retained",
+      "priority": "optional"
+    },
+    {
+      "id": "wuji-code-review-suite-unified",
+      "globs": [
+        "${ROOT}/capabilities/code-review/skills/wuji-code-review-suite"
+      ],
+      "required": [
+        "SKILL.md"
+      ],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
       "priority": "primary"
     }
   ],

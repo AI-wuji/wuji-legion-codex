@@ -10,20 +10,20 @@ func TestCodeDelegationRequiresVerifiedBoundedContext(t *testing.T) {
 	items := []Manifest{{
 		ID: "code", Triggers: []string{"code", "fix"}, Status: "callable",
 		Experts: []Expert{
-			{ID: "implementation", Purpose: "implement", Independent: true, ModelClass: "terra"},
-			{ID: "verification", Purpose: "verify", Independent: false, ModelClass: "terra"},
+			{ID: "implementation", Purpose: "implement", Independent: true, ModelClass: "sol"},
+			{ID: "verification", Purpose: "verify", Independent: false, ModelClass: "luna"},
 		},
 	}}
 
 	direct := Route(query, items)
-	if len(direct.Workers) != 0 || direct.DelegationDecision.Reason != "verified-context-artifact-required" {
-		t.Fatalf("code delegated without verified context: %#v", direct)
+	if len(direct.Workers) != 1 || direct.Workers[0].ID != "task-judgment" || direct.Workers[0].Model != "gpt-5.6-sol" || direct.DelegationDecision.Reason != "verified-context-artifact-required" {
+		t.Fatalf("code without a verified context did not fall back to bounded Sol task judgment: %#v", direct)
 	}
 
 	context := delegationContextForTest(query, 1024)
 	delegated := RouteWithContext(query, items, context)
-	if len(delegated.Workers) != 1 || delegated.Workers[0].ID != "implementation" || delegated.Workers[0].Model != "gpt-5.6-terra" {
-		t.Fatalf("expected one independent Terra implementation worker: %#v", delegated.Workers)
+	if len(delegated.Workers) != 1 || delegated.Workers[0].ID != "implementation" || delegated.Workers[0].Model != "gpt-5.6-sol" {
+		t.Fatalf("expected one independent Sol implementation worker: %#v", delegated.Workers)
 	}
 	worker := delegated.Workers[0]
 	if worker.AllocatedContextBytes != 1024 || worker.AllocatedTaskContractBytes != len([]byte(worker.TaskContract)) || len(worker.ContextHandles) != 1 {
@@ -41,7 +41,7 @@ func TestDelegationCostAndAffinityGatesStayOnAji(t *testing.T) {
 	query := "fix the code"
 	items := []Manifest{{
 		ID: "code", Triggers: []string{"code"}, Status: "callable",
-		Experts: []Expert{{ID: "implementation", Independent: true, ModelClass: "terra"}},
+		Experts: []Expert{{ID: "implementation", Independent: true, ModelClass: "sol"}},
 	}}
 	tests := []struct {
 		name    string
@@ -49,7 +49,7 @@ func TestDelegationCostAndAffinityGatesStayOnAji(t *testing.T) {
 		context DelegationContext
 		reason  string
 	}{
-		{"parent context", query, DelegationContext{ParentContextRequired: true}, "parent-context-affinity-requires-Aji"},
+		{"parent context", query, DelegationContext{ParentContextRequired: true}, "verified-context-artifact-required"},
 		{"unverified context struct", query, func() DelegationContext {
 			value := delegationContextForTest(query, 512)
 			value.verified = false
@@ -82,8 +82,14 @@ func TestDelegationCostAndAffinityGatesStayOnAji(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			got := RouteWithContext(test.query, items, test.context)
-			if len(got.Workers) != 0 || got.DelegationDecision.Allowed || got.DelegationDecision.Reason != test.reason {
-				t.Fatalf("gate failed open: %#v", got)
+			if test.name == "oversized contract" {
+				if len(got.Workers) != 0 || got.DelegationDecision.Allowed || got.DelegationDecision.Reason != test.reason {
+					t.Fatalf("oversized task contract escaped the hard routing budget: %#v", got)
+				}
+				return
+			}
+			if len(got.Workers) != 1 || got.Workers[0].ID != "task-judgment" || !got.DelegationDecision.Allowed || got.DelegationDecision.Reason != test.reason {
+				t.Fatalf("unsafe implementation fan-out did not fall back to bounded task judgment: %#v", got)
 			}
 		})
 	}
@@ -94,17 +100,20 @@ func TestTotalReplayBudgetIncludesContractAndContextPerWorker(t *testing.T) {
 	items := []Manifest{{
 		ID: "presentation", Triggers: []string{"ppt"}, Status: "callable",
 		Experts: []Expert{
-			{ID: "narrative", Independent: true, ModelClass: "terra"},
-			{ID: "visual", Independent: true, ModelClass: "terra"},
+			{ID: "narrative", Independent: true, ModelClass: "sol"},
+			{ID: "visual", Independent: true, ModelClass: "sol"},
 		},
 	}}
 	context := delegationContextForTest(query, maxSharedContextBytes)
 	got := RouteWithContext(query, items, context)
-	if len(got.Workers) != 0 || got.DelegationDecision.Reason != "estimated-context-replay-exceeds-total-budget" {
-		t.Fatalf("total replay gate failed open: %#v", got)
+	if len(got.Workers) != 0 || got.DelegationDecision.Allowed || got.DelegationDecision.Reason != "estimated-context-replay-exceeds-total-budget" {
+		t.Fatalf("total replay gate escaped the hard task budget: %#v", got)
 	}
 	prefixBytes := len([]byte(stableCapabilityPrefix(items[0], "")))
-	want := prefixBytes*2 + maxSharedContextBytes*2 + len([]byte(marshalWorkerContract(query, "narrative", "", []string{context.Handle}, taskSessionKey(query, "narrative", context.Handle)))) + len([]byte(marshalWorkerContract(query, "visual", "", []string{context.Handle}, taskSessionKey(query, "visual", context.Handle))))
+	prefix := stableCapabilityPrefix(items[0], "")
+	narrativeContract := marshalWorkerContract(query, "narrative", "", []string{context.Handle}, taskSessionKey(query, "narrative", context.Handle), workerProtocol(query, "narrative", "", prefix))
+	visualContract := marshalWorkerContract(query, "visual", "", []string{context.Handle}, taskSessionKey(query, "visual", context.Handle), workerProtocol(query, "visual", "", prefix))
+	want := prefixBytes*2 + maxSharedContextBytes*2 + len([]byte(narrativeContract)) + len([]byte(visualContract))
 	if got.DelegationDecision.EstimatedReplayBytes != want {
 		t.Fatalf("wrong replay estimate: got %d want %d", got.DelegationDecision.EstimatedReplayBytes, want)
 	}
@@ -116,8 +125,8 @@ func TestSearchSerialGatePrecedesLunaFanout(t *testing.T) {
 		Engines: []Engine{{ID: "web-research", Default: true}},
 	}}
 	serial := Route("research the web serial only", items)
-	if len(serial.Workers) != 0 || serial.DelegationDecision.Reason != "serial-requested" {
-		t.Fatalf("serial research still fanned out: %#v", serial)
+	if len(serial.Workers) != 1 || serial.Workers[0].ID != "task-judgment" || serial.DelegationDecision.Reason != "serial-task-reasoning" {
+		t.Fatalf("serial research did not use one sequential task route: %#v", serial)
 	}
 	normal := Route("research the web", items)
 	if len(normal.Workers) != 3 || normal.DelegationDecision.Reason != "task-contract-only-research" {

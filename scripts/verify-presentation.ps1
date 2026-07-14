@@ -96,49 +96,6 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'html-ppt browser behavior probe failed' }
   Write-Output "html-ppt-rendered themes=$themeCount templates=$templateCount fx=$fxCount"
 
-  $pptMaster = Get-LockedSourcePath 'ppt-master'
-  $pptMasterScripts = Join-Path $pptMaster 'skills\ppt-master\scripts'
-  $compileTargets = @(
-    (Join-Path $pptMasterScripts 'pptx_to_svg.py'),
-    (Join-Path $pptMasterScripts 'svg_to_pptx.py'),
-    (Join-Path $pptMasterScripts 'pptx_animations.py')
-  )
-  $previousPycache = $env:PYTHONPYCACHEPREFIX
-  $env:PYTHONPYCACHEPREFIX = Join-Path $scratch 'pycache'
-  & $python -m py_compile @compileTargets
-  if ($LASTEXITCODE -ne 0) { throw 'PPT Master executable scripts failed compilation' }
-  $env:PYTHONPYCACHEPREFIX = $previousPycache
-  $pptMasterExamples = @(Get-ChildItem (Join-Path $pptMaster 'examples') -Directory).Count
-  if ($pptMasterExamples -lt 20) { throw "PPT Master examples missing: $pptMasterExamples" }
-  Write-Output "ppt-master-callable examples=$pptMasterExamples"
-
-  $huashu = Get-LockedSourcePath 'huashu-design'
-  & $node --check (Join-Path $huashu 'scripts\export_deck_pptx.mjs')
-  if ($LASTEXITCODE -ne 0) { throw 'Huashu editable PPTX exporter failed syntax probe' }
-  & $node --check (Join-Path $huashu 'scripts\render-video.js')
-  if ($LASTEXITCODE -ne 0) { throw 'Huashu motion renderer failed syntax probe' }
-  Write-Output 'huashu-ppt-and-motion-entrypoints-ok'
-
-  $slidev = Get-LockedSourcePath 'slidev-runtime'
-  $slidevWork = Join-Path $scratch 'slidev'
-  Copy-Item -LiteralPath $slidev -Destination $slidevWork -Recurse
-  $pnpmCommand = Get-Command pnpm.cmd -ErrorAction SilentlyContinue
-  if (-not $pnpmCommand) { $pnpmCommand = Get-Command pnpm -ErrorAction SilentlyContinue }
-  if (-not $pnpmCommand) { throw 'pnpm is required for the locked Slidev behavior probe' }
-  Push-Location $slidevWork
-  try {
-    & $pnpmCommand.Source install --frozen-lockfile
-    if ($LASTEXITCODE -ne 0) { throw 'Slidev dependency installation failed' }
-    & $pnpmCommand.Source run build
-    if ($LASTEXITCODE -ne 0) { throw 'Slidev build failed' }
-  } finally { Pop-Location }
-  $slidevIndex = Join-Path $slidevWork 'dist\index.html'
-  if (-not (Test-Path -LiteralPath $slidevIndex) -or (Get-Item $slidevIndex).Length -lt 1000) { throw 'Slidev output is missing or blank' }
-  $slidevShot = Join-Path $scratch 'slidev.png'
-  & $node $browserProbe $slidevIndex $slidevShot slidev
-  if ($LASTEXITCODE -ne 0) { throw 'Slidev browser behavior probe failed' }
-  Write-Output "slidev-built-and-rendered bytes=$((Get-Item $slidevIndex).Length)"
-
   $fluid = Join-Path $scratch 'stage-fluid'
   & (Join-Path $root 'scripts\materialize-stage-fluid.ps1') -OutputDir $fluid
   if ($LASTEXITCODE -ne 0) { throw 'Fluid background materialization failed' }
@@ -149,20 +106,10 @@ try {
   if ($LASTEXITCODE -ne 0) { throw 'Fluid background browser behavior probe failed' }
   Write-Output 'stage-fluid-rendered-and-moving'
 
-  $humanize = Get-LockedSourcePath 'humanize-ppt'
-  $humanizeOut = Join-Path $scratch 'humanize-ppt'
-  & $python (Join-Path $humanize 'scripts\smoke_check.py') --out $humanizeOut
-  if ($LASTEXITCODE -ne 0) { throw 'Humanize PPT behavior smoke failed' }
-  foreach ($required in @('deck_brief.md','ast_outline.md','slide_plan.json','router_plan.json','run_manifest.json','outputs\qa\qa_report.md')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $humanizeOut $required))) { throw "Humanize PPT missing $required" }
-  }
-  Write-Output 'humanize-ppt-ast-plan-and-qa-ok'
-
-  $baoyuDeck = Join-Path (Get-LockedSourcePath 'baoyu-skills') 'skills\baoyu-slide-deck'
-  $baoyuStyles = @(Get-ChildItem (Join-Path $baoyuDeck 'references\styles') -Filter '*.md').Count
-  $baoyuScripts = @(Get-ChildItem (Join-Path $baoyuDeck 'scripts') -Filter '*.ts').Count
-  if ($baoyuStyles -lt 15 -or $baoyuScripts -lt 2) { throw "Baoyu slide-deck incomplete styles=$baoyuStyles scripts=$baoyuScripts" }
-  Write-Output "baoyu-slide-deck-retained styles=$baoyuStyles scripts=$baoyuScripts"
+  # DashiAI is the only secondary presentation package selected automatically
+  # by a narrow semantic trigger, so its real output belongs in this probe.
+  & (Join-Path $root 'scripts\verify-dashiai-ppt.ps1') -Root $root | Out-Host
+  if ($LASTEXITCODE -ne 0) { throw 'DashiAI behavior probe failed' }
 
   $assertionsPath = Join-Path $evidenceDir 'presentation-assertions.json'
   $assertions = [ordered]@{
@@ -174,18 +121,16 @@ try {
     html_themes = $themeCount
     html_templates = $templateCount
     html_effects = $fxCount
-    slidev_rendered = $true
     stage_fluid_rendered = $true
-    humanize_qa = $true
+    dashiai_rendered = $true
   }
   [IO.File]::WriteAllText($assertionsPath, ($assertions | ConvertTo-Json -Compress), [Text.UTF8Encoding]::new($false))
   $probeEvidence = @(
     (Add-ProbeArtifact 'assertions' $assertionsPath 'presentation-assertions.json')
     (Add-ProbeArtifact 'pptx' $pptx 'behavior-probe.pptx')
     (Add-ProbeArtifact 'html-render' $htmlShot 'html-ppt.png')
-    (Add-ProbeArtifact 'slidev-render' $slidevShot 'slidev.png')
     (Add-ProbeArtifact 'fluid-render' $fluidShot 'fluid.png')
-    (Add-ProbeArtifact 'humanize-qa' (Join-Path $humanizeOut 'outputs\qa\qa_report.md') 'humanize-qa.md')
+    (Add-ProbeArtifact 'dashiai-assertions' (Join-Path $evidenceDir 'dashiai-ppt-assertions.json') 'dashiai-ppt-assertions.json')
   )
   $probeReceipt = [ordered]@{
     wuji_probe = 'behavior'
@@ -201,6 +146,5 @@ try {
   $env:HOME = $previousHome
   if (Get-Variable previousNodePath -ErrorAction SilentlyContinue) { $env:NODE_PATH = $previousNodePath }
   if (Get-Variable previousChromePath -ErrorAction SilentlyContinue) { $env:CHROME_PATH = $previousChromePath }
-  if (Get-Variable previousPycache -ErrorAction SilentlyContinue) { $env:PYTHONPYCACHEPREFIX = $previousPycache }
 }
 Write-Output $probeReceipt

@@ -7,6 +7,8 @@
     "表格分析",
     "异常检测",
     "数据集",
+    "csv",
+    "分析数据",
     "dataset",
     "analyze data",
     "correlation",
@@ -31,6 +33,8 @@
         "SKILL.md",
         "agents/openai.yaml"
       ],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
       "priority": "primary"
     },
     {

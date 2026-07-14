@@ -17,8 +17,8 @@ if (-not (Test-Path -LiteralPath $result.artifact_path -PathType Leaf)) { throw 
 $routeRaw = & $wuji route --query $query --context-artifact $result.artifact_path
 if ($LASTEXITCODE -ne 0) { throw 'route rejected the generated context artifact' }
 $route = $routeRaw | ConvertFrom-Json
-if (@($route.workers).Count -ne 1 -or $route.workers[0].model -ne 'gpt-5.6-terra') {
-  throw 'verified compact context did not unlock one Terra implementation worker'
+if (@($route.workers).Count -ne 1 -or $route.workers[0].model -ne 'gpt-5.6-sol') {
+  throw 'verified compact context did not unlock one Sol implementation worker'
 }
 if ($route.workers[0].context_handles[0] -ne $result.context_handle -or $route.workers[0].allocated_context_bytes -ne $result.selected_bytes) {
   throw 'route did not preserve the verified context handoff'
@@ -33,10 +33,20 @@ if (-not $worker.task_contract -or $worker.allocated_task_contract_bytes -ne ([T
 if (-not $worker.stable_capability_prefix -or $worker.stable_prefix_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$worker.stable_capability_prefix)) -or -not $worker.stable_prefix_sha256) {
   throw 'route did not send a measured stable capability prefix'
 }
-if ($route.delegation_decision.estimated_replay_bytes -ne ($worker.stable_prefix_bytes + $worker.allocated_context_bytes + $worker.allocated_task_contract_bytes)) {
+if ($route.delegation_decision.estimated_replay_bytes -ne ($worker.stable_prefix_bytes + $worker.source_execution_bytes + $worker.allocated_context_bytes + $worker.allocated_task_contract_bytes)) {
   throw 'route replay estimate omitted a prompt component'
 }
-if (($worker.prompt_order -join ',') -ne 'stable_capability_prefix,context_payload,task_contract' -or ($worker.fallback_models -join ',') -ne 'gpt-5.6-sol' -or $worker.max_attempts -ne 2 -or ($worker.fallback_on -join ',') -ne 'model-unavailable,provider-error-before-generation') {
+$expectedPromptOrder = @('stable_capability_prefix')
+if ($worker.source_execution_bytes -gt 0) {
+  if (@($worker.source_execution).Count -lt 1 -or @($worker.source_execution | Where-Object { -not $_.source_id -or -not $_.entrypoint_sha256 -or $_.entrypoint_bytes -le 0 }).Count -gt 0) {
+    throw 'route emitted an incomplete source execution contract'
+  }
+  $expectedPromptOrder += 'source_execution'
+} elseif (@($worker.source_execution | Where-Object { $_.source_id -or $_.entrypoint -or $_.entrypoint_bytes -gt 0 }).Count -gt 0) {
+  throw 'route emitted an empty source execution contract'
+}
+$expectedPromptOrder += @('context_payload','task_contract')
+if (($worker.prompt_order -join ',') -ne ($expectedPromptOrder -join ',') -or @($worker.fallback_models | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $worker.max_attempts -ne 1 -or @($worker.fallback_on | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $worker.max_model_switches -ne 0) {
   throw 'route emitted an unsafe prompt or retry policy'
 }
 $rtk = Join-Path $root 'tools\bin\rtk.exe'
@@ -67,6 +77,7 @@ $report = [ordered]@{
   content_anchor_count = [int]$result.content_anchor_count
   payload_sha256 = [string]$result.payload_sha256
   stable_prefix_bytes = [int]$worker.stable_prefix_bytes
+  source_execution_bytes = [int]$worker.source_execution_bytes
   task_contract_bytes = [int]$worker.allocated_task_contract_bytes
   rtk = $rtkState
 }

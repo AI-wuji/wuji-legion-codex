@@ -1,5 +1,6 @@
 $ErrorActionPreference = 'Stop'
-$root = if ($env:WUJI_ROOT) { $env:WUJI_ROOT } else { Split-Path $PSScriptRoot -Parent }
+$rootValue = if ($env:WUJI_ROOT) { $env:WUJI_ROOT } else { Split-Path $PSScriptRoot -Parent }
+$root = [IO.Path]::GetFullPath($rootValue)
 $sourceLock = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'sources.lock.json') | ConvertFrom-Json
 $sourceMatches = @($sourceLock.sources | Where-Object id -eq 'open-code-review')
 if ($sourceMatches.Count -ne 1) { throw 'sources.lock.json must contain exactly one open-code-review source' }

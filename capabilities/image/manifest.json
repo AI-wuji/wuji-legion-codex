@@ -6,6 +6,10 @@
     "生成图",
     "生成一张图",
     "生成一个图",
+    "宣传图",
+    "产品图",
+    "海报",
+    "封面图",
     "图片",
     "插图",
     "image2",
@@ -67,6 +71,8 @@
         "SKILL.md",
         "agents/openai.yaml"
       ],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
       "priority": "primary"
     },
     {

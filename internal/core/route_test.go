@@ -1,10 +1,76 @@
 package core
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 )
+
+func TestRepositoryAutomaticSourcesHaveSemanticRoutes(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := LoadManifests(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		query      string
+		capability string
+		skill      string
+		sources    []string
+	}{
+		{"审查这段代码的潜在问题", "code-review", "wuji-code-review-suite", []string{"wuji-code-review-suite-unified"}},
+		{"分析这个CSV数据并给出趋势", "data", "wuji-data-suite", []string{"wuji-data-suite-unified"}},
+		{"把这份Word文档转为PDF并检查版式", "documents", "wuji-document-suite", []string{"wuji-document-suite-unified"}},
+		{"构建一个React仪表盘页面", "frontend", "wuji-frontend-suite", []string{"wuji-frontend-suite-unified"}},
+		{"生成一张产品宣传图", "image", "wuji-image-suite", []string{"wuji-image-suite-unified"}},
+		{"做一份可编辑的PPT", "presentation", "wuji-editable-deck", []string{"wuji-editable-deck-unified"}},
+		{"创建一个浏览器可编辑的HTML演示", "presentation", "wuji-web-deck", []string{"wuji-web-deck-unified", "wuji-dashiai-deck-adapter"}},
+		{"搜索GitHub和官方文档找到最新解决方案", "search", "wuji-research-suite", []string{"wuji-research-suite-unified"}},
+		{"扫描仓库中的安全漏洞和密钥泄露", "security", "wuji-security-suite", []string{"wuji-security-suite-unified"}},
+		{"制作一个产品演示视频", "video", "wuji-video-suite", []string{"wuji-video-suite-unified"}},
+		{"优化这个界面的视觉设计", "visual", "wuji-visual-suite", []string{"wuji-visual-suite-unified"}},
+		{"把这篇文章翻译并润色成中文", "writing", "wuji-writing-suite", []string{"wuji-writing-suite-unified"}},
+	}
+	for _, test := range cases {
+		t.Run(test.capability+"/"+test.skill, func(t *testing.T) {
+			got := Route(test.query, items)
+			if got.Capability != test.capability || got.PrimarySkill != test.skill {
+				t.Fatalf("query %q routed to %s/%s, want %s/%s", test.query, got.Capability, got.PrimarySkill, test.capability, test.skill)
+			}
+			if got.SourceActivationError != "" {
+				t.Fatalf("query %q reported source activation error: %s", test.query, got.SourceActivationError)
+			}
+			mounted := map[string]bool{}
+			for _, source := range got.MountedSources {
+				mounted[source.ID] = true
+			}
+			for _, source := range test.sources {
+				if !mounted[source] {
+					t.Fatalf("query %q did not mount automatic source %q: %#v", test.query, source, got.MountedSources)
+				}
+			}
+			activated := map[string]SourceExecutionContract{}
+			for _, contract := range got.SourceExecution {
+				activated[contract.SourceID] = contract
+			}
+			for _, source := range test.sources {
+				contract, ok := activated[source]
+				if !ok || contract.InvocationKind != sourceEntrypointInvocationKind || contract.Entrypoint == "" || contract.EntrypointSHA256 == "" || contract.EntrypointContent == "" {
+					t.Fatalf("query %q did not load automatic source %q into an execution contract: %#v", test.query, source, got.SourceExecution)
+				}
+			}
+			for _, worker := range got.Workers {
+				if len(worker.SourceExecution) != len(got.SourceExecution) {
+					t.Fatalf("worker %q did not receive route source contracts: %#v", worker.ID, worker.SourceExecution)
+				}
+			}
+		})
+	}
+}
 
 func TestRoutePresentationAndNoNuwa(t *testing.T) {
 	items := []Manifest{{ID: "presentation", Triggers: []string{"ppt"}, Status: "primary", PrimarySkill: "presentations:Presentations"}}
@@ -45,8 +111,8 @@ func TestSpecializedExtractionDoesNotFanOut(t *testing.T) {
 		Engines: []Engine{{ID: "web-research", Default: true}, {ID: "content-extraction", Triggers: []string{"youtube字幕"}}},
 	}}
 	got := Route("提取youtube字幕", items)
-	if got.Engine != "content-extraction" || got.Parallel || len(got.Workers) != 0 {
-		t.Fatalf("specialized extraction should stay direct: %#v", got)
+	if got.Engine != "content-extraction" || got.Parallel || len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-sol" {
+		t.Fatalf("specialized extraction did not receive bounded task judgment: %#v", got)
 	}
 }
 
@@ -128,6 +194,42 @@ func TestCapabilitySubEngineSelection(t *testing.T) {
 	}
 	if got := Route("做一个普通PPT", items); got.Engine != "editable-pptx" || got.PrimarySkill != "wuji-editable-deck" {
 		t.Fatalf("wrong default engine: %#v", got)
+	}
+	web := Route("用 Slidev 做开发者演示", items)
+	var prefix struct {
+		PrimarySkill string `json:"primary_skill"`
+		Engine       string `json:"engine"`
+	}
+	if err := json.Unmarshal([]byte(web.Workers[0].StableCapabilityPrefix), &prefix); err != nil || prefix.PrimarySkill != "wuji-web-deck" || prefix.Engine != "web-deck" {
+		t.Fatalf("worker prefix did not preserve selected engine Skill: prefix=%#v err=%v", prefix, err)
+	}
+}
+
+func TestSemanticAtomCanSelectItsContainingCapability(t *testing.T) {
+	root := t.TempDir()
+	dashi := filepath.Join(root, "dashiai")
+	if err := os.MkdirAll(dashi, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dashi, "SKILL.md"), []byte("# Dashi"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	items := []Manifest{{
+		ID: "presentation", Triggers: []string{"ppt", "可编辑html演示"}, Status: "callable", PrimarySkill: "wuji-editable-deck", Root: root,
+		Engines: []Engine{{ID: "editable-pptx", Default: true, PrimarySkill: "wuji-editable-deck"}, {ID: "web-deck", PrimarySkill: "wuji-web-deck", Triggers: []string{"可编辑html演示"}}},
+		Sources: []Source{{ID: "dashiai-ppt-local", Engine: "web-deck", Priority: "secondary", Lifecycle: "callable", Activation: []string{"可编辑html演示"}, Entrypoint: "SKILL.md", Globs: []string{dashi}, Required: []string{"SKILL.md"}}},
+	}}
+	got := Route("做一个可编辑HTML演示", items)
+	if got.Capability != "presentation" || got.Engine != "web-deck" || got.PrimarySkill != "wuji-web-deck" || len(got.MountedSources) != 1 || got.MountedSources[0].ID != "dashiai-ppt-local" {
+		t.Fatalf("semantic atom did not reach and activate its containing route: %#v", got)
+	}
+	got = Route("create an editable HTML deck", []Manifest{{
+		ID: "presentation", Triggers: []string{"ppt", "editable html deck"}, Status: "callable", PrimarySkill: "wuji-editable-deck", Root: root,
+		Engines: []Engine{{ID: "editable-pptx", Default: true, PrimarySkill: "wuji-editable-deck"}, {ID: "web-deck", PrimarySkill: "wuji-web-deck", Triggers: []string{"editable html deck"}}},
+		Sources: []Source{{ID: "dashiai-ppt-local", Engine: "web-deck", Priority: "secondary", Lifecycle: "callable", Activation: []string{"editable html deck"}, Entrypoint: "SKILL.md", Globs: []string{dashi}, Required: []string{"SKILL.md"}}},
+	}})
+	if got.Capability != "presentation" || got.Engine != "web-deck" || len(got.MountedSources) != 1 || got.MountedSources[0].ID != "dashiai-ppt-local" {
+		t.Fatalf("English semantic atom did not reach and activate its containing route: %#v", got)
 	}
 }
 
@@ -253,8 +355,8 @@ func TestSparseSourceMount(t *testing.T) {
 	items := []Manifest{{
 		ID: "presentation", Triggers: []string{"ppt"}, Status: "primary", PrimarySkill: "wuji-editable-deck", Root: root,
 		Sources: []Source{
-			{ID: "wuji-editable-deck-unified", Priority: "primary", Globs: []string{primaryDir}, Required: []string{"SKILL.md"}},
-			{ID: "humanize-ppt-complete", Priority: "secondary", Globs: []string{secondaryDir}, Required: []string{"SKILL.md"}},
+			{ID: "wuji-editable-deck-unified", Priority: "primary", Lifecycle: "callable", Entrypoint: "SKILL.md", Globs: []string{primaryDir}, Required: []string{"SKILL.md"}},
+			{ID: "humanize-ppt-complete", Priority: "secondary", Lifecycle: "callable", Activation: []string{"叙事结构"}, Entrypoint: "SKILL.md", Globs: []string{secondaryDir}, Required: []string{"SKILL.md"}},
 			{ID: "optional-atom", Priority: "optional", Globs: []string{secondaryDir}, Required: []string{"SKILL.md"}},
 		},
 	}}
@@ -262,13 +364,17 @@ func TestSparseSourceMount(t *testing.T) {
 	if len(sparse.MountedSources) != 1 || sparse.MountedSources[0].ID != "wuji-editable-deck-unified" {
 		t.Fatalf("sparse mount failed: %#v", sparse.MountedSources)
 	}
+	automatic := Route("做一个有叙事结构的PPT", items)
+	if len(automatic.MountedSources) != 2 || automatic.MountedSources[1].ID != "humanize-ppt-complete" || automatic.MountedSources[1].Entrypoint != "SKILL.md" || automatic.MountedSources[1].ActivationReason != "semantic-trigger:叙事结构" {
+		t.Fatalf("semantic source activation failed: %#v", automatic.MountedSources)
+	}
 	named := Route("做一个PPT 使用 humanize-ppt", items)
-	if len(named.MountedSources) != 2 {
+	if len(named.MountedSources) != 2 || named.MountedSources[1].ActivationReason != "explicit-source-request" {
 		t.Fatalf("named secondary should mount: %#v", named.MountedSources)
 	}
 	full := Route("做一个PPT 完整能力", items)
-	if len(full.MountedSources) != 3 {
-		t.Fatalf("full mount should include optional: %#v", full.MountedSources)
+	if len(full.MountedSources) != 2 {
+		t.Fatalf("full mount must not promote cold optional material: %#v", full.MountedSources)
 	}
 }
 
@@ -287,33 +393,45 @@ func TestRouteDoesNotMountIncompleteSource(t *testing.T) {
 	}
 }
 
+func TestHighRiskRoutingRequiresStrictChangeCapsule(t *testing.T) {
+	items := []Manifest{{ID: "code", Triggers: []string{"路由", "代码"}, Status: "callable", PrimarySkill: "native"}}
+	highRisk := Route("迁移路由架构并调整模型策略", items)
+	if !highRisk.ChangeCapsule.Required || !highRisk.ChangeCapsule.Strict || highRisk.ChangeCapsule.Reason != "high-risk-change-boundary" {
+		t.Fatalf("high-risk route omitted strict change capsule: %#v", highRisk.ChangeCapsule)
+	}
+	routine := Route("修复一个代码拼写", items)
+	if routine.ChangeCapsule.Required {
+		t.Fatalf("routine change unnecessarily required a capsule: %#v", routine.ChangeCapsule)
+	}
+}
+
 func TestPresentationDelegationRequiresExplicitSelfContainedHandoff(t *testing.T) {
 	items := []Manifest{{
 		ID: "presentation", Triggers: []string{"ppt"}, Status: "primary",
 		Experts: []Expert{
-			{ID: "narrative", Purpose: "plan", Independent: true, ModelClass: "terra"},
-			{ID: "visual", Purpose: "visual", Independent: true, ModelClass: "terra"},
-			{ID: "qa", Purpose: "qa", Independent: false, ModelClass: "terra"},
+			{ID: "narrative", Purpose: "plan", Independent: true, ModelClass: "sol"},
+			{ID: "visual", Purpose: "visual", Independent: true, ModelClass: "sol"},
+			{ID: "qa", Purpose: "qa", Independent: false, ModelClass: "luna"},
 		},
 	}}
 	direct := Route("做一个PPT", items)
-	if direct.Parallel || len(direct.Workers) != 0 || direct.DelegationDecision.Reason != "direct-route-by-default" {
-		t.Fatalf("presentation delegated by default: %#v", direct)
+	if direct.Parallel || len(direct.Workers) != 1 || direct.Workers[0].Model != "gpt-5.6-sol" || direct.DelegationDecision.Reason != "default-task-reasoning" {
+		t.Fatalf("presentation did not receive its bounded default task route: %#v", direct)
 	}
 	missingHandoff := Route("做一个PPT parallel", items)
-	if missingHandoff.Parallel || len(missingHandoff.Workers) != 0 || missingHandoff.DelegationDecision.Reason != "self-contained-handoff-required" {
-		t.Fatalf("parallel presentation accepted an implicit handoff: %#v", missingHandoff)
+	if missingHandoff.Parallel || len(missingHandoff.Workers) != 1 || missingHandoff.Workers[0].ID != "task-judgment" || missingHandoff.DelegationDecision.Reason != "self-contained-handoff-required" {
+		t.Fatalf("parallel presentation did not fall back to one bounded task judgment: %#v", missingHandoff)
 	}
 	parallel := RouteWithContext("做一个PPT parallel", items, DelegationContext{SelfContained: true})
 	if !parallel.Parallel || len(parallel.Workers) != 2 {
 		t.Fatalf("explicit self-contained presentation did not fan out: %#v", parallel.Workers)
 	}
 	parentDependent := RouteWithContext("create a PPT from the preceding meeting transcript parallel", items, DelegationContext{SelfContained: true})
-	if parentDependent.Parallel || len(parentDependent.Workers) != 0 || parentDependent.DelegationDecision.Reason != "parent-context-affinity-requires-Aji" {
-		t.Fatalf("parent-dependent presentation escaped to Terra: %#v", parentDependent)
+	if !parentDependent.Parallel || len(parentDependent.Workers) != 2 {
+		t.Fatalf("self-contained parent-dependent presentation did not route its independent branches: %#v", parentDependent)
 	}
 	serial := Route("做一个PPT 串行", items)
-	if serial.Parallel || len(serial.Workers) != 0 {
-		t.Fatalf("serial keyword should disable fanout: %#v", serial.Workers)
+	if serial.Parallel || len(serial.Workers) != 1 || serial.Workers[0].ID != "task-judgment" {
+		t.Fatalf("serial keyword should retain one sequential task route: %#v", serial.Workers)
 	}
 }

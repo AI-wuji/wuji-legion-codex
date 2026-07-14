@@ -10,6 +10,12 @@ $root = Split-Path $PSScriptRoot -Parent
 $wuji = Join-Path $root 'bin\wuji.exe'
 & (Join-Path $root 'scripts\build.ps1') | Out-Null
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $wuji)) { throw 'fusion-audit failed: could not build the audit binary' }
+$goTemp = Join-Path $root '.wuji\go-test-tmp'
+New-Item -ItemType Directory -Force -Path $goTemp | Out-Null
+$env:GOTMPDIR = $goTemp
+$go = & (Join-Path $root 'scripts\resolve-locked-go.ps1') -Root $root
+& $go test -p 1 -count=1 ./internal/core ./cmd/wuji | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'fusion-audit failed: automatic source semantic routing regression' }
 
 function Invoke-WujiJson([string[]]$CliArgs) {
   $raw = @(& $wuji @CliArgs 2>&1)
@@ -40,7 +46,7 @@ function Get-SourceTreeHash([string]$Path) {
 $catalogPath = Join-Path $root 'capabilities\presentation\assets\template-catalog.json'
 $catalogHashBefore = (Get-FileHash -Algorithm SHA256 -LiteralPath $catalogPath).Hash
 $capabilities = if ($Mode -eq 'fast') {
-  @('code','code-review','context','data','documents','evolution','frontend','image','knowledge','search','security','video','visual','writing')
+  @('code','code-review','context','data','documents','evolution','feishu','frontend','image','knowledge','search','security','video','visual','writing')
 } else {
   @('all')
 }
@@ -63,6 +69,25 @@ foreach ($result in @($verification | Where-Object { $_.claimed_status -eq 'prim
   }
 }
 Write-Output "audit-mode=$Mode verified=$($verification.Count)"
+$sourceAudit = @(Invoke-WujiJson @('source-audit'))
+if (@($sourceAudit | Where-Object { $_.state -eq 'unavailable' }).Count -gt 0) {
+  throw 'fusion-audit failed: retained source is unavailable'
+}
+if (@($sourceAudit | Where-Object {
+  $_.state -eq 'auto-selectable' -and
+  ([string]::IsNullOrWhiteSpace($_.entrypoint) -or $_.lifecycle -notin @('callable','behavior-verified','primary'))
+}).Count -gt 0) {
+  throw 'fusion-audit failed: automatic source lacks an executable routing contract'
+}
+if (@($sourceAudit | Where-Object {
+  $_.state -eq 'cold-retained' -and $_.lifecycle -in @('callable','behavior-verified','primary')
+}).Count -gt 0) {
+  throw 'fusion-audit failed: callable source was silently demoted to cold retention'
+}
+# The presentation capability verifier already runs the DashiAI behavior
+# probe inside a fresh evidence directory and independently hashes its
+# assertion artifact. Do not invoke that probe a second time without the
+# verifier-owned evidence environment.
 $catalogHashAfter = (Get-FileHash -Algorithm SHA256 -LiteralPath $catalogPath).Hash
 if ($catalogHashAfter -ne $catalogHashBefore) { throw 'fusion-audit failed: capability verification modified the presentation catalog' }
 
@@ -262,35 +287,43 @@ if ((Get-FileHash -Algorithm SHA256 -LiteralPath $activeSkill).Hash -ne (Get-Fil
 }
 
 $webRoute = Invoke-WujiJson @('route', '--query', 'build a Slidev web presentation with stage fluid')
+$dashiRoute = Invoke-WujiJson @('route', '--query', 'create an editable HTML deck')
 $pptxRoute = Invoke-WujiJson @('route', '--query', 'create an editable PPTX')
 $writingRoute = Invoke-WujiJson @('route', '--query', 'translate this article')
 $searchRoute = Invoke-WujiJson @('route', '--query', 'search the web for the latest solution')
+$feishuRoute = Invoke-WujiJson @('route', '--query', '读取飞书文档 https://my.feishu.cn/wiki/IqXbwaplZiEGGekoTarctLjsnPe')
 $codeQuery = 'fix code workerPlan in internal/core/route.go'
 $codeDirectRoute = Invoke-WujiJson @('route', '--query', $codeQuery)
 $codeContext = Invoke-WujiJson @('context-select', '--workspace', $root, '--query', $codeQuery, '--max-bytes', '2048')
 $codeRoute = Invoke-WujiJson @('route', '--query', $codeQuery, '--context-artifact', $codeContext.artifact_path)
 $serialSearchRoute = Invoke-WujiJson @('route', '--query', 'research the web serial only')
 if ($webRoute.primary_skill -ne 'wuji-web-deck' -or $webRoute.engine -ne 'web-deck' -or ($webRoute.mounted_sources.id -contains 'ppt-master-complete')) { throw 'fusion-audit failed: web presentation scenario is not consolidated' }
+if ($dashiRoute.primary_skill -ne 'wuji-web-deck' -or $dashiRoute.engine -ne 'web-deck' -or ($dashiRoute.mounted_sources.id -notcontains 'wuji-dashiai-deck-adapter')) { throw 'fusion-audit failed: DashiAI narrow semantic route is not automatically mounted' }
 if ($pptxRoute.primary_skill -ne 'wuji-editable-deck' -or $pptxRoute.engine -ne 'editable-pptx' -or ($pptxRoute.mounted_sources.id -contains 'slidev-runtime-complete')) { throw 'fusion-audit failed: editable presentation scenario is not consolidated' }
 if ($writingRoute.primary_skill -ne 'wuji-writing-suite' -or $writingRoute.engine -ne 'translation') { throw 'fusion-audit failed: writing suite leaked source selection' }
 if ($searchRoute.provider -ne 'default-gpt-search' -or @($searchRoute.workers | Where-Object model_class -eq 'agnes').Count -gt 0) { throw 'optimization-audit failed: Agnes returned to search' }
+if ($feishuRoute.capability -ne 'feishu' -or $feishuRoute.primary_skill -ne 'feishu-lark' -or @($feishuRoute.mounted_sources | Where-Object id -eq 'official-lark-cli-skill').Count -ne 1) { throw 'fusion-audit failed: Feishu did not automatically select the official read-first capability' }
 if (@($searchRoute.workers).Count -ne 3 -or @($searchRoute.workers | Where-Object model -ne 'gpt-5.6-luna').Count -ne 0) { throw 'optimization-audit failed: research workers lost Luna model assignment' }
-if (@($searchRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-terra' }).Count -ne 0) { throw 'optimization-audit failed: research worker fallback order changed' }
-if (($serialSearchRoute.PSObject.Properties.Name -contains 'workers') -or $serialSearchRoute.delegation_decision.reason -ne 'serial-requested') { throw 'optimization-audit failed: serial research still fanned out' }
-if (($codeDirectRoute.PSObject.Properties.Name -contains 'workers') -or $codeDirectRoute.delegation_decision.reason -ne 'verified-context-artifact-required') { throw 'optimization-audit failed: code delegated without verified context' }
-if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-terra').Count -ne 0) { throw 'optimization-audit failed: code worker lost bounded Terra assignment' }
-if (@($codeRoute.workers | Where-Object { ($_.fallback_models -join ',') -ne 'gpt-5.6-sol' }).Count -ne 0) { throw 'optimization-audit failed: code worker fallback order changed' }
-$executionEvidence = 'schema_version,worker_id,requested_model,session_key,host_dispatch_id,write_boundary,attempts,effective_model,model_switch_count,result_handle,stable_prefix_bytes,stable_prefix_sha256,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,accepted_by_aji,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,aji_baseline_microunits,savings_microunits'
+if (@($searchRoute.workers | Where-Object { @($_.fallback_models | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $_.max_attempts -ne 1 -or @($_.fallback_on | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $_.max_model_switches -ne 0 }).Count -ne 0) { throw 'optimization-audit failed: research worker received an automatic model fallback' }
+if ($serialSearchRoute.parallel -or $serialSearchRoute.delegation_decision.reason -ne 'serial-task-reasoning' -or @($serialSearchRoute.workers).Count -ne 1) { throw 'optimization-audit failed: serial research did not remain one bounded task judgment' }
+$serialSearchWorker = @($serialSearchRoute.workers)[0]
+if ($serialSearchWorker.id -ne 'task-judgment' -or $serialSearchWorker.model -ne 'gpt-5.6-sol' -or $serialSearchWorker.writes -or $serialSearchWorker.context_mode -ne 'task-contract-only') { throw 'optimization-audit failed: serial research judgment is not bounded and read-only' }
+if ($codeDirectRoute.delegation_decision.reason -ne 'verified-context-artifact-required' -or @($codeDirectRoute.workers).Count -ne 1) { throw 'optimization-audit failed: code did not receive its bounded no-context judgment' }
+$codeDirectWorker = @($codeDirectRoute.workers)[0]
+if ($codeDirectWorker.id -ne 'task-judgment' -or $codeDirectWorker.model -ne 'gpt-5.6-sol' -or $codeDirectWorker.writes -or $codeDirectWorker.context_mode -ne 'task-contract-only' -or $codeDirectWorker.allocated_context_bytes -ne 0) { throw 'optimization-audit failed: code no-context judgment is not bounded and read-only' }
+if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-sol').Count -ne 0) { throw 'optimization-audit failed: code worker lost bounded Sol assignment' }
+if (@($codeRoute.workers | Where-Object { @($_.fallback_models | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $_.max_attempts -ne 1 -or @($_.fallback_on | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $_.max_model_switches -ne 0 }).Count -ne 0) { throw 'optimization-audit failed: code worker received an automatic model fallback' }
+$executionEvidence = 'schema_version,worker_id,requested_model,session_key,host_dispatch_id,write_boundary,attempts,effective_model,model_switch_count,result_handle,stable_prefix_bytes,stable_prefix_sha256,source_execution_bytes,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,accepted_by_aji,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,aji_baseline_microunits,savings_microunits'
 if (@($searchRoute.workers + $codeRoute.workers | Where-Object { -not $_.execution_evidence_required -or ($_.execution_evidence_fields -join ',') -ne $executionEvidence }).Count -ne 0) { throw 'optimization-audit failed: worker execution evidence contract is incomplete' }
 $officerRoute = Invoke-WujiJson @('route', '--query', 'white-hat review this architecture')
 $officerWorker = @($officerRoute.officer_workers)[0]
 if (@($officerRoute.officers).Count -ne 1 -or @($officerRoute.officer_workers).Count -ne 1 -or $officerWorker.stage -ne 'officer' -or $officerWorker.writes -or -not $officerWorker.session_key -or -not $officerWorker.execution_evidence_required -or ($officerWorker.execution_evidence_fields -join ',') -ne $executionEvidence) {
   throw 'optimization-audit failed: explicit white-hat is not a receipt-bound read-only worker'
 }
-if ($codeRoute.delegation_policy.cross_model_cache_assumed -or $codeRoute.delegation_policy.cache_scope -ne 'model-local stable-prefix only' -or $codeRoute.delegation_policy.max_task_contract_bytes -ne 2048 -or $codeRoute.delegation_policy.max_shared_context_bytes -ne 4096 -or $codeRoute.delegation_policy.max_total_replay_bytes -ne 8192 -or $codeRoute.delegation_policy.min_context_coverage_basis_points -ne 6000 -or -not $codeRoute.delegation_policy.require_code_excerpt -or -not $codeRoute.delegation_policy.require_content_anchor -or -not $codeRoute.delegation_policy.fallback_only_on_availability_error) { throw 'optimization-audit failed: cross-model cost policy is incomplete' }
+if ($codeRoute.delegation_policy.cross_model_cache_assumed -or $codeRoute.delegation_policy.cache_scope -ne 'model-local stable-prefix only' -or $codeRoute.delegation_policy.max_task_contract_bytes -ne 2048 -or $codeRoute.delegation_policy.max_shared_context_bytes -ne 4096 -or $codeRoute.delegation_policy.max_total_replay_bytes -ne 8192 -or $codeRoute.delegation_policy.min_context_coverage_basis_points -ne 6000 -or -not $codeRoute.delegation_policy.require_code_excerpt -or -not $codeRoute.delegation_policy.require_content_anchor -or $codeRoute.delegation_policy.fallback_only_on_availability_error) { throw 'optimization-audit failed: cross-model cost policy is incomplete' }
 $codeWorker = @($codeRoute.workers)[0]
-if (-not $codeRoute.delegation_decision.allowed -or $codeRoute.delegation_decision.context_handle -ne $codeContext.context_handle -or $codeRoute.delegation_decision.context_coverage_basis_points -lt 6000 -or $codeRoute.delegation_decision.code_excerpt_count -lt 1 -or $codeRoute.delegation_decision.content_anchor_count -lt 1 -or $codeWorker.allocated_context_bytes -ne $codeContext.payload_bytes -or $codeWorker.context_payload_sha256 -ne $codeContext.payload_sha256 -or -not $codeWorker.context_payload -or $codeWorker.allocated_task_contract_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.task_contract)) -or -not $codeWorker.task_contract_sha256 -or -not $codeWorker.stable_capability_prefix -or $codeWorker.stable_prefix_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.stable_capability_prefix)) -or -not $codeWorker.stable_prefix_sha256 -or $codeRoute.delegation_decision.estimated_replay_bytes -ne ($codeWorker.stable_prefix_bytes + $codeWorker.allocated_context_bytes + $codeWorker.allocated_task_contract_bytes) -or ($codeWorker.prompt_order -join ',') -ne 'stable_capability_prefix,context_payload,task_contract' -or $codeWorker.max_attempts -ne 2 -or ($codeWorker.fallback_on -join ',') -ne 'model-unavailable,provider-error-before-generation') { throw 'optimization-audit failed: verified context handoff is incomplete' }
-if ($codeRoute.model_policy.class_models.terra -ne 'gpt-5.6-terra' -or $codeRoute.model_policy.class_models.luna -ne 'gpt-5.6-luna') { throw 'optimization-audit failed: executable model policy is incomplete' }
+if (-not $codeRoute.delegation_decision.allowed -or $codeRoute.delegation_decision.context_handle -ne $codeContext.context_handle -or $codeRoute.delegation_decision.context_coverage_basis_points -lt 6000 -or $codeRoute.delegation_decision.code_excerpt_count -lt 1 -or $codeRoute.delegation_decision.content_anchor_count -lt 1 -or $codeWorker.allocated_context_bytes -ne $codeContext.payload_bytes -or $codeWorker.context_payload_sha256 -ne $codeContext.payload_sha256 -or -not $codeWorker.context_payload -or $codeWorker.allocated_task_contract_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.task_contract)) -or -not $codeWorker.task_contract_sha256 -or -not $codeWorker.stable_capability_prefix -or $codeWorker.stable_prefix_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.stable_capability_prefix)) -or -not $codeWorker.stable_prefix_sha256 -or $codeRoute.delegation_decision.estimated_replay_bytes -ne ($codeWorker.stable_prefix_bytes + $codeWorker.allocated_context_bytes + $codeWorker.allocated_task_contract_bytes) -or ($codeWorker.prompt_order -join ',') -ne 'stable_capability_prefix,context_payload,task_contract' -or $codeWorker.max_attempts -ne 1 -or @($codeWorker.fallback_on | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or @($codeWorker.fallback_models | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $codeWorker.max_model_switches -ne 0) { throw 'optimization-audit failed: verified context handoff is incomplete' }
+if ($codeRoute.model_policy.main_model -ne 'gpt-5.6-terra' -or $codeRoute.model_policy.class_models.sol -ne 'gpt-5.6-sol' -or $codeRoute.model_policy.class_models.luna -ne 'gpt-5.6-luna' -or $null -ne $codeRoute.model_policy.class_models.terra) { throw 'optimization-audit failed: executable model policy is incomplete' }
 
 [pscustomobject]@{
   fusion_audit = 'pass'
