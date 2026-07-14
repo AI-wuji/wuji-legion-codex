@@ -8,6 +8,17 @@
                            "path":  "${LOCALAPPDATA}/WujiLegion/go-manual/go/bin/go.exe"
                        }
                    ],
+    "office_tools": [
+      {
+        "id": "officecli",
+        "version": "1.0.136",
+        "url": "https://github.com/iOfficeAI/OfficeCLI/releases/download/v1.0.136/officecli-win-x64.exe",
+        "sha256": "0ba8550bb236a2a23982311a747b22f318d7bd18c1c06a402d96f7642c85fb6a",
+        "binary": "officecli-win-x64.exe",
+        "destination": "${LOCALAPPDATA}/OfficeCLI/officecli.exe",
+        "license": "Apache-2.0"
+      }
+    ],
     "context_tools":  [
                           {
                               "id":  "rtk",

@@ -72,6 +72,41 @@ func TestRepositoryAutomaticSourcesHaveSemanticRoutes(t *testing.T) {
 	}
 }
 
+func TestOfficeCLIAdapterOnlyMountsForNarrowDocumentInspection(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	items, err := LoadManifests(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inspection := Route("导出Excel结构为 JSON", items)
+	if inspection.Capability != "documents" || inspection.PrimarySkill != "wuji-document-suite" {
+		t.Fatalf("OfficeCLI inspection displaced the documents route: %#v", inspection)
+	}
+	if !containsMountedSource(inspection.MountedSources, "officecli-stateless-adapter") {
+		t.Fatalf("OfficeCLI inspection did not mount its narrow adapter: %#v", inspection.MountedSources)
+	}
+	ordinary := Route("创建一份 Word 文档", items)
+	if containsMountedSource(ordinary.MountedSources, "officecli-stateless-adapter") {
+		t.Fatalf("ordinary document work mounted OfficeCLI: %#v", ordinary.MountedSources)
+	}
+	pptx := Route("导出 PPTX 结构", items)
+	if pptx.Capability != "presentation" || containsMountedSource(pptx.MountedSources, "officecli-stateless-adapter") {
+		t.Fatalf("presentation request leaked into OfficeCLI: %#v", pptx)
+	}
+}
+
+func containsMountedSource(sources []MountedSource, id string) bool {
+	for _, source := range sources {
+		if source.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
 func TestRoutePresentationAndNoNuwa(t *testing.T) {
 	items := []Manifest{{ID: "presentation", Triggers: []string{"ppt"}, Status: "primary", PrimarySkill: "presentations:Presentations"}}
 	got := Route("做一个高级PPT", items)

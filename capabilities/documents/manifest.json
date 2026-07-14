@@ -36,6 +36,34 @@
       "priority": "primary"
     },
     {
+      "id": "officecli-stateless-adapter",
+      "globs": [
+        "${ROOT}/capabilities/documents/adapters/officecli"
+      ],
+      "required": [
+        "ENTRYPOINT.md",
+        "invoke-officecli.ps1"
+      ],
+      "lifecycle": "behavior-verified",
+      "activation": [
+        "officecli",
+        "office cli",
+        "export word structure",
+        "export excel structure",
+        "export xlsx structure",
+        "导出word结构",
+        "导出excel结构",
+        "导出xlsx结构",
+        "render word html",
+        "render excel html",
+        "dump word",
+        "dump excel",
+        "dump xlsx"
+      ],
+      "entrypoint": "ENTRYPOINT.md",
+      "priority": "secondary"
+    },
+    {
       "id": "documents-complete",
       "globs": [
         "${USERPROFILE}/.codex/plugins/cache/openai-primary-runtime/documents/*/skills/documents"

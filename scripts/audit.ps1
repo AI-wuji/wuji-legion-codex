@@ -27,6 +27,56 @@ function Invoke-WujiJson([string[]]$CliArgs) {
   }
 }
 
+function Test-OfficeCliBehavior {
+  $evidenceDir = Join-Path $root ('.wuji\officecli-audit-' + [guid]::NewGuid().ToString('N'))
+  New-Item -ItemType Directory -Force -Path $evidenceDir | Out-Null
+  $probe = Join-Path $root 'scripts\verify-officecli.ps1'
+  $probeStderr = Join-Path $evidenceDir 'probe.stderr.log'
+  try {
+    $priorErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $raw = @(& powershell -NoProfile -ExecutionPolicy Bypass -File $probe -Root $root -EvidenceDir $evidenceDir 2> $probeStderr)
+    $probeExitCode = $LASTEXITCODE
+    $ErrorActionPreference = $priorErrorAction
+    $stderr = if (Test-Path -LiteralPath $probeStderr) { Get-Content -Raw -LiteralPath $probeStderr } else { '' }
+    if ($probeExitCode -ne 0) { throw "OfficeCLI behavior probe failed: $($raw -join [Environment]::NewLine)$stderr" }
+    try {
+      $receipt = (($raw -join [Environment]::NewLine) | ConvertFrom-Json -ErrorAction Stop)
+    } catch {
+      throw 'OfficeCLI behavior probe did not emit a valid JSON receipt'
+    }
+    $expected = @(
+      'officecli-assertions.json',
+      'officecli-probe.docx.html',
+      'officecli-probe.docx.json',
+      'officecli-probe.xlsx.html',
+      'officecli-probe.xlsx.json'
+    )
+    if ($receipt.wuji_probe -ne 'behavior' -or $receipt.fixture -ne 'officecli-stateless-v1' -or -not $receipt.passed -or $receipt.evidence_dir -ne $evidenceDir) {
+      throw 'OfficeCLI behavior probe receipt is incomplete'
+    }
+    $artifacts = @($receipt.evidence)
+    $actualNames = @($artifacts | ForEach-Object { [string]$_.path } | Sort-Object -Unique)
+    $expectedNames = @($expected | Sort-Object)
+    if ($artifacts.Count -ne $expectedNames.Count -or $actualNames.Count -ne $expectedNames.Count -or (($actualNames -join ',') -ne ($expectedNames -join ','))) {
+      throw 'OfficeCLI behavior probe evidence set is incomplete'
+    }
+    foreach ($artifact in $artifacts) {
+      $name = [string]$artifact.path
+      if ([IO.Path]::GetFileName($name) -ne $name -or $artifact.sha256 -notmatch '^[a-fA-F0-9]{64}$') {
+        throw "OfficeCLI behavior probe emitted unsafe evidence metadata: $name"
+      }
+      $path = Join-Path $evidenceDir $name
+      if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "OfficeCLI behavior evidence is missing: $name" }
+      $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
+      if ($actual -ne ([string]$artifact.sha256).ToLowerInvariant()) { throw "OfficeCLI behavior evidence hash mismatch: $name" }
+    }
+    return $receipt
+  } finally {
+    Remove-Item -LiteralPath $evidenceDir -Recurse -Force -ErrorAction SilentlyContinue
+  }
+}
+
 function Get-SourceTreeHash([string]$Path) {
   $full = [IO.Path]::GetFullPath($Path).TrimEnd('\','/')
   $lines = @(Get-ChildItem -LiteralPath $full -Recurse -File -Force | Where-Object {
@@ -84,6 +134,7 @@ if (@($sourceAudit | Where-Object {
 }).Count -gt 0) {
   throw 'fusion-audit failed: callable source was silently demoted to cold retention'
 }
+$officeCliBehavior = Test-OfficeCliBehavior
 # The presentation capability verifier already runs the DashiAI behavior
 # probe inside a fresh evidence directory and independently hashes its
 # assertion artifact. Do not invoke that probe a second time without the
@@ -219,6 +270,17 @@ foreach ($tool in $sourceLock.context_tools) {
     throw "fusion-audit failed: wrong installed context tool version $($tool.id)"
   }
 }
+foreach ($tool in @($sourceLock.office_tools)) {
+  if ($tool.id -ne 'officecli' -or $tool.version -notmatch '^\d+\.\d+\.\d+$' -or $tool.sha256 -notmatch '^[a-fA-F0-9]{64}$' -or -not $tool.url.StartsWith('https://') -or $tool.license -ne 'Apache-2.0') {
+    throw 'fusion-audit failed: invalid locked OfficeCLI metadata'
+  }
+  $toolPath = & (Join-Path $PSScriptRoot 'expand-wuji-path.ps1') -PathValue $tool.destination -Root $root
+  if (-not (Test-Path -LiteralPath $toolPath -PathType Leaf)) { throw 'fusion-audit failed: verified OfficeCLI binary is missing' }
+  $actualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $toolPath).Hash.ToLowerInvariant()
+  if ($actualHash -ne $tool.sha256.ToLowerInvariant()) { throw 'fusion-audit failed: installed OfficeCLI checksum mismatch' }
+  $toolVersion = @(& $toolPath --version 2>&1) -join ' '
+  if ($LASTEXITCODE -ne 0 -or $toolVersion -notmatch [regex]::Escape($tool.version)) { throw 'fusion-audit failed: wrong installed OfficeCLI version' }
+}
 $searchManifest = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'capabilities\search\manifest.json')
 if ($searchManifest -match 'agnes') { throw 'optimization-audit failed: Agnes returned to search routing' }
 $imageManifest = Get-Content -Raw -Encoding UTF8 -LiteralPath (Join-Path $root 'capabilities\image\manifest.json') | ConvertFrom-Json
@@ -297,12 +359,18 @@ $codeDirectRoute = Invoke-WujiJson @('route', '--query', $codeQuery)
 $codeContext = Invoke-WujiJson @('context-select', '--workspace', $root, '--query', $codeQuery, '--max-bytes', '2048')
 $codeRoute = Invoke-WujiJson @('route', '--query', $codeQuery, '--context-artifact', $codeContext.artifact_path)
 $serialSearchRoute = Invoke-WujiJson @('route', '--query', 'research the web serial only')
+$officeCliRoute = Invoke-WujiJson @('route', '--query', 'export Excel structure as JSON')
+$ordinaryDocumentRoute = Invoke-WujiJson @('route', '--query', 'create a Word document')
+$officePptxRoute = Invoke-WujiJson @('route', '--query', 'export PPTX structure')
 if ($webRoute.primary_skill -ne 'wuji-web-deck' -or $webRoute.engine -ne 'web-deck' -or ($webRoute.mounted_sources.id -contains 'ppt-master-complete')) { throw 'fusion-audit failed: web presentation scenario is not consolidated' }
 if ($dashiRoute.primary_skill -ne 'wuji-web-deck' -or $dashiRoute.engine -ne 'web-deck' -or ($dashiRoute.mounted_sources.id -notcontains 'wuji-dashiai-deck-adapter')) { throw 'fusion-audit failed: DashiAI narrow semantic route is not automatically mounted' }
 if ($pptxRoute.primary_skill -ne 'wuji-editable-deck' -or $pptxRoute.engine -ne 'editable-pptx' -or ($pptxRoute.mounted_sources.id -contains 'slidev-runtime-complete')) { throw 'fusion-audit failed: editable presentation scenario is not consolidated' }
 if ($writingRoute.primary_skill -ne 'wuji-writing-suite' -or $writingRoute.engine -ne 'translation') { throw 'fusion-audit failed: writing suite leaked source selection' }
 if ($searchRoute.provider -ne 'default-gpt-search' -or @($searchRoute.workers | Where-Object model_class -eq 'agnes').Count -gt 0) { throw 'optimization-audit failed: Agnes returned to search' }
 if ($feishuRoute.capability -ne 'feishu' -or $feishuRoute.primary_skill -ne 'feishu-lark' -or @($feishuRoute.mounted_sources | Where-Object id -eq 'official-lark-cli-skill').Count -ne 1) { throw 'fusion-audit failed: Feishu did not automatically select the official read-first capability' }
+if ($officeCliRoute.capability -ne 'documents' -or $officeCliRoute.primary_skill -ne 'wuji-document-suite' -or @($officeCliRoute.mounted_sources | Where-Object id -eq 'officecli-stateless-adapter').Count -ne 1) { throw 'fusion-audit failed: OfficeCLI did not mount only for its narrow document route' }
+if (@($ordinaryDocumentRoute.mounted_sources | Where-Object id -eq 'officecli-stateless-adapter').Count -ne 0) { throw 'fusion-audit failed: OfficeCLI mounted for an ordinary document task' }
+if ($officePptxRoute.capability -ne 'presentation' -or @($officePptxRoute.mounted_sources | Where-Object id -eq 'officecli-stateless-adapter').Count -ne 0) { throw 'fusion-audit failed: OfficeCLI leaked into PPTX routing' }
 if (@($searchRoute.workers).Count -ne 3 -or @($searchRoute.workers | Where-Object model -ne 'gpt-5.6-luna').Count -ne 0) { throw 'optimization-audit failed: research workers lost Luna model assignment' }
 if (@($searchRoute.workers | Where-Object { @($_.fallback_models | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $_.max_attempts -ne 1 -or @($_.fallback_on | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $_.max_model_switches -ne 0 }).Count -ne 0) { throw 'optimization-audit failed: research worker received an automatic model fallback' }
 if ($serialSearchRoute.parallel -or $serialSearchRoute.delegation_decision.reason -ne 'serial-task-reasoning' -or @($serialSearchRoute.workers).Count -ne 1) { throw 'optimization-audit failed: serial research did not remain one bounded task judgment' }
@@ -339,6 +407,7 @@ if ($codeRoute.model_policy.main_model -ne 'gpt-5.6-terra' -or $codeRoute.model_
   upstream_decisions_verified = @($upstreamReview.entries).Count
   pinned_cold_sources = @($sourceLock.sources).Count
   pinned_context_tools = @($sourceLock.context_tools).Count
+  verified_office_tools = @($sourceLock.office_tools).Count
   nested_skill_count = @($nestedSkillFiles).Count
   manifest_bytes = $manifestBytes
 } | ConvertTo-Json
