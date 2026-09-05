@@ -50,14 +50,16 @@
   ],
   "probe": {
     "command": "powershell",
-    "fixture": "open-code-review-cli-smoke-v1",
-    "timeout_seconds": 120,
+    "fixture": "code-review-unified-mount-v1",
+    "timeout_seconds": 60,
     "args": [
       "-NoProfile",
       "-ExecutionPolicy",
       "Bypass",
       "-File",
-      "${ROOT}/scripts/verify-code-review.ps1"
+      "${ROOT}/scripts/verify-capability-smoke.ps1",
+      "-Capability",
+      "code-review"
     ],
     "kind": "smoke"
   }

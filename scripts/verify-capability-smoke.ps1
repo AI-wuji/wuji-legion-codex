@@ -48,12 +48,32 @@ if ($manifest.direct_mount -and $resolved -lt 1) {
   throw "direct_mount capability resolved zero sources: $Capability"
 }
 
+if ($Capability -eq 'code-review') {
+  $wuji = Join-Path $Root 'bin\\wuji.exe'
+  if (-not (Test-Path -LiteralPath $wuji)) {
+    & (Join-Path $Root 'scripts\\build.ps1') | Out-Null
+  }
+  if (-not (Test-Path -LiteralPath $wuji)) { throw 'wuji binary missing for code-review mount smoke' }
+  $rawRoute = (& $wuji route --query 'review this pull request' 2>&1) -join [Environment]::NewLine
+  if ($LASTEXITCODE -ne 0) { throw "wuji code-review route smoke failed: $rawRoute" }
+  $route = $rawRoute | ConvertFrom-Json
+  if ($route.capability -ne 'code-review' -or $route.primary_skill -ne 'wuji-code-review-suite') {
+    throw 'code-review smoke did not select the declared unified primary Skill'
+  }
+  $mounted = @($route.mounted_sources | Where-Object { $_.id -eq 'wuji-code-review-suite-unified' })
+  $contracts = @($route.source_execution | Where-Object { $_.source_id -eq 'wuji-code-review-suite-unified' })
+  if ($mounted.Count -ne 1 -or $contracts.Count -ne 1 -or $contracts[0].invocation_kind -ne 'skill-entrypoint-prepared' -or $contracts[0].entrypoint -ne 'SKILL.md' -or -not $contracts[0].entrypoint_sha256 -or $contracts[0].entrypoint_bytes -le 0) {
+    throw 'code-review smoke did not mount the trusted unified Skill entrypoint'
+  }
+}
+
 # host-callable capabilities without sources: ensure CLI entry exists when primary_skill references wuji.
 if ($manifest.host_callable -and $Capability -in @('code','context','evolution')) {
   $wuji = Join-Path $Root 'bin\wuji.exe'
-  if (-not (Test-Path -LiteralPath $wuji)) {
-    & (Join-Path $Root 'scripts\build.ps1') | Out-Null
-  }
+  # A pre-existing binary may represent a previous route contract. Rebuild so
+  # the smoke probe always exercises the current source tree.
+  & (Join-Path $Root 'scripts\build.ps1') | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw "wuji rebuild failed for host-callable capability $Capability" }
   if (-not (Test-Path -LiteralPath $wuji)) { throw "wuji binary missing for host-callable capability $Capability" }
   if ($Capability -eq 'code') {
     $codeQuery = 'fix code workerPlan in internal/core/route.go'
@@ -64,7 +84,7 @@ if ($manifest.host_callable -and $Capability -in @('code','context','evolution')
       throw 'code smoke did not create the bounded no-context task judgment'
     }
     $directWorker = @($directRoute.workers)[0]
-    if ($directWorker.id -ne 'task-judgment' -or $directWorker.model -ne 'gpt-5.6-sol' -or $directWorker.writes -or $directWorker.context_mode -ne 'task-contract-only' -or $directWorker.allocated_context_bytes -ne 0) {
+    if ($directWorker.id -ne 'task-judgment' -or $directWorker.model -ne 'gpt-5.6-terra' -or $directWorker.writes -or $directWorker.context_mode -ne 'task-contract-only' -or $directWorker.allocated_context_bytes -ne 0) {
       throw 'code smoke did not keep the no-context judgment bounded and read-only'
     }
     $rawContext = (& $wuji context-select --workspace $Root --query $codeQuery --max-bytes 2048 2>&1) -join [Environment]::NewLine
@@ -79,11 +99,11 @@ if ($manifest.host_callable -and $Capability -in @('code','context','evolution')
     if ($codeRoute.capability -ne 'code' -or $codeRoute.primary_skill -ne 'native Codex coding route') {
       throw 'code smoke did not reach the declared native Codex entrypoint'
     }
-    if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-sol').Count -ne 0) {
-      throw 'code smoke did not emit the bounded Sol worker plan'
+    if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-terra').Count -ne 0) {
+      throw 'code smoke did not emit the bounded Terra worker plan'
     }
     $worker = @($codeRoute.workers)[0]
-    if (-not $worker.execution_evidence_required -or ($worker.execution_evidence_fields -join ',') -ne 'schema_version,worker_id,requested_model,session_key,host_dispatch_id,write_boundary,attempts,effective_model,model_switch_count,result_handle,stable_prefix_bytes,stable_prefix_sha256,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,accepted_by_aji,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,aji_baseline_microunits,savings_microunits') {
+    if (-not $worker.execution_evidence_required -or ($worker.execution_evidence_fields -join ',') -ne 'schema_version,worker_id,requested_model,session_key,host_dispatch_id,write_boundary,attempts,effective_model,model_switch_count,result_handle,stable_prefix_bytes,stable_prefix_sha256,source_execution_bytes,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,execution_baseline_microunits,savings_microunits') {
       throw 'code smoke emitted an incomplete execution evidence contract'
     }
     if ($worker.context_mode -ne 'shared-content-addressed-handle' -or $worker.context_handles[0] -ne $codeContext.context_handle -or $worker.context_artifact -ne $codeContext.artifact_path) {
@@ -98,8 +118,8 @@ if ($manifest.host_callable -and $Capability -in @('code','context','evolution')
     if (@($worker.fallback_models | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $worker.max_attempts -ne 1 -or @($worker.fallback_on | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $worker.max_model_switches -ne 0 -or ($worker.prompt_order -join ',') -ne 'stable_capability_prefix,context_payload,task_contract') {
       throw 'code smoke emitted an unsafe fallback or prompt policy'
     }
-    if ($codeRoute.delegation_policy.cross_model_cache_assumed -or $codeRoute.delegation_policy.cache_scope -ne 'model-local stable-prefix only' -or $codeRoute.delegation_decision.context_coverage_basis_points -lt 6000 -or $codeRoute.delegation_decision.code_excerpt_count -lt 1 -or $codeRoute.delegation_decision.content_anchor_count -lt 1 -or -not $codeRoute.delegation_decision.allowed -or $codeRoute.execution_lane -ne 'bounded-delegation') {
-      throw 'code smoke did not enforce the cross-model cost gate'
+    if ($null -ne $codeRoute.general_staff_worker -or ($codeRoute.general_staff_model -and $codeRoute.general_staff_model -ne '') -or $codeRoute.delegation_policy.cross_model_cache_assumed -or $codeRoute.delegation_policy.cache_scope -ne 'model-local stable-prefix only' -or $codeRoute.delegation_decision.context_coverage_basis_points -lt 6000 -or $codeRoute.delegation_decision.code_excerpt_count -lt 1 -or $codeRoute.delegation_decision.content_anchor_count -lt 1 -or -not $codeRoute.delegation_decision.allowed -or $codeRoute.execution_lane -ne 'bounded-delegation') {
+      throw 'code smoke did not enforce the deterministic General Staff boundary and cross-model cost gate'
     }
   }
   if ($Capability -eq 'evolution') {

@@ -7,12 +7,12 @@ import (
 	"time"
 )
 
-func TestOrchestrateRoutePreparesOnlyThePreflightNativeHostContract(t *testing.T) {
+func TestOrchestrateRoutePreparesPreflightThroughDeterministicGeneralStaff(t *testing.T) {
 	initial := Route("fix an SDK timeout bug", []Manifest{{
 		ID: "code", Triggers: []string{"fix", "sdk", "bug"}, Status: "callable",
 		Experts: []Expert{{ID: "implementation", Purpose: "implement", Independent: true, ModelClass: "sol"}},
 	}})
-	if len(initial.PreflightWorkers) != 1 {
+	if initial.GeneralStaffWorker != nil || len(initial.PreflightWorkers) != 1 {
 		t.Fatalf("test route lacks preflight: %#v", initial)
 	}
 	result, err := OrchestrateRoute(initial, OrchestrationOptions{
@@ -27,13 +27,16 @@ func TestOrchestrateRoutePreparesOnlyThePreflightNativeHostContract(t *testing.T
 	if len(result.Stages) != 1 || result.Stages[0].Name != "preflight" || result.Stages[0].Results[0].Status != "native-host-dispatch-required" {
 		t.Fatalf("preflight native-host contract was not prepared: %#v", result)
 	}
-	if !result.AjiMergeRequired || len(result.ResultHandles) != 0 {
-		t.Fatalf("orchestrator failed to preserve its native merge boundary: %#v", result)
+	if !result.StaffReconciliationRequired || !result.AjiReportRequired || result.AjiMergeRequired || len(result.ResultHandles) != 0 {
+		t.Fatalf("orchestrator failed to preserve its reconciliation and reporting boundaries: %#v", result)
 	}
 }
 
 func TestOrchestrateRouteBoundsIndependentParallelWorkers(t *testing.T) {
 	route := Route("research the web", []Manifest{{ID: "search", Triggers: []string{"research"}, Status: "callable", Engines: []Engine{{ID: "web-research", Default: true}}}})
+	// Sol's native result is the required boundary before this pre-approved
+	// research fan-out may be prepared.
+	route.GeneralStaffWorker = nil
 	var active, maximum int32
 	result, err := OrchestrateRoute(route, OrchestrationOptions{
 		MaxParallel: 2,
@@ -58,22 +61,22 @@ func TestOrchestrateRouteBoundsIndependentParallelWorkers(t *testing.T) {
 	}
 }
 
-func TestEveryNonConversationalTaskGetsAWorkerButSimpleQuestionStaysDirect(t *testing.T) {
-	if got := Route("分析这个方案是否可行", nil); len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-sol" {
-		t.Fatalf("task did not receive an active Sol route: %#v", got)
+func TestEveryNonConversationalTaskKeepsDeterministicStaffAndSimpleQuestionStaysDirect(t *testing.T) {
+	if got := Route("分析这个方案是否可行", nil); got.GeneralStaffWorker != nil {
+		t.Fatalf("task created a model-backed General Staff worker: %#v", got)
 	}
 	if got := Route("无极军团是什么？", nil); len(got.Workers) != 0 || got.DelegationDecision.Reason != "simple-question-direct" {
 		t.Fatalf("simple question should stay on Aji: %#v", got)
 	}
 }
 
-func TestFailureAndCodeReviewUseIndependentDistilledBranches(t *testing.T) {
+func TestFailureUsesDefaultRouteAndCodeReviewKeepsIndependentBranches(t *testing.T) {
 	failure := Route("debug timeout error", nil)
-	if len(failure.Workers) != 2 || failure.Workers[0].ID != "root-cause" || failure.Workers[1].ID != "failure-evidence" || failure.Workers[0].Model != "gpt-5.6-sol" || failure.Workers[1].Model != "gpt-5.6-luna" {
-		t.Fatalf("failure protocol was not made executable: %#v", failure.Workers)
+	if len(failure.Workers) != 1 || failure.Workers[0].ID != "task-judgment" || failure.Workers[0].Model != "gpt-5.6-terra" {
+		t.Fatalf("failure task did not use the default bounded route: %#v", failure.Workers)
 	}
-	if len(failure.Workers[0].TaskContract) == 0 || !containsString(workerProtocol("debug timeout error", "root-cause", "", failure.Workers[0].StableCapabilityPrefix), "reproduce or state why reproduction is unavailable") {
-		t.Fatalf("failure contract omitted its protocol: %#v", failure.Workers[0])
+	if len(failure.Workers[0].TaskContract) == 0 || len(workerProtocol("debug timeout error", "task-judgment", "", failure.Workers[0].StableCapabilityPrefix)) == 0 {
+		t.Fatalf("failure contract did not retain the universal PonyTail protocol: %#v", failure.Workers[0])
 	}
 	review := Route("review this pull request", []Manifest{{ID: "code-review", Triggers: []string{"review", "pull request"}, Status: "callable"}})
 	if len(review.Workers) != 2 || review.Workers[0].ID != "spec-conformance" || review.Workers[1].ID != "engineering-quality" || review.Workers[0].Model != "gpt-5.6-sol" || review.Workers[1].Model != "gpt-5.6-sol" {

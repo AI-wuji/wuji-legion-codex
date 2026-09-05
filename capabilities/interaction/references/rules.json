@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "id": "action-focus",
+  "revision": "action-focus-r1",
+  "mode": "explicit-session",
+  "source": {
+    "repository": "https://github.com/ayghri/i-have-adhd",
+    "commit": "01ce5c3747f05d27e4565580254f8efebac7e60d",
+    "license": "MIT"
+  },
+  "activation": [
+    "开启专注执行模式",
+    "开启专注模式",
+    "启用行动专注模式",
+    "启用专注执行模式",
+    "enable action focus",
+    "start action focus",
+    "start focused execution",
+    "use i-have-adhd",
+    "使用 i-have-adhd"
+  ],
+  "exit": [
+    "停止专注执行模式",
+    "停止专注模式",
+    "退出专注模式",
+    "恢复正常模式",
+    "stop focus mode",
+    "disable action focus",
+    "return to normal mode",
+    "switch to normal mode"
+  ],
+  "precedence": [
+    "host-safety",
+    "explicit-user-instruction",
+    "task-specific-contract",
+    "action-focus-default"
+  ],
+  "atoms": [
+    {
+      "id": "host-safety",
+      "phase": "guard",
+      "priority": 1000,
+      "conditions": ["always"],
+      "directive": "Host safety, destructive-action, authorization, and platform constraints override every action-focus default."
+    },
+    {
+      "id": "explicit-user-instruction",
+      "phase": "guard",
+      "priority": 900,
+      "conditions": ["always"],
+      "directive": "The user's explicit format, scope, and explanation request for this turn override action-focus defaults."
+    },
+    {
+      "id": "explanation-exemption",
+      "phase": "guard",
+      "priority": 850,
+      "conditions": ["explanation-request"],
+      "directive": "Answer an explanation request directly; do not force it into an action checklist.",
+      "overrides": ["first-action", "bounded-steps", "single-next-action"]
+    },
+    {
+      "id": "destructive-clarity",
+      "phase": "guard",
+      "priority": 800,
+      "conditions": ["destructive-or-ambiguous"],
+      "directive": "Resolve destructive scope or material ambiguity before proposing execution as the first action.",
+      "overrides": ["first-action"]
+    },
+    {
+      "id": "first-action",
+      "phase": "opening",
+      "priority": 500,
+      "conditions": ["action-request"],
+      "directive": "Put one concrete executable next action in the first line."
+    },
+    {
+      "id": "bounded-steps",
+      "phase": "plan",
+      "priority": 450,
+      "conditions": ["multi-step"],
+      "directive": "Use the fewest bounded numbered steps needed for a multi-step task.",
+      "parameters": {"max_items": 5}
+    },
+    {
+      "id": "progress-state",
+      "phase": "progress",
+      "priority": 400,
+      "conditions": ["continuation-or-status"],
+      "directive": "Restate the current state and show completed progress before the next action."
+    },
+    {
+      "id": "cause-fix",
+      "phase": "error",
+      "priority": 400,
+      "conditions": ["error"],
+      "directive": "Express an error as cause, then fix."
+    },
+    {
+      "id": "specific-estimates",
+      "phase": "plan",
+      "priority": 350,
+      "conditions": ["action-request"],
+      "directive": "Use concrete time estimates and keep visible lists to at most five items.",
+      "parameters": {"max_items": 5}
+    },
+    {
+      "id": "topic-filter",
+      "phase": "all",
+      "priority": 300,
+      "conditions": ["always"],
+      "directive": "Suppress content unrelated to the user's current objective."
+    },
+    {
+      "id": "single-next-action",
+      "phase": "closing",
+      "priority": 250,
+      "conditions": ["action-request"],
+      "directive": "End with exactly one next action that can be done within two minutes.",
+      "parameters": {"max_actions": 1, "max_minutes": 2}
+    }
+  ]
+}

@@ -50,7 +50,7 @@
       "id": "implementation",
       "purpose": "smallest complete implementation",
       "independent": true,
-      "model_class": "sol"
+      "model_class": "terra"
     },
     {
       "id": "verification",
@@ -68,7 +68,7 @@
       "-File",
       "${ROOT}/scripts/verify-code.ps1"
     ],
-    "fixture": "code-ponytail-fusion-v2",
+    "fixture": "code-ponytail-fusion-v3",
     "kind": "behavior",
     "timeout_seconds": 120,
     "required_evidence": ["assertions"],

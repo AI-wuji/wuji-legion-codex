@@ -1,5 +1,7 @@
 # Wuji Legion 2.0 Baseline
 
+> Historical 2.0 record. Its Aji merger/write-authority statement is superseded by the 2.1 contract: Aji only communicates, maintains requirements, and reports; Sol staff schedules and reviews evidence; assigned execution nodes perform scoped writes.
+
 Date: 2026-07-12
 Decision: ready for the first Git baseline after final hygiene and size audits.
 

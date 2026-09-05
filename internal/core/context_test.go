@@ -28,6 +28,25 @@ func TestContextSelectHonorsBudgetAndChineseQuery(t *testing.T) {
 	}
 }
 
+func TestBoundedWorkspaceScanSkipsExternalSymlink(t *testing.T) {
+	workspace := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "outside.go")
+	if err := os.WriteFile(outside, []byte("package outside\nfunc EscapedAnchor() {}\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(workspace, "escaped.go")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Skipf("source symlinks are not available: %v", err)
+	}
+	files, scanned, truncated, err := boundedWorkspaceScan(workspace, []string{"escapedanchor"}, 512)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scanned != 0 || len(files) != 0 || truncated {
+		t.Fatalf("external symlink entered fallback scan: files=%#v scanned=%d truncated=%t", files, scanned, truncated)
+	}
+}
+
 func TestContextSelectRejectsInvalidInputs(t *testing.T) {
 	for _, test := range []struct {
 		query  string

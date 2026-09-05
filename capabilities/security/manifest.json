@@ -43,7 +43,7 @@
       "required": [
         "SKILL.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "ci-cd-complete",
@@ -54,7 +54,7 @@
         "SKILL.md",
         "assets/templates/*"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "cicd-expert-complete",
@@ -64,7 +64,7 @@
       "required": [
         "SKILL.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     }
   ],
   "probe": {

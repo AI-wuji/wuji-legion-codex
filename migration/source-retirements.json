@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "retirements": [
+    {
+      "source": "obra/superpowers",
+      "effective_date": "2026-07-23",
+      "status": "retired",
+      "previous_local_status": "doctrine-only",
+      "supersedes_legacy_current_status": true,
+      "removed_runtime_scope": [
+        "failure-keyword two-worker fan-out",
+        "systematic failure worker protocol",
+        "fresh regression verification prompt"
+      ],
+      "preserved_scope": [
+        "historical candidate review",
+        "legacy migration verdict"
+      ],
+      "reason": "Retired because the derived rules reduced efficiency on simple tasks."
+    }
+  ]
+}

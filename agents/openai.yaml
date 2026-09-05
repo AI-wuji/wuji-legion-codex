@@ -1,4 +1,4 @@
 interface:
-  display_name: "无极军团 2.0"
-  short_description: "单主脑、冷能力包、行为验证的系统级 Codex Skill"
-  default_prompt: "使用无极军团 2.0 按最短有效路径完成当前任务，并只挂载必要能力。"
+  display_name: "无极军团 3.0"
+  short_description: "Terra 阿极、确定性参谋部、边界执行与真实行为验证"
+  default_prompt: "Terra 阿极只负责交流、需求表格图谱、PonyTail 判断和最终汇报；非纯交流任务使用确定性 General Staff 状态与调度机制，不创建常驻模型 staff，不执行任务或写制品。"

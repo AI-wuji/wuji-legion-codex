@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func writeGraphFixture(t *testing.T, path, content string) {
@@ -90,6 +91,21 @@ func TestWorkspaceGraphRoutesContextThroughBoundedCandidates(t *testing.T) {
 	}
 	if rebuilt.RetrievalMode != "workspace-graph-rebuilt" || rebuilt.FallbackReason != "stale-index" || !strings.Contains(rebuilt.Excerpts[0].Text, "alpha-updated") {
 		t.Fatalf("stale graph was not rebuilt: %#v", rebuilt)
+	}
+}
+
+func TestWorkspaceGraphSkipsWorkspaceToolingDirectories(t *testing.T) {
+	workspace := t.TempDir()
+	writeGraphFixture(t, filepath.Join(workspace, "src", "feature.go"), "package src\nfunc Feature() {}\n")
+	for _, dir := range []string{".tmp", ".agents", ".codex", "tools", "logs", "outputs", "%SystemDrive%"} {
+		writeGraphFixture(t, filepath.Join(workspace, dir, "generated.go"), "package generated\nfunc ShouldNotIndex() {}\n")
+	}
+	result, err := SyncWorkspaceGraph(workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.FileCount != 1 || result.MaxSourceFiles != workspaceGraphMaxSourceFiles {
+		t.Fatalf("workspace tooling directories were indexed: %#v", result)
 	}
 }
 
@@ -303,5 +319,72 @@ func TestWorkspaceGraphConcurrentSyncPublishesOneCompleteGeneration(t *testing.T
 	}
 	if len(entries) != 1 || strings.HasSuffix(entries[0].Name(), ".tmp") {
 		t.Fatalf("concurrent sync left partial generations: %#v", entries)
+	}
+}
+
+func TestWorkspaceGraphBoundedCleanupPreservesActiveGeneration(t *testing.T) {
+	workspace := t.TempDir()
+	writeGraphFixture(t, filepath.Join(workspace, "feature.go"), "package feature\nfunc Anchor() {}\n")
+	if _, err := SyncWorkspaceGraph(workspace); err != nil {
+		t.Fatal(err)
+	}
+	active, err := activeWorkspaceGraphDir(workspace)
+	if err != nil {
+		t.Fatal(err)
+	}
+	temporary := workspaceGraphGenerationDir(workspace, "abandoned.tmp")
+	for index := 0; index < workspaceGraphMaxCleanupEntries+1; index++ {
+		writeGraphFixture(t, filepath.Join(temporary, fmt.Sprintf("node-%03d.json", index)), "{}\n")
+	}
+	before, err := os.ReadDir(temporary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cleanupWorkspaceGraphTemporary(workspaceGraphDir(workspace), time.Now().Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(temporary); err != nil {
+		t.Fatalf("oversized abandoned generation was removed: %v", err)
+	}
+	after, err := os.ReadDir(temporary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(after) >= len(before) {
+		t.Fatalf("bounded cleanup made no progress: before=%d after=%d", len(before), len(after))
+	}
+	if current, err := activeWorkspaceGraphDir(workspace); err != nil || current != active {
+		t.Fatalf("active generation changed after bounded cleanup: %q %v", current, err)
+	}
+}
+
+func TestWorkspaceGraphRepeatedSyncMakesBoundedCleanupProgress(t *testing.T) {
+	workspace := t.TempDir()
+	writeGraphFixture(t, filepath.Join(workspace, "feature.go"), "package feature\nfunc Anchor() {}\n")
+	abandoned := workspaceGraphGenerationDir(workspace, "abandoned.tmp")
+	for index := 0; index < workspaceGraphMaxCleanupEntries+1; index++ {
+		writeGraphFixture(t, filepath.Join(abandoned, fmt.Sprintf("node-%03d.json", index)), "{}\n")
+	}
+	for attempt := 0; attempt < 5; attempt++ {
+		if _, err := SyncWorkspaceGraph(workspace); err != nil {
+			t.Fatalf("sync %d failed while bounded cleanup should make progress: %v", attempt, err)
+		}
+	}
+	if _, err := activeWorkspaceGraphDir(workspace); err != nil {
+		t.Fatalf("published generation is unavailable: %v", err)
+	}
+}
+
+func TestWorkspaceGraphReclaimsFinalizedBacklogBeforeCapacityCheck(t *testing.T) {
+	workspace := t.TempDir()
+	writeGraphFixture(t, filepath.Join(workspace, "feature.go"), "package feature\nfunc Anchor() {}\n")
+	if _, err := SyncWorkspaceGraph(workspace); err != nil {
+		t.Fatal(err)
+	}
+	for index := 0; index < workspaceGraphMaxGenerations-1; index++ {
+		writeGraphFixture(t, filepath.Join(workspaceGraphGenerationDir(workspace, fmt.Sprintf("stale-%02d", index)), "node.json"), "{}\n")
+	}
+	if _, err := SyncWorkspaceGraph(workspace); err != nil {
+		t.Fatalf("finalized backlog was checked before bounded cleanup: %v", err)
 	}
 }

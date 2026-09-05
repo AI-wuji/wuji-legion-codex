@@ -1,6 +1,7 @@
 param([string]$Root = $env:WUJI_ROOT)
 
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'sha256.ps1')
 if (-not $Root) { $Root = Split-Path $PSScriptRoot -Parent }
 
 $skillRoot = Join-Path $env:USERPROFILE '.codex\skills\dashiai-ppt-skill'

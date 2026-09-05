@@ -9,6 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +18,7 @@ import (
 
 const defaultProbeTimeout = 120 * time.Second
 const maxProbeOutputBytes = 64 * 1024
+const probeTerminationWait = 2 * time.Second
 
 type limitedOutput struct {
 	mu        sync.Mutex
@@ -52,6 +55,9 @@ func (output *limitedOutput) String() string {
 
 func Verify(root string, manifest Manifest) VerifyResult {
 	result := VerifyResult{Capability: manifest.ID, Claimed: manifest.Status, Effective: "known", Passed: true}
+	if manifest.Root == "" {
+		manifest.Root = root
+	}
 	if err := ValidateManifest(manifest); err != nil {
 		result.Passed = false
 		result.Errors = append(result.Errors, "invalid manifest: "+err.Error())
@@ -60,16 +66,36 @@ func Verify(root string, manifest Manifest) VerifyResult {
 	if len(manifest.Engines) > 0 {
 		result.Checks = append(result.Checks, fmt.Sprintf("engine coverage valid: %d engines", len(manifest.Engines)))
 	}
+	retainedSources := 0
 	for _, source := range manifest.Sources {
-		path, ok := ResolveCompleteSourceAt(root, source)
-		if !ok {
-			path, ok = ResolveSourceAt(root, source)
+		path, complete := ResolveCompleteSourceAt(root, source)
+		if !complete {
+			partialPath, present := ResolveSourceAt(root, source)
+			priority := sourcePriority(source)
+			if priority != "primary" {
+				// Secondary material is deliberately cold unless the caller asks for
+				// a full capability audit. The primary route must remain verifiable on
+				// hosts that do not have every retained integration installed.
+				state := "unavailable"
+				if present {
+					state = "incomplete"
+				}
+				result.Checks = append(result.Checks, priority+" source "+state+": "+source.ID)
+				continue
+			}
+			if !present {
+				result.Passed = false
+				result.Errors = append(result.Errors, "source not found: "+source.ID)
+				continue
+			}
+			path = partialPath
 		}
-		if !ok {
+		if path == "" {
 			result.Passed = false
 			result.Errors = append(result.Errors, "source not found: "+source.ID)
 			continue
 		}
+		retainedSources++
 		result.Sources = append(result.Sources, path)
 		for _, required := range source.Required {
 			matches, _ := filepath.Glob(filepath.Join(path, filepath.FromSlash(required)))
@@ -81,8 +107,19 @@ func Verify(root string, manifest Manifest) VerifyResult {
 			}
 		}
 	}
-	if result.Passed && len(manifest.Sources) > 0 {
+	if result.Passed && retainedSources > 0 {
 		result.Effective = "assets-retained"
+	}
+	if manifest.Genome != nil {
+		genome, assets, issues := verifyFusionGenome(manifest)
+		result.Genome = &genome
+		result.Assets = assets
+		if len(issues) > 0 {
+			result.Passed = false
+			result.Errors = append(result.Errors, issues...)
+		} else {
+			result.Checks = append(result.Checks, fmt.Sprintf("fusion genome entrypoints and assets reachable: %d adapters", len(genome.Adapters)))
+		}
 	}
 	if manifest.Probe != nil && result.Passed {
 		kind := strings.ToLower(strings.TrimSpace(manifest.Probe.Kind))
@@ -101,6 +138,11 @@ func Verify(root string, manifest Manifest) VerifyResult {
 		probeContext, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 		cmd := exec.CommandContext(probeContext, command, args...)
+		// CommandContext only terminates the direct process by default. Make its
+		// cancellation hook terminate the probe tree, and bound Wait so inherited
+		// stdout/stderr from a surviving descendant cannot hold verification open.
+		cmd.Cancel = func() error { return terminateProbeProcessTree(cmd) }
+		cmd.WaitDelay = probeTerminationWait
 		cmd.Dir = root
 		cmd.Env = append(os.Environ(), "WUJI_ROOT="+root)
 		var evidenceDir string
@@ -118,7 +160,7 @@ func Verify(root string, manifest Manifest) VerifyResult {
 		output := &limitedOutput{}
 		cmd.Stdout = output
 		cmd.Stderr = output
-		err := cmd.Run()
+		err := runProbeCommand(probeContext, cmd)
 		outputText := strings.TrimSpace(output.String())
 		if probeContext.Err() == context.DeadlineExceeded {
 			result.Passed = false
@@ -159,6 +201,42 @@ func Verify(root string, manifest Manifest) VerifyResult {
 		result.Errors = append(result.Errors, fmt.Sprintf("claimed %s but evidence supports only %s", manifest.Status, result.Effective))
 	}
 	return result
+}
+
+func runProbeCommand(ctx context.Context, cmd *exec.Cmd) error {
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case err := <-done:
+		return err
+	case <-ctx.Done():
+		// CommandContext invokes the single cmd.Cancel hook installed by Verify
+		// and enforces WaitDelay. Do not race it with a second taskkill here.
+		// Plain-command callers must install their own bounded cancellation hook.
+		select {
+		case err := <-done:
+			return err
+		case <-time.After(probeTerminationWait):
+			return fmt.Errorf("probe did not exit within %s of cancellation", probeTerminationWait)
+		}
+	}
+}
+
+func terminateProbeProcessTree(cmd *exec.Cmd) error {
+	if cmd.Process == nil {
+		return nil
+	}
+	if runtime.GOOS == "windows" {
+		// taskkill is also external work: give it an independent finite budget.
+		// This is best-effort cleanup, not a hard containment boundary.
+		killContext, cancel := context.WithTimeout(context.Background(), probeTerminationWait)
+		defer cancel()
+		return exec.CommandContext(killContext, "taskkill", "/PID", strconv.Itoa(cmd.Process.Pid), "/T", "/F").Run()
+	}
+	return cmd.Process.Kill()
 }
 
 func verifyPromotionReceipt(root string, manifest Manifest, evidence ProbeEvidence) error {

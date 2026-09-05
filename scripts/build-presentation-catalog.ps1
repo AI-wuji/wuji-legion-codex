@@ -78,15 +78,17 @@ $groups = @($rows | Group-Object scenario,category,id | ForEach-Object {
   $first = $_.Group | Select-Object -First 1
   [ordered]@{
     scenario=$first.scenario
+    engine=$first.scenario
     category=$first.category
     id=$first.id
-    preferred=[ordered]@{source=$first.source;path=(Compress-WujiPath $first.path)}
-    variants=@($_.Group | ForEach-Object { [ordered]@{source=$_.source; path=(Compress-WujiPath $_.path)} })
+    asset_id=('presentation:' + $first.scenario + ':' + $first.category + ':' + $first.id)
+    preferred=[ordered]@{source=$first.source;source_version='retained';path=(Compress-WujiPath $first.path)}
+    variants=@($_.Group | ForEach-Object { [ordered]@{source=$_.source; source_version='retained'; path=(Compress-WujiPath $_.path)} })
   }
 } | Sort-Object scenario,category,id)
 $doc = [ordered]@{
-  version='2.0'
-  rule='One scenario catalog; duplicate normalized ids are grouped as variants instead of parallel templates.'
+  version='2.1'
+  rule='One scenario catalog; duplicate normalized ids are grouped as variants instead of parallel templates and each preferred asset has a stable capability-qualified identifier.'
   generator='scripts/build-presentation-catalog.ps1'
   counts=[ordered]@{web_deck=@($groups | Where-Object scenario -eq 'web-deck').Count;editable_pptx=@($groups | Where-Object scenario -eq 'editable-pptx').Count}
   entries=$groups

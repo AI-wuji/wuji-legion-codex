@@ -12,7 +12,14 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
+)
+
+const (
+	workspaceFallbackMaxEntries  = 4096
+	workspaceFallbackMaxBytes    = 16 * 1024 * 1024
+	workspaceFallbackMaxDuration = 2 * time.Second
 )
 
 type scoredFile struct {
@@ -116,20 +123,34 @@ func retrieveWorkspaceFiles(workspace string, terms []string) ([]scoredFile, int
 	} else if err != nil {
 		stats.FallbackReason = "graph-error"
 	}
-	files, scanned, scanErr := boundedWorkspaceScan(workspace, terms, 512)
+	files, scanned, truncated, scanErr := boundedWorkspaceScan(workspace, terms, 512)
 	stats.Mode = "bounded-fallback"
+	stats.Truncated = stats.Truncated || truncated
 	if stats.FallbackReason == "" {
 		stats.FallbackReason = "graph-no-match"
 	}
 	return files, scanned, stats, scanErr
 }
 
-func boundedWorkspaceScan(workspace string, terms []string, limit int) ([]scoredFile, int, error) {
+func boundedWorkspaceScan(workspace string, terms []string, limit int) ([]scoredFile, int, bool, error) {
 	files := []scoredFile{}
 	scanned := 0
+	entries := 0
+	var sourceBytes int64
+	truncated := false
+	deadline := time.Now().Add(workspaceFallbackMaxDuration)
 	err := filepath.WalkDir(workspace, func(path string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
+		}
+		if time.Now().After(deadline) {
+			truncated = true
+			return filepath.SkipAll
+		}
+		entries++
+		if entries > workspaceFallbackMaxEntries {
+			truncated = true
+			return filepath.SkipAll
 		}
 		if entry.IsDir() {
 			if path != workspace && excludedDir(entry.Name()) {
@@ -137,7 +158,11 @@ func boundedWorkspaceScan(workspace string, terms []string, limit int) ([]scored
 			}
 			return nil
 		}
+		if entry.Type()&os.ModeSymlink != 0 {
+			return nil
+		}
 		if scanned >= limit {
+			truncated = true
 			return filepath.SkipAll
 		}
 		info, statErr := entry.Info()
@@ -147,7 +172,15 @@ func boundedWorkspaceScan(workspace string, terms []string, limit int) ([]scored
 		if info.Size() > 2*1024*1024 || !sourceLike(path) {
 			return nil
 		}
+		if sourceBytes+info.Size() > workspaceFallbackMaxBytes {
+			truncated = true
+			return filepath.SkipAll
+		}
+		if _, err := resolveWorkspaceGraphPath(workspace, filepath.ToSlash(strings.TrimPrefix(strings.TrimPrefix(path, workspace), string(filepath.Separator)))); err != nil {
+			return nil
+		}
 		scanned++
+		sourceBytes += info.Size()
 		item, scoreErr := scoreFile(workspace, path, terms)
 		if scoreErr != nil {
 			return scoreErr
@@ -157,7 +190,7 @@ func boundedWorkspaceScan(workspace string, terms []string, limit int) ([]scored
 		}
 		return nil
 	})
-	return files, scanned, err
+	return files, scanned, truncated, err
 }
 
 func scoreFile(root, path string, terms []string) (scoredFile, error) {
@@ -407,7 +440,7 @@ func queryTerms(query string) []string {
 
 func excludedDir(name string) bool {
 	switch strings.ToLower(name) {
-	case ".git", ".wuji", "node_modules", "vendor", "dist", "build", "bin", "coverage", ".next", ".cache":
+	case ".git", ".wuji", ".tmp", ".agents", ".codex", "node_modules", "vendor", "dist", "build", "bin", "coverage", ".next", ".cache", "logs", "outputs", "tools", "%systemdrive%":
 		return true
 	}
 	return false

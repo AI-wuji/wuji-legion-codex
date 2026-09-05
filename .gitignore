@@ -1,7 +1,11 @@
 /bin/
 /.wuji/
+/.wuji-go-cache/
+/.wuji-probe-evidence/
+/%SystemDrive%/
 /outputs/
 /tools/bin/
+/capabilities/feishu/skills/feishu-lark/official/
 *.tmp
 node_modules/
 dist/

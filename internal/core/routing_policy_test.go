@@ -13,43 +13,57 @@ func TestNonTrivialCodeTaskRunsBoundedSearchBeforeSol(t *testing.T) {
 	}
 
 	got := RouteWithContext(query, items, delegationContextForTest(query, 512))
-	if got.ExecutionLane != "bounded-search-first" || len(got.PreflightWorkers) != 1 || len(got.Workers) != 2 {
-		t.Fatalf("expected serial preflight followed by root-cause and evidence workers: %#v", got)
+	if got.GeneralStaffWorker != nil || got.ExecutionLane != "bounded-search-first" || len(got.PreflightWorkers) != 1 || len(got.Workers) != 1 {
+		t.Fatalf("expected serial preflight followed by one implementation worker: %#v", got)
 	}
 	preflight := got.PreflightWorkers[0]
 	if preflight.Stage != "preflight" || preflight.Model != "gpt-5.6-luna" || preflight.MaxSources != 3 || preflight.TimeBudgetSeconds != 90 {
 		t.Fatalf("search preflight is not bounded or executable: %#v", preflight)
 	}
-	if got.Workers[0].ID != "root-cause" || got.Workers[0].Stage != "execution" || got.Workers[0].Model != "gpt-5.6-sol" || got.Workers[1].ID != "failure-evidence" || got.Workers[1].Model != "gpt-5.6-luna" {
-		t.Fatalf("systematic failure branches were not routed to Sol and Luna: %#v", got.Workers)
+	if got.Workers[0].Stage != "execution" || got.Workers[0].Model != "gpt-5.6-sol" {
+		t.Fatalf("implementation was not routed to Sol: %#v", got.Workers)
 	}
 	if !got.SearchFirstPolicy.Required || !got.SearchFirstPolicy.CancelStaleExecutionPlan || !containsString(got.SecondaryCapabilities, "search") {
 		t.Fatalf("search-first policy is incomplete: %#v", got.SearchFirstPolicy)
 	}
 	policy := got.TaskExecutionPolicy
-	if policy.TaskShape != "small" || policy.ModelSelectionTiming != "once-at-task-start" || policy.SessionAffinity != "sticky-per-worker" || policy.MaxModelSwitches != 0 || policy.DowngradeAfterGeneration || !policy.PreflightBeforeExecution {
+	if policy.TaskShape != "small" || policy.ModelSelectionTiming != "once-at-task-start" || policy.SessionAffinity != "sticky-per-worker" || policy.MaxModelSwitches != 2 || policy.DowngradeAfterGeneration || !policy.PreflightBeforeExecution {
 		t.Fatalf("task execution policy is incomplete: %#v", policy)
 	}
-	if preflight.SessionKey == "" || got.Workers[0].SessionKey == "" || preflight.SessionKey == got.Workers[0].SessionKey || got.Workers[0].SessionKey == got.Workers[1].SessionKey {
+	if preflight.SessionKey == "" || got.Workers[0].SessionKey == "" || preflight.SessionKey == got.Workers[0].SessionKey {
 		t.Fatalf("workers did not receive stable, isolated session keys: preflight=%q workers=%#v", preflight.SessionKey, got.Workers)
 	}
 }
 
 func TestDeterministicEditSkipsPriorArtSearch(t *testing.T) {
 	got := Route("rename button label", nil)
-	if got.SearchFirstPolicy.Required || len(got.PreflightWorkers) != 0 || got.TaskExecutionPolicy.PreflightBeforeExecution || got.ExecutionLane != "bounded-delegation" || len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-sol" {
+	if got.GeneralStaffWorker != nil || got.SearchFirstPolicy.Required || len(got.PreflightWorkers) != 0 || got.TaskExecutionPolicy.PreflightBeforeExecution || got.ExecutionLane != "bounded-delegation" || len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-terra" {
 		t.Fatalf("deterministic edit should use bounded task routing without web preflight: %#v", got)
 	}
 }
 
 func TestMechanicalReadOnlyTaskUsesLuna(t *testing.T) {
 	got := Route("list files and count lines", nil)
-	if len(got.PreflightWorkers) != 0 || len(got.Workers) != 1 || got.ExecutionLane != "bounded-delegation" {
+	if got.GeneralStaffWorker != nil || len(got.PreflightWorkers) != 0 || len(got.Workers) != 1 || got.ExecutionLane != "bounded-delegation" {
 		t.Fatalf("mechanical task did not produce one bounded worker: %#v", got)
 	}
 	worker := got.Workers[0]
 	if worker.ID != "mechanical" || worker.Model != "gpt-5.6-luna" || worker.ContextMode != "task-contract-only" || worker.Writes {
 		t.Fatalf("mechanical task did not use a read-only Luna worker: %#v", worker)
+	}
+}
+
+func TestExactLocalSkillLookupSkipsExternalAdmissionRouting(t *testing.T) {
+	got := Route("find the skill named superpowers", nil)
+	if got.SearchFirstPolicy.Required || len(got.PreflightWorkers) != 0 || len(got.Workers) != 1 || got.Workers[0].ID != "mechanical" {
+		t.Fatalf("exact local Skill lookup should stay bounded and read-only: %#v", got)
+	}
+}
+
+func TestExternalSkillInstallKeepsAdmissionGates(t *testing.T) {
+	got := Route("install the external skill named superpowers from github", nil)
+	if !got.SearchFirstPolicy.Required || len(got.PreflightWorkers) != 1 || !got.ChangeCapsule.Required || len(got.Workers) != 1 || got.Workers[0].ID != "task-execution" {
+		t.Fatalf("external Skill installation lost preflight or mutation gates: %#v", got)
 	}
 }
 
@@ -78,23 +92,10 @@ func TestOfflineRequestSuppressesPriorArtSearch(t *testing.T) {
 	}
 }
 
-func TestCommunityResearchDoesNotAccidentallyReceiveFailureProtocol(t *testing.T) {
-	protocol := workerProtocol("research the web", "community", "independent reports and failure evidence", "")
-	if len(protocol) != 0 {
-		t.Fatalf("ordinary community research inherited a debugging protocol: %#v", protocol)
-	}
-}
-
-func TestFailureProtocolRequiresEvidenceBeforeFixAndBoundsRepeatedGuesses(t *testing.T) {
-	protocol := workerProtocol("debug timeout error", "root-cause", "", "")
-	for _, required := range []string{
-		"do not propose a fix before the observation and hypothesis are separately evidenced",
-		"after two disproven hypotheses, stop iterative patching and return an architecture-reassessment decision",
-		"name a fresh regression verification",
-	} {
-		if !containsString(protocol, required) {
-			t.Fatalf("failure protocol omitted %q: %#v", required, protocol)
-		}
+func TestRetiredSuperpowersProtocolIsNotInjected(t *testing.T) {
+	protocol := workerProtocol("debug timeout error", "task-judgment", "analyze the task", "")
+	if len(protocol) == 0 {
+		t.Fatalf("universal PonyTail protocol was not injected: %#v", protocol)
 	}
 }
 

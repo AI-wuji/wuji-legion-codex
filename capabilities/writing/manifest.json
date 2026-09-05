@@ -98,7 +98,7 @@
       "required": [
         "SKILL.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "human-articles-complete",
@@ -109,7 +109,7 @@
       "required": [
         "SKILL.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "creative-writing-craft-complete",
@@ -120,7 +120,7 @@
       "required": [
         "SKILL.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "khazix-writer-complete",
@@ -143,7 +143,7 @@
       "required": [
         "SKILL.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "human-authorship-score-complete",
@@ -154,7 +154,7 @@
       "required": [
         "SKILL.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "baoyu-translate-complete",

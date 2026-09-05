@@ -5,8 +5,9 @@ import (
 	"sync"
 )
 
-// OrchestrationOptions contains only host controls. Workers stay read-only;
-// Aji's merge and write decision remains outside this deterministic adapter.
+// OrchestrationOptions contains only host controls. Execution nodes may receive
+// scoped artifact writes; staff reconciliation and Aji reporting remain outside
+// this deterministic adapter.
 type OrchestrationOptions struct {
 	Dispatch    DispatchOptions
 	MaxParallel int
@@ -18,28 +19,34 @@ type OrchestrationStage struct {
 }
 
 type OrchestrationResult struct {
-	InitialRoute       RouteResult          `json:"initial_route"`
-	ExecutionRoute     RouteResult          `json:"execution_route"`
-	Stages             []OrchestrationStage `json:"stages"`
-	ResultHandles      []string             `json:"result_handles"`
-	FailedWorkers      []string             `json:"failed_workers,omitempty"`
-	AjiMergeRequired   bool                 `json:"aji_merge_required"`
-	CompletionBoundary string               `json:"completion_boundary"`
+	InitialRoute                RouteResult          `json:"initial_route"`
+	ExecutionRoute              RouteResult          `json:"execution_route"`
+	Stages                      []OrchestrationStage `json:"stages"`
+	ResultHandles               []string             `json:"result_handles"`
+	FailedWorkers               []string             `json:"failed_workers,omitempty"`
+	StaffReconciliationRequired bool                 `json:"staff_reconciliation_required"`
+	AjiReportRequired           bool                 `json:"aji_report_required"`
+	// AjiMergeRequired is retained only for JSON compatibility. New consumers
+	// must use StaffReconciliationRequired and AjiReportRequired.
+	AjiMergeRequired   bool   `json:"aji_merge_required,omitempty"`
+	CompletionBoundary string `json:"completion_boundary"`
 }
 
-// OrchestrateRoute prepares verified native-host contracts in dependency order.
-// The Go CLI cannot create Desktop native children, so it never presents an
-// external codex exec process as worker execution. The current Codex host must
-// perform each stage and submit a validated receipt separately.
+// OrchestrateRoute prepares native-host contracts in dependency order. The Go
+// CLI never presents an external codex exec process as worker execution. The
+// General Staff is represented by deterministic state transitions around these
+// stages. It is not a resident child and therefore never blocks dispatch as a
+// separate model invocation.
 func OrchestrateRoute(initial RouteResult, options OrchestrationOptions) (OrchestrationResult, error) {
 	if options.MaxParallel <= 0 {
 		options.MaxParallel = 3
 	}
 	result := OrchestrationResult{
-		InitialRoute:       initial,
-		ExecutionRoute:     initial,
-		AjiMergeRequired:   true,
-		CompletionBoundary: "only the Desktop host may create native workers and submit their receipts; this CLI prepares contracts only. Aji alone inspects, merges, writes, and declares completion",
+		InitialRoute:                initial,
+		ExecutionRoute:              initial,
+		StaffReconciliationRequired: true,
+		AjiReportRequired:           true,
+		CompletionBoundary:          "only the Desktop host may create native execution nodes and submit their receipts; this CLI prepares contracts only. Deterministic General Staff tracks stages and reconciles receipts without accepting completion; execution and independent verification evidence determine completion; Aji returns the final report only",
 	}
 
 	if len(initial.PreflightWorkers) > 0 {

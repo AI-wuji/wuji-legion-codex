@@ -1,4 +1,5 @@
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'sha256.ps1')
 $root = if ($env:WUJI_ROOT) { $env:WUJI_ROOT } else { Split-Path $PSScriptRoot -Parent }
 $wuji = Join-Path $root 'bin\wuji.exe'
 & (Join-Path $root 'scripts\build.ps1')

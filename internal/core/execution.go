@@ -15,6 +15,9 @@ func ValidateWorkerReceiptConsistency(worker WorkerTask, receipt WorkerExecution
 	if err := validateDelegatedModel(worker.Model); err != nil {
 		return err
 	}
+	if err := validateWorkerExecutionPolicy(worker); err != nil {
+		return err
+	}
 	if receipt.SchemaVersion != workerReceiptSchemaVersion {
 		return fmt.Errorf("unsupported worker receipt schema: %d", receipt.SchemaVersion)
 	}
@@ -27,25 +30,23 @@ func ValidateWorkerReceiptConsistency(worker WorkerTask, receipt WorkerExecution
 	if strings.TrimSpace(receipt.HostDispatchID) == "" {
 		return fmt.Errorf("worker receipt lacks a host dispatch identifier")
 	}
-	if worker.Writes || receipt.WriteBoundary != "read-only" {
-		return fmt.Errorf("worker receipt violates Aji-only write authority")
+	expectedWriteBoundary := "read-only"
+	if worker.Writes {
+		expectedWriteBoundary = "scoped-artifact-write"
 	}
-	if len(worker.FallbackModels) != 0 || len(worker.FallbackOn) != 0 || worker.MaxAttempts != 1 || worker.MaxModelSwitches != 0 {
-		return fmt.Errorf("worker receipt violates the single-model no-fallback policy")
+	if receipt.WriteBoundary != expectedWriteBoundary {
+		return fmt.Errorf("worker receipt write boundary does not match execution-node contract")
 	}
-	if len(receipt.Attempts) == 0 || len(receipt.Attempts) > worker.MaxAttempts {
+	maxAvailabilityAttempts := 1 + len(worker.AvailabilityFallbackModels)
+	if len(receipt.Attempts) == 0 || len(receipt.Attempts) > maxAvailabilityAttempts {
 		return fmt.Errorf("worker receipt attempt count exceeds route policy")
 	}
 	if receipt.Attempts[0].Model != worker.Model {
 		return fmt.Errorf("first worker attempt did not use requested model")
 	}
 
-	allowedFallback := make(map[string]bool, len(worker.FallbackModels))
-	for _, model := range worker.FallbackModels {
-		allowedFallback[model] = true
-	}
-	allowedFailure := make(map[string]bool, len(worker.FallbackOn))
-	for _, kind := range worker.FallbackOn {
+	allowedFailure := make(map[string]bool, len(worker.AvailabilityFallbackOn))
+	for _, kind := range worker.AvailabilityFallbackOn {
 		allowedFailure[kind] = true
 	}
 
@@ -65,14 +66,15 @@ func ValidateWorkerReceiptConsistency(worker WorkerTask, receipt WorkerExecution
 		}
 		if index > 0 {
 			previous := receipt.Attempts[index-1]
-			if !allowedFallback[attempt.Model] || previous.GenerationStarted || !allowedFailure[previous.FailureKind] {
+			expectedModel := worker.AvailabilityFallbackModels[index-1]
+			if attempt.Model != expectedModel || previous.GenerationStarted || !allowedFailure[previous.FailureKind] {
 				return fmt.Errorf("attempt %d violates generation-before-fallback policy", index+1)
 			}
 			if attempt.Model != previous.Model {
 				modelSwitches++
 			}
 			if modelStrength(attempt.Model) <= modelStrength(previous.Model) {
-				return fmt.Errorf("attempt %d violates upgrade-only model policy", index+1)
+				return fmt.Errorf("attempt %d violates ordered fallback policy", index+1)
 			}
 		}
 		if index < len(receipt.Attempts)-1 && attempt.FailureKind == "" {
@@ -89,7 +91,7 @@ func ValidateWorkerReceiptConsistency(worker WorkerTask, receipt WorkerExecution
 		totalSources += attempt.SourceExecutionBytes
 		totalContract += attempt.TaskContractBytes
 	}
-	if receipt.ModelSwitchCount != modelSwitches || modelSwitches > worker.MaxModelSwitches {
+	if receipt.ModelSwitchCount != modelSwitches || modelSwitches > len(worker.AvailabilityFallbackModels) {
 		return fmt.Errorf("worker receipt model switch count violates route policy")
 	}
 
@@ -115,18 +117,53 @@ func ValidateWorkerReceiptConsistency(worker WorkerTask, receipt WorkerExecution
 	if receipt.StablePrefixSHA256 != worker.StablePrefixSHA256 || receipt.ContextPayloadSHA256 != worker.ContextPayloadSHA256 || receipt.TaskContractSHA256 != worker.TaskContractSHA256 {
 		return fmt.Errorf("worker receipt payload hashes are inconsistent")
 	}
-	if !receipt.AcceptedByAji {
-		return fmt.Errorf("worker result was not accepted by Aji")
-	}
-	if strings.TrimSpace(receipt.BillingUnit) == "" || receipt.TotalCostMicrounits < 0 || receipt.AjiBaselineMicrounits <= 0 {
+	if strings.TrimSpace(receipt.BillingUnit) == "" || receipt.TotalCostMicrounits < 0 || receipt.ExecutionBaselineMicrounits <= 0 {
 		return fmt.Errorf("worker receipt lacks usable billing evidence")
 	}
-	wantSavings := receipt.AjiBaselineMicrounits - receipt.TotalCostMicrounits
+	wantSavings := receipt.ExecutionBaselineMicrounits - receipt.TotalCostMicrounits
 	if receipt.SavingsMicrounits != wantSavings {
 		return fmt.Errorf("worker receipt savings calculation is inconsistent")
 	}
 	if worker.ModelClass != "sol" && receipt.SavingsMicrounits <= 0 {
-		return fmt.Errorf("delegation did not beat the Aji cost baseline")
+		return fmt.Errorf("delegation did not beat the execution cost baseline")
+	}
+	return nil
+}
+
+// validateWorkerExecutionPolicy keeps model availability selection separate
+// from paid execution retries. The host may inspect at most the two declared
+// availability rungs before generation; after generation, the execution
+// contract has exactly one attempt and no model switch budget.
+func validateWorkerExecutionPolicy(worker WorkerTask) error {
+	if worker.MaxAttempts != 1 || len(worker.FallbackModels) != 0 || len(worker.FallbackOn) != 0 || worker.MaxModelSwitches != 0 {
+		return fmt.Errorf("worker route has an invalid single-execution retry budget")
+	}
+	if len(worker.AvailabilityFallbackModels) > maxAvailabilityFallbacks {
+		return fmt.Errorf("worker availability fallback chain exceeds bound: %d", len(worker.AvailabilityFallbackModels))
+	}
+	if len(worker.AvailabilityFallbackModels) == 0 {
+		if len(worker.AvailabilityFallbackOn) != 0 {
+			return fmt.Errorf("worker availability failure policy has no fallback models")
+		}
+		return nil
+	}
+	if len(worker.AvailabilityFallbackOn) == 0 {
+		return fmt.Errorf("worker availability fallback chain has no failure policy")
+	}
+	seen := map[string]bool{worker.Model: true}
+	for _, model := range worker.AvailabilityFallbackModels {
+		if strings.TrimSpace(model) == "" || seen[model] {
+			return fmt.Errorf("worker availability fallback chain contains an empty or duplicate model")
+		}
+		if err := validateDelegatedModel(model); err != nil {
+			return err
+		}
+		seen[model] = true
+	}
+	for _, failure := range worker.AvailabilityFallbackOn {
+		if failure != "model-unavailable" && failure != "provider-error-before-generation" {
+			return fmt.Errorf("worker availability fallback policy allows non-availability failure %q", failure)
+		}
 	}
 	return nil
 }
@@ -142,10 +179,10 @@ func validateDelegatedModel(model string) error {
 	if !strings.Contains(model, "gpt-") {
 		return nil
 	}
-	if model == "gpt-5.6-sol" || model == "gpt-5.6-luna" {
+	if model == "gpt-5.6-sol" || model == "gpt-5.6-terra" || model == "gpt-5.6-luna" {
 		return nil
 	}
-	return fmt.Errorf("GPT worker model %q is disallowed: use gpt-5.6-sol or gpt-5.6-luna; explicit non-GPT provider choices are unaffected", model)
+	return fmt.Errorf("GPT worker model %q is disallowed: use gpt-5.6-luna, gpt-5.6-terra, or gpt-5.6-sol; explicit non-GPT provider choices are unaffected", model)
 }
 
 func validResultHandle(handle string) bool {

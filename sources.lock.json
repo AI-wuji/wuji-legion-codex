@@ -1,5 +1,5 @@
 {
-    "version":  "2.0",
+    "version":  "2.1",
     "policy":  "Cold sources are pinned evidence packages. They are mounted on demand and never copied into the hot prompt.",
     "toolchains":  [
                        {
@@ -11,9 +11,9 @@
     "office_tools": [
       {
         "id": "officecli",
-        "version": "1.0.136",
-        "url": "https://github.com/iOfficeAI/OfficeCLI/releases/download/v1.0.136/officecli-win-x64.exe",
-        "sha256": "0ba8550bb236a2a23982311a747b22f318d7bd18c1c06a402d96f7642c85fb6a",
+        "version": "1.0.147",
+        "url": "https://github.com/iOfficeAI/OfficeCLI/releases/download/v1.0.147/officecli-win-x64.exe",
+        "sha256": "724056e5ff079c3585df79c8afc386f08ef7d5f956cf4e2723534e129aab6e80",
         "binary": "officecli-win-x64.exe",
         "destination": "${LOCALAPPDATA}/OfficeCLI/officecli.exe",
         "license": "Apache-2.0"
@@ -86,7 +86,7 @@
                         "repo":  "https://github.com/hugohe3/ppt-master",
                         "commit":  "fa3161cf7bb1cb858be0cfe694f8f45d3e87d4eb",
                         "path":  "${WUJI_PROJECTS}/wuji-capability-sources/upstream-snapshots/ppt-master",
-                        "tree_sha256":  "3d3e81fe15186e9e2c546599d77f960fb1899a350121ce1c0eb02b285ead3b65"
+        "tree_sha256":  "0a3c505de2a1c42972b9473d8f1a86264e3ece2ef071a7aa64bf999c1dbef278"
                     },
                     {
                         "id":  "huashu-design",
@@ -121,6 +121,14 @@
                         "commit":  "local",
                         "path":  "${ROOT}/capabilities/presentation/assets/stage-fluid-source",
                         "tree_sha256":  "14c62e2c4cec49d86225b1c8819ff4300b2018896feace9fd3c663761cb308e3"
+                    },
+                    {
+                        "id":  "ayghri-i-have-adhd-action-focus",
+                        "repo":  "https://github.com/ayghri/i-have-adhd",
+                        "commit":  "01ce5c3747f05d27e4565580254f8efebac7e60d",
+                        "path":  "${ROOT}/capabilities/interaction",
+                        "license":  "MIT",
+                        "retention":  "distilled-rules-only"
                     }
                 ]
 }

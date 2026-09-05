@@ -1,0 +1,100 @@
+{
+  "id": "interaction",
+  "description": "Deterministic compiler and route overlay for explicitly activated cross-capability final-response contracts.",
+  "triggers": [
+    "开启专注执行模式",
+    "启用行动专注模式",
+    "enable action focus",
+    "start focused execution",
+    "use i-have-adhd",
+    "恢复正常模式"
+  ],
+  "status": "behavior-verified",
+  "primary_skill": "action-focus",
+  "host_callable": true,
+  "direct_mount": false,
+  "fallback": "normal Aji response behavior",
+  "sources": [
+    {
+      "id": "action-focus-distilled",
+      "priority": "primary",
+      "lifecycle": "callable",
+      "version": "01ce5c3747f05d27e4565580254f8efebac7e60d",
+      "revision": "action-focus-r1",
+      "release_id": "2-1",
+      "license": "MIT",
+      "activation": [
+        "开启专注执行模式",
+        "启用行动专注模式",
+        "enable action focus",
+        "start focused execution",
+        "use i-have-adhd"
+      ],
+      "entrypoint": "skills/action-focus/SKILL.md",
+      "globs": [
+        "${ROOT}/capabilities/interaction"
+      ],
+      "required": [
+        "skills/action-focus/SKILL.md",
+        "references/rules.json",
+        "NOTICE.md"
+      ]
+    }
+  ],
+  "fusion_genome": {
+    "schema_version": 1,
+    "species": "response-rule-fusion",
+    "revision": "action-focus-01ce5c3-r1",
+    "release_id": "2-1",
+    "generation": 1,
+    "parents": [
+      "ayghri-i-have-adhd-01ce5c3"
+    ],
+    "adapters": [
+      {
+        "id": "action-focus-policy",
+        "domain": "response-policy",
+        "source": "action-focus-distilled",
+        "entrypoint": "skills/action-focus/SKILL.md",
+        "source_version": "01ce5c3747f05d27e4565580254f8efebac7e60d",
+        "atom_revision": "action-focus-r1",
+        "release_id": "2-1",
+        "license": "MIT",
+        "asset_contracts": [
+          {
+            "asset_id": "response-rules",
+            "path": "references/rules.json",
+            "compatibility": [
+              "final-writer",
+              "explicit-session"
+            ]
+          },
+          {
+            "asset_id": "upstream-notice",
+            "path": "NOTICE.md",
+            "compatibility": [
+              "provenance"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "probe": {
+    "command": "powershell",
+    "args": [
+      "-NoProfile",
+      "-ExecutionPolicy",
+      "Bypass",
+      "-File",
+      "${ROOT}/scripts/verify-interaction.ps1"
+    ],
+    "fixture": "action-focus-compiler-route-v2",
+    "kind": "behavior",
+    "timeout_seconds": 120,
+    "required_evidence": [
+      "assertions"
+    ],
+    "comparison_evidence": "assertions"
+  }
+}

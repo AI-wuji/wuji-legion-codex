@@ -76,6 +76,17 @@ func TestAuditSourcesSeparatesAutomaticAndColdMaterial(t *testing.T) {
 	}
 }
 
+func TestAuditSourcesSeparatesMissingOptionalMaterial(t *testing.T) {
+	root := t.TempDir()
+	entries := AuditSources([]Manifest{{
+		ID: "audit", Root: root,
+		Sources: []Source{{ID: "optional", Priority: "optional", Globs: []string{"${ROOT}/missing"}, Required: []string{"SKILL.md"}}},
+	}})
+	if len(entries) != 1 || entries[0].State != "optional-unavailable" || entries[0].ExecutionEvidence != "not-applicable" {
+		t.Fatalf("source audit treated missing optional material as a required source: %#v", entries)
+	}
+}
+
 func TestFeishuLinkAutomaticallySelectsOfficialEntrypoint(t *testing.T) {
 	root := t.TempDir()
 	sourceRoot := filepath.Join(root, "feishu")

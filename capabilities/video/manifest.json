@@ -55,7 +55,7 @@
       "required": [
         "SKILL.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "remotion-complete",

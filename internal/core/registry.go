@@ -81,6 +81,9 @@ func ValidateManifest(item Manifest) error {
 	if err := validateExperts(item.Experts); err != nil {
 		return err
 	}
+	if err := validateFusionGenome(item); err != nil {
+		return err
+	}
 	if item.Probe != nil {
 		if strings.TrimSpace(item.Probe.Command) == "" {
 			return fmt.Errorf("probe command is required")
@@ -119,6 +122,52 @@ func ValidateManifest(item Manifest) error {
 		}
 		if !evidenceIDs[item.Probe.ComparisonEvidence] {
 			return fmt.Errorf("probe comparison_evidence must name a required evidence id")
+		}
+	}
+	return nil
+}
+
+func validateFusionGenome(item Manifest) error {
+	genome := item.Genome
+	if genome == nil {
+		return nil
+	}
+	if genome.SchemaVersion != 1 {
+		return fmt.Errorf("fusion genome schema_version must be 1")
+	}
+	if !componentIDPattern.MatchString(strings.TrimSpace(genome.Species)) {
+		return fmt.Errorf("fusion genome species is invalid")
+	}
+	if !componentIDPattern.MatchString(strings.TrimSpace(genome.Revision)) {
+		return fmt.Errorf("fusion genome revision is invalid")
+	}
+	if len(genome.Adapters) == 0 || len(genome.Adapters) > 64 {
+		return fmt.Errorf("fusion genome requires between 1 and 64 adapters")
+	}
+	sources := make(map[string]Source, len(item.Sources))
+	for _, source := range item.Sources {
+		sources[source.ID] = source
+	}
+	adapterIDs := map[string]bool{}
+	for _, adapter := range genome.Adapters {
+		if err := validateComponentID("fusion adapter", adapter.ID, adapterIDs); err != nil {
+			return err
+		}
+		if strings.TrimSpace(adapter.Domain) == "" || len(adapter.Domain) > 128 || strings.ContainsAny(adapter.Domain, "\r\n\t") {
+			return fmt.Errorf("fusion adapter %q domain is invalid", adapter.ID)
+		}
+		source, ok := sources[adapter.Source]
+		if !ok {
+			return fmt.Errorf("fusion adapter %q references unknown source %q", adapter.ID, adapter.Source)
+		}
+		if rank(sourceLifecycle(source)) < rank("callable") {
+			return fmt.Errorf("fusion adapter %q source %q must be callable", adapter.ID, adapter.Source)
+		}
+		if !safeRelativePath(adapter.Entrypoint) || adapter.Entrypoint != source.Entrypoint {
+			return fmt.Errorf("fusion adapter %q must use source %q declared entrypoint", adapter.ID, adapter.Source)
+		}
+		if _, err := fusionAdapterAssets(item.ID, adapter); err != nil {
+			return fmt.Errorf("fusion adapter %q: %w", adapter.ID, err)
 		}
 	}
 	return nil
@@ -214,17 +263,25 @@ func AuditSources(manifests []Manifest) []SourceAuditEntry {
 				Entrypoint: source.Entrypoint,
 			}
 			if _, ok := ResolveCompleteSourceAt(manifest.Root, source); !ok {
-				entry.State = "unavailable"
-				entry.ExecutionMode = "not-executed"
-				entry.ExecutionEvidence = "unavailable"
-				entry.Reason = "required files are unavailable"
+				_, partiallyPresent := ResolveSourceAt(manifest.Root, source)
+				if sourcePriority(source) == "optional" && !partiallyPresent {
+					entry.State = "optional-unavailable"
+					entry.ExecutionMode = "not-executed"
+					entry.ExecutionEvidence = "not-applicable"
+					entry.Reason = "optional cold source is not installed"
+				} else {
+					entry.State = "unavailable"
+					entry.ExecutionMode = "not-executed"
+					entry.ExecutionEvidence = "unavailable"
+					entry.Reason = "required files are unavailable"
+				}
 			} else if source.Entrypoint != "" {
-				if _, _, err := resolveTrustedSourceEntrypoint([]Manifest{manifest}, manifest.ID, source.ID, source.Entrypoint); err != nil {
+				if _, content, err := resolveTrustedSourceEntrypoint([]Manifest{manifest}, manifest.ID, source.ID, source.Entrypoint); err != nil {
 					entry.State = "unavailable"
 					entry.ExecutionMode = "not-executed"
 					entry.ExecutionEvidence = "unavailable"
 					entry.Reason = "entrypoint is not a trusted regular file: " + err.Error()
-				} else if sourceAutomaticallySelected(source) && rank(lifecycle) >= rank("callable") {
+				} else if entry.EntrypointReachable, entry.EntrypointSHA256 = true, sha256Hex(content); sourceAutomaticallySelected(source) && rank(lifecycle) >= rank("callable") {
 					entry.State = "auto-selectable"
 					entry.ExecutionMode = "native-host-entrypoint-contract"
 					entry.ExecutionEvidence = "host-native-agent-or-tool-result-required"

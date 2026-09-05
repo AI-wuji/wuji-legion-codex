@@ -12,28 +12,37 @@ var modelPolicies = map[string]struct {
 	model     string
 	fallbacks []string
 }{
-	"sol":  {model: "gpt-5.6-sol"},
-	"luna": {model: "gpt-5.6-luna"},
+	"luna":  {model: "gpt-5.6-luna", fallbacks: []string{"gpt-5.6-terra", "gpt-5.6-sol"}},
+	"terra": {model: "gpt-5.6-terra", fallbacks: []string{"gpt-5.6-sol"}},
+	"sol":   {model: "gpt-5.6-sol"},
 }
 
-const ajiMainModel = "gpt-5.6-terra"
+const (
+	routeVersion       = "3.0"
+	activeSkillID      = "wuji-legion-codex-3-0"
+	ajiMainModel       = "gpt-5.6-terra"
+	gptHierarchyMode   = "gpt-hierarchy"
+	nonGPTProviderMode = "explicit-non-gpt-provider-mode"
+)
 
 var workerExecutionEvidenceFields = []string{
 	"schema_version", "worker_id", "requested_model", "session_key", "host_dispatch_id", "write_boundary", "attempts", "effective_model", "model_switch_count", "result_handle",
 	"stable_prefix_bytes", "stable_prefix_sha256", "source_execution_bytes", "context_handle_ids", "context_bytes_sent", "context_payload_sha256",
 	"task_contract_bytes", "task_contract_sha256", "delegation_gate_reason",
 	"input_tokens", "cached_input_tokens", "output_tokens", "retry_count",
-	"accepted_by_aji", "attempt_failure_kinds", "cache_domain", "billing_unit",
-	"total_cost_microunits", "aji_baseline_microunits", "savings_microunits",
+	"attempt_failure_kinds", "cache_domain", "billing_unit",
+	"total_cost_microunits", "execution_baseline_microunits", "savings_microunits",
 }
 
 const (
-	maxTaskContractBytes  = 2048
-	maxSharedContextBytes = 4096
-	maxTotalReplayBytes   = 8192
-	minContextCoverageBPS = 6000
-	priorArtMaxSources    = 3
-	priorArtTimeBudgetSec = 90
+	maxTaskContractBytes      = 2048
+	maxSharedContextBytes     = 4096
+	maxTotalReplayBytes       = 8192
+	minContextCoverageBPS     = 6000
+	priorArtMaxSources        = 3
+	priorArtTimeBudgetSec     = 90
+	fullResearchTimeBudgetSec = 900
+	maxAvailabilityFallbacks  = 2
 )
 
 func modelSpec(modelClass string) (string, []string) {
@@ -43,36 +52,130 @@ func modelSpec(modelClass string) (string, []string) {
 	return "", nil
 }
 
-func modelPolicy() ModelPolicy {
+func modelPolicy(userSelectedModel string) ModelPolicy {
+	userSelectedModel = strings.TrimSpace(userSelectedModel)
+	if userSelectedModel != "" && !isGPTModel(userSelectedModel) {
+		return ModelPolicy{
+			RoutingMode:       nonGPTProviderMode,
+			UserSelectedModel: userSelectedModel,
+			MainModel:         userSelectedModel,
+			ClassModels:       map[string]string{},
+			FallbackModels:    map[string][]string{},
+			Delegation:        "the user selected a non-GPT model, so preserve capability/provider mode routing and do not emit GPT hierarchy worker contracts.",
+		}
+	}
 	classes := map[string]string{}
 	fallbacks := map[string][]string{}
 	for class, spec := range modelPolicies {
 		classes[class] = spec.model
 		fallbacks[class] = append([]string(nil), spec.fallbacks...)
 	}
+	mainModel := ajiMainModel
+	mainFallbacks := append([]string(nil), modelPolicies["terra"].fallbacks...)
+	if userSelectedModel != "" {
+		mainModel = userSelectedModel
+		switch strings.ToLower(userSelectedModel) {
+		case "gpt-5.6-terra":
+			mainFallbacks = append([]string(nil), modelPolicies["terra"].fallbacks...)
+		case "gpt-5.6-sol":
+			mainFallbacks = nil
+		}
+	}
 	return ModelPolicy{
-		MainModel:      ajiMainModel,
-		ClassModels:    classes,
-		FallbackModels: fallbacks,
-		Delegation:     "within the GPT 5.6 policy, the host must spawn each route-declared worker with its exact Sol or Luna model and no fallback; Aji on Terra merges and writes only. Explicit non-GPT provider/model choices bypass this GPT worker policy.",
+		RoutingMode:        gptHierarchyMode,
+		UserSelectedModel:  userSelectedModel,
+		MainModel:          mainModel,
+		MainFallbackModels: mainFallbacks,
+		ClassModels:        classes,
+		FallbackModels:     fallbacks,
+		Delegation:         "Aji is the sole user-facing judgment and reporting center; the named General Staff is a deterministic task-state mechanism, and only required execution nodes are created. Aji defaults to Terra and falls back to Sol before generation; task workers retain their declared availability chain and an established session remains sticky.",
 	}
 }
 
+func isGPTModel(model string) bool {
+	model = strings.ToLower(strings.TrimSpace(model))
+	return strings.HasPrefix(model, "gpt-") || strings.HasPrefix(model, "openai/") || strings.HasPrefix(model, "openai:")
+}
+
 func Route(query string, manifests []Manifest) RouteResult {
-	return RouteWithContext(query, manifests, DelegationContext{})
+	return RouteWithContextAndModel(query, manifests, DelegationContext{}, "")
 }
 
 func RouteWithContext(query string, manifests []Manifest, context DelegationContext) RouteResult {
+	return RouteWithContextAndModel(query, manifests, context, "")
+}
+
+func RouteWithModel(query string, manifests []Manifest, userSelectedModel string) RouteResult {
+	return RouteWithContextAndModel(query, manifests, DelegationContext{}, userSelectedModel)
+}
+
+func buildAjiTaskIntent(query string, capability Manifest, secondary []string, officers []string, search SearchFirstPolicy, delegated bool) AjiTaskIntent {
+	complexity := "direct"
+	minimum := "answer or perform the smallest correct action through the selected capability"
+	if isSimpleQuestion(query) {
+		minimum = "answer directly from available context; do not create a worker"
+	} else if search.Required {
+		complexity = "search-first"
+		minimum = "run the bounded source scan, then reroute only if its evidence changes the approach"
+	} else if delegated {
+		complexity = "bounded-delegation"
+		minimum = "create only the execution branches required by the selected capability"
+	}
+	if len(secondary) > 0 || len(officers) > 0 {
+		complexity = "composed"
+	}
+	accepted := []string{"the requested outcome is present", "required verification evidence is available", "no unrequested side effect is introduced"}
+	if capability.ID == "search" || search.Required {
+		accepted = append(accepted, "claims are backed by bounded source evidence")
+	}
+	if len(officers) > 0 {
+		accepted = append(accepted, "independent officer evidence is available before high-risk reporting")
+	}
+	return AjiTaskIntent{
+		Objective:               query,
+		Constraints:             []string{"Aji remains the only user-facing communicator", "General Staff is deterministic state and scheduling, not a model worker", "do not claim completion from child creation or self-reported receipts"},
+		AcceptanceCriteria:      accepted,
+		Complexity:              complexity,
+		MinimumCorrectPath:      minimum,
+		ReuseCandidates:         []string{"existing primary Skill", "installed plugin or MCP", "local template or dependency", "native Codex capability"},
+		SelectedCapabilities:    append([]string{capability.ID}, secondary...),
+		RejectedComplexity:      []string{"resident staff model", "default multi-agent panel", "parallel branches without independent work", "automatic fallback after generation"},
+		Risks:                   []string{"wrong capability selection", "stale or insufficient context", "provider/model unavailable", "unverified completion claim"},
+		EvidenceRequirements:    []string{"native host dispatch identity", "result handle", "task-local verification", "independent verification for high-risk work"},
+		SideEffects:             []string{"workers may write only their scoped artifacts", "routing and evidence state may be updated", "no unrelated workspace changes"},
+		IndependentVerification: len(officers) > 0 || capability.ID == "security" || capability.ID == "code-review",
+	}
+}
+
+func RouteWithContextAndModel(query string, manifests []Manifest, context DelegationContext, userSelectedModel string) RouteResult {
+	return RouteWithContextModelAndResponseState(query, manifests, context, userSelectedModel, false)
+}
+
+// RouteWithContextModelAndResponseState lets the host carry an explicitly
+// activated response policy across turns without turning it into a competing
+// domain capability.
+func RouteWithContextModelAndResponseState(query string, manifests []Manifest, context DelegationContext, userSelectedModel string, responsePolicyActive bool) RouteResult {
 	q := strings.ToLower(strings.TrimSpace(query))
-	policy := modelPolicy()
-	selected := Manifest{ID: "core", Status: "primary", PrimarySkill: "wuji-legion-codex-2-0"}
+	policy := modelPolicy(userSelectedModel)
+	selected := Manifest{ID: "core", Status: "primary", PrimarySkill: activeSkillID}
 	bestScore := 0
 	bestPriority := -1
 	for _, item := range manifests {
+		if item.ID == responsePolicyCapabilityID {
+			continue
+		}
 		score := scoreCapability(q, item)
 		priority := domainPriority(item.ID)
 		if score > bestScore || (score == bestScore && score > 0 && priority > bestPriority) {
 			bestScore, bestPriority, selected = score, priority, item
+		}
+	}
+	if hasExplicitWebResearchIntent(q) && !isOfflineSearchRequest(q) {
+		for _, item := range manifests {
+			if item.ID == "search" && rank(item.Status) >= rank("callable") {
+				selected = item
+				break
+			}
 		}
 	}
 
@@ -80,6 +183,7 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 	engine := selectedEngine.ID
 	mounted := mountSources(q, selected, engine)
 	sourceExecution, sourceErr := BuildSourceExecutionContracts(selected, mounted)
+	assetContracts, assetErr := selectRouteAssets(q, selected, engine)
 	sourceActivationError := ""
 	if sourceErr != nil {
 		// Do not advertise an unreadable source as an active capability. The
@@ -88,8 +192,37 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 		sourceExecution = nil
 		sourceActivationError = sourceErr.Error()
 	}
+	if assetErr != nil {
+		assetContracts = nil
+		sourceActivationError = assetErr.Error()
+	}
+	var responsePolicy *ResponsePolicyContract
+	responsePolicyError := ""
+	if responsePolicyActive || responsePolicyRequested(q) {
+		if interaction, ok := capabilityManifest(manifests, responsePolicyCapabilityID); ok {
+			compiled, err := CompileResponsePolicy(interaction, q, responsePolicyActive)
+			if err != nil {
+				responsePolicyError = err.Error()
+			} else {
+				responsePolicy = compiled
+			}
+		} else {
+			responsePolicyError = "interaction response policy capability is unavailable"
+		}
+	}
+	for _, contract := range assetContracts {
+		sourceExecution = appendSourceExecution(sourceExecution, contract.Invocation)
+	}
 	secondary := secondaryCapabilities(q, selected.ID, manifests)
+	if responsePolicy != nil && !containsString(secondary, responsePolicyCapabilityID) {
+		secondary = append(secondary, responsePolicyCapabilityID)
+		sort.Strings(secondary)
+	}
 	officers := explicitOfficers(q)
+	officerRecommendations := SelectOfficerRecommendations(q)
+	if len(officers) == 0 && hasCompositeOfficerRecommendation(officerRecommendations) {
+		officers = []string{"composite-moe"}
+	}
 	officerWorkers := officerWorkerPlan(q, officers, selected, engine, context)
 	searchFirst, preflightWorkers := searchFirstPlan(q, selected, engine, context)
 	if searchFirst.Required && !containsString(secondary, "search") && selected.ID != "search" {
@@ -97,6 +230,12 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 		sort.Strings(secondary)
 	}
 	workers, delegation := workerPlan(q, selected, engine, context)
+	if policy.RoutingMode == nonGPTProviderMode {
+		preflightWorkers = nil
+		workers = nil
+		officerWorkers = nil
+		delegation = DelegationDecision{Reason: nonGPTProviderMode}
+	}
 	if sourceActivationError != "" {
 		preflightWorkers = nil
 		workers = nil
@@ -105,6 +244,7 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 		delegation.Reason = "selected-source-entrypoint-unavailable"
 	}
 	attachSourceExecution(workers, sourceExecution)
+	attachAssetContracts(workers, selected, engine, assetContracts)
 	// workerPlan may already have declined the fan-out because its original
 	// replay estimate exceeded the hard limit. Do not overwrite that useful
 	// evidence with a misleading zero after it clears the worker slice.
@@ -125,11 +265,21 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 	if rank(selected.Status) < rank("callable") && selected.Fallback != "" {
 		primarySkill = selected.Fallback
 	}
+	executionLane := executionLane(len(preflightWorkers), len(workers))
+	if policy.RoutingMode == nonGPTProviderMode {
+		executionLane = "provider-mode-passthrough"
+	}
+	brain := "aji-terra-with-deterministic-general-staff"
+	if policy.RoutingMode == nonGPTProviderMode {
+		brain = "aji-provider-mode"
+	}
 	return RouteResult{
-		Version:     "2.0",
-		Brain:       "aji-general-staff",
-		MainModel:   policy.MainModel,
-		ModelPolicy: policy,
+		Version:           routeVersion,
+		Brain:             brain,
+		MainModel:         policy.MainModel,
+		GeneralStaffModel: policy.GeneralStaffModel,
+		ModelPolicy:       policy,
+		TaskIntent:        buildAjiTaskIntent(q, selected, secondary, officers, searchFirst, len(workers) > 0),
 		DelegationPolicy: DelegationPolicy{
 			CrossModelCacheAssumed:          false,
 			CacheScope:                      "model-local stable-prefix only",
@@ -140,19 +290,19 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 			RequireCodeExcerpt:              true,
 			RequireContentAnchor:            true,
 			RequireSelfContainedHandoff:     true,
-			FallbackOnlyOnAvailabilityError: false,
-			OnGateFailure:                   "stay on Aji direct route",
+			FallbackOnlyOnAvailabilityError: true,
+			OnGateFailure:                   "return to deterministic General Staff reconciliation",
 		},
 		DelegationDecision: delegation,
 		TaskExecutionPolicy: TaskExecutionPolicy{
 			TaskShape: "small", ModelSelectionTiming: "once-at-task-start", SessionAffinity: "sticky-per-worker",
-			EscalationPolicy: "single-model-no-automatic-fallback", MaxModelSwitches: 0,
+			EscalationPolicy: "availability-only-fallback", MaxModelSwitches: 2,
 			DowngradeAfterGeneration: false, PreflightBeforeExecution: len(preflightWorkers) > 0,
 		},
 		SearchFirstPolicy:       searchFirst,
 		ChangeCapsule:           changeCapsuleGate(q, selected),
 		Reasoning:               "max",
-		WriteAuthority:          "aji-only",
+		WriteAuthority:          "assigned-execution-nodes-only; scoped-artifact-write; staff-and-aji-read-only",
 		Nuwa:                    false,
 		Capability:              selected.ID,
 		CapabilityStatus:        selected.Status,
@@ -164,12 +314,17 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 		SecondaryCapabilities:   secondary,
 		MountedSources:          mounted,
 		SourceExecution:         sourceExecution,
+		ResponsePolicy:          responsePolicy,
+		ResponsePolicyError:     responsePolicyError,
+		AssetContracts:          assetContracts,
 		SourceActivationError:   sourceActivationError,
-		ExecutionLane:           executionLane(len(preflightWorkers), len(workers)),
+		ExecutionLane:           executionLane,
+		GeneralStaffWorker:      nil,
 		Parallel:                parallel,
 		PreflightWorkers:        preflightWorkers,
 		Workers:                 workers,
 		Officers:                officers,
+		OfficerRecommendations:  officerRecommendations,
 		OfficerWorkers:          officerWorkers,
 		InternalAdversarialPass: len(officers) == 0 && needsInternalChallenge(q),
 		FinishLine: []string{
@@ -180,6 +335,50 @@ func RouteWithContext(query string, manifests []Manifest, context DelegationCont
 			"do not claim a worker branch completed without its execution evidence receipt",
 			"do not claim an officer executed without a validated officer receipt",
 		},
+	}
+}
+
+// selectRouteAssets binds presentation delivery engines to one trustworthy
+// adapter asset. Other capabilities remain compatible with manifests that do
+// not yet declare a fusion genome.
+func selectRouteAssets(query string, capability Manifest, engine string) ([]AssetInvocationContract, error) {
+	if capability.ID != "presentation" || capability.Genome == nil {
+		return nil, nil
+	}
+	compatibility := []string{engine, "default"}
+	if engine == "web-deck" && containsAny(query, "stage fluid", "stage-fluid", "流体背景", "烟雾背景") {
+		compatibility = []string{engine, "stage-fluid"}
+	}
+	contract, err := SelectFusionAsset([]Manifest{capability}, AssetSelectionRequest{
+		Capability:    capability.ID,
+		Domain:        engine,
+		Compatibility: compatibility,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return []AssetInvocationContract{contract}, nil
+}
+
+func appendSourceExecution(existing []SourceExecutionContract, candidate SourceExecutionContract) []SourceExecutionContract {
+	for _, contract := range existing {
+		if contract.SourceID == candidate.SourceID && contract.Entrypoint == candidate.Entrypoint {
+			return existing
+		}
+	}
+	return append(existing, candidate)
+}
+
+func attachAssetContracts(workers []WorkerTask, capability Manifest, engine string, contracts []AssetInvocationContract) {
+	if len(contracts) == 0 {
+		return
+	}
+	prefix := stableCapabilityPrefix(capability, engine, contracts...)
+	for index := range workers {
+		workers[index].AssetContracts = append([]AssetInvocationContract(nil), contracts...)
+		workers[index].StableCapabilityPrefix = prefix
+		workers[index].StablePrefixSHA256 = sha256Hex([]byte(prefix))
+		workers[index].StablePrefixBytes = len([]byte(prefix))
 	}
 }
 
@@ -197,6 +396,9 @@ func attachSourceExecution(workers []WorkerTask, contracts []SourceExecutionCont
 }
 
 func changeCapsuleGate(query string, capability Manifest) ChangeCapsuleGate {
+	if containsAny(query, "external skill", "from github", "from http") && containsAny(query, "install", "fuse", "integrate") {
+		return ChangeCapsuleGate{Required: true, Strict: true, Reason: "external-capability-admission"}
+	}
 	if capability.ID != "code" && capability.ID != "evolution" && capability.ID != "security" && capability.ID != "context" {
 		return ChangeCapsuleGate{}
 	}
@@ -215,14 +417,26 @@ func officerWorkerPlan(query string, officers []string, capability Manifest, eng
 	workers := make([]WorkerTask, 0, len(officers))
 	for _, officer := range officers {
 		purpose := "independent read-only adversarial review; identify unsupported assumptions, failure modes, and missing verification"
+		if officer == "composite-moe" {
+			purpose = "one independent composite-MoE quality inspection; verify requirement coverage, execution evidence, failure modes, and governance risk in a single review"
+		}
 		worker := newWorkerTask(query, "officer-"+officer, purpose, "sol", model, fallbacks,
 			[]string{"task contract", "selected evidence handles", "implementation under review"}, contextMode(context), context,
-			"explicit independent officer requested", prefix)
+			"explicit independent officer requested", prefix, false)
 		worker.Stage = "officer"
 		worker.Writes = false
 		workers = append(workers, worker)
 	}
 	return workers
+}
+
+func hasCompositeOfficerRecommendation(recommendations []OfficerRecommendation) bool {
+	for _, recommendation := range recommendations {
+		if recommendation.Role == "composite-moe-officer" && strings.HasPrefix(recommendation.Decision, "independent-composite-quality-inspection") {
+			return true
+		}
+	}
+	return false
 }
 
 func executionLane(preflightCount, workerCount int) string {
@@ -232,7 +446,7 @@ func executionLane(preflightCount, workerCount int) string {
 	if workerCount > 0 {
 		return "bounded-delegation"
 	}
-	return "small-task-direct"
+	return "direct"
 }
 
 func searchFirstPlan(query string, capability Manifest, engine string, context DelegationContext) (SearchFirstPolicy, []WorkerTask) {
@@ -250,7 +464,7 @@ func searchFirstPlan(query string, capability Manifest, engine string, context D
 	model, fallbacks := modelSpec("luna")
 	searchCapability := Manifest{ID: "search", PrimarySkill: "wuji-research-suite"}
 	prefix := stableCapabilityPrefix(searchCapability, "web-research")
-	worker := newWorkerTask(query, "prior-art", "find an existing solution before local reasoning; official sources first, then GitHub, then community", "luna", model, fallbacks, []string{"query", "technology names", "error signature"}, "task-contract-only", context, policy.Reason, prefix)
+	worker := newWorkerTask(query, "prior-art", "find an existing solution before local reasoning; official sources first, then GitHub, then community", "luna", model, fallbacks, []string{"query", "technology names", "error signature"}, "task-contract-only", context, policy.Reason, prefix, false)
 	worker.Stage = "preflight"
 	worker.MaxSources = policy.MaxSources
 	worker.TimeBudgetSeconds = policy.TimeBudgetSeconds
@@ -599,9 +813,19 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 		decision.Reason = "task-contract-only-research"
 		prefix := stableCapabilityPrefix(capability, engine)
 		workers := []WorkerTask{
-			newWorkerTask(query, "official", "official documentation and primary sources", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, prefix),
-			newWorkerTask(query, "github", "repositories, releases, issues, and implementation evidence", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, prefix),
-			newWorkerTask(query, "community", "independent reports and failure evidence", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, prefix),
+			newWorkerTask(query, "official", "official documentation and primary sources", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, prefix, false),
+			newWorkerTask(query, "github", "repositories, releases, issues, and implementation evidence", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, prefix, false),
+			newWorkerTask(query, "community", "independent reports and failure evidence", "luna", model, fallbacks, []string{"query", "source boundary"}, "task-contract-only", context, decision.Reason, prefix, false),
+		}
+		if hasExplicitWebResearchIntent(query) {
+			for index := range workers {
+				workers[index].TimeBudgetSeconds = fullResearchTimeBudgetSec
+				workers[index].StopConditions = []string{
+					"the requested scope has evidence coverage across the assigned source class",
+					"two successive relevant sources add no material claim or contradiction",
+					"the time budget is exhausted",
+				}
+			}
 		}
 		return finalizeWorkerPlan(workers, decision)
 	}
@@ -610,7 +834,7 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 		decision.Reason = "bounded-mechanical-task"
 		prefix := stableCapabilityPrefix(capability, engine)
 		workers := []WorkerTask{
-			newWorkerTask(query, "mechanical", "bounded read-only extraction, inventory, counting, or log parsing", "luna", model, fallbacks, []string{"task contract", "workspace tools"}, "task-contract-only", context, decision.Reason, prefix),
+			newWorkerTask(query, "mechanical", "bounded read-only extraction, inventory, counting, or log parsing", "luna", model, fallbacks, []string{"task contract", "workspace tools"}, "task-contract-only", context, decision.Reason, prefix, false),
 		}
 		return finalizeWorkerPlan(workers, decision)
 	}
@@ -619,24 +843,13 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 		return nil, decision
 	}
 	forceParallel := containsAny(query, "并行", "parallel")
-	if isFailureTask(query) {
-		decision.Reason = "systematic-failure-analysis"
-		prefix := stableCapabilityPrefix(capability, engine)
-		sol, solFallbacks := modelSpec("sol")
-		luna, lunaFallbacks := modelSpec("luna")
-		workers := []WorkerTask{
-			newWorkerTask(query, "root-cause", "reproduce, narrow, form falsifiable hypotheses, and identify the smallest evidence-backed root cause; return fix options and regression criteria", "sol", sol, solFallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, decision.Reason, prefix),
-			newWorkerTask(query, "failure-evidence", "mechanically collect the smallest reproducible evidence set: affected files, exact error signatures, relevant tests, and existing verification commands", "luna", luna, lunaFallbacks, []string{"task contract", "workspace tools"}, "task-contract-only", DelegationContext{}, decision.Reason, prefix),
-		}
-		return finalizeWorkerPlan(workers, decision)
-	}
 	if capability.ID == "code-review" {
 		decision.Reason = "two-axis-code-review"
 		prefix := stableCapabilityPrefix(capability, engine)
 		model, fallbacks := modelSpec("sol")
 		workers := []WorkerTask{
-			newWorkerTask(query, "spec-conformance", "review only whether the change satisfies the stated behavior, acceptance scenarios, and edge cases; return line-anchored findings", "sol", model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, decision.Reason, prefix),
-			newWorkerTask(query, "engineering-quality", "review only correctness, maintainability, security, performance, error recovery, and verification gaps; return line-anchored findings", "sol", model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, decision.Reason, prefix),
+			newWorkerTask(query, "spec-conformance", "review only whether the change satisfies the stated behavior, acceptance scenarios, and edge cases; return line-anchored findings", "sol", model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, decision.Reason, prefix, false),
+			newWorkerTask(query, "engineering-quality", "review only correctness, maintainability, security, performance, error recovery, and verification gaps; return line-anchored findings", "sol", model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, decision.Reason, prefix, false),
 		}
 		return finalizeWorkerPlan(workers, decision)
 	}
@@ -645,15 +858,17 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 		decision.Reason = "explicit-high-reasoning-judgment"
 		prefix := stableCapabilityPrefix(capability, engine)
 		workers := []WorkerTask{
-			newWorkerTask(query, "sol-judgment", "bounded independent high-reasoning judgment; return options, evidence, and risks for Aji on Terra to merge", "sol", model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, decision.Reason, prefix),
+			newWorkerTask(query, "sol-judgment", "bounded independent high-reasoning judgment; return options, evidence, and risks for General Staff reconciliation", "sol", model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, decision.Reason, prefix, false),
 		}
 		return finalizeWorkerPlan(workers, decision)
 	}
-	// Every non-conversational task receives a bounded, read-only reasoning
-	// branch.  Aji still writes and merges, but routing is now the default for
-	// tasks rather than an opt-in reserved for code changes.
+	// Every non-conversational task receives a bounded reasoning branch. Routing
+	// is the default for tasks rather than an opt-in reserved for code changes.
 	if !forceParallel && capability.ID != "code" {
 		decision.Reason = "default-task-reasoning"
+		if isArtifactMutationTask(query) {
+			return taskExecutionPlan(query, capability, engine, decision, context)
+		}
 		return taskJudgmentPlan(query, capability, engine, decision)
 	}
 	if capability.ID == "code" {
@@ -690,7 +905,7 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 			if contextMode(context) == "task-contract-only" {
 				reason = "self-contained-task-contract"
 			}
-			workers = append(workers, newWorkerTask(query, expert.ID, expert.Purpose, expert.ModelClass, model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, reason, prefix))
+			workers = append(workers, newWorkerTask(query, expert.ID, expert.Purpose, expert.ModelClass, model, fallbacks, []string{"task contract", "selected context payload"}, contextMode(context), context, reason, prefix, isArtifactMutationTask(query)))
 		}
 	}
 	if len(workers) == 0 {
@@ -706,10 +921,25 @@ func workerPlan(query string, capability Manifest, engine string, context Delega
 // but gives Sol only the self-contained user contract rather than leaking a
 // stale or incomplete context capsule.
 func taskJudgmentPlan(query string, capability Manifest, engine string, decision DelegationDecision) ([]WorkerTask, DelegationDecision) {
-	model, fallbacks := modelSpec("sol")
+	decision.FallbackAllowed = true
+	model, fallbacks := modelSpec("terra")
 	prefix := stableCapabilityPrefix(capability, engine)
 	workers := []WorkerTask{
-		newWorkerTask(query, "task-judgment", "bounded independent task analysis; return an actionable approach, evidence needs, risks, and verification criteria for Aji to execute", "sol", model, fallbacks, []string{"task contract"}, "task-contract-only", DelegationContext{}, decision.Reason, prefix),
+		newWorkerTask(query, "task-judgment", "bounded task analysis; return an actionable approach, evidence needs, risks, and verification criteria for an assigned execution node", "terra", model, fallbacks, []string{"task contract"}, "task-contract-only", DelegationContext{}, decision.Reason, prefix, false),
+	}
+	return finalizeWorkerPlan(workers, decision)
+}
+
+func taskExecutionPlan(query string, capability Manifest, engine string, decision DelegationDecision, context DelegationContext) ([]WorkerTask, DelegationDecision) {
+	model, fallbacks := modelSpec("terra")
+	prefix := stableCapabilityPrefix(capability, engine)
+	mode := contextMode(context)
+	if !validContextHandoff(context) {
+		mode = "task-contract-only"
+		context = DelegationContext{}
+	}
+	workers := []WorkerTask{
+		newWorkerTask(query, "task-execution", "produce or modify the requested task artifact within the assigned scope and return task-local verification evidence", "terra", model, fallbacks, []string{"task contract", "selected context payload when available"}, mode, context, decision.Reason, prefix, true),
 	}
 	return finalizeWorkerPlan(workers, decision)
 }
@@ -737,7 +967,8 @@ func finalizeWorkerPlan(workers []WorkerTask, decision DelegationDecision) ([]Wo
 		decision.Reason = "estimated-context-replay-exceeds-total-budget"
 		return nil, decision
 	}
-	decision.Allowed = true
+	decision.Allowed = !decision.FallbackAllowed
+	decision.ImplementationAllowed = decision.Allowed
 	return workers, decision
 }
 
@@ -763,7 +994,7 @@ func contextMode(context DelegationContext) string {
 	return "task-contract-only"
 }
 
-func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inputs []string, mode string, context DelegationContext, reason, stablePrefix string) WorkerTask {
+func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inputs []string, mode string, context DelegationContext, reason, stablePrefix string, writes bool) WorkerTask {
 	handles := []string{}
 	artifact := ""
 	payload := ""
@@ -778,16 +1009,10 @@ func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inpu
 	}
 	sessionKey := taskSessionKey(query, id, context.Handle)
 	protocol := workerProtocol(query, id, purpose, stablePrefix)
-	contract := marshalWorkerContract(query, id, purpose, handles, sessionKey, protocol)
-	maxModelSwitches := 0
+	contract := marshalWorkerContract(query, id, purpose, handles, sessionKey, protocol, writes)
+	availabilityFallbackOn := []string{}
 	if len(fallbacks) > 0 {
-		maxModelSwitches = 1
-	}
-	maxAttempts := 1
-	fallbackOn := []string{}
-	if len(fallbacks) > 0 {
-		maxAttempts = 2
-		fallbackOn = []string{"model-unavailable", "provider-error-before-generation"}
+		availabilityFallbackOn = []string{"model-unavailable", "provider-error-before-generation"}
 	}
 	return WorkerTask{
 		ID:                         id,
@@ -795,11 +1020,13 @@ func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inpu
 		Purpose:                    purpose,
 		ModelClass:                 modelClass,
 		Model:                      model,
-		FallbackModels:             append([]string(nil), fallbacks...),
+		AvailabilityFallbackModels: append([]string(nil), fallbacks...),
+		AvailabilityFallbackOn:     availabilityFallbackOn,
+		FallbackModels:             nil,
 		SessionKey:                 sessionKey,
 		SessionAffinity:            "sticky-per-worker",
-		EscalationPolicy:           "single-model-no-automatic-fallback",
-		MaxModelSwitches:           maxModelSwitches,
+		EscalationPolicy:           "availability-only-fallback",
+		MaxModelSwitches:           0,
 		Inputs:                     append([]string(nil), inputs...),
 		Protocol:                   append([]string(nil), protocol...),
 		TaskContract:               contract,
@@ -817,28 +1044,30 @@ func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inpu
 		AllocatedTaskContractBytes: len([]byte(contract)),
 		MaxTaskContractBytes:       maxTaskContractBytes,
 		DelegationGateReason:       reason,
-		MaxAttempts:                maxAttempts,
-		FallbackOn:                 fallbackOn,
-		Writes:                     false,
+		MaxAttempts:                1,
+		FallbackOn:                 nil,
+		Writes:                     writes,
 		ExecutionEvidenceRequired:  true,
 		ExecutionEvidenceFields:    append([]string(nil), workerExecutionEvidenceFields...),
 	}
 }
 
-func stableCapabilityPrefix(capability Manifest, engine string) string {
+func stableCapabilityPrefix(capability Manifest, engine string, assets ...AssetInvocationContract) string {
 	prefix := struct {
-		Schema                 string `json:"schema"`
-		Capability             string `json:"capability"`
-		PrimarySkill           string `json:"primary_skill"`
-		Engine                 string `json:"engine,omitempty"`
-		ImplementationDoctrine string `json:"implementation_doctrine,omitempty"`
-		WriteOwner             string `json:"write_owner"`
+		Schema                 string                    `json:"schema"`
+		Capability             string                    `json:"capability"`
+		PrimarySkill           string                    `json:"primary_skill"`
+		Engine                 string                    `json:"engine,omitempty"`
+		ImplementationDoctrine string                    `json:"implementation_doctrine,omitempty"`
+		AssetContracts         []AssetInvocationContract `json:"asset_contracts,omitempty"`
+		WriteOwner             string                    `json:"write_owner"`
 	}{
 		Schema: "wuji-stable-capability-prefix-v1", Capability: capability.ID,
-		PrimarySkill: primarySkillForEngine(capability, engine), Engine: engine, WriteOwner: "aji-only",
+		PrimarySkill: primarySkillForEngine(capability, engine), Engine: engine, WriteOwner: "assigned-execution-node-scoped",
 	}
-	if capability.ID == "code" {
-		prefix.ImplementationDoctrine = "ponytail-v2: structured-code-worker-protocol"
+	prefix.ImplementationDoctrine = "ponytail-v3: universal-minimum-correct-task-judgment"
+	if len(assets) > 0 {
+		prefix.AssetContracts = append([]AssetInvocationContract(nil), assets...)
 	}
 	encoded, _ := json.Marshal(prefix)
 	return string(encoded)
@@ -863,18 +1092,26 @@ type workerContract struct {
 	Protocol      []string `json:"protocol,omitempty"`
 	ContextHandle string   `json:"context_handle,omitempty"`
 	SessionKey    string   `json:"session_key"`
+	WriteBoundary string   `json:"write_boundary"`
 }
 
-func marshalWorkerContract(query, id, purpose string, handles []string, sessionKey string, protocol []string) string {
+func marshalWorkerContract(query, id, purpose string, handles []string, sessionKey string, protocol []string, writes bool) string {
+	writeBoundary := "read-only"
+	boundaries := []string{"only assigned execution nodes may perform task work", "do not infer missing parent conversation", "return execution and verification evidence, not a completion claim"}
+	if writes {
+		writeBoundary = "scoped-artifact-write"
+		boundaries = append(boundaries, "write only task-scoped artifacts inside the current workspace; do not modify scheduling or requirement state")
+	}
 	contract := workerContract{
-		Schema:     "wuji-worker-contract-v2",
-		Objective:  strings.TrimSpace(query),
-		Branch:     id,
-		Purpose:    purpose,
-		Boundaries: []string{"Aji is the only merger and writer", "do not infer missing parent conversation", "return evidence, not a completion claim"},
-		Acceptance: []string{"complete only the named branch", "cite the supplied context handle when used", "report model and token telemetry"},
-		Protocol:   append([]string(nil), protocol...),
-		SessionKey: sessionKey,
+		Schema:        "wuji-worker-contract-v2",
+		Objective:     strings.TrimSpace(query),
+		Branch:        id,
+		Purpose:       purpose,
+		Boundaries:    boundaries,
+		Acceptance:    []string{"complete only the named branch", "cite the supplied context handle when used", "report model and token telemetry"},
+		Protocol:      append([]string(nil), protocol...),
+		SessionKey:    sessionKey,
+		WriteBoundary: writeBoundary,
 	}
 	if len(handles) > 0 {
 		contract.ContextHandle = handles[0]
@@ -885,10 +1122,12 @@ func marshalWorkerContract(query, id, purpose string, handles []string, sessionK
 
 func workerProtocol(query, id, purpose, stablePrefix string) []string {
 	value := strings.ToLower(query + " " + id + " " + purpose)
-	protocol := []string{}
-	failureTask := isFailureTask(query) || id == "root-cause" || id == "failure-evidence"
-	if failureTask {
-		protocol = append(protocol, "reproduce or state why reproduction is unavailable", "minimize the failing surface", "separate observations from hypotheses", "do not propose a fix before the observation and hypothesis are separately evidenced", "test the smallest falsifiable hypothesis", "after two disproven hypotheses, stop iterative patching and return an architecture-reassessment decision", "tie each proposed fix to evidence", "name a fresh regression verification")
+	protocol := []string{
+		"first decide whether this needs action, a direct answer, or no action",
+		"reuse the existing Skill, plugin, MCP, template, dependency, native tool, or local artifact before inventing anything",
+		"choose the smallest correct path that satisfies the stated objective and acceptance criteria",
+		"keep scope bounded; reject incorrect premises and unrequested complexity",
+		"state the concrete completion evidence and side effects required before reporting success",
 	}
 	if strings.Contains(value, "review") || strings.Contains(value, "审查") || strings.Contains(value, "评审") {
 		protocol = append(protocol, "separate specification conformance from engineering quality", "anchor findings to concrete files, symbols, or evidence", "rank findings by user impact and likelihood", "do not report stylistic preference as a defect")
@@ -914,7 +1153,7 @@ func hasPonytailCodeDoctrine(stablePrefix string) bool {
 	if json.Unmarshal([]byte(stablePrefix), &prefix) != nil {
 		return false
 	}
-	return prefix.Capability == "code" && strings.HasPrefix(prefix.ImplementationDoctrine, "ponytail-v2:")
+	return strings.HasPrefix(prefix.ImplementationDoctrine, "ponytail-v3:")
 }
 
 func taskSessionKey(query, workerID, contextHandle string) string {
@@ -933,8 +1172,22 @@ func isBroadSearch(query string) bool {
 	return containsAny(query, "全网", "搜索", "检索", "调研", "research", "search the web", "github上看看")
 }
 
+func hasExplicitWebResearchIntent(query string) bool {
+	return containsAny(query,
+		"全网", "联网搜索", "联网调研", "搜遍全网", "全面调研",
+		"search the web", "research the web", "web research", "browse the web", "look up online",
+	)
+}
+
+func isOfflineSearchRequest(query string) bool {
+	return containsAny(query, "不要联网", "不要搜索", "do not search", "offline only")
+}
+
 func needsPriorArtSearch(query, capabilityID, engine string) bool {
-	if capabilityID == "search" || engine == "web-research" || containsAny(query, "不要联网", "不要搜索", "do not search", "offline only") {
+	if capabilityID == "search" || engine == "web-research" || hasExplicitWebResearchIntent(query) || isOfflineSearchRequest(query) {
+		return false
+	}
+	if isLocalExactSkillLookup(query) {
 		return false
 	}
 	if isDeterministicEdit(query) {
@@ -958,11 +1211,21 @@ func isDeterministicEdit(query string) bool {
 	)
 }
 
+func isArtifactMutationTask(query string) bool {
+	return containsAny(query,
+		"做", "创建", "制作", "生成", "写入", "编写", "修改", "编辑", "修复", "实现", "重构", "更新", "删除", "替换", "迁移", "安装", "优化",
+		"make", "produce", "create", "build", "generate", "write", "edit", "modify", "change", "fix", "implement", "refactor", "update", "delete", "replace", "migrate", "install", "optimize",
+	)
+}
+
 func isMechanicalTask(query string) bool {
 	if containsAny(query, "修改", "修复", "实现", "重构", "写入", "删除", "change", "fix", "implement", "refactor", "write", "delete") {
 		return false
 	}
 	value := strings.ToLower(query)
+	if isLocalExactSkillLookup(value) {
+		return true
+	}
 	if strings.Contains(value, "list") && containsAny(value, "file", "path", "directory") {
 		return true
 	}
@@ -970,6 +1233,12 @@ func isMechanicalTask(query string) bool {
 		"列出文件", "文件清单", "统计数量", "统计行数", "提取日志", "解析日志", "查找所有", "扫描所有", "汇总日志",
 		"list files", "inventory files", "count lines", "count occurrences", "extract logs", "parse logs", "find all", "scan all", "summarize logs",
 	)
+}
+
+func isLocalExactSkillLookup(query string) bool {
+	value := strings.ToLower(strings.TrimSpace(query))
+	return containsAny(value, "find the skill named", "locate the skill named", "find local skill named", "locate local skill named") &&
+		!containsAny(value, "install", "add", "fuse", "integrate", "from github", "from http", "external")
 }
 
 // isSimpleQuestion deliberately keeps only lightweight conversational Q&A on
@@ -999,13 +1268,6 @@ func needsSolJudgment(query string) bool {
 	)
 }
 
-func isFailureTask(query string) bool {
-	return containsAny(query,
-		"bug", "error", "exception", "crash", "failure", "debug", "root cause", "timeout", "regression",
-		"报错", "错误", "异常", "崩溃", "失败", "调试", "根因", "超时", "回归问题",
-	)
-}
-
 func requiresParentContext(query string) bool {
 	return containsAny(query,
 		"preceding", "previous conversation", "above context", "earlier context", "parent transcript", "chat history",
@@ -1017,7 +1279,7 @@ func explicitOfficers(query string) []string {
 	mapTerms := []struct{ term, id string }{
 		{"白帽", "white-hat"}, {"white-hat", "white-hat"}, {"根因官", "root-cause-officer"},
 		{"根因雷达官", "root-cause-officer"}, {"审计官", "audit"}, {"质检官", "quality-inspection"},
-		{"所有独立官", "all-independent-officers"}, {"全体独立官", "all-independent-officers"},
+		{"所有独立官", "composite-moe"}, {"全体独立官", "composite-moe"},
 	}
 	seen := map[string]bool{}
 	result := []string{}

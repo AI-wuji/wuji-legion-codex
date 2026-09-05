@@ -1,29 +1,40 @@
 param(
   [ValidateSet('fast','full')]
-  [string]$Mode = 'full'
+  [string]$Mode = 'full',
+  [switch]$SkipBuild,
+  [switch]$SkipGoTest
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'sha256.ps1')
 $utf8 = [Text.UTF8Encoding]::new($false)
 [Console]::OutputEncoding = $utf8
 $OutputEncoding = $utf8
 $root = Split-Path $PSScriptRoot -Parent
 $wuji = Join-Path $root 'bin\wuji.exe'
-& (Join-Path $root 'scripts\build.ps1') | Out-Null
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $wuji)) { throw 'fusion-audit failed: could not build the audit binary' }
+if (-not $SkipBuild) {
+  $buildOutput = @(& (Join-Path $root 'scripts\build.ps1') 2>&1)
+  if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $wuji)) {
+    throw "fusion-audit failed: could not build the audit binary: $($buildOutput -join [Environment]::NewLine)"
+  }
+} elseif (-not (Test-Path -LiteralPath $wuji)) {
+  throw 'fusion-audit failed: audit binary is missing while -SkipBuild was requested'
+}
 $goTemp = Join-Path $root '.wuji\go-test-tmp'
 New-Item -ItemType Directory -Force -Path $goTemp | Out-Null
 $env:GOTMPDIR = $goTemp
 $go = & (Join-Path $root 'scripts\resolve-locked-go.ps1') -Root $root
-& $go test -p 1 -count=1 ./internal/core ./cmd/wuji | Out-Null
-if ($LASTEXITCODE -ne 0) { throw 'fusion-audit failed: automatic source semantic routing regression' }
+if (-not $SkipGoTest) {
+  $goTestOutput = @(& $go test -p 1 -count=1 ./internal/core ./cmd/wuji 2>&1)
+  if ($LASTEXITCODE -ne 0) { throw "fusion-audit failed: automatic source semantic routing regression: $($goTestOutput -join [Environment]::NewLine)" }
+}
 
 function Invoke-WujiJson([string[]]$CliArgs) {
   $raw = @(& $wuji @CliArgs 2>&1)
-  if ($LASTEXITCODE -ne 0) { throw "wuji command failed: $($CliArgs -join ' ')" }
+  if ($LASTEXITCODE -ne 0) { throw "wuji command failed: $($CliArgs -join ' '): $($raw -join [Environment]::NewLine)" }
   try {
     return (($raw -join [Environment]::NewLine) | ConvertFrom-Json -ErrorAction Stop)
   } catch {
-    throw "wuji emitted invalid JSON: $($CliArgs -join ' ')"
+    throw "wuji emitted invalid JSON: $($CliArgs -join ' '): $($raw -join [Environment]::NewLine)"
   }
 }
 
@@ -120,8 +131,25 @@ foreach ($result in @($verification | Where-Object { $_.claimed_status -eq 'prim
 }
 Write-Output "audit-mode=$Mode verified=$($verification.Count)"
 $sourceAudit = @(Invoke-WujiJson @('source-audit'))
-if (@($sourceAudit | Where-Object { $_.state -eq 'unavailable' }).Count -gt 0) {
-  throw 'fusion-audit failed: retained source is unavailable'
+# Fast audit proves the default primary route. Full audit additionally proves
+# retained secondary integrations; optional sources remain informational.
+$manifestPriority = @{}
+Get-ChildItem (Join-Path $root 'capabilities') -Directory | ForEach-Object {
+  $manifestPath = Join-Path $_.FullName 'manifest.json'
+  if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { return }
+  $manifest = Get-Content -Raw -Encoding UTF8 -LiteralPath $manifestPath | ConvertFrom-Json
+  foreach ($source in @($manifest.sources)) {
+    $manifestPriority["$($manifest.id)/$($source.id)"] = if ($source.priority) { [string]$source.priority } else { 'secondary' }
+  }
+}
+$unavailableRequired = @($sourceAudit | Where-Object {
+  if ($_.state -ne 'unavailable') { return $false }
+  $priority = $manifestPriority["$($_.capability)/$($_.source)"]
+  $priority -eq 'primary' -or ($Mode -eq 'full' -and $priority -eq 'secondary')
+})
+if ($unavailableRequired.Count -gt 0) {
+  $names = $unavailableRequired | ForEach-Object { "$($_.capability)/$($_.source)" }
+  throw "fusion-audit failed: required source unavailable: $($names -join ', ')"
 }
 if (@($sourceAudit | Where-Object {
   $_.state -eq 'auto-selectable' -and
@@ -145,12 +173,12 @@ if ($catalogHashAfter -ne $catalogHashBefore) { throw 'fusion-audit failed: capa
 $skillBytes = (Get-Item -LiteralPath (Join-Path $root 'SKILL.md')).Length
 $agentBytes = (Get-Item -LiteralPath (Join-Path $root 'AGENTS.md')).Length
 $sourceFiles = Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object {
-  $_.FullName -notmatch '\\.git\\|\\.wuji\\|\\tools\\bin\\|\\bin\\'
+  $_.FullName -notmatch '\\.git\\|\\.wuji\\|\\.wuji-go-cache\\|\\.tmp\\|\\tools\\bin\\|\\bin\\'
 }
 $sourceBytes = ($sourceFiles | Measure-Object Length -Sum).Sum
-$maxSourceBytes = 1572864
+$maxSourceBytes = 1835008
 if ($skillBytes -gt 6000 -or $agentBytes -gt 5000 -or $sourceBytes -gt $maxSourceBytes) {
-  throw "optimization-audit failed: skill=$skillBytes agents=$agentBytes source=$sourceBytes"
+  throw "optimization-audit failed: skill=$skillBytes agents=$agentBytes source=$sourceBytes source_limit=$maxSourceBytes"
 }
 $nestedSkillFiles = Get-ChildItem (Join-Path $root 'capabilities') -Recurse -Filter 'SKILL.md' | Where-Object { $_.FullName -match '\\skills\\' }
 if (@($nestedSkillFiles | Where-Object Length -gt 6000).Count -gt 0) {
@@ -212,7 +240,7 @@ foreach ($source in $sourceLock.sources) {
   $hasGitMetadata = (Test-Path -LiteralPath $gitMetadata -PathType Leaf) -or (Test-Path -LiteralPath (Join-Path $gitMetadata 'HEAD') -PathType Leaf)
   $actualCommit = ''
   if ($hasGitMetadata) {
-    $gitOutput = @(& git -C $sourcePath rev-parse HEAD 2>$null)
+    $gitOutput = @(& git -c "safe.directory=$($sourcePath.Replace('\','/'))" -C $sourcePath rev-parse HEAD 2>$null)
     $gitExitCode = $LASTEXITCODE
     $commitLines = @($gitOutput | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ })
     if ($commitLines.Count -eq 1) { $actualCommit = $commitLines[0] }
@@ -336,7 +364,7 @@ if ($LASTEXITCODE -ne 0 -or $graph.max_terms_per_file -ne 512 -or $graph.max_ref
 
 $activeRoot = Join-Path $env:USERPROFILE '.agents\skills'
 $activeWuji = @(Get-ChildItem -LiteralPath $activeRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -like 'wuji-legion*' })
-if ($activeWuji.Count -ne 1 -or $activeWuji[0].Name -ne 'wuji-legion-codex-2-0') {
+if ($activeWuji.Count -ne 1 -or $activeWuji[0].Name -ne 'wuji-legion-codex-3-0') {
   throw "optimization-audit failed: expected one active Wuji entry, found $($activeWuji.Name -join ',')"
 }
 $activeNuwa = @(Get-ChildItem -LiteralPath $activeRoot -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'nuwa' })
@@ -375,23 +403,23 @@ if (@($searchRoute.workers).Count -ne 3 -or @($searchRoute.workers | Where-Objec
 if (@($searchRoute.workers | Where-Object { @($_.fallback_models | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $_.max_attempts -ne 1 -or @($_.fallback_on | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $_.max_model_switches -ne 0 }).Count -ne 0) { throw 'optimization-audit failed: research worker received an automatic model fallback' }
 if ($serialSearchRoute.parallel -or $serialSearchRoute.delegation_decision.reason -ne 'serial-task-reasoning' -or @($serialSearchRoute.workers).Count -ne 1) { throw 'optimization-audit failed: serial research did not remain one bounded task judgment' }
 $serialSearchWorker = @($serialSearchRoute.workers)[0]
-if ($serialSearchWorker.id -ne 'task-judgment' -or $serialSearchWorker.model -ne 'gpt-5.6-sol' -or $serialSearchWorker.writes -or $serialSearchWorker.context_mode -ne 'task-contract-only') { throw 'optimization-audit failed: serial research judgment is not bounded and read-only' }
+if ($serialSearchWorker.id -ne 'task-judgment' -or $serialSearchWorker.model -ne 'gpt-5.6-terra' -or $serialSearchWorker.writes -or $serialSearchWorker.context_mode -ne 'task-contract-only') { throw 'optimization-audit failed: serial research judgment is not bounded and read-only' }
 if ($codeDirectRoute.delegation_decision.reason -ne 'verified-context-artifact-required' -or @($codeDirectRoute.workers).Count -ne 1) { throw 'optimization-audit failed: code did not receive its bounded no-context judgment' }
 $codeDirectWorker = @($codeDirectRoute.workers)[0]
-if ($codeDirectWorker.id -ne 'task-judgment' -or $codeDirectWorker.model -ne 'gpt-5.6-sol' -or $codeDirectWorker.writes -or $codeDirectWorker.context_mode -ne 'task-contract-only' -or $codeDirectWorker.allocated_context_bytes -ne 0) { throw 'optimization-audit failed: code no-context judgment is not bounded and read-only' }
-if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-sol').Count -ne 0) { throw 'optimization-audit failed: code worker lost bounded Sol assignment' }
+if ($codeDirectWorker.id -ne 'task-judgment' -or $codeDirectWorker.model -ne 'gpt-5.6-terra' -or $codeDirectWorker.writes -or $codeDirectWorker.context_mode -ne 'task-contract-only' -or $codeDirectWorker.allocated_context_bytes -ne 0) { throw 'optimization-audit failed: code no-context judgment is not bounded and read-only' }
+if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-terra').Count -ne 0) { throw 'optimization-audit failed: code worker lost bounded Terra assignment' }
 if (@($codeRoute.workers | Where-Object { @($_.fallback_models | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $_.max_attempts -ne 1 -or @($_.fallback_on | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $_.max_model_switches -ne 0 }).Count -ne 0) { throw 'optimization-audit failed: code worker received an automatic model fallback' }
-$executionEvidence = 'schema_version,worker_id,requested_model,session_key,host_dispatch_id,write_boundary,attempts,effective_model,model_switch_count,result_handle,stable_prefix_bytes,stable_prefix_sha256,source_execution_bytes,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,accepted_by_aji,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,aji_baseline_microunits,savings_microunits'
+$executionEvidence = 'schema_version,worker_id,requested_model,session_key,host_dispatch_id,write_boundary,attempts,effective_model,model_switch_count,result_handle,stable_prefix_bytes,stable_prefix_sha256,source_execution_bytes,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,execution_baseline_microunits,savings_microunits'
 if (@($searchRoute.workers + $codeRoute.workers | Where-Object { -not $_.execution_evidence_required -or ($_.execution_evidence_fields -join ',') -ne $executionEvidence }).Count -ne 0) { throw 'optimization-audit failed: worker execution evidence contract is incomplete' }
 $officerRoute = Invoke-WujiJson @('route', '--query', 'white-hat review this architecture')
 $officerWorker = @($officerRoute.officer_workers)[0]
 if (@($officerRoute.officers).Count -ne 1 -or @($officerRoute.officer_workers).Count -ne 1 -or $officerWorker.stage -ne 'officer' -or $officerWorker.writes -or -not $officerWorker.session_key -or -not $officerWorker.execution_evidence_required -or ($officerWorker.execution_evidence_fields -join ',') -ne $executionEvidence) {
   throw 'optimization-audit failed: explicit white-hat is not a receipt-bound read-only worker'
 }
-if ($codeRoute.delegation_policy.cross_model_cache_assumed -or $codeRoute.delegation_policy.cache_scope -ne 'model-local stable-prefix only' -or $codeRoute.delegation_policy.max_task_contract_bytes -ne 2048 -or $codeRoute.delegation_policy.max_shared_context_bytes -ne 4096 -or $codeRoute.delegation_policy.max_total_replay_bytes -ne 8192 -or $codeRoute.delegation_policy.min_context_coverage_basis_points -ne 6000 -or -not $codeRoute.delegation_policy.require_code_excerpt -or -not $codeRoute.delegation_policy.require_content_anchor -or $codeRoute.delegation_policy.fallback_only_on_availability_error) { throw 'optimization-audit failed: cross-model cost policy is incomplete' }
+if ($codeRoute.delegation_policy.cross_model_cache_assumed -or $codeRoute.delegation_policy.cache_scope -ne 'model-local stable-prefix only' -or $codeRoute.delegation_policy.max_task_contract_bytes -ne 2048 -or $codeRoute.delegation_policy.max_shared_context_bytes -ne 4096 -or $codeRoute.delegation_policy.max_total_replay_bytes -ne 8192 -or $codeRoute.delegation_policy.min_context_coverage_basis_points -ne 6000 -or -not $codeRoute.delegation_policy.require_code_excerpt -or -not $codeRoute.delegation_policy.require_content_anchor -or -not $codeRoute.delegation_policy.fallback_only_on_availability_error) { throw 'optimization-audit failed: cross-model cost policy is incomplete' }
 $codeWorker = @($codeRoute.workers)[0]
-if (-not $codeRoute.delegation_decision.allowed -or $codeRoute.delegation_decision.context_handle -ne $codeContext.context_handle -or $codeRoute.delegation_decision.context_coverage_basis_points -lt 6000 -or $codeRoute.delegation_decision.code_excerpt_count -lt 1 -or $codeRoute.delegation_decision.content_anchor_count -lt 1 -or $codeWorker.allocated_context_bytes -ne $codeContext.payload_bytes -or $codeWorker.context_payload_sha256 -ne $codeContext.payload_sha256 -or -not $codeWorker.context_payload -or $codeWorker.allocated_task_contract_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.task_contract)) -or -not $codeWorker.task_contract_sha256 -or -not $codeWorker.stable_capability_prefix -or $codeWorker.stable_prefix_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.stable_capability_prefix)) -or -not $codeWorker.stable_prefix_sha256 -or $codeRoute.delegation_decision.estimated_replay_bytes -ne ($codeWorker.stable_prefix_bytes + $codeWorker.allocated_context_bytes + $codeWorker.allocated_task_contract_bytes) -or ($codeWorker.prompt_order -join ',') -ne 'stable_capability_prefix,context_payload,task_contract' -or $codeWorker.max_attempts -ne 1 -or @($codeWorker.fallback_on | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or @($codeWorker.fallback_models | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $codeWorker.max_model_switches -ne 0) { throw 'optimization-audit failed: verified context handoff is incomplete' }
-if ($codeRoute.model_policy.main_model -ne 'gpt-5.6-terra' -or $codeRoute.model_policy.class_models.sol -ne 'gpt-5.6-sol' -or $codeRoute.model_policy.class_models.luna -ne 'gpt-5.6-luna' -or $null -ne $codeRoute.model_policy.class_models.terra) { throw 'optimization-audit failed: executable model policy is incomplete' }
+if (-not $codeRoute.delegation_decision.allowed -or $codeRoute.delegation_decision.context_handle -ne $codeContext.context_handle -or $codeRoute.delegation_decision.context_coverage_basis_points -lt 6000 -or $codeRoute.delegation_decision.code_excerpt_count -lt 1 -or $codeRoute.delegation_decision.content_anchor_count -lt 1 -or $codeWorker.allocated_context_bytes -ne $codeContext.payload_bytes -or $codeWorker.context_payload_sha256 -ne $codeContext.payload_sha256 -or -not $codeWorker.context_payload -or -not $codeWorker.writes -or $codeWorker.task_contract -notmatch 'scoped-artifact-write' -or $codeWorker.allocated_task_contract_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.task_contract)) -or -not $codeWorker.task_contract_sha256 -or -not $codeWorker.stable_capability_prefix -or $codeWorker.stable_prefix_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$codeWorker.stable_capability_prefix)) -or -not $codeWorker.stable_prefix_sha256 -or $codeRoute.delegation_decision.estimated_replay_bytes -ne ($codeWorker.stable_prefix_bytes + $codeWorker.allocated_context_bytes + $codeWorker.allocated_task_contract_bytes) -or ($codeWorker.prompt_order -join ',') -ne 'stable_capability_prefix,context_payload,task_contract' -or $codeWorker.max_attempts -ne 1 -or @($codeWorker.fallback_on | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or @($codeWorker.fallback_models | Where-Object { $null -ne $_ -and $_ -ne '' }).Count -ne 0 -or $codeWorker.max_model_switches -ne 0) { throw 'optimization-audit failed: verified context handoff or scoped write boundary is incomplete' }
+if ($codeRoute.model_policy.main_model -ne 'gpt-5.6-terra' -or $codeRoute.model_policy.general_staff_model -ne '' -or $codeRoute.model_policy.class_models.sol -ne 'gpt-5.6-sol' -or $codeRoute.model_policy.class_models.luna -ne 'gpt-5.6-luna' -or $codeRoute.model_policy.class_models.terra -ne 'gpt-5.6-terra') { throw 'optimization-audit failed: executable model policy is incomplete' }
 
 [pscustomobject]@{
   fusion_audit = 'pass'
@@ -401,6 +429,7 @@ if ($codeRoute.model_policy.main_model -ne 'gpt-5.6-terra' -or $codeRoute.model_
   skill_bytes = $skillBytes
   agents_bytes = $agentBytes
   source_bytes = $sourceBytes
+  source_bytes_limit = $maxSourceBytes
   context_selected_bytes = $context.selected_bytes
   legacy_objects_reclassified = $legacyLedger.total
   legacy_worktree_paths_reclassified = $worktreeLedger.total

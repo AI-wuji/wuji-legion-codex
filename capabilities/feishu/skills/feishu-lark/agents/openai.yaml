@@ -1,0 +1,4 @@
+interface:
+  display_name: "飞书 / Lark"
+  short_description: "通过官方 lark-cli 安全读写飞书文档、知识库与任务"
+  default_prompt: "使用 $feishu-lark 读取一个飞书文档并保留来源链接。"

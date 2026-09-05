@@ -2,7 +2,7 @@ package core
 
 import "testing"
 
-func TestValidateWorkerReceiptEnforcesSingleAttemptAndSavings(t *testing.T) {
+func TestValidateWorkerReceiptEnforcesOrderedAvailabilityFallbackAndSavings(t *testing.T) {
 	worker := testLunaReceiptWorker()
 	receipt := validReceipt(worker)
 	if err := ValidateWorkerReceipt(worker, receipt); err != nil {
@@ -16,13 +16,13 @@ func TestValidateWorkerReceiptEnforcesSingleAttemptAndSavings(t *testing.T) {
 	}
 
 	extraAttempt := receipt
-	extraAttempt.Attempts = append(append([]WorkerAttempt(nil), receipt.Attempts...), receipt.Attempts[0])
+	extraAttempt.Attempts = append(append([]WorkerAttempt(nil), receipt.Attempts...), WorkerAttempt{Model: worker.Model, GenerationStarted: true, CacheDomain: "model-local:" + worker.Model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, SourceExecutionBytes: worker.SourceExecutionBytes, TaskContractBytes: worker.AllocatedTaskContractBytes})
 	if err := ValidateWorkerReceipt(worker, extraAttempt); err == nil {
-		t.Fatal("second worker attempt was accepted")
+		t.Fatal("out-of-order worker attempt was accepted")
 	}
 
 	noSaving := receipt
-	noSaving.TotalCostMicrounits = noSaving.AjiBaselineMicrounits
+	noSaving.TotalCostMicrounits = noSaving.ExecutionBaselineMicrounits
 	noSaving.SavingsMicrounits = 0
 	if err := ValidateWorkerReceipt(worker, noSaving); err == nil {
 		t.Fatal("non-saving delegation was accepted")
@@ -40,7 +40,7 @@ func TestValidateWorkerReceiptEnforcesSessionAndGPTWorkerAllowlist(t *testing.T)
 	}
 
 	wrongSwitchCount := receipt
-	wrongSwitchCount.ModelSwitchCount = 1
+	wrongSwitchCount.ModelSwitchCount = 2
 	if err := ValidateWorkerReceipt(worker, wrongSwitchCount); err == nil {
 		t.Fatal("receipt with false model-switch telemetry was accepted")
 	}
@@ -69,11 +69,26 @@ func TestValidateWorkerReceiptRequiresContentAddressedResult(t *testing.T) {
 	}
 }
 
+func TestValidateWorkerReceiptEnforcesExecutionNodeWriteBoundary(t *testing.T) {
+	worker := testReceiptWorker()
+	worker.Writes = true
+	receipt := validReceipt(worker)
+	receipt.WriteBoundary = "scoped-artifact-write"
+	if err := ValidateWorkerReceipt(worker, receipt); err != nil {
+		t.Fatalf("scoped execution-node artifact write was rejected: %v", err)
+	}
+
+	receipt.WriteBoundary = "read-only"
+	if err := ValidateWorkerReceipt(worker, receipt); err == nil {
+		t.Fatal("write receipt outside its execution-node boundary was accepted")
+	}
+}
+
 func TestValidateSolJudgmentReceiptAllowsBoundedCostEscalation(t *testing.T) {
 	worker := Route("architecture decision: use Sol", nil).Workers[0]
 	receipt := validReceipt(worker)
 	receipt.TotalCostMicrounits = 160
-	receipt.AjiBaselineMicrounits = 100
+	receipt.ExecutionBaselineMicrounits = 100
 	receipt.SavingsMicrounits = -60
 	if err := ValidateWorkerReceipt(worker, receipt); err != nil {
 		t.Fatalf("bounded Sol judgment was rejected for costing more than Terra: %v", err)
@@ -81,21 +96,29 @@ func TestValidateSolJudgmentReceiptAllowsBoundedCostEscalation(t *testing.T) {
 }
 
 func validReceipt(worker WorkerTask) WorkerExecutionReceipt {
-	attempts := []WorkerAttempt{{Model: worker.Model, GenerationStarted: true, InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, CacheDomain: "model-local:" + worker.Model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, SourceExecutionBytes: worker.SourceExecutionBytes, TaskContractBytes: worker.AllocatedTaskContractBytes}}
+	attempts := []WorkerAttempt{}
 	effectiveModel := worker.Model
 	modelSwitches := 0
 	retryCount := 0
 	failureKinds := []string{}
-	if len(worker.FallbackModels) > 0 {
-		fallback := worker.FallbackModels[0]
-		attempts = []WorkerAttempt{
-			{Model: worker.Model, FailureKind: "model-unavailable", CacheDomain: "model-local:" + worker.Model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, SourceExecutionBytes: worker.SourceExecutionBytes, TaskContractBytes: worker.AllocatedTaskContractBytes},
-			{Model: fallback, GenerationStarted: true, InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, CacheDomain: "model-local:" + fallback, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, SourceExecutionBytes: worker.SourceExecutionBytes, TaskContractBytes: worker.AllocatedTaskContractBytes},
+	models := append([]string{worker.Model}, worker.AvailabilityFallbackModels...)
+	for index, model := range models {
+		attempt := WorkerAttempt{Model: model, CacheDomain: "model-local:" + model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, SourceExecutionBytes: worker.SourceExecutionBytes, TaskContractBytes: worker.AllocatedTaskContractBytes}
+		if index < len(models)-1 {
+			attempt.FailureKind = "model-unavailable"
+			failureKinds = append(failureKinds, attempt.FailureKind)
+		} else {
+			attempt.GenerationStarted = true
+			attempt.InputTokens = 100
+			attempt.CachedInputTokens = 80
+			attempt.OutputTokens = 20
+			effectiveModel = model
 		}
-		effectiveModel = fallback
-		modelSwitches = 1
-		retryCount = 1
-		failureKinds = []string{"model-unavailable"}
+		attempts = append(attempts, attempt)
+	}
+	if len(worker.AvailabilityFallbackModels) > 0 {
+		modelSwitches = len(worker.AvailabilityFallbackModels)
+		retryCount = len(worker.AvailabilityFallbackModels)
 	}
 	return WorkerExecutionReceipt{
 		SchemaVersion: workerReceiptSchemaVersion, WorkerID: worker.ID, RequestedModel: worker.Model, SessionKey: worker.SessionKey,
@@ -105,15 +128,54 @@ func validReceipt(worker WorkerTask) WorkerExecutionReceipt {
 		SourceExecutionBytesSent: worker.SourceExecutionBytes * len(attempts),
 		ContextBytesSent:         worker.AllocatedContextBytes * len(attempts), ContextPayloadSHA256: worker.ContextPayloadSHA256,
 		TaskContractBytes: worker.AllocatedTaskContractBytes * len(attempts), TaskContractSHA256: worker.TaskContractSHA256,
-		InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, RetryCount: retryCount, AcceptedByAji: true,
+		InputTokens: 100, CachedInputTokens: 80, OutputTokens: 20, RetryCount: retryCount,
 		AttemptFailureKinds: failureKinds, CacheDomain: "model-local:" + effectiveModel, DelegationGateReason: worker.DelegationGateReason,
-		BillingUnit: "usd-micro", TotalCostMicrounits: 60, AjiBaselineMicrounits: 100, SavingsMicrounits: 40,
+		BillingUnit: "usd-micro", TotalCostMicrounits: 60, ExecutionBaselineMicrounits: 100, SavingsMicrounits: 40,
+	}
+}
+
+func TestValidateWorkerReceiptRejectsFallbackAfterGeneration(t *testing.T) {
+	worker := testLunaReceiptWorker()
+	receipt := validReceipt(worker)
+	receipt.Attempts[0].GenerationStarted = true
+	if err := ValidateWorkerReceipt(worker, receipt); err == nil {
+		t.Fatal("fallback after generation was accepted")
+	}
+}
+
+func TestValidateWorkerReceiptRejectsInvalidFallbackOrder(t *testing.T) {
+	worker := testLunaReceiptWorker()
+	receipt := validReceipt(worker)
+	receipt.Attempts[1].Model = worker.AvailabilityFallbackModels[1]
+	receipt.Attempts[1].CacheDomain = "model-local:" + receipt.Attempts[1].Model
+	if err := ValidateWorkerReceipt(worker, receipt); err == nil {
+		t.Fatal("non-ascending fallback order was accepted")
+	}
+}
+
+func TestValidateWorkerReceiptRejectsSkippedFallbackModel(t *testing.T) {
+	worker := testLunaReceiptWorker()
+	receipt := validReceipt(worker)
+	// A provider can return unavailable before generation, but it cannot skip a
+	// declared availability rung to report a stronger model as the next attempt.
+	receipt.Attempts = receipt.Attempts[:2]
+	receipt.Attempts[1].Model = worker.AvailabilityFallbackModels[1]
+	receipt.Attempts[1].CacheDomain = "model-local:" + receipt.Attempts[1].Model
+	receipt.EffectiveModel = receipt.Attempts[1].Model
+	receipt.ModelSwitchCount = 1
+	receipt.RetryCount = 1
+	receipt.StablePrefixBytesSent = worker.StablePrefixBytes * len(receipt.Attempts)
+	receipt.SourceExecutionBytesSent = worker.SourceExecutionBytes * len(receipt.Attempts)
+	receipt.ContextBytesSent = worker.AllocatedContextBytes * len(receipt.Attempts)
+	receipt.TaskContractBytes = worker.AllocatedTaskContractBytes * len(receipt.Attempts)
+	if err := ValidateWorkerReceipt(worker, receipt); err == nil {
+		t.Fatal("receipt that skipped a declared fallback model was accepted")
 	}
 }
 
 func testReceiptWorker() WorkerTask {
 	query := "code task parallel"
-	items := []Manifest{{ID: "code", Triggers: []string{"code"}, Status: "callable", PrimarySkill: "native", Experts: []Expert{{ID: "implementation", Independent: true, ModelClass: "sol"}}}}
+	items := []Manifest{{ID: "code", Triggers: []string{"code"}, Status: "callable", PrimarySkill: "native", Experts: []Expert{{ID: "implementation", Independent: true, ModelClass: "terra"}}}}
 	return RouteWithContext(query, items, delegationContextForTest(query, 512)).Workers[0]
 }
 

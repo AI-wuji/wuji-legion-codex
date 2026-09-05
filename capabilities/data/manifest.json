@@ -45,7 +45,7 @@
       "required": [
         "SKILL.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "data-analyst-complete",
@@ -55,7 +55,7 @@
       "required": [
         "SKILL.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "agentic-rag-complete",

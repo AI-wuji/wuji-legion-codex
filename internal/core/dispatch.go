@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,6 +15,10 @@ import (
 	"sync"
 	"time"
 )
+
+const dispatchTerminationWait = 2 * time.Second
+const npmDiscoveryTimeout = 3 * time.Second
+const maxDispatchOutputBytes = 64 * 1024
 
 type CodexCommandResult struct {
 	ExitCode    int
@@ -74,14 +79,11 @@ func DispatchWorker(worker WorkerTask, options DispatchOptions) (DispatchResult,
 	if strings.TrimSpace(worker.ID) == "" || strings.TrimSpace(worker.Model) == "" || strings.TrimSpace(worker.SessionKey) == "" {
 		return DispatchResult{}, fmt.Errorf("worker is missing dispatch identity")
 	}
-	if worker.Writes {
-		return DispatchResult{}, fmt.Errorf("worker dispatch violates Aji-only write authority")
-	}
 	if err := validateDelegatedModel(worker.Model); err != nil {
 		return DispatchResult{}, err
 	}
-	if len(worker.FallbackModels) > 0 {
-		return DispatchResult{}, fmt.Errorf("automatic worker model fallback is disabled")
+	if err := validateWorkerExecutionPolicy(worker); err != nil {
+		return DispatchResult{}, err
 	}
 	if strings.TrimSpace(options.Workspace) == "" || strings.TrimSpace(options.OutputDir) == "" {
 		return DispatchResult{}, fmt.Errorf("dispatch requires workspace and output directory")
@@ -96,6 +98,17 @@ func DispatchWorker(worker WorkerTask, options DispatchOptions) (DispatchResult,
 	}
 	if options.Timeout <= 0 {
 		options.Timeout = 90 * time.Second
+	}
+	if options.CompatibilityExec {
+		if worker.Writes {
+			return DispatchResult{}, fmt.Errorf("external compatibility execution cannot enforce a scoped artifact write boundary")
+		}
+		gate := EvaluateSecurityGate(SecurityAction{
+			Kind: "command-execute", Target: "external-codex-compatibility", Workspace: workspace, ExplicitUserIntent: true,
+		})
+		if !gate.Allowed {
+			return DispatchResult{}, fmt.Errorf("security gate blocked compatibility execution: %s", gate.Reason)
+		}
 	}
 	if strings.TrimSpace(options.CodexPath) == "" {
 		invocation := defaultCodexInvocation()
@@ -121,13 +134,17 @@ func DispatchWorker(worker WorkerTask, options DispatchOptions) (DispatchResult,
 
 	prompt := workerPrompt(worker)
 	promptDigest := sha256.Sum256([]byte(prompt))
+	writeBoundary := "read-only"
+	if worker.Writes {
+		writeBoundary = "scoped-artifact-write"
+	}
 	result := DispatchResult{
 		WorkerID:             worker.ID,
 		SessionKey:           worker.SessionKey,
 		ContractRequestID:    dispatchID(worker, outputDir),
 		RequestedModel:       worker.Model,
 		Status:               "native-host-dispatch-required",
-		WriteBoundary:        "read-only",
+		WriteBoundary:        writeBoundary,
 		ModelEvidence:        "Only a Desktop native child created with this exact model can prove model execution. An external codex exec process is compatibility-only and is never native execution evidence.",
 		TelemetryStatus:      "unavailable-from-codex-cli",
 		DispatchMode:         "native-host-contract",
@@ -136,20 +153,18 @@ func DispatchWorker(worker WorkerTask, options DispatchOptions) (DispatchResult,
 		PreparedPromptBytes:  len(prompt),
 		SourceContracts:      sourceVerification,
 	}
-	// The Desktop host reads the verified contract and creates the actual
-	// Sol/Luna child. Do not silently substitute a separately authenticated
-	// command-line process and then call it a routed worker.
+	// The Desktop host reads the verified contract and creates the actual child.
+	// Availability selection is a finite, ordered chain and is only eligible
+	// before generation. Once output is observed, the sticky session and model
+	// are never retried or silently changed.
 	if !options.CompatibilityExec {
 		return result, nil
 	}
 	result.DispatchMode = "external-cli-compatibility-untrusted"
 	result.NativeHostRequired = true
 	result.Status = "compatibility-exec-failed-before-generation"
-	models := append([]string{worker.Model}, worker.FallbackModels...)
+	models := append([]string{worker.Model}, worker.AvailabilityFallbackModels...)
 	for index, model := range models {
-		if worker.MaxAttempts > 0 && index >= worker.MaxAttempts {
-			break
-		}
 		resultPath := filepath.Join(outputDir, fmt.Sprintf("%s-%s-%d.txt", safeDispatchName(worker.ID), dispatchSuffix(result.ContractRequestID), index+1))
 		arguments := append(append([]string{}, options.CodexArgumentPrefix...), codexArguments(model, workspace, resultPath, prompt)...)
 		attempt := DispatchAttempt{Model: model, Arguments: arguments}
@@ -191,7 +206,7 @@ func DispatchWorker(worker WorkerTask, options DispatchOptions) (DispatchResult,
 		}
 		attempt.FailureKind = dispatchFailureKind(commandResult.Stderr, commandErr)
 		result.Attempts = append(result.Attempts, attempt)
-		if index == len(models)-1 || (worker.MaxAttempts > 0 && index+1 >= worker.MaxAttempts) || !containsString(worker.FallbackOn, attempt.FailureKind) {
+		if index == len(models)-1 || !containsString(worker.AvailabilityFallbackOn, attempt.FailureKind) {
 			return result, nil
 		}
 	}
@@ -277,7 +292,10 @@ func defaultCodexInvocation() codexInvocation {
 
 func globalCodexScript() (string, bool) {
 	globalCodexScriptOnce.Do(func() {
-		command := exec.Command("npm", "root", "-g")
+		lookupContext, cancel := context.WithTimeout(context.Background(), npmDiscoveryTimeout)
+		defer cancel()
+		command := exec.CommandContext(lookupContext, "npm", "root", "-g")
+		command.WaitDelay = dispatchTerminationWait
 		output, err := command.Output()
 		if err != nil {
 			return
@@ -309,17 +327,23 @@ func workerPrompt(worker WorkerTask) string {
 			source.EntrypointContent,
 		}, "\n"))
 	}
+	boundary := "Execution boundary: read-only. Return compact evidence and options only. Do not write workspace files or claim final completion."
+	if worker.Writes {
+		boundary = "Execution boundary: scoped-artifact-write. Write only the task-scoped artifacts authorized by this contract; return compact evidence and do not claim final completion."
+	}
 	parts = append(parts,
 		"The task contract below is the complete user request for this worker. Execute its objective now; do not ask for a separate task. Return only the requested evidence and options.",
 		worker.ContextPayload,
 		worker.TaskContract,
-		"Execution boundary: read-only. Return compact evidence and options only. Do not write workspace files or claim final completion.",
+		boundary,
 	)
 	return strings.Join(parts, "\n\n")
 }
 
 func runCodexCommand(ctx context.Context, path string, arguments []string) (CodexCommandResult, error) {
 	command := exec.CommandContext(ctx, path, arguments...)
+	command.Cancel = func() error { return terminateCommandTree(command) }
+	command.WaitDelay = dispatchTerminationWait
 	logFile, err := os.CreateTemp("", "wuji-dispatch-*.log")
 	if err != nil {
 		return CodexCommandResult{}, err
@@ -331,43 +355,39 @@ func runCodexCommand(ctx context.Context, path string, arguments []string) (Code
 	}()
 	command.Stdout = logFile
 	command.Stderr = logFile
-	if err := command.Start(); err != nil {
-		return CodexCommandResult{}, err
-	}
-	done := make(chan error, 1)
-	go func() { done <- command.Wait() }()
 	commandOutput := func() string {
 		_ = logFile.Sync()
-		content, readErr := os.ReadFile(logPath)
+		file, openErr := os.Open(logPath)
+		if openErr != nil {
+			return ""
+		}
+		defer file.Close()
+		content, readErr := io.ReadAll(io.LimitReader(file, maxDispatchOutputBytes+1))
 		if readErr != nil {
 			return ""
+		}
+		if len(content) > maxDispatchOutputBytes {
+			return string(content[:maxDispatchOutputBytes]) + fmt.Sprintf("\n[output truncated at %d bytes]", maxDispatchOutputBytes)
 		}
 		return string(content)
 	}
 	resultPath := outputLastMessagePath(arguments)
-	for {
-		select {
-		case err := <-done:
-			result := completedCodexResult(command, commandOutput())
-			result.OutputReady = resultPath != "" && hasDispatchOutput(resultPath)
-			return result, err
-		case <-ctx.Done():
-			terminateCommandTree(command)
-			err := <-done
-			return completedCodexResult(command, commandOutput()), err
-		}
-	}
+	err = command.Run()
+	result := completedCodexResult(command, commandOutput())
+	result.OutputReady = resultPath != "" && hasDispatchOutput(resultPath)
+	return result, err
 }
 
-func terminateCommandTree(command *exec.Cmd) {
+func terminateCommandTree(command *exec.Cmd) error {
 	if command == nil || command.Process == nil {
-		return
+		return nil
 	}
 	if runtime.GOOS == "windows" {
-		_ = exec.Command("taskkill", "/PID", strconv.Itoa(command.Process.Pid), "/T", "/F").Run()
-		return
+		killContext, cancel := context.WithTimeout(context.Background(), dispatchTerminationWait)
+		defer cancel()
+		return exec.CommandContext(killContext, "taskkill", "/PID", strconv.Itoa(command.Process.Pid), "/T", "/F").Run()
 	}
-	_ = command.Process.Kill()
+	return command.Process.Kill()
 }
 
 func completedCodexResult(command *exec.Cmd, stderr string) CodexCommandResult {
@@ -388,7 +408,12 @@ func outputLastMessagePath(arguments []string) string {
 }
 
 func hasDispatchOutput(path string) bool {
-	content, err := os.ReadFile(path)
+	file, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+	content, err := io.ReadAll(io.LimitReader(file, maxDispatchOutputBytes))
 	return err == nil && len(strings.TrimSpace(string(content))) > 0
 }
 

@@ -19,10 +19,16 @@
     {
       "id": "official-lark-cli-skill",
       "globs": [
+        "${ROOT}/capabilities/feishu/skills/feishu-lark",
         "${USERPROFILE}/.codex/skills/feishu-lark"
       ],
       "required": [
-        "SKILL.md"
+        "SKILL.md",
+        "agents/openai.yaml",
+        "official/lark-shared/SKILL.md",
+        "official/lark-doc/SKILL.md",
+        "official/lark-wiki/SKILL.md",
+        "official/lark-task/SKILL.md"
       ],
       "lifecycle": "callable",
       "entrypoint": "SKILL.md",
@@ -38,7 +44,7 @@
       "-File",
       "${ROOT}/scripts/verify-feishu.ps1"
     ],
-    "fixture": "official-lark-cli-auth-v1",
+    "fixture": "official-lark-cli-install-status-v2",
     "kind": "smoke",
     "timeout_seconds": 30
   }

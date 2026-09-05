@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -110,8 +111,11 @@ func containsMountedSource(sources []MountedSource, id string) bool {
 func TestRoutePresentationAndNoNuwa(t *testing.T) {
 	items := []Manifest{{ID: "presentation", Triggers: []string{"ppt"}, Status: "primary", PrimarySkill: "presentations:Presentations"}}
 	got := Route("做一个高级PPT", items)
-	if got.Capability != "presentation" || got.Nuwa || got.WriteAuthority != "aji-only" {
+	if got.Capability != "presentation" || got.Nuwa || got.WriteAuthority != "assigned-execution-nodes-only; scoped-artifact-write; staff-and-aji-read-only" {
 		t.Fatalf("unexpected route: %#v", got)
+	}
+	if len(got.Workers) != 1 || !got.Workers[0].Writes || got.Workers[0].ID != "task-execution" {
+		t.Fatalf("presentation artifact was not assigned to a scoped execution node: %#v", got.Workers)
 	}
 	if len(got.Officers) != 0 {
 		t.Fatalf("officers must stay cold: %#v", got.Officers)
@@ -140,13 +144,29 @@ func TestSearchFansOutIndependentSources(t *testing.T) {
 	}
 }
 
+func TestExplicitFullWebResearchOverridesPriorArtPreflight(t *testing.T) {
+	items := []Manifest{
+		{ID: "presentation", Triggers: []string{"ppt"}, Status: "behavior-verified", Engines: []Engine{{ID: "editable-pptx", Default: true}}},
+		{ID: "search", Triggers: []string{"全网搜索"}, Status: "callable", Engines: []Engine{{ID: "web-research", Default: true}}},
+	}
+	got := Route("全网搜索 PPT 1.0 和 2.0 的能力融合方式", items)
+	if got.Capability != "search" || got.SearchFirstPolicy.Required || len(got.PreflightWorkers) != 0 || len(got.Workers) != 3 {
+		t.Fatalf("explicit full-web research was mistaken for a bounded preflight: %#v", got)
+	}
+	for _, worker := range got.Workers {
+		if worker.MaxSources != 0 || worker.TimeBudgetSeconds != fullResearchTimeBudgetSec || !containsString(worker.StopConditions, "two successive relevant sources add no material claim or contradiction") {
+			t.Fatalf("full-web worker retained an arbitrary source cap: %#v", worker)
+		}
+	}
+}
+
 func TestSpecializedExtractionDoesNotFanOut(t *testing.T) {
 	items := []Manifest{{
 		ID: "search", Triggers: []string{"youtube字幕"}, Status: "callable",
 		Engines: []Engine{{ID: "web-research", Default: true}, {ID: "content-extraction", Triggers: []string{"youtube字幕"}}},
 	}}
 	got := Route("提取youtube字幕", items)
-	if got.Engine != "content-extraction" || got.Parallel || len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-sol" {
+	if got.Engine != "content-extraction" || got.Parallel || len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-terra" {
 		t.Fatalf("specialized extraction did not receive bounded task judgment: %#v", got)
 	}
 }
@@ -303,7 +323,7 @@ func TestPullRequestRoutesToCodeReview(t *testing.T) {
 
 func TestDesignSystemRoutesToVisual(t *testing.T) {
 	items := []Manifest{
-		{ID: "core", Triggers: []string{"polish"}, Status: "primary", PrimarySkill: "wuji-legion-codex-2-0"},
+		{ID: "core", Triggers: []string{"polish"}, Status: "primary", PrimarySkill: "wuji-legion-codex-3-0"},
 		{ID: "frontend", Triggers: []string{"ui", "page", "polish"}, Status: "callable", PrimarySkill: "wuji-frontend-suite"},
 		{ID: "visual", Triggers: []string{"design system", "polish design", "taste"}, Status: "callable", PrimarySkill: "wuji-visual-suite"},
 	}
@@ -450,7 +470,7 @@ func TestPresentationDelegationRequiresExplicitSelfContainedHandoff(t *testing.T
 		},
 	}}
 	direct := Route("做一个PPT", items)
-	if direct.Parallel || len(direct.Workers) != 1 || direct.Workers[0].Model != "gpt-5.6-sol" || direct.DelegationDecision.Reason != "default-task-reasoning" {
+	if direct.Parallel || len(direct.Workers) != 1 || direct.Workers[0].Model != "gpt-5.6-terra" || direct.DelegationDecision.Reason != "default-task-reasoning" {
 		t.Fatalf("presentation did not receive its bounded default task route: %#v", direct)
 	}
 	missingHandoff := Route("做一个PPT parallel", items)
@@ -468,5 +488,55 @@ func TestPresentationDelegationRequiresExplicitSelfContainedHandoff(t *testing.T
 	serial := Route("做一个PPT 串行", items)
 	if serial.Parallel || len(serial.Workers) != 1 || serial.Workers[0].ID != "task-judgment" {
 		t.Fatalf("serial keyword should retain one sequential task route: %#v", serial.Workers)
+	}
+}
+
+func TestPresentationRouteInjectsEngineBoundFusionAsset(t *testing.T) {
+	root := t.TempDir()
+	sourceRoot := filepath.Join(root, "presentation")
+	for path, content := range map[string]string{
+		"scripts/invoke-presentation.ps1": "param()\n",
+		"assets/editable.json":            "editable catalog",
+		"assets/web.md":                   "web deck",
+		"assets/fluid.js":                 "fluid deck",
+	} {
+		full := filepath.Join(sourceRoot, filepath.FromSlash(path))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	manifest := Manifest{
+		Root: root, ID: "presentation", Description: "presentation", Triggers: []string{"ppt", "slidev"}, Status: "behavior-verified", PrimarySkill: "wuji-editable-deck", DirectMount: true, Fallback: "fallback",
+		Probe:   &Probe{Command: "success", Kind: "behavior", Fixture: "presentation-fixture", RequiredEvidence: []string{"assertions"}, ComparisonEvidence: "assertions"},
+		Engines: []Engine{{ID: "editable-pptx", Default: true, PrimarySkill: "wuji-editable-deck", Triggers: []string{"pptx"}}, {ID: "web-deck", PrimarySkill: "wuji-web-deck", Triggers: []string{"slidev", "stage fluid"}}},
+		Sources: []Source{
+			{ID: "presentation-fusion-runtime", Engine: "editable-pptx", Lifecycle: "callable", Entrypoint: "scripts/invoke-presentation.ps1", Globs: []string{"${ROOT}/presentation"}, Required: []string{"scripts/invoke-presentation.ps1"}},
+			{ID: "presentation-web-runtime", Engine: "web-deck", Lifecycle: "callable", Entrypoint: "scripts/invoke-presentation.ps1", Globs: []string{"${ROOT}/presentation"}, Required: []string{"scripts/invoke-presentation.ps1"}},
+		},
+		Genome: &FusionGenome{SchemaVersion: 1, Species: "presentation-fusion", Revision: "presentation-2-1", Adapters: []FusionAdapter{
+			{ID: "editable-pptx", Domain: "editable-pptx", Source: "presentation-fusion-runtime", Entrypoint: "scripts/invoke-presentation.ps1", AssetContracts: []FusionAsset{{ID: "editable-default", Path: "assets/editable.json", Compatibility: []string{"editable-pptx", "default"}}}},
+			{ID: "web-deck", Domain: "web-deck", Source: "presentation-fusion-runtime", Entrypoint: "scripts/invoke-presentation.ps1", AssetContracts: []FusionAsset{{ID: "web-default", Path: "assets/web.md", Compatibility: []string{"web-deck", "default"}}, {ID: "web-fluid", Path: "assets/fluid.js", Compatibility: []string{"web-deck", "stage-fluid"}}}},
+		}},
+	}
+	if err := ValidateManifest(manifest); err != nil {
+		t.Fatalf("presentation fusion fixture is invalid: %v", err)
+	}
+	editable := Route("create an editable PPTX", []Manifest{manifest})
+	if len(editable.AssetContracts) != 1 || editable.AssetContracts[0].AssetID != "presentation:editable-default" || len(editable.Workers) != 1 {
+		t.Fatalf("editable presentation route omitted its trusted asset: %#v", editable)
+	}
+	worker := editable.Workers[0]
+	if len(worker.AssetContracts) != 1 || worker.AssetContracts[0].AssetID != editable.AssetContracts[0].AssetID || !strings.Contains(worker.StableCapabilityPrefix, "presentation:editable-default") || len(worker.SourceExecution) != 1 {
+		t.Fatalf("worker did not receive its asset contract and invocation entrypoint: %#v", worker)
+	}
+	fluid := Route("build a Slidev web presentation with stage fluid", []Manifest{manifest})
+	if fluid.Engine != "web-deck" || len(fluid.AssetContracts) != 1 || fluid.AssetContracts[0].AssetID != "presentation:web-fluid" {
+		t.Fatalf("fluid route leaked the default or editable asset: %#v", fluid)
+	}
+	if _, err := SelectFusionAsset([]Manifest{manifest}, AssetSelectionRequest{Capability: "presentation", Domain: "web-deck", Compatibility: []string{"editable-pptx"}}); err == nil {
+		t.Fatal("incompatible presentation asset selection was accepted")
 	}
 }

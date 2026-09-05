@@ -25,4 +25,6 @@ Commands:
 pnpm audit --prod --audit-level low --registry https://registry.npmjs.org
 ```
 
-The final full run completed in 252.7 seconds with `audit-mode=full verified=14` and `wuji-2.0-tests-ok`.
+The 2.0 baseline full run completed in 252.7 seconds with `audit-mode=full verified=14` and `wuji-2.0-tests-ok`.
+
+The 2026-07-17 2.1 acceptance run passed `scripts/test.ps1` (`audit-mode=fast verified=15`), `scripts/audit.ps1` (`audit-mode=full verified=16`), and final `go test ./...`.

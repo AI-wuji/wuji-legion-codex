@@ -27,6 +27,26 @@ func TestDispatchWorkerPreparesNativeHostContractWithoutStartingExternalCLI(t *t
 	}
 }
 
+func TestDispatchWorkerPreparesScopedArtifactWriteContract(t *testing.T) {
+	worker := testReceiptWorker()
+	worker.Writes = true
+	result, err := DispatchWorker(worker, DispatchOptions{Workspace: t.TempDir(), OutputDir: t.TempDir()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.WriteBoundary != "scoped-artifact-write" || result.Status != "native-host-dispatch-required" {
+		t.Fatalf("scoped write contract was not prepared: %#v", result)
+	}
+}
+
+func TestCompatibilityExecRejectsScopedArtifactWrites(t *testing.T) {
+	worker := testReceiptWorker()
+	worker.Writes = true
+	if _, err := DispatchWorker(worker, DispatchOptions{Workspace: t.TempDir(), OutputDir: t.TempDir(), CompatibilityExec: true}); err == nil {
+		t.Fatal("untrusted compatibility execution accepted a scoped artifact write")
+	}
+}
+
 func TestCompatibilityExecIsExplicitAndUntrusted(t *testing.T) {
 	worker := testReceiptWorker()
 	result, err := DispatchWorker(worker, DispatchOptions{
@@ -70,6 +90,15 @@ func TestWorkerPromptMakesTheTaskContractActionable(t *testing.T) {
 	}
 }
 
+func TestWorkerPromptPreservesScopedArtifactWriteBoundary(t *testing.T) {
+	worker := testReceiptWorker()
+	worker.Writes = true
+	prompt := workerPrompt(worker)
+	if !strings.Contains(prompt, "Execution boundary: scoped-artifact-write.") || strings.Contains(prompt, "Do not write workspace files") {
+		t.Fatalf("write-capable worker received a contradictory prompt boundary: %q", prompt)
+	}
+}
+
 func TestWorkerPromptDoesNotLoadUnselectedSources(t *testing.T) {
 	worker := testReceiptWorker()
 	worker.SourceExecution = []SourceExecutionContract{{
@@ -82,11 +111,11 @@ func TestWorkerPromptDoesNotLoadUnselectedSources(t *testing.T) {
 	}
 }
 
-func TestDispatchWorkerRejectsAutomaticFallback(t *testing.T) {
+func TestDispatchWorkerAcceptsDeclaredAvailabilityFallback(t *testing.T) {
 	worker := testReceiptWorker()
-	worker.FallbackModels = []string{"gpt-5.6-sol"}
-	if _, err := DispatchWorker(worker, DispatchOptions{Workspace: t.TempDir(), OutputDir: t.TempDir()}); err == nil {
-		t.Fatal("dispatch accepted an automatic fallback")
+	result, err := DispatchWorker(worker, DispatchOptions{Workspace: t.TempDir(), OutputDir: t.TempDir()})
+	if err != nil || result.Status != "native-host-dispatch-required" || result.RequestedModel != worker.Model {
+		t.Fatalf("dispatch rejected the declared availability fallback: result=%#v err=%v", result, err)
 	}
 }
 
@@ -110,7 +139,7 @@ func TestDispatchWorkerDoesNotRetryAfterGeneration(t *testing.T) {
 	}
 }
 
-func TestDispatchWorkerHonorsRouteFallbackFailures(t *testing.T) {
+func TestDispatchWorkerHonorsBoundedAvailabilityFallbackFailures(t *testing.T) {
 	worker := testReceiptWorker()
 	var calls int
 	result, err := DispatchWorker(worker, DispatchOptions{
@@ -123,8 +152,16 @@ func TestDispatchWorkerHonorsRouteFallbackFailures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if calls != 1 || len(result.Attempts) != 1 || result.Attempts[0].FailureKind != "provider-error-before-generation" {
+	if calls != 2 || len(result.Attempts) != 2 || result.Attempts[0].FailureKind != "provider-error-before-generation" || result.Attempts[1].FailureKind != "provider-error-before-generation" {
 		t.Fatalf("dispatch ignored route fallback policy: %#v", result)
+	}
+}
+
+func TestDispatchWorkerRejectsExecutionRetryFields(t *testing.T) {
+	worker := testReceiptWorker()
+	worker.MaxAttempts = 2
+	if _, err := DispatchWorker(worker, DispatchOptions{Workspace: t.TempDir(), OutputDir: t.TempDir()}); err == nil {
+		t.Fatal("dispatch accepted a worker with an execution retry budget")
 	}
 }
 

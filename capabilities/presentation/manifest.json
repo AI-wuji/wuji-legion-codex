@@ -77,6 +77,20 @@
   ],
   "sources": [
     {
+      "id": "presentation-fusion-runtime",
+      "globs": [
+        "${ROOT}/capabilities/presentation"
+      ],
+      "required": [
+        "scripts/invoke-presentation.ps1",
+        "assets/template-catalog.json",
+        "assets/slidev-source/slides.md",
+        "assets/stage-fluid-source/stage-fluid.js"
+      ],
+      "lifecycle": "callable",
+      "entrypoint": "scripts/invoke-presentation.ps1"
+    },
+    {
       "id": "presentation-template-catalog-unified",
       "globs": [
         "${ROOT}/capabilities/presentation/assets"
@@ -198,7 +212,7 @@
         "project/scripts/inspect-layout.mjs"
       ],
       "lifecycle": "assets-retained",
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "wuji-dashiai-deck-adapter",
@@ -281,7 +295,7 @@
     },
     {
       "id": "guizang-ppt-complete",
-      "engine": "editable-pptx",
+      "engine": "web-deck",
       "globs": [
         "${WUJI_PROJECTS}/_official_skill_audit/guizang-ppt-skill"
       ],
@@ -328,7 +342,7 @@
         "SKILL.md",
         "references/approved-profile.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     },
     {
       "id": "ppt-stage-fluid-runtime",
@@ -369,9 +383,66 @@
         "references/*.md",
         "references/styles/*.md"
       ],
-      "priority": "secondary"
+      "priority": "optional"
     }
   ],
+  "fusion_genome": {
+    "schema_version": 1,
+    "species": "presentation-fusion",
+    "revision": "presentation-2-1",
+    "release_id": "2-1",
+    "generation": 1,
+    "parents": [
+      "wuji-editable-deck",
+      "wuji-web-deck",
+      "ppt-master",
+      "html-ppt"
+    ],
+    "adapters": [
+      {
+        "id": "editable-pptx",
+        "domain": "editable-pptx",
+        "source": "presentation-fusion-runtime",
+        "entrypoint": "scripts/invoke-presentation.ps1",
+        "source_version": "2.1",
+        "asset_contracts": [
+          {
+            "asset_id": "editable-pptx-default",
+            "path": "assets/template-catalog.json",
+            "compatibility": [
+              "editable-pptx",
+              "default"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "web-deck",
+        "domain": "web-deck",
+        "source": "presentation-fusion-runtime",
+        "entrypoint": "scripts/invoke-presentation.ps1",
+        "source_version": "2.1",
+        "asset_contracts": [
+          {
+            "asset_id": "web-deck-default",
+            "path": "assets/slidev-source/slides.md",
+            "compatibility": [
+              "web-deck",
+              "default"
+            ]
+          },
+          {
+            "asset_id": "web-deck-stage-fluid",
+            "path": "assets/stage-fluid-source/stage-fluid.js",
+            "compatibility": [
+              "web-deck",
+              "stage-fluid"
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "probe": {
     "command": "powershell",
     "fixture": "unified-presentation-artifact-v1",
@@ -389,7 +460,10 @@
       "pptx",
       "html-render",
       "fluid-render",
-      "dashiai-assertions"
+      "dashiai-assertions",
+      "editable-invocation",
+      "web-invocation",
+      "fluid-invocation"
     ],
     "comparison_evidence": "assertions"
   },

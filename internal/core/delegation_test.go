@@ -16,7 +16,7 @@ func TestCodeDelegationRequiresVerifiedBoundedContext(t *testing.T) {
 	}}
 
 	direct := Route(query, items)
-	if len(direct.Workers) != 1 || direct.Workers[0].ID != "task-judgment" || direct.Workers[0].Model != "gpt-5.6-sol" || direct.DelegationDecision.Reason != "verified-context-artifact-required" {
+	if len(direct.Workers) != 1 || direct.Workers[0].ID != "task-judgment" || direct.Workers[0].Model != "gpt-5.6-terra" || direct.DelegationDecision.Reason != "verified-context-artifact-required" {
 		t.Fatalf("code without a verified context did not fall back to bounded Sol task judgment: %#v", direct)
 	}
 
@@ -88,10 +88,24 @@ func TestDelegationCostAndAffinityGatesStayOnAji(t *testing.T) {
 				}
 				return
 			}
-			if len(got.Workers) != 1 || got.Workers[0].ID != "task-judgment" || !got.DelegationDecision.Allowed || got.DelegationDecision.Reason != test.reason {
+			if len(got.Workers) != 1 || got.Workers[0].ID != "task-judgment" || got.DelegationDecision.Allowed || !got.DelegationDecision.FallbackAllowed || got.DelegationDecision.ImplementationAllowed || got.DelegationDecision.Reason != test.reason {
 				t.Fatalf("unsafe implementation fan-out did not fall back to bounded task judgment: %#v", got)
 			}
 		})
+	}
+}
+
+func TestMismatchedContextNeverReachesExecutionWorker(t *testing.T) {
+	query := "inspect routing rules"
+	items := []Manifest{{ID: "code", Triggers: []string{"routing"}, Status: "callable"}}
+	context := delegationContextForTest("different query", 1024)
+	context.SelfContained = true
+	got := RouteWithContext(query, items, context)
+	if got.GeneralStaffWorker != nil {
+		t.Fatalf("deterministic General Staff must not receive execution context: %#v", got.GeneralStaffWorker)
+	}
+	if got.DelegationDecision.Allowed || !got.DelegationDecision.FallbackAllowed || got.DelegationDecision.ImplementationAllowed {
+		t.Fatalf("fallback delegation decision is ambiguous: %#v", got.DelegationDecision)
 	}
 }
 
@@ -111,8 +125,8 @@ func TestTotalReplayBudgetIncludesContractAndContextPerWorker(t *testing.T) {
 	}
 	prefixBytes := len([]byte(stableCapabilityPrefix(items[0], "")))
 	prefix := stableCapabilityPrefix(items[0], "")
-	narrativeContract := marshalWorkerContract(query, "narrative", "", []string{context.Handle}, taskSessionKey(query, "narrative", context.Handle), workerProtocol(query, "narrative", "", prefix))
-	visualContract := marshalWorkerContract(query, "visual", "", []string{context.Handle}, taskSessionKey(query, "visual", context.Handle), workerProtocol(query, "visual", "", prefix))
+	narrativeContract := marshalWorkerContract(query, "narrative", "", []string{context.Handle}, taskSessionKey(query, "narrative", context.Handle), workerProtocol(query, "narrative", "", prefix), false)
+	visualContract := marshalWorkerContract(query, "visual", "", []string{context.Handle}, taskSessionKey(query, "visual", context.Handle), workerProtocol(query, "visual", "", prefix), false)
 	want := prefixBytes*2 + maxSharedContextBytes*2 + len([]byte(narrativeContract)) + len([]byte(visualContract))
 	if got.DelegationDecision.EstimatedReplayBytes != want {
 		t.Fatalf("wrong replay estimate: got %d want %d", got.DelegationDecision.EstimatedReplayBytes, want)

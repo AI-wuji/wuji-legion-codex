@@ -1,9 +1,11 @@
 package core
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -25,6 +27,40 @@ func TestCallableClaimRequiresExecutableProbe(t *testing.T) {
 	got := Verify(t.TempDir(), manifest)
 	if got.Passed || got.Effective == "callable" {
 		t.Fatalf("host_callable declaration promoted capability without a probe: %#v", got)
+	}
+}
+
+func TestVerifyAllowsMissingOptionalColdSource(t *testing.T) {
+	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
+	manifest := validBehaviorManifest("optional-source", "success")
+	manifest.Sources = []Source{{ID: "optional-parent", Priority: "optional", Globs: []string{"${ROOT}/missing"}, Required: []string{"SKILL.md"}}}
+	got := Verify(t.TempDir(), manifest)
+	if !got.Passed || got.Effective != "behavior-verified" || len(got.Checks) == 0 || !strings.Contains(strings.Join(got.Checks, "\n"), "optional source unavailable") {
+		t.Fatalf("missing optional cold source blocked a verified unified capability: %#v", got)
+	}
+}
+
+func TestVerifyAllowsMissingSecondaryColdSource(t *testing.T) {
+	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
+	manifest := validBehaviorManifest("required-source", "success")
+	manifest.Sources = []Source{{ID: "required-parent", Priority: "secondary", Globs: []string{"${ROOT}/missing"}, Required: []string{"SKILL.md"}}}
+	got := Verify(t.TempDir(), manifest)
+	if !got.Passed || !strings.Contains(strings.Join(got.Checks, "\n"), "secondary source unavailable") {
+		t.Fatalf("missing secondary cold source blocked default verification: %#v", got)
+	}
+}
+
+func TestVerifyAllowsIncompleteSecondaryColdSource(t *testing.T) {
+	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, "incomplete-secondary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	manifest := validBehaviorManifest("incomplete-secondary", "success")
+	manifest.Sources = []Source{{ID: "incomplete-parent", Priority: "secondary", Globs: []string{"${ROOT}/incomplete-secondary"}, Required: []string{"SKILL.md"}}}
+	got := Verify(root, manifest)
+	if !got.Passed || !strings.Contains(strings.Join(got.Checks, "\n"), "secondary source incomplete") {
+		t.Fatalf("incomplete secondary cold source blocked default verification: %#v", got)
 	}
 }
 
@@ -60,6 +96,20 @@ func TestVerifyTimesOutHungProbe(t *testing.T) {
 	}
 	if len(got.Errors) == 0 || !strings.Contains(got.Errors[0], "timed out") {
 		t.Fatalf("timeout was not diagnosable: %#v", got.Errors)
+	}
+}
+
+func TestRunProbeCommandReturnsAfterContextCancellation(t *testing.T) {
+	t.Setenv("GO_WANT_WUJI_PROBE_HELPER", "1")
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=TestProbeHelperProcess", "--", "spawn-child", "process-tree")
+	cmd.Cancel = func() error { return terminateProbeProcessTree(cmd) }
+	cmd.WaitDelay = probeTerminationWait
+	started := time.Now()
+	err := runProbeCommand(ctx, cmd)
+	if ctx.Err() == nil || time.Since(started) > 4*time.Second {
+		t.Fatalf("probe command did not return promptly after cancellation: elapsed=%s err=%v", time.Since(started), err)
 	}
 }
 
@@ -144,6 +194,17 @@ func TestProbeHelperProcess(t *testing.T) {
 	mode := os.Args[len(os.Args)-2]
 	fixture := os.Args[len(os.Args)-1]
 	if mode == "hang" {
+		time.Sleep(30 * time.Second)
+	}
+	if mode == "spawn-child" {
+		// Keep the inherited stdout/stderr handles open in a descendant. This
+		// catches cancellation implementations that stop only the direct probe.
+		child := exec.Command(os.Args[0], "-test.run=TestProbeHelperProcess", "--", "hang", "child")
+		child.Stdout = os.Stdout
+		child.Stderr = os.Stderr
+		if err := child.Start(); err != nil {
+			t.Fatal(err)
+		}
 		time.Sleep(30 * time.Second)
 	}
 	if mode == "large-output" {

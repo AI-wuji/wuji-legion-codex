@@ -10,8 +10,14 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
+
+// Windows can report a transient access error while another goroutine is
+// creating or removing the process-local lock file. Serialize callers within
+// this process and keep the lock file for coordination with other processes.
+var knowledgeProcessLocks sync.Map // map[string]*sync.Mutex
 
 func KnowledgeWorkspaceScope(workspace string) (string, error) {
 	workspace, err := normalizeWorkspacePath(workspace)
@@ -138,6 +144,11 @@ func withKnowledgeStoreLock(store string, fn func() error) error {
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return err
 	}
+	processLock := &sync.Mutex{}
+	actual, _ := knowledgeProcessLocks.LoadOrStore(root, processLock)
+	processLock = actual.(*sync.Mutex)
+	processLock.Lock()
+	defer processLock.Unlock()
 	lockPath := filepath.Join(root, ".lock")
 	deadline := time.Now().Add(knowledgeLockWait)
 	for {
