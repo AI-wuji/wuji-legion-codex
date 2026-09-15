@@ -1,0 +1,54 @@
+{
+  "id": "quark",
+  "description": "Read and operate user-authorized Quark Drive files through the official Quark Drive Skill. Retrieval is on-demand; writes, uploads, moves, shares, and organization require an explicit user request.",
+  "triggers": [
+    "quark",
+    "quark drive",
+    "pan.quark.cn",
+    "夸克",
+    "夸克网盘",
+    "夸克文件",
+    "夸克知识库"
+  ],
+  "status": "callable",
+  "primary_skill": "quarkclouddrive",
+  "direct_mount": true,
+  "fallback": "ask the user to complete official Quark authorization or provide accessible content",
+  "sources": [
+    {
+      "id": "official-quark-drive-skill-v1.0.9",
+      "globs": [
+        "${USERPROFILE}/.codex/skills/quarkclouddrive"
+      ],
+      "required": [
+        "SKILL.md",
+        "scripts/quark-drive.cjs",
+        "references/auth.md",
+        "references/file-search.md",
+        "references/file-read.md",
+        "references/file-upload.md"
+      ],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
+      "priority": "primary",
+      "version": "1.0.9",
+      "sha256": "2426966EB01EFE539024652AA91E61A7F700621C7E77FB4B431D5E6EC8640583"
+    }
+  ],
+  "probe": {
+    "command": "node",
+    "args": [
+      "${USERPROFILE}/.codex/skills/quarkclouddrive/scripts/quark-drive.cjs",
+      "--help"
+    ],
+    "fixture": "official-quark-drive-cli-help-v1",
+    "kind": "smoke",
+    "timeout_seconds": 30
+  },
+  "security": {
+    "default_mode": "read-only-until-explicit-user-request",
+    "external_authorization": "required",
+    "secret_storage": "local-cli-config-only",
+    "never_import_full_corpus": true
+  }
+}
