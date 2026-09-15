@@ -7,7 +7,7 @@ Evidence checked on 2026-07-12. Full commit-level decisions are recorded in `mig
 | Aider repo map | Doctrine plus local implementation | PageRank-style relevance inspired compact path/symbol selection; no Aider runtime shell. |
 | RTK v0.43.0 | Optional primary output filter | Apache-2.0, Windows binary, verified by installer/probe; never required for correctness. |
 | Codebase Memory MCP v0.9.0 | Optional cold index | MIT, Windows binary, useful for large repositories; read-only and on-demand, not memory authority. |
-| Context Mode v1.0.169 | Optional host integration | Strong tool-output sandbox and FTS/BM25 ideas; do not copy ELv2 code or make it a required core. |
+| Context Mode v1.0.169 | Optional host integration | Strong tool-output sandbox and FTS/BM25 ideas; tracked in [compatibility contract](integrations/context-mode-compatibility.md); do not copy ELv2 code or make it a required core. |
 | Graphiti/GraphRAG | Rejected from hot path | Useful for temporal knowledge products, too heavy for routine project retrieval without benchmark proof. |
 | PPT Master | Update after behavior regression | Upstream adds material PPTX fidelity and quality-gate work; keep it cold and expose it only through the editable-deck scenario. |
 | Huashu Design | Update and distill | Keep the complete package, while routing only design reasoning and execution guards through current scenarios. |
