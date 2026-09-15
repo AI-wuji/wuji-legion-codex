@@ -7,12 +7,12 @@
   "activation": "aji-only-on-match",
   "silence_default": true,
   "experts": [
-    {"id":"code-repair","triggers":["修复代码","bug","报错","测试失败"],"anti_triggers":["纯解释","无复现证据"],"skills":["code","code-review"],"verify":["tests","vet","build"]},
-    {"id":"research","triggers":["调研","检索","是否有帮助","比较项目"],"anti_triggers":["无需外部证据的改名或格式化"],"skills":["search","writing"],"verify":["source-citations","conflict-check"]},
-    {"id":"document-deck","triggers":["汇报","文档","PPT","演示文稿"],"skills":["documents","presentation","writing"],"verify":["render","content-check"]},
-    {"id":"data-analysis","triggers":["表格","数据分析","异常","统计"],"skills":["data"],"verify":["profile","anomaly-evidence"]},
-    {"id":"frontend-visual","triggers":["网页","前端","产品页","界面"],"skills":["frontend","visual","image"],"verify":["responsive-render","interaction-check"]},
-    {"id":"incident-diagnosis","triggers":["故障","性能","安全","依赖问题"],"skills":["search","code-review","security"],"verify":["preflight","root-cause","regression"]}
+    {"id":"code-repair","capabilities":["code","code-review"],"triggers":["修复代码","bug","报错","测试失败"],"anti_triggers":["纯解释","无复现证据"],"prompt_compiler":"将需求编译为复现条件、根因假设、最小补丁和回归检查","workflow":["inspect","reproduce","patch","verify"],"verify":["tests","vet","build"]},
+    {"id":"research","capabilities":["search","writing"],"triggers":["调研","检索","是否有帮助","比较项目"],"anti_triggers":["无需外部证据的改名或格式化"],"prompt_compiler":"将需求编译为来源范围、检索问题、证据字段、冲突检查和结论格式","workflow":["scope","preflight","collect","cross-check","synthesize"],"verify":["source-citations","conflict-check"]},
+    {"id":"document-deck","capabilities":["documents","presentation","writing"],"triggers":["汇报","文档","PPT","演示文稿"],"anti_triggers":["只需一句话回答"],"prompt_compiler":"将需求编译为受众、结构、风格、制品格式、引用和渲染验收","workflow":["brief","outline","produce","render","inspect"],"verify":["render","content-check"]},
+    {"id":"data-analysis","capabilities":["data"],"triggers":["表格","数据分析","异常","统计"],"anti_triggers":["没有数据对象的泛泛预测"],"prompt_compiler":"将需求编译为数据范围、指标定义、计算方法、异常阈值和证据表","workflow":["profile","clean","analyze","check","report"],"verify":["profile","anomaly-evidence"]},
+    {"id":"frontend-visual","capabilities":["frontend","visual","image"],"triggers":["网页","前端","产品页","界面"],"anti_triggers":["只要求文字建议"],"prompt_compiler":"将需求编译为页面目标、信息层级、交互状态、视觉方向、响应式和素材约束","workflow":["brief","design","implement","browser-check","polish"],"verify":["responsive-render","interaction-check"]},
+    {"id":"incident-diagnosis","capabilities":["search","code-review","security"],"triggers":["故障","性能","安全","依赖问题"],"anti_triggers":["无症状的泛泛优化"],"prompt_compiler":"将需求编译为影响范围、时间线、证据采集、根因候选、缓解和回归标准","workflow":["contain","preflight","diagnose","mitigate","regress"],"verify":["preflight","root-cause","regression"]}
   ],
   "limits": {"max_active_experts": 2, "max_retries": 2, "max_context_bytes": 4096, "max_total_replay_bytes": 8192},
   "evolution": "evidence-gated-only"
