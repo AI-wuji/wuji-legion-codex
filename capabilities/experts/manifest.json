@@ -1,0 +1,18 @@
+{
+  "id": "experts",
+  "description": "Silent, task-scoped MoE expert contracts that compose verified Skills, MCPs and plugins.",
+  "status": "doctrine-only",
+  "host_callable": false,
+  "activation": "aji-only-on-match",
+  "silence_default": true,
+  "experts": [
+    {"id":"code-repair","triggers":["修复代码","bug","报错","测试失败"],"skills":["code","code-review"],"verify":["tests","vet","build"]},
+    {"id":"research","triggers":["调研","检索","是否有帮助","比较项目"],"skills":["search","writing"],"verify":["source-citations","conflict-check"]},
+    {"id":"document-deck","triggers":["汇报","文档","PPT","演示文稿"],"skills":["documents","presentation","writing"],"verify":["render","content-check"]},
+    {"id":"data-analysis","triggers":["表格","数据分析","异常","统计"],"skills":["data"],"verify":["profile","anomaly-evidence"]},
+    {"id":"frontend-visual","triggers":["网页","前端","产品页","界面"],"skills":["frontend","visual","image"],"verify":["responsive-render","interaction-check"]},
+    {"id":"incident-diagnosis","triggers":["故障","性能","安全","依赖问题"],"skills":["search","code-review","security"],"verify":["preflight","root-cause","regression"]}
+  ],
+  "limits": {"max_active_experts": 2, "max_retries": 2, "max_context_bytes": 4096, "max_total_replay_bytes": 8192},
+  "evolution": "evidence-gated-only"
+}
