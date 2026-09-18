@@ -50,3 +50,5 @@ Use bounded cold graphs: workspace `workspace -> files -> symbols/tests` with 51
 An internal adversarial pass is not independent-officer execution. Report an officer only when the host produced its content-addressed review artifact and independent verification evidence; otherwise report `not executed`. No unverified capability may be described as complete.
 
 Agnes is image/video-only. Web scouting uses default GPT with bounded Luna branches. Feishu links/tasks mount official `feishu-lark` read-only. Explicit provider/model wins; never store keys. Read `references/architecture.md` and `references/capability-contract.md`.
+
+Cold integration entrypoints and their evidence boundaries are documented in `references/integrations/operations.md`; load it only for expert handoff, explicit user memory, context-mode, or Graphify work.

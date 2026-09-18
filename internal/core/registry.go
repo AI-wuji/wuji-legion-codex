@@ -451,6 +451,12 @@ func LoadManifests(root string) ([]Manifest, error) {
 	sort.Strings(paths)
 	items := make([]Manifest, 0, len(paths))
 	for _, path := range paths {
+		// The experts directory is a typed expert catalog consumed by expert_bridge,
+		// not a routable capability manifest. Keep strict decoding for every
+		// capability while excluding this explicitly named sibling schema.
+		if filepath.Base(filepath.Dir(path)) == "experts" {
+			continue
+		}
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return nil, readErr

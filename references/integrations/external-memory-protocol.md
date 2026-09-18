@@ -40,6 +40,20 @@
 
 ## 当前状态
 
-- 飞书：已有官方 `feishu-lark` 能力 manifest，CLI 探针通过；当前未配置账号认证，实际检索仍需用户完成认证。
-- 夸克网盘：已安装夸克官网提供的官方 `quarkclouddrive` Skill 1.0.9，CLI smoke 探针通过；当前未完成账号授权，实际检索和写操作仍需用户明确授权。
-- 本地长期记忆：已有需求图、知识图和经验门禁设计，但不能把未验证的持久化实现宣称为完成。
+- 飞书：已有官方 `feishu-lark` 能力 manifest，CLI 探针通过；用户已在先前任务中完成授权，本轮没有复核令牌当前有效性，不要求重复授权。
+- 夸克网盘：已安装夸克官网提供的官方 `quarkclouddrive` Skill 1.0.9，CLI smoke 探针通过；用户已在先前任务中完成授权，本轮没有复核令牌当前有效性。具体读写仍按用户任务范围执行。
+- 本地用户记忆：`wuji user-memory remember|recall|revoke` 已提供显式持久化入口。默认以解析后的工作区路径哈希隔离；只有显式 `--shared-scope` 才跨项目共享。写入必须带 key、value 和用户确认来源 `--provenance`，并拒绝常见密钥形态；支持 TTL、版本冲突检查、容量上限和撤销。更新已有 key 时必须提供当前 `--expected-version`；TTL 为零表示不自动过期。
+
+本地记忆中的内容是“用户确认过的偏好、约束或项目约定”，不是已经核验的世界事实。调用方不得把一次 recall 当成事实验证，也不得从普通对话、外部检索或 context-mode 索引中自动写入。当前 CLI 的 confirmation boundary 是显式调用加非空 provenance；宿主仍须在调用前确认用户确实要求保存。
+
+最小示例：
+
+```powershell
+./bin/wuji.exe user-memory remember --workspace . --key "language" --value "默认使用中文" --provenance "用户于 2026-09-19 明确要求记住"
+./bin/wuji.exe user-memory recall --workspace . --query "language"
+./bin/wuji.exe user-memory revoke --workspace . --key "language"
+```
+
+默认存储位于 `.wuji/memory/user-memory/v1/records.json`。它包含用户提供的值和 provenance，必须按用户数据保护；仓库不得提交该文件。详细边界与其他冷集成见[操作指南](operations.md)。
+
+跨项目共享须同时指定同一个 `--store` 目录和同一个 `--shared-scope`；只使用相同 scope 名但各项目各自的默认存储，并不会互相读取。

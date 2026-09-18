@@ -69,6 +69,8 @@
 | 候选反馈仅记录版本化终态的身份/结果，最多 1024 条或 2 MiB | 候选不会自动成为已验证知识、自动改变路由或自动晋级能力。 |
 | `knowledge-record` 可在显式提交时对合格候选做证据门控复用 | 已验证经验到路由复用的自动学习闭环尚未完成。 |
 | 能力需经 callable、行为验证、对照与晋级门禁 | 没有宿主计费遥测时，不存在全局 token 或费用硬上限。 |
+| `user-memory` 提供显式保存、作用域召回、撤销、TTL、版本冲突和疑似密钥拒绝 | 用户记忆只记录用户确认的偏好/约束；不是世界事实验证，也不会自动读取对话。 |
+| `expert-bridge` 可生成并校验内容寻址的专家交接契约与执行证据 | 当前宿主没有可用的原生模型/session 绑定接口，六类专家工作流不能据此宣称已完整执行。 |
 
 最近验收的真实范围、fast audit 的未通过项和后续限制见[优化记录](references/release/optimization-2026-09-06.md)。该记录明确：修复后的全包 Go 测试、vet 和 build 已通过；fast audit 仍被三项 size gate 拦截，因此不能称为全绿发布。
 
@@ -120,6 +122,8 @@ $env:USERPROFILE/.codex/skills/feishu-lark
 
 对已验证的失败候选进行显式知识记录时，可在完整的 `knowledge-record` 命令上额外传入 `--feedback-id` 与 `--feedback-store`；字段要求以 `./bin/wuji.exe knowledge-record --help` 为准。
 
+新的冷集成入口、最小操作示例和不可宣称边界见[集成操作指南](references/integrations/operations.md)。其中 Graphify 仍是无 hook 的可选 pilot；context-mode 仅允许无状态大输出执行，不启用其索引记忆复用。
+
 ## 验证与文档
 
 ```powershell
@@ -136,6 +140,8 @@ $env:USERPROFILE/.codex/skills/feishu-lark
 | 3.0 目标设计 | [完整方案](references/architecture/wuji-legion-3.0-blueprint.md) · [全图谱架构](references/architecture/wuji-legion-3.0-graph-architecture.md) |
 | 能力的证据等级与验证契约 | [能力契约](references/capability-contract.md) · `capabilities/*/manifest.json` |
 | 本轮优化的实际验收状态 | [优化记录](references/release/optimization-2026-09-06.md) |
+| 2026-09-19 集成范围与证据 | [集成记录](references/release/integration-2026-09-19.md) |
+| 记忆、专家桥和可选适配器操作 | [集成操作指南](references/integrations/operations.md) · [外部记忆协议](references/integrations/external-memory-protocol.md) |
 | 项目规则与入口 | [SKILL.md](SKILL.md) · [AGENTS.md](AGENTS.md) |
 | 同一初心的其他宿主实现 | [dsh-wuji-legion-global](https://github.com/AI-wuji/dsh-wuji-legion-global) · [dsh-wuji-legion-mode](https://github.com/AI-wuji/dsh-wuji-legion-mode) |
 
@@ -155,6 +161,7 @@ $env:USERPROFILE/.codex/skills/feishu-lark
 
 ## 更新日志
 
+- **2026-09-19**：加入显式、分作用域的本地用户记忆入口和有证据门禁的专家交接桥；保留 Graphify 为冷 pilot，并将 context-mode 限制为无状态执行适配。真实验收与未完成项见[集成记录](references/release/integration-2026-09-19.md)。
 - **2026-09-06** [`f8f9b8`](https://github.com/AI-wuji/wuji-legion-codex/commit/f8f9b8)：重写项目首页，先说明自然语言体验、白帽判断和当前边界，再提供安装、验证与文档入口。
 - **2026-09-06** [`57fda6c`](https://github.com/AI-wuji/wuji-legion-codex/commit/57fda6c)：补强 3.0 有界运行时与反馈证据门控；OfficeCLI 固定到 `v1.0.147`，并保留验证超时/失败的真实记录。完整验收范围见[优化记录](references/release/optimization-2026-09-06.md)：fast audit 未通过，不能据此宣称整体审计通过。
 

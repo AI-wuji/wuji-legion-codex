@@ -175,6 +175,30 @@ func TestLoadManifestsRejectsUnknownFields(t *testing.T) {
 	}
 }
 
+func TestLoadManifestsSkipsTypedExpertCatalog(t *testing.T) {
+	root := t.TempDir()
+	capabilityPath := filepath.Join(root, "capabilities", "code", "manifest.json")
+	if err := os.MkdirAll(filepath.Dir(capabilityPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeManifest(t, capabilityPath, validManifest("code", "callable"))
+	expertPath := filepath.Join(root, "capabilities", "experts", "manifest.json")
+	if err := os.MkdirAll(filepath.Dir(expertPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	data := `{"id":"experts","domain_matrix":"references/expert-matrix.md","experts":[]}`
+	if err := os.WriteFile(expertPath, []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	items, err := LoadManifests(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || items[0].ID != "code" {
+		t.Fatalf("expert catalog leaked into capability manifests: %#v", items)
+	}
+}
+
 func TestResolveSourceUsesRootAndNaturalVersionOrder(t *testing.T) {
 	root := t.TempDir()
 	for _, version := range []string{"26.9", "26.10"} {

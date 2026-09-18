@@ -9,6 +9,7 @@ type Source struct {
 	Revision   string   `json:"revision,omitempty"`
 	ReleaseID  string   `json:"release_id,omitempty"`
 	License    string   `json:"license,omitempty"`
+	SHA256     string   `json:"sha256,omitempty"`
 	Activation []string `json:"activation,omitempty"`
 	Entrypoint string   `json:"entrypoint,omitempty"`
 	Fallback   string   `json:"fallback,omitempty"`
@@ -134,23 +135,31 @@ type Engine struct {
 	PrimarySkill string   `json:"primary_skill,omitempty"`
 }
 
+type ManifestSecurity struct {
+	DefaultMode           string `json:"default_mode,omitempty"`
+	ExternalAuthorization string `json:"external_authorization,omitempty"`
+	SecretStorage         string `json:"secret_storage,omitempty"`
+	NeverImportFullCorpus bool   `json:"never_import_full_corpus,omitempty"`
+}
+
 type Manifest struct {
-	Root             string        `json:"-"`
-	ID               string        `json:"id"`
-	Description      string        `json:"description"`
-	Triggers         []string      `json:"triggers"`
-	Status           string        `json:"status"`
-	PromotionReceipt string        `json:"promotion_receipt,omitempty"`
-	PrimarySkill     string        `json:"primary_skill"`
-	HostCallable     bool          `json:"host_callable"`
-	DirectMount      bool          `json:"direct_mount"`
-	Fallback         string        `json:"fallback"`
-	Sources          []Source      `json:"sources"`
-	Genome           *FusionGenome `json:"fusion_genome,omitempty"`
-	Probe            *Probe        `json:"probe,omitempty"`
-	Experts          []Expert      `json:"experts,omitempty"`
-	Providers        []Provider    `json:"providers,omitempty"`
-	Engines          []Engine      `json:"engines,omitempty"`
+	Root             string            `json:"-"`
+	ID               string            `json:"id"`
+	Description      string            `json:"description"`
+	Triggers         []string          `json:"triggers"`
+	Status           string            `json:"status"`
+	PromotionReceipt string            `json:"promotion_receipt,omitempty"`
+	PrimarySkill     string            `json:"primary_skill"`
+	HostCallable     bool              `json:"host_callable"`
+	DirectMount      bool              `json:"direct_mount"`
+	Fallback         string            `json:"fallback"`
+	Sources          []Source          `json:"sources"`
+	Genome           *FusionGenome     `json:"fusion_genome,omitempty"`
+	Probe            *Probe            `json:"probe,omitempty"`
+	Experts          []Expert          `json:"experts,omitempty"`
+	Providers        []Provider        `json:"providers,omitempty"`
+	Engines          []Engine          `json:"engines,omitempty"`
+	Security         *ManifestSecurity `json:"security,omitempty"`
 }
 
 type MountedSource struct {
