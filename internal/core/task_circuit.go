@@ -14,13 +14,17 @@ import (
 )
 
 const taskCircuitSchemaVersion = 1
+const nativeTaskSchemaVersion = 1
 
 var taskCircuitAttemptPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$`)
 var taskCircuitHashPattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 
 type TaskCircuitPolicy struct {
-	ID            string `json:"id"`
-	MaxNoProgress int    `json:"max_no_progress"`
+	ID              string `json:"id"`
+	MaxNoProgress   int    `json:"max_no_progress"`
+	MaxAttempts     int    `json:"max_attempts,omitempty"`
+	DeadlineSeconds int    `json:"deadline_seconds,omitempty"`
+	LeaseSeconds    int    `json:"lease_seconds,omitempty"`
 }
 
 type TaskAttemptInput struct {
@@ -30,6 +34,35 @@ type TaskAttemptInput struct {
 	Outcome          string `json:"outcome,omitempty"`
 	TransientFailure bool   `json:"transient_failure,omitempty"`
 	EvidenceSHA256   string `json:"evidence_sha256,omitempty"`
+	LeaseID          string `json:"lease_id,omitempty"`
+}
+
+type NativeTaskLease struct {
+	ID         string `json:"id"`
+	AttemptID  string `json:"attempt_id"`
+	StrategyID string `json:"strategy_id"`
+	ExpiresAt  string `json:"expires_at"`
+}
+type NativeTaskState struct {
+	SchemaVersion  int               `json:"schema_version"`
+	TaskID         string            `json:"task_id"`
+	Policy         TaskCircuitPolicy `json:"policy"`
+	StartedAt      string            `json:"started_at"`
+	DeadlineAt     string            `json:"deadline_at"`
+	AttemptsUsed   int               `json:"attempts_used"`
+	NoProgress     int               `json:"no_progress"`
+	LastProgressAt string            `json:"last_progress_at,omitempty"`
+	AttemptIDs     []string          `json:"attempt_ids,omitempty"`
+	ActiveLease    *NativeTaskLease  `json:"active_lease,omitempty"`
+	Terminal       bool              `json:"terminal"`
+	TerminalReason string            `json:"terminal_reason,omitempty"`
+}
+type NativeTaskClaimResult struct {
+	Allowed  bool            `json:"allowed"`
+	Decision string          `json:"decision"`
+	Reason   string          `json:"reason"`
+	LeaseID  string          `json:"lease_id,omitempty"`
+	State    NativeTaskState `json:"state"`
 }
 
 type TaskAttempt struct {
@@ -66,12 +99,72 @@ func DefaultTaskCircuitStore() string {
 	return filepath.Join(".wuji", "task-circuits")
 }
 
+func ClaimNativeTask(store string, policy TaskCircuitPolicy, input TaskAttemptInput) (NativeTaskClaimResult, error) {
+	if err := validateNativeTaskPolicy(policy); err != nil {
+		return NativeTaskClaimResult{}, err
+	}
+	if err := validateTaskAttempt(input, false); err != nil {
+		return NativeTaskClaimResult{}, err
+	}
+	var result NativeTaskClaimResult
+	err := withKnowledgeStoreLock(store, func() error {
+		now := time.Now().UTC()
+		state, found, err := loadNativeTaskState(store, policy, input.TaskID)
+		if err != nil {
+			return err
+		}
+		if !found {
+			state = NativeTaskState{SchemaVersion: nativeTaskSchemaVersion, TaskID: input.TaskID, Policy: policy, StartedAt: now.Format(time.RFC3339Nano), DeadlineAt: now.Add(time.Duration(policy.DeadlineSeconds) * time.Second).Format(time.RFC3339Nano)}
+		}
+		closeExpiredNativeTask(&state, now)
+		if state.Terminal {
+			result = NativeTaskClaimResult{Decision: "blocked", Reason: state.TerminalReason, State: state}
+			return writeNativeTaskState(store, state)
+		}
+		if state.ActiveLease != nil {
+			result = NativeTaskClaimResult{Decision: "blocked", Reason: "active-lease", State: state}
+			return nil
+		}
+		for _, id := range state.AttemptIDs {
+			if id == input.AttemptID {
+				result = NativeTaskClaimResult{Decision: "blocked", Reason: "duplicate-attempt", State: state}
+				return nil
+			}
+		}
+		if state.AttemptsUsed >= policy.MaxAttempts {
+			state.Terminal = true
+			state.TerminalReason = "attempt-limit"
+			result = NativeTaskClaimResult{Decision: "blocked", Reason: state.TerminalReason, State: state}
+			return writeNativeTaskState(store, state)
+		}
+		digest := sha256.Sum256([]byte(input.TaskID + "\x00" + input.StrategyID + "\x00" + input.AttemptID + "\x00" + now.Format(time.RFC3339Nano)))
+		leaseID := hex.EncodeToString(digest[:16])
+		state.AttemptsUsed++
+		state.AttemptIDs = append(state.AttemptIDs, input.AttemptID)
+		state.ActiveLease = &NativeTaskLease{ID: leaseID, AttemptID: input.AttemptID, StrategyID: input.StrategyID, ExpiresAt: now.Add(time.Duration(policy.LeaseSeconds) * time.Second).Format(time.RFC3339Nano)}
+		if err := writeNativeTaskState(store, state); err != nil {
+			return err
+		}
+		result = NativeTaskClaimResult{Allowed: true, Decision: "claimed", Reason: "lease-created", LeaseID: leaseID, State: state}
+		return nil
+	})
+	return result, err
+}
+
 func CheckTaskCircuit(store string, policy TaskCircuitPolicy, input TaskAttemptInput) (TaskCircuitResult, error) {
 	if err := validateTaskCircuitPolicy(policy); err != nil {
 		return TaskCircuitResult{}, err
 	}
 	if err := validateTaskAttempt(input, false); err != nil {
 		return TaskCircuitResult{}, err
+	}
+	if native, found, err := findNativeTaskState(store, input.TaskID); err != nil {
+		return TaskCircuitResult{}, err
+	} else if found {
+		if native.Policy != policy {
+			return TaskCircuitResult{}, fmt.Errorf("native task policy is pinned and does not match the requested policy")
+		}
+		return TaskCircuitResult{Decision: "blocked", Reason: "native-claim-required", State: circuitStateFromNative(native, input.StrategyID)}, nil
 	}
 	state, found, err := loadTaskCircuitState(store, policy, input)
 	if err != nil {
@@ -100,6 +193,64 @@ func RecordTaskAttempt(store string, policy TaskCircuitPolicy, input TaskAttempt
 	}
 	var result TaskCircuitResult
 	err := withKnowledgeStoreLock(store, func() error {
+		if policy.MaxAttempts == 0 {
+			if _, found, err := findNativeTaskState(store, input.TaskID); err != nil {
+				return err
+			} else if found {
+				return fmt.Errorf("native guarded task cannot use legacy record; supply the pinned policy and lease")
+			}
+		}
+		if policy.MaxAttempts > 0 {
+			native, found, err := loadNativeTaskState(store, policy, input.TaskID)
+			if err != nil {
+				return err
+			}
+			if !found {
+				return fmt.Errorf("native guarded task has not been claimed")
+			}
+			closeExpiredNativeTask(&native, time.Now().UTC())
+			if native.Terminal {
+				if err := writeNativeTaskState(store, native); err != nil {
+					return err
+				}
+				result = TaskCircuitResult{Decision: "blocked", Reason: native.TerminalReason, State: circuitStateFromNative(native, input.StrategyID)}
+				return nil
+			}
+			if native.ActiveLease == nil || input.LeaseID == "" || native.ActiveLease.ID != input.LeaseID || native.ActiveLease.AttemptID != input.AttemptID || native.ActiveLease.StrategyID != input.StrategyID {
+				result = TaskCircuitResult{Decision: "blocked", Reason: "lease-mismatch"}
+				return nil
+			}
+			native.ActiveLease = nil
+			now := time.Now().UTC().Format(time.RFC3339Nano)
+			switch input.Outcome {
+			case "progress":
+				native.NoProgress = 0
+				native.LastProgressAt = now
+			case "success":
+				native.NoProgress = 0
+				native.LastProgressAt = now
+				native.Terminal = true
+				native.TerminalReason = "success"
+			case "no-progress":
+				native.NoProgress++
+			case "failure":
+				if !input.TransientFailure {
+					native.NoProgress++
+				}
+			}
+			if !native.Terminal && native.NoProgress >= policy.MaxNoProgress {
+				native.Terminal = true
+				native.TerminalReason = "no-progress-limit"
+			} else if !native.Terminal && native.AttemptsUsed >= policy.MaxAttempts {
+				native.Terminal = true
+				native.TerminalReason = "attempt-limit"
+			}
+			if err := writeNativeTaskState(store, native); err != nil {
+				return err
+			}
+			result = TaskCircuitResult{Allowed: true, Decision: "recorded", Reason: "outcome-recorded", State: circuitStateFromNative(native, input.StrategyID)}
+			return AuditEventRecord(auditStoreFor(store), AuditEvent{EventType: "task-attempt-recorded", Actor: "aji", Authority: "aji-merge", Target: input.TaskID + ":" + input.StrategyID, InputRevision: input.AttemptID, ResultHandle: "wuji-task://" + input.TaskID})
+		}
 		state, found, err := loadTaskCircuitState(store, policy, input)
 		if err != nil {
 			return err
@@ -158,6 +309,28 @@ func validateTaskCircuitPolicy(policy TaskCircuitPolicy) error {
 	}
 	if policy.MaxNoProgress < 1 || policy.MaxNoProgress > 64 {
 		return fmt.Errorf("max_no_progress must be between 1 and 64")
+	}
+	if policy.MaxAttempts < 0 || policy.MaxAttempts > 64 {
+		return fmt.Errorf("max_attempts must be between 1 and 64 when set")
+	}
+	return nil
+}
+
+func validateNativeTaskPolicy(policy TaskCircuitPolicy) error {
+	if err := validateTaskCircuitPolicy(policy); err != nil {
+		return err
+	}
+	if policy.MaxAttempts < 1 {
+		return fmt.Errorf("max_attempts must be between 1 and 64")
+	}
+	if policy.DeadlineSeconds < 1 || policy.DeadlineSeconds > 86400 {
+		return fmt.Errorf("deadline_seconds must be between 1 and 86400")
+	}
+	if policy.LeaseSeconds < 1 || policy.LeaseSeconds > 3600 {
+		return fmt.Errorf("lease_seconds must be between 1 and 3600")
+	}
+	if policy.LeaseSeconds > policy.DeadlineSeconds {
+		return fmt.Errorf("lease_seconds must not exceed deadline_seconds")
 	}
 	return nil
 }
@@ -252,4 +425,125 @@ func taskCircuitPath(store string, policy TaskCircuitPolicy, input TaskAttemptIn
 	key := input.TaskID + "\x00" + input.StrategyID + "\x00" + policy.ID
 	digest := sha256.Sum256([]byte(key))
 	return filepath.Join(filepath.Clean(store), "v1", "circuits", hex.EncodeToString(digest[:])+".json")
+}
+
+func nativeTaskPath(store, taskID string) string {
+	digest := sha256.Sum256([]byte(taskID))
+	return filepath.Join(filepath.Clean(store), "v1", "native-tasks", hex.EncodeToString(digest[:])+".json")
+}
+func legacyNativeTaskPath(store, taskID, policyID string) string {
+	digest := sha256.Sum256([]byte(taskID + "\x00" + policyID))
+	return filepath.Join(filepath.Clean(store), "v1", "native-tasks", hex.EncodeToString(digest[:])+".json")
+}
+func loadNativeTaskState(store string, policy TaskCircuitPolicy, taskID string) (NativeTaskState, bool, error) {
+	state, found, err := findNativeTaskState(store, taskID)
+	if err != nil || !found {
+		return state, found, err
+	}
+	if state.Policy != policy {
+		return NativeTaskState{}, false, fmt.Errorf("native task policy is pinned and does not match the requested policy")
+	}
+	return state, true, nil
+}
+func findNativeTaskState(store, taskID string) (NativeTaskState, bool, error) {
+	path := nativeTaskPath(store, taskID)
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		dir := filepath.Dir(path)
+		entries, readErr := os.ReadDir(dir)
+		if os.IsNotExist(readErr) {
+			return NativeTaskState{}, false, nil
+		}
+		if readErr != nil {
+			return NativeTaskState{}, false, readErr
+		}
+		var match []byte
+		for _, entry := range entries {
+			if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+				continue
+			}
+			candidate, readErr := os.ReadFile(filepath.Join(dir, entry.Name()))
+			if readErr != nil {
+				return NativeTaskState{}, false, readErr
+			}
+			var probe NativeTaskState
+			if json.Unmarshal(candidate, &probe) == nil && probe.TaskID == taskID {
+				if match != nil {
+					return NativeTaskState{}, false, fmt.Errorf("multiple legacy native task states exist for task")
+				}
+				match = candidate
+			}
+		}
+		if match == nil {
+			return NativeTaskState{}, false, nil
+		}
+		data = match
+	} else if err != nil {
+		return NativeTaskState{}, false, err
+	}
+	var state NativeTaskState
+	decoder := json.NewDecoder(strings.NewReader(string(data)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&state); err != nil {
+		return NativeTaskState{}, false, fmt.Errorf("decode native task state: %w", err)
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		return NativeTaskState{}, false, fmt.Errorf("decode native task state: trailing data")
+	}
+	if state.SchemaVersion != nativeTaskSchemaVersion || state.TaskID != taskID {
+		return NativeTaskState{}, false, fmt.Errorf("native task state does not match the requested task")
+	}
+	return state, true, nil
+}
+func writeNativeTaskState(store string, state NativeTaskState) error {
+	path := nativeTaskPath(store, state.TaskID)
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(state, "", "  ")
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".native-task-*.json")
+	if err != nil {
+		return err
+	}
+	name := tmp.Name()
+	defer os.Remove(name)
+	if err := tmp.Chmod(0o600); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(name, path)
+}
+func circuitStateFromNative(state NativeTaskState, strategyID string) TaskCircuitState {
+	return TaskCircuitState{SchemaVersion: taskCircuitSchemaVersion, TaskID: state.TaskID, StrategyID: strategyID, Policy: state.Policy, NoProgress: state.NoProgress, CircuitOpen: state.Terminal, CircuitReason: state.TerminalReason, LastProgressAt: state.LastProgressAt}
+}
+func closeExpiredNativeTask(state *NativeTaskState, now time.Time) {
+	if state.Terminal {
+		return
+	}
+	deadline, err := time.Parse(time.RFC3339Nano, state.DeadlineAt)
+	if err != nil || !now.Before(deadline) {
+		state.Terminal = true
+		state.TerminalReason = "deadline-expired"
+		state.ActiveLease = nil
+		return
+	}
+	if state.ActiveLease != nil {
+		expires, err := time.Parse(time.RFC3339Nano, state.ActiveLease.ExpiresAt)
+		if err != nil || !now.Before(expires) {
+			state.Terminal = true
+			state.TerminalReason = "lease-abandoned"
+			state.ActiveLease = nil
+		}
+	}
 }

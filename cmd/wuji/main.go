@@ -15,7 +15,7 @@ import (
 	"github.com/AI-wuji/wuji-legion-codex-2.0/internal/core"
 )
 
-const usage = `usage: wuji <route|response-policy|orchestrate|change-capsule|context-select|context-mode-prepare|context-mode-validate|graph-sync|expert-bridge|user-memory|knowledge-record|knowledge-query|task-gate|task-record|requirement-record|decision-record|requirement-project|execution-record|execution-result|execution-project|acceptance-reconcile|staff-create|staff-update|staff-status|conversation-link|conversation-resolve|provenance-record|provenance-resolve|source-assess|source-impact|asset-select|graph-govern|audit-record|lineage-sync|security-gate|officer-select|dispatch|validate-receipt|verify|source-audit|evolve> [flags]
+const usage = `usage: wuji <route|response-policy|orchestrate|change-capsule|context-select|context-mode-prepare|context-mode-validate|graph-sync|expert-bridge|user-memory|knowledge-record|knowledge-query|task-gate|task-claim|task-record|requirement-record|decision-record|requirement-project|execution-record|execution-result|execution-project|acceptance-reconcile|staff-create|staff-update|staff-status|conversation-link|conversation-resolve|provenance-record|provenance-resolve|source-assess|source-impact|asset-select|graph-govern|audit-record|lineage-sync|security-gate|officer-select|dispatch|validate-receipt|verify|source-audit|evolve> [flags]
 
 Commands:
   route           select a capability for a user request
@@ -31,6 +31,7 @@ Commands:
 	knowledge-record record a verified knowledge node; --feedback-id admits an eligible failure candidate only
   knowledge-query  query the event-triggered cross-project knowledge graph
   task-gate        check whether a task strategy may run under its circuit policy
+  task-claim       atomically reserve a bounded native execution attempt
   task-record      persist a task outcome for circuit enforcement
   requirement-record create a versioned requirement graph node
   decision-record   create a decision node bound to active requirements
@@ -349,25 +350,31 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		output = result
 
-	case "task-gate", "task-record":
+	case "task-gate", "task-claim", "task-record":
 		fs := newFlagSet(args[0], stderr)
 		store := fs.String("store", filepath.Join(root, ".wuji", "task-circuits"), "task circuit state store")
 		taskID := fs.String("task", "", "stable task id")
 		strategyID := fs.String("strategy", "", "stable strategy id")
 		policyID := fs.String("policy", "", "stable circuit policy id")
 		maxNoProgress := fs.Int("max-no-progress", 2, "maximum consecutive no-progress outcomes before blocking")
+		maxAttempts := fs.Int("max-attempts", 0, "maximum total native claims, including transient failures")
+		deadlineSeconds := fs.Int("deadline-seconds", 0, "fixed task deadline in seconds")
+		leaseSeconds := fs.Int("lease-seconds", 0, "single active lease duration in seconds")
 		attemptID := fs.String("attempt", "", "deterministic attempt signature")
 		outcome := fs.String("outcome", "", "progress, success, no-progress, or failure (task-record only)")
 		transientFailure := fs.Bool("transient-failure", false, "failure was caused by a transient external condition")
 		evidenceSHA256 := fs.String("evidence-sha256", "", "optional local evidence SHA-256")
+		leaseID := fs.String("lease", "", "matching native lease id (task-record guarded mode)")
 		if code := parseFlags(fs, args[1:], stderr); code >= 0 {
 			return code
 		}
-		policy := core.TaskCircuitPolicy{ID: *policyID, MaxNoProgress: *maxNoProgress}
-		input := core.TaskAttemptInput{TaskID: *taskID, StrategyID: *strategyID, AttemptID: *attemptID, Outcome: *outcome, TransientFailure: *transientFailure, EvidenceSHA256: *evidenceSHA256}
+		policy := core.TaskCircuitPolicy{ID: *policyID, MaxNoProgress: *maxNoProgress, MaxAttempts: *maxAttempts, DeadlineSeconds: *deadlineSeconds, LeaseSeconds: *leaseSeconds}
+		input := core.TaskAttemptInput{TaskID: *taskID, StrategyID: *strategyID, AttemptID: *attemptID, Outcome: *outcome, TransientFailure: *transientFailure, EvidenceSHA256: *evidenceSHA256, LeaseID: *leaseID}
 		var err error
 		if args[0] == "task-gate" {
 			output, err = core.CheckTaskCircuit(*store, policy, input)
+		} else if args[0] == "task-claim" {
+			output, err = core.ClaimNativeTask(*store, policy, input)
 		} else {
 			output, err = core.RecordTaskAttempt(*store, policy, input)
 		}

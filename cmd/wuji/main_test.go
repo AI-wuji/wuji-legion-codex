@@ -332,6 +332,29 @@ func TestTaskCircuitCommandsPersistAndBlockNoProgress(t *testing.T) {
 	}
 }
 
+func TestTaskClaimCommandRequiresLeaseToRecord(t *testing.T) {
+	store := t.TempDir()
+	base := []string{"--store", store, "--task", "native-task", "--strategy", "worker", "--policy", "native-v1", "--max-no-progress", "2", "--max-attempts", "2", "--deadline-seconds", "60", "--lease-seconds", "30", "--attempt", "attempt-a"}
+	var stdout, stderr bytes.Buffer
+	if code := run(append([]string{"task-claim"}, base...), &stdout, &stderr); code != 0 {
+		t.Fatalf("task-claim failed: code=%d stderr=%q", code, stderr.String())
+	}
+	var claim core.NativeTaskClaimResult
+	if err := json.Unmarshal(stdout.Bytes(), &claim); err != nil || !claim.Allowed || claim.LeaseID == "" {
+		t.Fatalf("invalid claim: %#v err=%v", claim, err)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	record := append(append([]string{"task-record"}, base...), "--outcome", "success", "--lease", claim.LeaseID)
+	if code := run(record, &stdout, &stderr); code != 0 {
+		t.Fatalf("guarded task-record failed: code=%d stderr=%q", code, stderr.String())
+	}
+	var result core.TaskCircuitResult
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result.Decision != "recorded" {
+		t.Fatalf("invalid guarded record: %#v err=%v", result, err)
+	}
+}
+
 func TestLineageSyncPersistsCatalogInsideSelectedRoot(t *testing.T) {
 	root := t.TempDir()
 	sourceRoot := filepath.Join(root, "source")

@@ -161,6 +161,7 @@ $env:USERPROFILE/.codex/skills/feishu-lark
 
 ## 更新日志
 
+- **2026-09-19**：真实受控原生复核发现并修复 native claim 的跨策略无进展与 policy/legacy 降级绕过；guarded state 现按 task 固定完整 policy，每个 accepted record 释放 lease，后续 attempt 必须 fresh claim。锁定 Go 工具链的 `internal/core` 与 `cmd/wuji` 测试通过。此门禁不等于宿主全局计费或自动中断硬限制；strict expert-bridge 的宿主证明缺口仍在，Graphify 关闭，完整 audit 的既有源码体积门禁未绿。详见 [native runtime 证据](references/release/native-runtime-2026-09-19.md)。
 - **2026-09-19**：加入显式、分作用域的本地用户记忆入口和有证据门禁的专家交接桥；保留 Graphify 为冷 pilot，并将 context-mode 限制为无状态执行适配。真实验收与未完成项见[集成记录](references/release/integration-2026-09-19.md)。
 - **2026-09-06** [`f8f9b8`](https://github.com/AI-wuji/wuji-legion-codex/commit/f8f9b8)：重写项目首页，先说明自然语言体验、白帽判断和当前边界，再提供安装、验证与文档入口。
 - **2026-09-06** [`57fda6c`](https://github.com/AI-wuji/wuji-legion-codex/commit/57fda6c)：补强 3.0 有界运行时与反馈证据门控；OfficeCLI 固定到 `v1.0.147`，并保留验证超时/失败的真实记录。完整验收范围见[优化记录](references/release/optimization-2026-09-06.md)：fast audit 未通过，不能据此宣称整体审计通过。

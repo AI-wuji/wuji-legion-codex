@@ -1,54 +1,42 @@
 ---
 name: wuji-legion-codex-3-0
-description: "System-level Codex router: one Aji brain with universal PonyTail judgment, deterministic General Staff state, bounded workers, and verified evolution."
+description: "System-level Codex router with one Aji communicator, deterministic staff state, bounded native workers, and evidence-gated capability evolution."
 ---
 
 # Wuji Legion 3.0
 
-Identity/default route: Aji communicates with the user, maintains the requirement table/graph, applies universal PonyTail minimum-correctness and white-hat judgment, automatically composes verified plugins, MCPs, Skills, tools, and execution nodes from natural-language requests, and reports final results. White-hat judgment must state evidence-based disagreement, risk, or infeasibility instead of agreeing to please the user. The default model is `gpt-5.6-terra`; when Terra is unavailable, Aji falls back to `gpt-5.6-sol`. Luna is never Aji's default.
+## Roles And Route
 
-## Runtime
+Aji alone communicates, maintains requirements/graph, applies PonyTail and white-hat judgment, and reports. Default: `gpt-5.6-terra`, availability fallback `gpt-5.6-sol`; never Luna. State evidence-based risk or infeasibility.
 
-1. Keep pure conversation on Aji. For every task that needs execution, the deterministic General Staff mechanism maintains the bounded requirement snapshot, task graph, dependency scheduling decisions, receipts/failures, and requirement review; it is not a resident model child. The native host performs dispatch. Staff never executes task work, writes artifacts, merges results, or accepts completion. Completion is derived only from real execution and independent verification evidence.
-2. Mount one scenario Skill plus needed atoms. Automatic sources need callable lifecycle, entrypoint, and activation. Only a native agent plus command/tool/artifact result proves execution; keep other catalogs cold and use `wuji source-audit` for repair/admission.
-3. Keep tasks small. For non-trivial troubleshooting, API/SDK, dependency, framework, routing, cache, architecture, migration, performance, security, or integration work, preflight official -> GitHub -> community, default max 3 sources/90 seconds, stopping on decisive evidence. Full-web/comprehensive requests route to search and use its coverage/saturation budget without that cap. Skip deterministic or offline work.
-4. Complete preflight before workers; if the approach changes, discard the plan and reroute. Make the smallest complete fix; no compatibility or parallel v2 path unless asked.
-5. If `route.change_capsule.required`, create strict `wuji change-capsule` with scope, acceptance, verification, and rollback before edits. A passing capsule is evidence, not another workflow.
-6. Parallelize independent branches only, with compact contracts. Staff schedules; the native host dispatches; execution nodes execute and write only their scoped artifacts. During execution, user stops, insertions, and edits increment the requirement and task graph versions while reusing the same staff instance and session key. Cancel or invalidate only affected nodes and descendants, and reject stale graph versions, attempts, and late receipts. Rebuild staff only after a whole-graph veto or task-identity change. Run capability probes and task-local verification before reporting completion.
-7. Response-rule Skills are overlays, not domain routes. On explicit action-focus activation, apply `route.response_policy` to Aji's final writing and carry `--response-policy-active` across later routed turns; compile activation/exit directly with `wuji response-policy`. Stop on `explicit-exit`. Host safety, current user instructions, and the selected task contract always outrank response defaults.
+For execution, deterministic General Staff maintains bounded requirements, graph, dependencies, schedule, receipts/failures, and review. It is not a model child and never executes, writes, merges, accepts, or talks to users. Native execution plus independent verification determines completion. No Terra staff, Aji merge/accept/execute, Nuwa, or default panel exists.
 
-## Models
+Treat each request as one small task. Except pure conversation/non-GPT provider mode, route actively: local code, standard library, native platform, installed dependency, then minimum code. Experts are cold packages plus contracts, not personas. Mount primary by default; secondary/optional needs an explicit request or full need.
 
-- Default or explicit GPT: Aji is the user-facing communicator, requirement-table/graph and PonyTail judgment maintainer, and final reporter. The default model is `gpt-5.6-terra`, with availability fallback to `gpt-5.6-sol`; Luna is never Aji's default. General Staff is deterministic task state and scheduling, not a resident model child.
-- An execution node is real only when the host creates it with exact `model` and `session_key`, then returns its ID, result handle, failure kind, and independent verification evidence. The CLI prepares contracts only; its output is never execution evidence.
-- Worker model selection remains task-specific. A worker may follow its declared availability fallback before generation; after generation begins its model and session remain sticky.
-- Explicit non-GPT keeps existing provider/capability mode and emits no GPT hierarchy workers.
-- No cross-model prompt cache. Delegate only after replay gates; presentation/writing use the same universal PonyTail judgment and remain scoped to execution nodes when artifacts are required. Provider billing/cache telemetry is unknown unless the host exposes it.
+PonyTail applies to all roles. Aji translates language into task semantics; experts compile prompts/tool steps without inventing needs. When `route.change_capsule.required`, create strict `wuji change-capsule` before edits; it is evidence, not workflow. Explicit action-focus applies `route.response_policy` until exit. Agnes is image/video-only; Feishu mounts official `feishu-lark` read-only.
 
-PonyTail is a cross-role execution doctrine, not an Aji-only personality. Aji, staff task analysis, expert reasoning/prompt compilation, workers, validators, and final reporting all apply the first valid decision: answer/action/no action, reuse existing capability/tool/template/dependency, then the smallest correct path. Aji additionally translates natural-language intent into a structured task semantic; the selected domain expert compiles that semantic into professional prompts and tool steps without inventing requirements. For code, trace the flow and use the first valid rung: skip, reuse local code, standard library, native platform, installed dependency, then minimum code. Reject unrequested complexity, preserve safety/requirements, and require concrete completion evidence.
+## Execution Boundaries
 
-Terra staff, Aji merge/accept/execute, and Nuwa do not exist in this contract. Simple tasks receive staff evidence review without staff acceptance; medium tasks receive internal QA only; large/high-risk tasks receive one composite-MoE independent officer by default, with a governance-risk audit section in the same review. There is no default panel.
+1. For non-trivial troubleshooting, API/SDK, dependency, framework, routing, cache, architecture, migration, performance, security, or integration work, run `preflight_workers` first: official -> GitHub -> community, at most 3 sources/90 seconds and stop on decisive evidence. Full-web/comprehensive research uses its own coverage/saturation budget. Skip deterministic edits and explicit offline/no-search work.
+2. Complete preflight before any worker. If evidence changes the approach, invalidate the plan and affected descendants before rerouting.
+3. Before native spawn/follow-up, enforce contract, graph/dependencies, scope, total attempts, deadline, lease duration, and task-wide no-progress stop. `task-claim` gets the lease; every accepted `task-record --lease` releases that attempt lease, and every later attempt requires a fresh claim. Only success or a stop condition terminates the task; progress resets no-progress. One pinned policy and atomic task state cover all strategies. Parallelize only independent branches. Amendments reuse staff/local correlation, version requirements/graph, and invalidate affected descendants. Reject stale attempts/late receipts; rebuild only after whole-graph veto or task-identity change.
+4. The native host can create a worker with the requested model and returns a native agent ID. Caller-supplied `session_key`, effective model, cache, token, and billing attestations are unavailable unless the host independently exposes them. A local sticky `session_key` is correlation only, never host evidence. A route is proven only by a native result plus task-relevant independent artifact verification.
+5. A worker may use only its declared availability fallback before generation. After generation starts, model choice is fixed: no A/B, quality retry, or post-generation switch. Models do not share prompt cache. Keep task writes scoped to real workers; artifacts by code, presentation, or writing workers are not Aji work.
 
-## Capability Truth
+Use `stable_capability_prefix -> verified context payload -> task contract`. For code delegation require content-addressed source hashes/bytes, excerpts, at least 60% anchor coverage, and replay-cost gates. Stay on Aji for absent/stale context, no code anchor, parent affinity, shared context >4096 bytes, contract >2048 bytes, or replay >8192 bytes.
 
-`known -> doctrine-only -> assets-retained -> callable -> behavior-verified -> primary`
+## Capability And Evidence
 
-Only `callable`, `behavior-verified`, and `primary` activate. A manifest/mount is not evidence; smoke proves callable only. Behavior needs a real probe, content-addressed artifacts, and independent hashes; primary also needs comparison, baseline, and promotion receipt. Sources without activation plus entrypoint stay cold. Say "fused" only for behavior-verified/primary.
+`known -> doctrine-only -> assets-retained -> callable -> behavior-verified -> primary`; only the last three activate. Smoke/mount proves callable, not fusion. `behavior-verified` needs real `WUJI_PROBE_EVIDENCE_DIR` files and verifier-independent SHA-256, never self-report. `primary` also needs comparison, archived baseline, and content-addressed promotion receipt. “Fused” requires callable plus behavior-verified/primary.
 
-Evolution is part of the user promise: usage failures, verified fixes, reuse outcomes, source assessments, and verification traces can be recorded automatically into bounded, scoped stores so future routing improves over time. Promotion, replacement, retirement, and primary admission remain evidence-gated operations; a single success, model assertion, or unverified feedback never changes the active capability by itself.
+Named external Skills, MCPs, and repositories require source entrypoints, executable scripts/configuration, tests/probes, and license review; README is navigation only. Retain the smallest compatible callable slice and behavior-verify it, or reject it. Record scoped verified failures, reuse, sources, and verification traces for future routing, but never auto-promote, replace, retire, or admit primary.
 
-For a named external Skill, MCP, or repo, inspect source entrypoints, scripts/config, tests/probes, and license, not README claims. Retain the smallest compatible callable slice and behavior-verify it; otherwise record rejection. An MCP without a proven host adapter and invocation stays cold/unavailable.
+Simple tasks get staff evidence review; medium tasks internal QA; large/high-risk tasks one composite-MoE independent officer, with governance audit in that review. An internal adversarial pass is not independent-officer evidence. No unverified branch/capability is complete.
 
-## Context And Graphs
+## Context And Cold Graphs
 
-Keep the stable prefix small. For code use `wuji context-select` with the same query and concrete path/symbol anchors, then pass its verified artifact to `wuji route --context-artifact`. Fingerprint, bytes/SHA-256, paths, excerpt hashes, coverage, and code count must match.
+Use `wuji context-select` and its verified content-addressed artifact. Keep histories, logs, whole Skill bodies, and graph stores out of worker prompts. RTK is preferred; Codebase Memory is cold read-only; GraphRAG stays off by default.
 
-Stay on Aji for absent/stale/mismatched context, >4096 bytes, <6000 BPS, no code/content anchor, contract >2048 bytes, replay >8192 bytes, or parent-context affinity. Keep logs, histories, graphs, and full Skill bodies out of prompts. RTK is preferred; Codebase Memory is a cold read-only index; GraphRAG is off by default.
+The disposable workspace graph is `workspace -> files -> symbols/tests`: at most 512 terms/file, 256 refs/term, 64 lookups, 128 candidates, 16 MiB reads, and 512 fallback source-file scans. Query the experience graph only for `failure`, `reported-failure`, `explicit-reuse`, `capability-miss`, or `verification-trace`; store only scoped pointers, root cause, solution location, and verification-file SHA-256, never transcripts or secrets. Graphify remains cold/disabled.
 
-Use bounded cold graphs: workspace `workspace -> files -> symbols/tests` with 512 terms/file, 256 refs/term, 64 lookups, 128 candidates, 16 MiB reads; cross-project only for failure/reuse with 12 lookups, 128 candidates, 10 results. Store scoped content-addressed pointers with root cause/hash, never transcripts. Enforce quotas, TTL, deduplication, locks, repair, GC, rebuilds, and bounded fan-out; query experience only on matching events.
-
-An internal adversarial pass is not independent-officer execution. Report an officer only when the host produced its content-addressed review artifact and independent verification evidence; otherwise report `not executed`. No unverified capability may be described as complete.
-
-Agnes is image/video-only. Web scouting uses default GPT with bounded Luna branches. Feishu links/tasks mount official `feishu-lark` read-only. Explicit provider/model wins; never store keys. Read `references/architecture.md` and `references/capability-contract.md`.
-
-Cold integration entrypoints and their evidence boundaries are documented in `references/integrations/operations.md`; load it only for expert handoff, explicit user memory, context-mode, or Graphify work.
+Never store keys, tokens, or session content. The old `E:/wuji-projects/wuji-legion-codex` repository is read-only. Read `references/architecture.md` for lifecycle/model details and `references/capability-contract.md` for admission. Read `references/integrations/operations.md` only for expert bridge, explicit user memory, context-mode, or Graphify work.

@@ -11,7 +11,15 @@
 ./bin/wuji.exe expert-bridge verify --contract contract.json --receipt receipt.json
 ```
 
-`prepare` 绑定专家目录、callable capability manifest、工作区、worker/session、任务图版本和 attempt，并生成内容哈希。`verify` 只做一致性检查：重新计算结果与独立证据文件哈希，并拒绝越界路径、身份不一致和陈旧 attempt；它固定返回 `host_execution_verified: false`、`graph_mutation_allowed: false`，不会把任务标成成功。当前 Codex 宿主没有暴露本仓库所需的原生模型/session 绑定入口；因此 dry-run、CLI dispatch 或 consistency verify 都不证明专家模型真的执行，也不证明六类专业工作流完整。
+`prepare` 绑定专家目录、callable capability manifest、工作区、任务图版本和 attempt，并生成内容哈希。实际 native collaboration spawn/followup 前，运行时 worker 必须检查 `--lease`、lease duration、deadline、task-wide 无进展停止和跨策略共享的原子任务总尝试预算；`task-claim` 获取 lease，每个被接受的 `task-record` 都携带并释放本次 lease，后续 attempt 必须 fresh claim。只有 success 或停止条件使任务终止，progress 重置无进展计数。完整 policy 固定到同一任务。collaboration spawn 可接收请求模型并返回原生 agent ID，但调用者不能提供宿主证明的 `session_key`；本地 sticky `session_key` 仅用于关联。
+
+```powershell
+$claim = ./bin/wuji.exe task-claim --store .wuji/task-circuits --task task-1 --strategy expert-bridge --policy bounded-native-v1 --max-no-progress 2 --max-attempts 2 --deadline-seconds 120 --lease-seconds 60 --attempt attempt-1 | ConvertFrom-Json
+# Spawn/follow up only when $claim.allowed; record the observed outcome with $claim.lease_id.
+./bin/wuji.exe task-record --store .wuji/task-circuits --task task-1 --strategy expert-bridge --policy bounded-native-v1 --max-no-progress 2 --max-attempts 2 --deadline-seconds 120 --lease-seconds 60 --attempt attempt-1 --outcome success --lease $claim.lease_id
+```
+
+`verify` 是严格的 legacy consistency gate：重算结果与独立证据文件哈希，并拒绝越界路径、身份不一致和陈旧 attempt。它要求 receipt 中的 effective-model 以及 billing baseline/savings；当前宿主未独立提供这些字段时，不得伪造以通过 verify。此时 `host_execution_verified: false`、`graph_mutation_allowed: false`，不得把任务标为成功。原生调用记录加独立制品测试仍可作为有用的执行/行为证据，但不能替代 strict expert-bridge verify、不能声称模型已获宿主证明，也不能完成任务图。dry-run、CLI dispatch 或 consistency verify 同样不证明专家模型真的执行或六类专业工作流完整。
 
 ## 用户记忆
 
