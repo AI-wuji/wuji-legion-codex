@@ -15,7 +15,7 @@ import (
 	"github.com/AI-wuji/wuji-legion-codex-2.0/internal/core"
 )
 
-const usage = `usage: wuji <route|response-policy|orchestrate|change-capsule|context-select|context-mode-prepare|context-mode-validate|graph-sync|expert-bridge|user-memory|knowledge-record|knowledge-query|task-gate|task-claim|task-record|requirement-record|decision-record|requirement-project|execution-record|execution-result|execution-project|acceptance-reconcile|staff-create|staff-update|staff-status|conversation-link|conversation-resolve|provenance-record|provenance-resolve|source-assess|source-impact|asset-select|graph-govern|audit-record|lineage-sync|security-gate|officer-select|dispatch|validate-receipt|verify|source-audit|evolve> [flags]
+const usage = `usage: wuji <route|response-policy|orchestrate|change-capsule|context-select|search-select|context-mode-prepare|context-mode-validate|graph-sync|expert-bridge|user-memory|knowledge-record|knowledge-query|task-gate|task-claim|task-record|requirement-record|decision-record|requirement-project|execution-record|execution-result|execution-project|acceptance-reconcile|staff-create|staff-update|staff-status|conversation-link|conversation-resolve|provenance-record|provenance-resolve|source-assess|source-impact|asset-select|graph-govern|audit-record|lineage-sync|security-gate|officer-select|dispatch|validate-receipt|verify|source-audit|evolve> [flags]
 
 Commands:
   route           select a capability for a user request
@@ -23,6 +23,7 @@ Commands:
   orchestrate     prepare ordered native-worker contracts for General Staff scheduling
   change-capsule  create a bounded high-risk change contract
   context-select  select ranked code excerpts within a byte budget
+  search-select   reduce supplied search candidates without fetching or ranking
   context-mode-prepare prepare a bounded stateless ctx_execute contract
   context-mode-validate validate a ctx_execute result against its contract
   graph-sync      build or refresh the local workspace relation graph
@@ -80,6 +81,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 	var err error
 	exitCode := 0
 	switch args[0] {
+	case "search-select":
+		return runSearchSelectionCommand(args[1:], os.Stdin, stdout, stderr)
+
 	case "context-mode-prepare":
 		return runContextModePrepare(args[1:], stdout, stderr)
 

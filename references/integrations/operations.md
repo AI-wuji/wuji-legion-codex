@@ -4,6 +4,8 @@
 
 ## 专家交接
 
+交接前先执行 `select`：`selected` 表示唯一词面匹配；`none` 或 `ambiguous` 将任务交还阿极的原有路由复核，不能据此跳过任务，也不能直接派发专家。并列候选最多返回 5 个 ID 与命中数量；这些数量不是置信度，词面匹配也不证明专家胜任。复合需求应按依赖拆分后路由，不要求小白自行选专家。
+
 ```powershell
 ./bin/wuji.exe expert-bridge select --root . --query "修复可复现的并发故障"
 ./bin/wuji.exe expert-bridge prepare --root . --workspace . --query "修复可复现的并发故障" --worker worker.json --task-instance task-1 --graph-version 1 --execution-node exec-1 --attempt attempt-1
@@ -20,6 +22,14 @@ $claim = ./bin/wuji.exe task-claim --store .wuji/task-circuits --task task-1 --s
 ```
 
 `verify` 是严格的 legacy consistency gate：重算结果与独立证据文件哈希，并拒绝越界路径、身份不一致和陈旧 attempt。它要求 receipt 中的 effective-model 以及 billing baseline/savings；当前宿主未独立提供这些字段时，不得伪造以通过 verify。此时 `host_execution_verified: false`、`graph_mutation_allowed: false`，不得把任务标为成功。原生调用记录加独立制品测试仍可作为有用的执行/行为证据，但不能替代 strict expert-bridge verify、不能声称模型已获宿主证明，也不能完成任务图。dry-run、CLI dispatch 或 consistency verify 同样不证明专家模型真的执行或六类专业工作流完整。
+
+## 搜索结果收缩
+
+已获得大量候选结果、需要交给后续综合节点时，可将结构化候选 JSON 通过 stdin 交给 `wuji search-select`；少量结果直接阅读，不增加一道机械流程。它不发起网络请求、不调用模型、不重新判断相关性，沿用输入排序。最多检查 128 个候选、返回 10 个，CLI 输入上限 256 KiB；原始候选应保留在本地冷制品中，便于按需追溯遗漏项。
+
+输入包含 `query`、`candidates`（每项为 `url`、`title`、`snippet`、可选 `provenance`）、`incomplete`、可选 `source_errors`（每项 `source`、`error`）。输出保留来源错误和不完整标记，列出重复、无效、遗漏数量。来源标识是输入数据，不是权威认证；选中 URL 也不等于事实核实。错误、空结果或收缩后的遗漏不能被解释为“没有证据”。
+
+去重保留首次出现的候选，重复项的其他摘要或来源说明不合并，以 `dropped_duplicate_observations` 显式计数；需要交叉核对时回读原始冷制品。不同 fragment、业务参数和路径大小写保留，已知跟踪参数仅用于去重键移除，输出仍保留原始 URL。`incomplete` 表示输入检索不完整、来源失败或超出候选扫描上限；结果的主动裁剪另看 `omitted_candidates`，不能只看一个布尔值判断覆盖是否充分。
 
 ## 用户记忆
 

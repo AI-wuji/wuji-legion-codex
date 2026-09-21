@@ -5,12 +5,17 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
 const expertBridgeSchemaVersion = 1
+const expertMaxCatalogBytes int64 = 1 << 20
+const expertMaxQueryBytes = 16 << 10
+const expertMaxSelectionCandidates = 5
 const expertMaxEvidenceFiles = 16
 const expertMaxEvidenceFileBytes int64 = 4 << 20
 const expertMaxEvidenceTotalBytes int64 = 16 << 20
@@ -37,10 +42,22 @@ type ExpertWorkflowBinding struct {
 }
 
 type ExpertSelection struct {
-	ExpertID      string   `json:"expert_id"`
-	Matched       []string `json:"matched_triggers"`
-	RejectedBy    []string `json:"rejected_by,omitempty"`
-	CatalogSHA256 string   `json:"catalog_sha256"`
+	State               string                     `json:"state"`
+	ExpertID            string                     `json:"expert_id"`
+	Matched             []string                   `json:"matched_triggers"`
+	RejectedBy          []string                   `json:"rejected_by,omitempty"`
+	Reason              string                     `json:"reason"`
+	FallbackHint        string                     `json:"fallback_hint,omitempty"`
+	Candidates          []ExpertSelectionCandidate `json:"candidates"`
+	CandidateCount      int                        `json:"candidate_count"`
+	CandidatesTruncated bool                       `json:"candidates_truncated"`
+	CatalogSHA256       string                     `json:"catalog_sha256"`
+}
+
+// ExpertSelectionCandidate is a compact, bounded summary of a top-scoring expert.
+type ExpertSelectionCandidate struct {
+	ExpertID   string `json:"expert_id"`
+	MatchCount int    `json:"match_count"`
 }
 
 type ExpertHandoffContract struct {
@@ -92,7 +109,8 @@ type ExpertReceiptVerification struct {
 	Reason                string   `json:"reason"`
 }
 
-// SelectExpert deterministically selects one non-vetoed expert. Ties use catalog order.
+// SelectExpert returns a bounded decision. A lexical miss or anti-trigger is not evidence
+// that no skill is needed, so those states explicitly return control to the original route.
 func SelectExpert(root, query string) (ExpertSelection, error) {
 	catalog, data, err := loadExpertCatalog(root)
 	if err != nil {
@@ -102,33 +120,67 @@ func SelectExpert(root, query string) (ExpertSelection, error) {
 	if q == "" {
 		return ExpertSelection{}, fmt.Errorf("expert selection query is required")
 	}
-	best, bestScore := -1, 0
-	var bestMatched []string
-	for i, expert := range catalog.Experts {
-		var veto []string
-		for _, signal := range expert.AntiTriggers {
-			if containsFold(q, signal) {
-				veto = append(veto, signal)
-			}
-		}
-		if len(veto) > 0 {
-			continue
-		}
-		var matched []string
-		for _, signal := range expert.Triggers {
-			if containsFold(q, signal) {
-				matched = append(matched, signal)
-			}
-		}
-		if len(matched) > bestScore {
-			best, bestScore, bestMatched = i, len(matched), matched
-		}
-	}
-	if best < 0 {
-		return ExpertSelection{}, fmt.Errorf("no expert matched without an anti-trigger")
+	if len(q) > expertMaxQueryBytes {
+		return ExpertSelection{}, fmt.Errorf("expert selection query exceeds %d bytes", expertMaxQueryBytes)
 	}
 	digest := sha256.Sum256(data)
-	return ExpertSelection{ExpertID: catalog.Experts[best].ID, Matched: bestMatched, CatalogSHA256: hex.EncodeToString(digest[:])}, nil
+	selection := ExpertSelection{CatalogSHA256: hex.EncodeToString(digest[:]), Candidates: []ExpertSelectionCandidate{}}
+	top := make([]expertSelectionMatch, 0, len(catalog.Experts))
+	bestScore := 0
+	anyVeto := false
+	for _, expert := range catalog.Experts {
+		veto := uniqueMatchingSignals(q, expert.AntiTriggers)
+		if len(veto) > 0 {
+			anyVeto = true
+			continue
+		}
+		matched := uniqueMatchingSignals(q, expert.Triggers)
+		if len(matched) == 0 {
+			continue
+		}
+		if len(matched) > bestScore {
+			bestScore = len(matched)
+			top = top[:0]
+		}
+		if len(matched) == bestScore {
+			top = append(top, expertSelectionMatch{expert: expert, matched: matched})
+		}
+	}
+	if len(top) == 0 {
+		selection.State = "none"
+		selection.FallbackHint = "return-to-aji-original-route"
+		if anyVeto {
+			selection.Reason = "anti-trigger"
+		} else {
+			selection.Reason = "no-match"
+		}
+		return selection, nil
+	}
+	sort.Slice(top, func(i, j int) bool { return top[i].expert.ID < top[j].expert.ID })
+	selection.CandidateCount = len(top)
+	selection.CandidatesTruncated = len(top) > expertMaxSelectionCandidates
+	for i, candidate := range top {
+		if i == expertMaxSelectionCandidates {
+			break
+		}
+		selection.Candidates = append(selection.Candidates, ExpertSelectionCandidate{ExpertID: candidate.expert.ID, MatchCount: len(candidate.matched)})
+	}
+	if len(top) > 1 {
+		selection.State = "ambiguous"
+		selection.Reason = "tie"
+		selection.FallbackHint = "return-to-aji-original-route"
+		return selection, nil
+	}
+	selection.State = "selected"
+	selection.Reason = "unique-match"
+	selection.ExpertID = top[0].expert.ID
+	selection.Matched = append([]string(nil), top[0].matched...)
+	return selection, nil
+}
+
+type expertSelectionMatch struct {
+	expert  expertDefinition
+	matched []string
 }
 
 // PrepareExpertHandoff validates callable workflow bindings and returns an immutable native-host contract.
@@ -136,6 +188,9 @@ func PrepareExpertHandoff(root, workspace, query string, worker WorkerTask, task
 	selection, err := SelectExpert(root, query)
 	if err != nil {
 		return ExpertHandoffContract{}, err
+	}
+	if selection.State != "selected" || selection.ExpertID == "" {
+		return ExpertHandoffContract{}, fmt.Errorf("expert handoff requires a selected expert; selection is %s (%s)", selection.State, selection.Reason)
 	}
 	catalog, _, err := loadExpertCatalog(root)
 	if err != nil {
@@ -259,9 +314,25 @@ func VerifyAndRecordExpertReceipt(contract ExpertHandoffContract, receipt Expert
 }
 
 func loadExpertCatalog(root string) (expertCatalog, []byte, error) {
-	data, err := os.ReadFile(filepath.Join(root, "capabilities", "experts", "manifest.json"))
+	path := filepath.Join(root, "capabilities", "experts", "manifest.json")
+	file, err := os.Open(path)
 	if err != nil {
 		return expertCatalog{}, nil, err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return expertCatalog{}, nil, err
+	}
+	if info.Size() > expertMaxCatalogBytes {
+		return expertCatalog{}, nil, fmt.Errorf("expert catalog exceeds %d bytes", expertMaxCatalogBytes)
+	}
+	data, err := io.ReadAll(io.LimitReader(file, expertMaxCatalogBytes+1))
+	if err != nil {
+		return expertCatalog{}, nil, err
+	}
+	if int64(len(data)) > expertMaxCatalogBytes {
+		return expertCatalog{}, nil, fmt.Errorf("expert catalog exceeds %d bytes", expertMaxCatalogBytes)
 	}
 	var catalog expertCatalog
 	if err := json.Unmarshal(data, &catalog); err != nil {
@@ -274,7 +345,25 @@ func loadExpertCatalog(root string) (expertCatalog, []byte, error) {
 }
 
 func containsFold(query, signal string) bool {
-	return strings.Contains(query, strings.ToLower(strings.TrimSpace(signal)))
+	signal = strings.ToLower(strings.TrimSpace(signal))
+	return signal != "" && strings.Contains(query, signal)
+}
+
+func uniqueMatchingSignals(query string, signals []string) []string {
+	seen := make(map[string]struct{}, len(signals))
+	matched := make([]string, 0, len(signals))
+	for _, signal := range signals {
+		normalized := strings.ToLower(strings.TrimSpace(signal))
+		if normalized == "" || !containsFold(query, normalized) {
+			continue
+		}
+		if _, ok := seen[normalized]; ok {
+			continue
+		}
+		seen[normalized] = struct{}{}
+		matched = append(matched, signal)
+	}
+	return matched
 }
 
 func hashExpertContract(contract ExpertHandoffContract) (string, error) {

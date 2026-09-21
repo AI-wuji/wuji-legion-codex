@@ -3,6 +3,8 @@ package core
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,14 +34,102 @@ func expertTestWorker() WorkerTask {
 	return WorkerTask{ID: "expert-worker", Model: "gpt-5.6-terra", ModelClass: "terra", SessionKey: "expert-bridge-20260919", MaxAttempts: 1, DelegationGateReason: "expert workflow selected", TaskContract: "repair reproducible bug", TaskContractSHA256: strings.Repeat("a", 64), StablePrefixSHA256: strings.Repeat("b", 64), ContextPayloadSHA256: strings.Repeat("c", 64)}
 }
 
+func writeExpertTestCatalog(t *testing.T, root string, experts ...expertDefinition) {
+	t.Helper()
+	for len(experts) < 6 {
+		experts = append(experts, expertDefinition{ID: fmt.Sprintf("filler-%d", len(experts)), Triggers: []string{fmt.Sprintf("filler-%d", len(experts))}})
+	}
+	data, err := json.Marshal(expertCatalog{Experts: experts})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(root, "capabilities", "experts")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestSelectExpertUsesTriggersAndAntiTriggers(t *testing.T) {
 	root := expertTestRoot(t)
 	selected, err := SelectExpert(root, "测试失败，请修复代码 bug")
-	if err != nil || selected.ExpertID != "code-repair" || len(selected.Matched) != 3 {
+	if err != nil || selected.State != "selected" || selected.ExpertID != "code-repair" || len(selected.Matched) != 3 || selected.CandidateCount != 1 {
 		t.Fatalf("unexpected selection: %#v err=%v", selected, err)
 	}
-	if _, err := SelectExpert(root, "修复代码，但这只是纯解释"); err == nil {
-		t.Fatal("anti-trigger did not veto expert")
+	vetoed, err := SelectExpert(root, "修复代码，但这只是纯解释")
+	if err != nil || vetoed.State != "none" || vetoed.Reason != "anti-trigger" || vetoed.FallbackHint != "return-to-aji-original-route" {
+		t.Fatalf("anti-trigger did not return original route: %#v err=%v", vetoed, err)
+	}
+}
+
+func TestSelectExpertReturnsNoMatchToOriginalRoute(t *testing.T) {
+	selection, err := SelectExpert(expertTestRoot(t), "请解释这个概念的历史背景")
+	if err != nil || selection.State != "none" || selection.Reason != "no-match" || selection.ExpertID != "" || selection.FallbackHint != "return-to-aji-original-route" {
+		t.Fatalf("no lexical match must abstain without claiming no skill: %#v err=%v", selection, err)
+	}
+}
+
+func TestSelectExpertReturnsAmbiguousIndependentOfCatalogOrder(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	alpha := expertDefinition{ID: "alpha", Triggers: []string{"部署"}}
+	beta := expertDefinition{ID: "beta", Triggers: []string{"部署"}}
+	writeExpertTestCatalog(t, first, alpha, beta)
+	writeExpertTestCatalog(t, second, beta, alpha)
+	for _, root := range []string{first, second} {
+		selection, err := SelectExpert(root, "请部署服务")
+		if err != nil || selection.State != "ambiguous" || selection.Reason != "tie" || selection.ExpertID != "" || selection.CandidateCount != 2 || len(selection.Candidates) != 2 || selection.Candidates[0].ExpertID != "alpha" || selection.Candidates[1].ExpertID != "beta" {
+			t.Fatalf("catalog order biased selection: %#v err=%v", selection, err)
+		}
+	}
+}
+
+func TestSelectExpertBoundsCandidatesAndIgnoresBlankDuplicateTriggers(t *testing.T) {
+	root := t.TempDir()
+	experts := []expertDefinition{{ID: "expert-0", Triggers: []string{"", "部署", "部署"}}}
+	for i := 1; i < 6; i++ {
+		experts = append(experts, expertDefinition{ID: fmt.Sprintf("expert-%d", i), Triggers: []string{"部署"}})
+	}
+	writeExpertTestCatalog(t, root, experts...)
+	selection, err := SelectExpert(root, "部署服务")
+	if err != nil || selection.State != "ambiguous" || selection.CandidateCount != 6 || !selection.CandidatesTruncated || len(selection.Candidates) != expertMaxSelectionCandidates {
+		t.Fatalf("candidate shortlist is not bounded: %#v err=%v", selection, err)
+	}
+	for _, candidate := range selection.Candidates {
+		if candidate.MatchCount != 1 {
+			t.Fatalf("blank or duplicate trigger biased score: %#v", selection)
+		}
+	}
+}
+
+func TestPrepareExpertHandoffRejectsAbstainedSelection(t *testing.T) {
+	root := t.TempDir()
+	writeExpertTestCatalog(t, root)
+	if _, err := PrepareExpertHandoff(root, root, "请解释这个概念", expertTestWorker(), "task-1", "graph-1", "node-1", "attempt-1"); err == nil || !strings.Contains(err.Error(), "requires a selected expert") {
+		t.Fatalf("handoff accepted no-match selection: %v", err)
+	}
+	writeExpertTestCatalog(t, root, expertDefinition{ID: "alpha", Triggers: []string{"部署"}}, expertDefinition{ID: "beta", Triggers: []string{"部署"}})
+	if _, err := PrepareExpertHandoff(root, root, "请部署服务", expertTestWorker(), "task-1", "graph-1", "node-1", "attempt-1"); err == nil || !strings.Contains(err.Error(), "requires a selected expert") {
+		t.Fatalf("handoff accepted ambiguous selection: %v", err)
+	}
+}
+
+func TestSelectExpertEnforcesQueryAndCatalogBounds(t *testing.T) {
+	if _, err := SelectExpert(expertTestRoot(t), strings.Repeat("x", expertMaxQueryBytes+1)); err == nil || !strings.Contains(err.Error(), "query exceeds") {
+		t.Fatalf("oversized query accepted: %v", err)
+	}
+	root := t.TempDir()
+	dir := filepath.Join(root, "capabilities", "experts")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "manifest.json"), []byte(strings.Repeat(" ", int(expertMaxCatalogBytes)+1)), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := SelectExpert(root, "测试"); err == nil || !strings.Contains(err.Error(), "catalog exceeds") {
+		t.Fatalf("oversized catalog accepted: %v", err)
 	}
 }
 

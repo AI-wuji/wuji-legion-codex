@@ -25,6 +25,8 @@
 | 不知道该用哪个 Skill、MCP 或插件 | 从已验证能力中按任务选择，不要求先记住工具名。 |
 | 任务跨越代码、研究、文档、设计或数据 | 按场景挂载最小能力包，避免把所有规则和上下文塞进一次请求。 |
 | 自动化容易越跑越多、越改越乱 | 路由、重试、图谱、上下文和反馈都有显式上限及证据门槛。 |
+| 一句话同时涉及多个领域，容易选错专家 | 专家词面匹配并列或无匹配时，由阿极结合任务复核，不按目录顺序盲选，也不要求用户自行选专家。 |
+| 检索结果重复、上下文越堆越长 | 对已获得的大批候选按需做有界去重，保留不同证据链接及来源失败信息，再读取必要内容。 |
 
 ## 三个坚持
 
@@ -71,8 +73,10 @@
 | 能力需经 callable、行为验证、对照与晋级门禁 | 没有宿主计费遥测时，不存在全局 token 或费用硬上限。 |
 | `user-memory` 提供显式保存、作用域召回、撤销、TTL、版本冲突和疑似密钥拒绝 | 用户记忆只记录用户确认的偏好/约束；不是世界事实验证，也不会自动读取对话。 |
 | `expert-bridge` 可生成并校验内容寻址的专家交接契约与执行证据 | 当前宿主没有可用的原生模型/session 绑定接口，六类专家工作流不能据此宣称已完整执行。 |
+| 专家选择返回唯一匹配、并列或无匹配；后两者阻止直接交接 | 词面命中数不是置信度，也不证明专家质量；复合任务仍需按依赖拆解。 |
+| `search-select` 最多扫描 128 个已检索候选，返回最多 10 个并保留错误与遗漏计数 | 不发起搜索、不做语义排序、不核实事实；重复项只保留首次记录，原始结果需保留以便追溯。 |
 
-最近验收的真实范围、fast audit 的未通过项和后续限制见[优化记录](references/release/optimization-2026-09-06.md)。该记录明确：修复后的全包 Go 测试、vet 和 build 已通过；fast audit 仍被三项 size gate 拦截，因此不能称为全绿发布。
+最新验证见 [2026-09-21 方法借鉴记录](references/release/jev-methods-2026-09-21.md)：Go 测试、vet、构建及新增命令的真实行为检查通过；fast audit 在 OfficeCLI Word 探针处因缺少运行库失败，源码总体体积也仍超限。不能称为全绿发布。此次借鉴 Jev 生态的方法，没有引入 Jev/Laya 模型依赖；实际 token、费用和速度收益尚未测量。
 
 ## 开始使用
 
@@ -83,10 +87,24 @@ git clone https://github.com/AI-wuji/wuji-legion-codex.git
 cd wuji-legion-codex
 $env:WUJI_GO = (Get-Command go).Source
 ./scripts/build.ps1
-./bin/wuji.exe route --query "修改登录页并验证真实路由" --workspace .
+./bin/wuji.exe route --query "修改登录页并验证真实路由"
 ```
 
-`route` 输出的是任务契约，不会自行执行。宿主必须按其中的阶段、精确模型与 `session_key` 创建原生执行节点，并按任务契约授予所需的受限读写权限；JSON 或 CLI 参数本身不构成模型已调用、制品已写入或任务已完成的证据。
+`route` 输出的是任务契约，不会自行执行。宿主按其中阶段与请求模型创建原生执行节点，并授予任务所需的受限权限；本地 `session_key` 只用于关联，不证明宿主会话或实际模型。JSON 或 CLI 参数本身不构成模型已调用、制品已写入或任务已完成的证据。
+
+### 在 Codex 中启用
+
+将仓库链接到用户技能目录；已有安装时只需更新原仓库并重新构建，避免重复注册。首次安装可执行：
+
+```powershell
+$skillRoot = Join-Path $env:USERPROFILE '.agents/skills'
+New-Item -ItemType Directory -Force -Path $skillRoot | Out-Null
+New-Item -ItemType Junction -Path (Join-Path $skillRoot 'wuji-legion-codex-3-0') -Target (Get-Location).Path
+```
+
+Codex [支持链接技能目录并自动检测技能更新](https://developers.openai.com/codex/skills/)；若界面仍未显示，再重启 Codex。开始任务时可明确说“使用无极军团完成……”，之后按任务匹配技能入口。本项目按需运行，不需要启动额外常驻服务。
+
+本次专家选择与搜索收缩已写入现有技能流程。阿极在专家交接前检查选择结果，研究流程仅在候选较多、需要收缩时调用搜索辅助命令；无需用户手动挑选专家或工具。是否执行仍应以本次任务的真实工具记录为准，安装成功不等于每个任务都会调用所有功能。
 
 可选择安装到当前会话或用户 PATH：
 
@@ -141,6 +159,7 @@ $env:USERPROFILE/.codex/skills/feishu-lark
 | 能力的证据等级与验证契约 | [能力契约](references/capability-contract.md) · `capabilities/*/manifest.json` |
 | 本轮优化的实际验收状态 | [优化记录](references/release/optimization-2026-09-06.md) |
 | 2026-09-19 集成范围与证据 | [集成记录](references/release/integration-2026-09-19.md) |
+| 2026-09-21 专家选择、搜索收缩与本地启用 | [方法借鉴及验证记录](references/release/jev-methods-2026-09-21.md) |
 | 记忆、专家桥和可选适配器操作 | [集成操作指南](references/integrations/operations.md) · [外部记忆协议](references/integrations/external-memory-protocol.md) |
 | 项目规则与入口 | [SKILL.md](SKILL.md) · [AGENTS.md](AGENTS.md) |
 | 同一初心的其他宿主实现 | [dsh-wuji-legion-global](https://github.com/AI-wuji/dsh-wuji-legion-global) · [dsh-wuji-legion-mode](https://github.com/AI-wuji/dsh-wuji-legion-mode) |
@@ -161,6 +180,7 @@ $env:USERPROFILE/.codex/skills/feishu-lark
 
 ## 更新日志
 
+- **2026-09-21**：借鉴 Jev 生态的有界选择与证据收缩方法：专家并列或无匹配时返回阿极复核；新增离线 `search-select`，压缩重复候选并保留来源、错误和不完整状态。接入现有 Codex 技能入口，补充首页说明和启用步骤；Go 测试、vet 与真实命令验证通过。不安装 Jev/Laya、不新增模型服务，不宣称实测 token 收益；统一审计的 OfficeCLI 运行库和体积问题仍在。实现范围与验证边界见[方法借鉴记录](references/release/jev-methods-2026-09-21.md)。
 - **2026-09-19**：真实受控原生复核发现并修复 native claim 的跨策略无进展与 policy/legacy 降级绕过；guarded state 现按 task 固定完整 policy，每个 accepted record 释放 lease，后续 attempt 必须 fresh claim。锁定 Go 工具链的 `internal/core` 与 `cmd/wuji` 测试通过。此门禁不等于宿主全局计费或自动中断硬限制；strict expert-bridge 的宿主证明缺口仍在，Graphify 关闭，完整 audit 的既有源码体积门禁未绿。详见 [native runtime 证据](references/release/native-runtime-2026-09-19.md)。
 - **2026-09-19**：加入显式、分作用域的本地用户记忆入口和有证据门禁的专家交接桥；保留 Graphify 为冷 pilot，并将 context-mode 限制为无状态执行适配。真实验收与未完成项见[集成记录](references/release/integration-2026-09-19.md)。
 - **2026-09-06** [`f8f9b8`](https://github.com/AI-wuji/wuji-legion-codex/commit/f8f9b8)：重写项目首页，先说明自然语言体验、白帽判断和当前边界，再提供安装、验证与文档入口。

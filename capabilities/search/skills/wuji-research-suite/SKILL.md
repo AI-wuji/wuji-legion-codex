@@ -7,5 +7,6 @@ description: Unified research Skill for parallel multi-source web investigation,
 
 - `web-research`: staff schedules independent official, GitHub, and community branches, then a bounded synthesis execution node resolves conflicts and produces the research artifact. Aji only reports the verified result. For an explicit full-web or comprehensive research request, these are source-class branches rather than a three-source total cap: continue until scope coverage or evidence saturation within the declared time budget.
 - `content-extraction`: use the matching URL, YouTube, or Electron extractor directly without broad-search fan-out.
+- For offline reduction of already supplied candidates, use `wuji search-select` with bounded JSON on stdin. It preserves source order, removes only duplicate normalized HTTP(S) URLs, retains source errors and incompleteness, and never fetches, scores, or treats selected URLs as verified truth.
 
 Return compact evidence handles, dates, claims, and source URLs. Keep raw pages and transcripts out of the hot context. Agnes is not permitted on this route.
