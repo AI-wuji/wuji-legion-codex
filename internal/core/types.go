@@ -461,11 +461,19 @@ type OfficerRecommendation struct {
 }
 
 type WorkerTask struct {
-	ID         string `json:"id"`
-	Stage      string `json:"stage"`
-	Purpose    string `json:"purpose"`
-	ModelClass string `json:"model_class"`
-	Model      string `json:"model"`
+	ID                          string   `json:"id"`
+	Stage                       string   `json:"stage"`
+	Purpose                     string   `json:"purpose"`
+	RoleID                      string   `json:"role_id,omitempty"`
+	RoleKind                    string   `json:"role_kind,omitempty"`
+	ParentGraphID               string   `json:"parent_graph_id,omitempty"`
+	TaskGraphID                 string   `json:"task_graph_id,omitempty"`
+	TaskGraphSHA256             string   `json:"task_graph_sha256,omitempty"`
+	PonyTail                    string   `json:"ponytail,omitempty"`
+	ModelClass                  string   `json:"model_class"`
+	Model                       string   `json:"model"`
+	ReasoningEffort             string   `json:"reasoning_effort"`
+	AvailabilityFallbackEfforts []string `json:"availability_fallback_efforts,omitempty"`
 	// AvailabilityFallbackModels is an ordered model-selection chain that the
 	// host may consult before generation starts. It is deliberately separate
 	// from the execution retry fields below: a worker execution is always one
@@ -511,6 +519,7 @@ type WorkerTask struct {
 
 type WorkerAttempt struct {
 	Model                string `json:"model"`
+	ReasoningEffort      string `json:"reasoning_effort,omitempty"`
 	FailureKind          string `json:"failure_kind,omitempty"`
 	GenerationStarted    bool   `json:"generation_started"`
 	InputTokens          int    `json:"input_tokens"`
@@ -527,12 +536,15 @@ type WorkerExecutionReceipt struct {
 	SchemaVersion               int             `json:"schema_version"`
 	WorkerID                    string          `json:"worker_id"`
 	RequestedModel              string          `json:"requested_model"`
+	RequestedReasoningEffort    string          `json:"requested_reasoning_effort,omitempty"`
 	SessionKey                  string          `json:"session_key"`
 	HostDispatchID              string          `json:"host_dispatch_id"`
 	WriteBoundary               string          `json:"write_boundary"`
 	Attempts                    []WorkerAttempt `json:"attempts"`
 	EffectiveModel              string          `json:"effective_model"`
+	EffectiveReasoningEffort    string          `json:"effective_reasoning_effort,omitempty"`
 	ModelSwitchCount            int             `json:"model_switch_count"`
+	ReasoningSwitchCount        int             `json:"reasoning_switch_count,omitempty"`
 	ResultHandle                string          `json:"result_handle"`
 	ContextHandleIDs            []string        `json:"context_handle_ids"`
 	StablePrefixBytesSent       int             `json:"stable_prefix_bytes"`
@@ -542,6 +554,9 @@ type WorkerExecutionReceipt struct {
 	ContextPayloadSHA256        string          `json:"context_payload_sha256"`
 	TaskContractBytes           int             `json:"task_contract_bytes"`
 	TaskContractSHA256          string          `json:"task_contract_sha256"`
+	ParentGraphID               string          `json:"parent_graph_id,omitempty"`
+	TaskGraphID                 string          `json:"task_graph_id,omitempty"`
+	TaskGraphSHA256             string          `json:"task_graph_sha256,omitempty"`
 	InputTokens                 int             `json:"input_tokens"`
 	CachedInputTokens           int             `json:"cached_input_tokens"`
 	OutputTokens                int             `json:"output_tokens"`
@@ -617,14 +632,18 @@ type DelegationDecision struct {
 }
 
 type ModelPolicy struct {
-	RoutingMode        string              `json:"routing_mode"`
-	UserSelectedModel  string              `json:"user_selected_model,omitempty"`
-	MainModel          string              `json:"main_model"`
-	MainFallbackModels []string            `json:"main_fallback_models,omitempty"`
-	GeneralStaffModel  string              `json:"general_staff_model,omitempty"`
-	ClassModels        map[string]string   `json:"class_models"`
-	FallbackModels     map[string][]string `json:"fallback_models"`
-	Delegation         string              `json:"delegation"`
+	RoutingMode              string              `json:"routing_mode"`
+	UserSelectedModel        string              `json:"user_selected_model,omitempty"`
+	MainModel                string              `json:"main_model"`
+	MainReasoningEffort      string              `json:"main_reasoning_effort"`
+	MainFallbackModels       []string            `json:"main_fallback_models,omitempty"`
+	MainFallbackReasoning    []string            `json:"main_fallback_reasoning,omitempty"`
+	GeneralStaffModel        string              `json:"general_staff_model"`
+	ClassModels              map[string]string   `json:"class_models"`
+	FallbackModels           map[string][]string `json:"fallback_models"`
+	ClassReasoningEfforts    map[string]string   `json:"class_reasoning_efforts"`
+	FallbackReasoningEfforts map[string][]string `json:"fallback_reasoning_efforts"`
+	Delegation               string              `json:"delegation"`
 }
 
 // AjiTaskIntent is the deterministic, user-facing interpretation of a task.
@@ -646,44 +665,63 @@ type AjiTaskIntent struct {
 }
 
 type RouteResult struct {
-	Version                 string                    `json:"version"`
-	Brain                   string                    `json:"brain"`
-	MainModel               string                    `json:"main_model"`
-	GeneralStaffModel       string                    `json:"general_staff_model,omitempty"`
-	ModelPolicy             ModelPolicy               `json:"model_policy"`
-	TaskIntent              AjiTaskIntent             `json:"task_intent"`
-	DelegationPolicy        DelegationPolicy          `json:"delegation_policy"`
-	DelegationDecision      DelegationDecision        `json:"delegation_decision"`
-	TaskExecutionPolicy     TaskExecutionPolicy       `json:"task_execution_policy"`
-	SearchFirstPolicy       SearchFirstPolicy         `json:"search_first_policy"`
-	ChangeCapsule           ChangeCapsuleGate         `json:"change_capsule"`
-	Reasoning               string                    `json:"reasoning"`
-	WriteAuthority          string                    `json:"write_authority"`
-	Nuwa                    bool                      `json:"nuwa"`
-	Capability              string                    `json:"capability"`
-	CapabilityStatus        string                    `json:"capability_status"`
-	PrimarySkill            string                    `json:"primary_skill"`
-	Fallback                string                    `json:"fallback,omitempty"`
-	Engine                  string                    `json:"engine,omitempty"`
-	Provider                string                    `json:"provider,omitempty"`
-	ProviderFallback        string                    `json:"provider_fallback,omitempty"`
-	SecondaryCapabilities   []string                  `json:"secondary_capabilities,omitempty"`
-	MountedSources          []MountedSource           `json:"mounted_sources"`
-	SourceExecution         []SourceExecutionContract `json:"source_execution,omitempty"`
-	ResponsePolicy          *ResponsePolicyContract   `json:"response_policy,omitempty"`
-	ResponsePolicyError     string                    `json:"response_policy_error,omitempty"`
-	AssetContracts          []AssetInvocationContract `json:"asset_contracts,omitempty"`
-	SourceActivationError   string                    `json:"source_activation_error,omitempty"`
-	ExecutionLane           string                    `json:"execution_lane"`
-	GeneralStaffWorker      *WorkerTask               `json:"general_staff_worker,omitempty"`
-	Parallel                bool                      `json:"parallel"`
-	PreflightWorkers        []WorkerTask              `json:"preflight_workers,omitempty"`
-	Workers                 []WorkerTask              `json:"workers,omitempty"`
-	Officers                []string                  `json:"officers,omitempty"`
-	OfficerRecommendations  []OfficerRecommendation   `json:"officer_recommendations,omitempty"`
-	OfficerWorkers          []WorkerTask              `json:"officer_workers,omitempty"`
-	InternalAdversarialPass bool                      `json:"internal_adversarial_pass"`
-	FinishLine              []string                  `json:"finish_line"`
+	Version                 string                         `json:"version"`
+	Brain                   string                         `json:"brain"`
+	MainModel               string                         `json:"main_model"`
+	MainReasoningEffort     string                         `json:"main_reasoning_effort"`
+	MainFallbackReasoning   []string                       `json:"main_fallback_reasoning,omitempty"`
+	GeneralStaffModel       string                         `json:"general_staff_model,omitempty"`
+	GeneralStaffRequired    bool                           `json:"general_staff_required"`
+	GeneralStaffReason      string                         `json:"general_staff_reason,omitempty"`
+	ModelPolicy             ModelPolicy                    `json:"model_policy"`
+	TaskIntent              AjiTaskIntent                  `json:"task_intent"`
+	DelegationPolicy        DelegationPolicy               `json:"delegation_policy"`
+	DelegationDecision      DelegationDecision             `json:"delegation_decision"`
+	TaskExecutionPolicy     TaskExecutionPolicy            `json:"task_execution_policy"`
+	SearchFirstPolicy       SearchFirstPolicy              `json:"search_first_policy"`
+	ChangeCapsule           ChangeCapsuleGate              `json:"change_capsule"`
+	Reasoning               string                         `json:"reasoning"`
+	WriteAuthority          string                         `json:"write_authority"`
+	Nuwa                    bool                           `json:"nuwa"`
+	Capability              string                         `json:"capability"`
+	CapabilityStatus        string                         `json:"capability_status"`
+	PrimarySkill            string                         `json:"primary_skill"`
+	Fallback                string                         `json:"fallback,omitempty"`
+	Engine                  string                         `json:"engine,omitempty"`
+	Provider                string                         `json:"provider,omitempty"`
+	ProviderFallback        string                         `json:"provider_fallback,omitempty"`
+	SecondaryCapabilities   []string                       `json:"secondary_capabilities,omitempty"`
+	MountedSources          []MountedSource                `json:"mounted_sources"`
+	SourceExecution         []SourceExecutionContract      `json:"source_execution,omitempty"`
+	ResponsePolicy          *ResponsePolicyContract        `json:"response_policy,omitempty"`
+	ResponsePolicyError     string                         `json:"response_policy_error,omitempty"`
+	AssetContracts          []AssetInvocationContract      `json:"asset_contracts,omitempty"`
+	SourceActivationError   string                         `json:"source_activation_error,omitempty"`
+	ExecutionLane           string                         `json:"execution_lane"`
+	MoE                     string                         `json:"moe"`
+	RoleGraph               RoleTaskGraph                  `json:"role_graph"`
+	RoleGraphs              map[string]RoleTaskGraph       `json:"role_graphs,omitempty"`
+	GeneralStaffWorker      *WorkerTask                    `json:"general_staff_worker,omitempty"`
+	Parallel                bool                           `json:"parallel"`
+	PreflightWorkers        []WorkerTask                   `json:"preflight_workers,omitempty"`
+	Workers                 []WorkerTask                   `json:"workers,omitempty"`
+	ExpertRoute             *ExpertRouteDecision           `json:"expert_route,omitempty"`
+	SecondaryExpertRoutes   map[string]ExpertRouteDecision `json:"secondary_expert_routes,omitempty"`
+	Officers                []string                       `json:"officers,omitempty"`
+	OfficerRecommendations  []OfficerRecommendation        `json:"officer_recommendations,omitempty"`
+	OfficerWorkers          []WorkerTask                   `json:"officer_workers,omitempty"`
+	InternalAdversarialPass bool                           `json:"internal_adversarial_pass"`
+	WhiteHat                WhiteHatDecision               `json:"white_hat"`
+	FinishLine              []string                       `json:"finish_line"`
+}
+
+type WhiteHatDecision struct {
+	Required    bool     `json:"required"`
+	Status      string   `json:"status"`
+	Checks      []string `json:"checks,omitempty"`
+	Concerns    []string `json:"concerns,omitempty"`
+	Corrections []string `json:"corrections,omitempty"`
+	Escalate    bool     `json:"escalate"`
 }
 
 type VerifyResult struct {

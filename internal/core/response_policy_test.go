@@ -31,7 +31,7 @@ func TestResponsePolicyIsCrossCapabilityOverlay(t *testing.T) {
 	if route.ResponsePolicy == nil || !route.ResponsePolicy.Active || route.ResponsePolicy.ActivationReason != "explicit-activation" {
 		t.Fatalf("response policy was not activated: %#v", route.ResponsePolicy)
 	}
-	if !containsString(route.SecondaryCapabilities, "interaction") || route.ResponsePolicy.RulesSHA256 == "" || route.ResponsePolicy.SourceCommit != "01ce5c3747f05d27e4565580254f8efebac7e60d" {
+	if !containsString(route.SecondaryCapabilities, "interaction") || route.ResponsePolicy.RulesSHA256 == "" || route.ResponsePolicy.SourceCommit != "839872f9d1cd634fed642b4589ce7226199cc15f" {
 		t.Fatalf("response policy provenance/overlay is incomplete: %#v", route)
 	}
 }
@@ -113,13 +113,14 @@ func TestResponsePolicyValidatesObservableBehavior(t *testing.T) {
 		StepCount: 7, ClosingActionCount: 2, ClosingActionMinutes: 10,
 		Continuation: true, Error: true, ContainsOffTopic: true,
 	})
-	for _, want := range []string{"bounded-steps", "cause-fix", "first-action", "progress-state", "single-next-action", "topic-filter"} {
+	for _, want := range []string{"bounded-steps", "cause-fix", "clean-close", "direct-opening", "first-action", "progress-state", "single-next-action", "topic-filter", "visible-result"} {
 		if !containsString(bad, want) {
 			t.Fatalf("observable violation %q was missed: %#v", want, bad)
 		}
 	}
 	good := ValidateResponseDraft(contract, ResponseDraft{
-		FirstLineAction: true, StepCount: 3, ClosingActionCount: 1, ClosingActionMinutes: 2,
+		FirstLineAction: true, DirectOpening: true, StepCount: 3, ClosingActionCount: 1, ClosingActionMinutes: 2,
+		VisibleResult: true, CleanClose: true,
 		Continuation: true, RestatesCurrentState: true, Error: true, ErrorCausePresent: true, ErrorFixPresent: true,
 	})
 	if len(good) != 0 {

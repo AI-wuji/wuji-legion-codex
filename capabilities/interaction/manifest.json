@@ -19,9 +19,9 @@
       "id": "action-focus-distilled",
       "priority": "primary",
       "lifecycle": "callable",
-      "version": "01ce5c3747f05d27e4565580254f8efebac7e60d",
-      "revision": "action-focus-r1",
-      "release_id": "2-1",
+      "version": "839872f9d1cd634fed642b4589ce7226199cc15f",
+      "revision": "action-focus-r2",
+      "release_id": "3-0",
       "license": "MIT",
       "activation": [
         "开启专注执行模式",
@@ -44,11 +44,12 @@
   "fusion_genome": {
     "schema_version": 1,
     "species": "response-rule-fusion",
-    "revision": "action-focus-01ce5c3-r1",
-    "release_id": "2-1",
-    "generation": 1,
+    "revision": "action-focus-839872f9-r2",
+    "release_id": "3-0",
+    "generation": 2,
     "parents": [
-      "ayghri-i-have-adhd-01ce5c3"
+      "ayghri-i-have-adhd-01ce5c3",
+      "ayghri-i-have-adhd-839872f9"
     ],
     "adapters": [
       {
@@ -56,9 +57,9 @@
         "domain": "response-policy",
         "source": "action-focus-distilled",
         "entrypoint": "skills/action-focus/SKILL.md",
-        "source_version": "01ce5c3747f05d27e4565580254f8efebac7e60d",
-        "atom_revision": "action-focus-r1",
-        "release_id": "2-1",
+        "source_version": "839872f9d1cd634fed642b4589ce7226199cc15f",
+        "atom_revision": "action-focus-r2",
+        "release_id": "3-0",
         "license": "MIT",
         "asset_contracts": [
           {

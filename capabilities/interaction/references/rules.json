@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "id": "action-focus",
-  "revision": "action-focus-r1",
+  "revision": "action-focus-r2",
   "mode": "explicit-session",
   "source": {
     "repository": "https://github.com/ayghri/i-have-adhd",
-    "commit": "01ce5c3747f05d27e4565580254f8efebac7e60d",
+    "commit": "839872f9d1cd634fed642b4589ce7226199cc15f",
     "license": "MIT"
   },
   "activation": [
@@ -117,6 +117,27 @@
       "conditions": ["action-request"],
       "directive": "End with exactly one next action that can be done within two minutes.",
       "parameters": {"max_actions": 1, "max_minutes": 2}
+    },
+    {
+      "id": "visible-result",
+      "phase": "progress",
+      "priority": 380,
+      "conditions": ["action-request", "continuation-or-status"],
+      "directive": "Make completed work visible with a concrete result, artifact, test, or executable next command."
+    },
+    {
+      "id": "direct-opening",
+      "phase": "opening",
+      "priority": 480,
+      "conditions": ["always"],
+      "directive": "Start with the answer or next executable action; omit a redundant preamble."
+    },
+    {
+      "id": "clean-close",
+      "phase": "closing",
+      "priority": 240,
+      "conditions": ["always"],
+      "directive": "Before sending, remove redundant recap, tangent, hedging, or closing pleasantry unless it carries necessary uncertainty, safety, or requested explanation."
     }
   ]
 }

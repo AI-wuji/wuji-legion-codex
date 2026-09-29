@@ -12,7 +12,12 @@
     "make a video",
     "image to video",
     "生成视频",
-    "图生视频"
+    "图生视频",
+    "剪映",
+    "CapCut",
+    "REAPER",
+    "声场",
+    "视频剪辑"
   ],
   "status": "callable",
   "primary_skill": "wuji-video-suite",
@@ -31,6 +36,17 @@
         "用gpt生成视频",
         "不用agnes"
       ]
+    },
+    {
+      "id": "local-media-editor",
+      "triggers": [
+        "剪映",
+        "CapCut",
+        "REAPER",
+        "声场",
+        "视频剪辑",
+        "后期剪辑"
+      ]
     }
   ],
   "sources": [
@@ -46,6 +62,22 @@
       "lifecycle": "callable",
       "entrypoint": "SKILL.md",
       "priority": "primary"
+    },
+    {
+      "id": "wuji-video-production-expert",
+      "globs": ["${ROOT}/capabilities/video/skills/wuji-video-production-expert"],
+      "required": ["SKILL.md"],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
+      "priority": "optional"
+    },
+    {
+      "id": "wuji-local-media-editor-expert",
+      "globs": ["${ROOT}/capabilities/video/skills/wuji-local-media-editor-expert"],
+      "required": ["SKILL.md"],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
+      "priority": "optional"
     },
     {
       "id": "hyperframes-complete",

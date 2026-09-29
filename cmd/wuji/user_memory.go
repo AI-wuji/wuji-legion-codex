@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AI-wuji/wuji-legion-codex-2.0/internal/core"
+	"github.com/AI-wuji/wuji-legion-codex-3.0/internal/core"
 )
 
 // runUserMemoryCommand is intentionally separate from main.go. Register it as

@@ -18,18 +18,21 @@ import (
 const workspaceGraphSchemaVersion = 1
 
 const (
-	workspaceGraphMaxTermsPerFile   = 512
-	workspaceGraphMaxRefsPerTerm    = 256
-	workspaceGraphMaxLookups        = 64
-	workspaceGraphMaxCandidates     = 128
-	workspaceGraphMaxSourceFiles    = 4096
-	workspaceGraphMaxScanDuration   = 5 * time.Second
-	workspaceGraphMaxSourceBytes    = 16 * 1024 * 1024
-	workspaceGraphMaxBuildBytes     = 32 * 1024 * 1024
-	workspaceGraphMaxRefBytes       = 512 * 1024
-	workspaceGraphMaxTermBytes      = 256
-	workspaceGraphMaxCleanupEntries = 512
-	workspaceGraphMaxGenerations    = 8
+	workspaceGraphMaxTermsPerFile             = 512
+	workspaceGraphMaxRefsPerTerm              = 256
+	workspaceGraphMaxLookups                  = 64
+	workspaceGraphMaxCandidates               = 128
+	workspaceGraphMaxSourceFiles              = 4096
+	workspaceGraphMaxScanDuration             = 90 * time.Second
+	workspaceGraphCleanupDuration             = 90 * time.Second
+	workspaceGraphMaxSourceBytes              = 16 * 1024 * 1024
+	workspaceGraphMaxBuildBytes               = 32 * 1024 * 1024
+	workspaceGraphMaxRefBytes                 = 512 * 1024
+	workspaceGraphMaxTermBytes                = 256
+	workspaceGraphMaxCleanupEntries           = 512
+	workspaceGraphMaxGenerationCleanupEntries = 65536
+	workspaceGraphMaxGenerations              = 8
+	workspaceGraphLockStaleAfter              = workspaceGraphMaxScanDuration + knowledgeLockWait
 )
 
 var (
@@ -127,7 +130,7 @@ func SyncWorkspaceGraph(workspace string) (WorkspaceGraphSyncResult, error) {
 			return err
 		}
 		if activeDir, activeErr := activeWorkspaceGraphDir(workspace); activeErr == nil {
-			if err := cleanupWorkspaceGraphGenerations(graphDir, filepath.Base(activeDir), deadline); err != nil {
+			if err := cleanupWorkspaceGraphGenerations(graphDir, filepath.Base(activeDir), time.Now().Add(workspaceGraphCleanupDuration)); err != nil {
 				return err
 			}
 		} else if !errors.Is(activeErr, errWorkspaceGraphMissing) {
@@ -198,15 +201,15 @@ func SyncWorkspaceGraph(workspace string) (WorkspaceGraphSyncResult, error) {
 			return nil
 		})
 		if err != nil {
-			_ = removeWorkspaceGraphTreeBounded(temporary, deadline)
+			_ = removeWorkspaceGraphTreeBounded(temporary, time.Now().Add(workspaceGraphCleanupDuration))
 			return err
 		}
 		if err := writeWorkspaceGraphRefs(temporary, "terms", termRefs, deadline); err != nil {
-			_ = removeWorkspaceGraphTreeBounded(temporary, deadline)
+			_ = removeWorkspaceGraphTreeBounded(temporary, time.Now().Add(workspaceGraphCleanupDuration))
 			return err
 		}
 		if err := writeWorkspaceGraphRefs(temporary, "relations", relationRefs, deadline); err != nil {
-			_ = removeWorkspaceGraphTreeBounded(temporary, deadline)
+			_ = removeWorkspaceGraphTreeBounded(temporary, time.Now().Add(workspaceGraphCleanupDuration))
 			return err
 		}
 		overflowTerms := make([]string, 0, len(overflow))
@@ -217,18 +220,18 @@ func SyncWorkspaceGraph(workspace string) (WorkspaceGraphSyncResult, error) {
 		meta := workspaceGraphMeta{SchemaVersion: workspaceGraphSchemaVersion, Workspace: workspace, FileCount: fileCount, TermCount: len(termRefs) + len(relationRefs), OverflowTerms: overflowTerms, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano)}
 		data, err := json.MarshalIndent(meta, "", "  ")
 		if err != nil {
-			_ = removeWorkspaceGraphTreeBounded(temporary, deadline)
+			_ = removeWorkspaceGraphTreeBounded(temporary, time.Now().Add(workspaceGraphCleanupDuration))
 			return err
 		}
 		if err := writeWorkspaceGraphFile(filepath.Join(temporary, "meta.json"), append(data, '\n'), deadline); err != nil {
-			_ = removeWorkspaceGraphTreeBounded(temporary, deadline)
+			_ = removeWorkspaceGraphTreeBounded(temporary, time.Now().Add(workspaceGraphCleanupDuration))
 			return err
 		}
 		if err := checkWorkspaceGraphDeadline(deadline); err != nil {
 			return err
 		}
 		if err := os.Rename(temporary, finalGeneration); err != nil {
-			_ = removeWorkspaceGraphTreeBounded(temporary, deadline)
+			_ = removeWorkspaceGraphTreeBounded(temporary, time.Now().Add(workspaceGraphCleanupDuration))
 			return err
 		}
 		active := workspaceGraphActive{SchemaVersion: workspaceGraphSchemaVersion, Workspace: workspace, Generation: generation}
@@ -239,9 +242,7 @@ func SyncWorkspaceGraph(workspace string) (WorkspaceGraphSyncResult, error) {
 		if err := writeWorkspaceGraphFile(filepath.Join(graphDir, "active.json"), append(activeData, '\n'), deadline); err != nil {
 			return err
 		}
-		// Publication is already atomic. Reclaim small prior generations when the
-		// remaining budget allows, but never turn a published graph into failure.
-		_ = cleanupWorkspaceGraphGenerations(graphDir, generation, deadline)
+		_ = cleanupWorkspaceGraphGenerations(graphDir, generation, time.Now().Add(workspaceGraphCleanupDuration))
 		result = WorkspaceGraphSyncResult{
 			SchemaVersion: workspaceGraphSchemaVersion, Workspace: workspace, GraphPath: graphDir,
 			FileCount: fileCount, TermCount: len(termRefs) + len(relationRefs), Rebuilt: true,
@@ -522,7 +523,7 @@ func activeWorkspaceGraphDir(workspace string) (string, error) {
 	if err := json.Unmarshal(data, &active); err != nil {
 		return "", fmt.Errorf("%w: invalid active pointer", errWorkspaceGraphMissing)
 	}
-	if active.SchemaVersion != workspaceGraphSchemaVersion || filepath.Clean(active.Workspace) != filepath.Clean(workspace) || strings.Contains(active.Generation, "/") || strings.Contains(active.Generation, "\\") || strings.Contains(active.Generation, "..") {
+	if active.SchemaVersion != workspaceGraphSchemaVersion || filepath.Clean(active.Workspace) != filepath.Clean(workspace) || strings.Contains(active.Generation, "/") || strings.Contains(active.Generation, "\\") || strings.Contains(active.Generation, "..") || strings.HasSuffix(active.Generation, ".tmp") {
 		return "", fmt.Errorf("%w: active pointer identity mismatch", errWorkspaceGraphMissing)
 	}
 	path := workspaceGraphGenerationDir(workspace, active.Generation)
@@ -592,10 +593,14 @@ func withWorkspaceGraphLock(workspace string, fn func() error) error {
 			defer os.Remove(lockPath)
 			return fn()
 		}
-		if !os.IsExist(err) {
+		// Windows can report ERROR_ACCESS_DENIED while another process is
+		// closing or replacing the exclusive lock file. Treat that transient
+		// result like an existing lock; the deadline below still prevents a
+		// real permission problem from spinning forever.
+		if !os.IsExist(err) && !os.IsPermission(err) {
 			return err
 		}
-		if info, statErr := os.Stat(lockPath); statErr == nil && time.Since(info.ModTime()) > knowledgeLockWait*4 {
+		if info, statErr := os.Stat(lockPath); statErr == nil && time.Since(info.ModTime()) > workspaceGraphLockStaleAfter {
 			_ = os.Remove(lockPath)
 			continue
 		}
@@ -640,7 +645,7 @@ func cleanupWorkspaceGraphGenerations(base, active string, deadline time.Time) e
 			return err
 		}
 		if entry.IsDir() && entry.Name() != active {
-			if err := removeWorkspaceGraphTreeBounded(filepath.Join(base, "generations", entry.Name()), deadline); err != nil {
+			if err := removeWorkspaceGraphTreeBoundedWithLimit(filepath.Join(base, "generations", entry.Name()), deadline, workspaceGraphMaxGenerationCleanupEntries); err != nil {
 				if errors.Is(err, errWorkspaceGraphCleanupLimit) {
 					continue
 				}
@@ -651,10 +656,11 @@ func cleanupWorkspaceGraphGenerations(base, active string, deadline time.Time) e
 	return nil
 }
 
-// removeWorkspaceGraphTreeBounded only touches disposable graph generations.
-// It refuses a large recursive sweep so a corrupted cache cannot turn rebuild
-// into an unbounded cleanup operation.
 func removeWorkspaceGraphTreeBounded(root string, deadline time.Time) error {
+	return removeWorkspaceGraphTreeBoundedWithLimit(root, deadline, workspaceGraphMaxCleanupEntries)
+}
+
+func removeWorkspaceGraphTreeBoundedWithLimit(root string, deadline time.Time, maxEntries int) error {
 	if err := checkWorkspaceGraphDeadline(deadline); err != nil {
 		return err
 	}
@@ -667,8 +673,8 @@ func removeWorkspaceGraphTreeBounded(root string, deadline time.Time) error {
 		if err := checkWorkspaceGraphDeadline(deadline); err != nil {
 			return err
 		}
-		if entries >= workspaceGraphMaxCleanupEntries {
-			return fmt.Errorf("%w: %d", errWorkspaceGraphCleanupLimit, workspaceGraphMaxCleanupEntries)
+		if entries >= maxEntries {
+			return fmt.Errorf("%w: %d", errWorkspaceGraphCleanupLimit, maxEntries)
 		}
 		entries++
 		if entry.IsDir() {
@@ -699,7 +705,13 @@ func ensureWorkspaceGraphGenerationCapacity(base string) error {
 	if err != nil {
 		return err
 	}
-	if len(entries) >= workspaceGraphMaxGenerations {
+	formal := 0
+	for _, entry := range entries {
+		if entry.IsDir() && !strings.HasSuffix(entry.Name(), ".tmp") {
+			formal++
+		}
+	}
+	if formal >= workspaceGraphMaxGenerations {
 		return fmt.Errorf("workspace graph generation limit exceeded: %d", workspaceGraphMaxGenerations)
 	}
 	return nil

@@ -322,6 +322,37 @@ func TestWorkspaceGraphConcurrentSyncPublishesOneCompleteGeneration(t *testing.T
 	}
 }
 
+func TestWorkspaceGraphLockStaleWindowCoversMaximumBuild(t *testing.T) {
+	if workspaceGraphLockStaleAfter <= workspaceGraphMaxScanDuration {
+		t.Fatalf("graph lock stale window %s does not cover maximum build window %s", workspaceGraphLockStaleAfter, workspaceGraphMaxScanDuration)
+	}
+	if workspaceGraphLockStaleAfter < workspaceGraphMaxScanDuration+knowledgeLockWait {
+		t.Fatalf("graph lock stale window %s leaves no lock-release margin", workspaceGraphLockStaleAfter)
+	}
+}
+
+func TestWorkspaceGraphRejectsTemporaryActiveGeneration(t *testing.T) {
+	workspace := t.TempDir()
+	graphDir := workspaceGraphDir(workspace)
+	if err := os.MkdirAll(workspaceGraphGenerationDir(workspace, "incomplete.tmp"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	active := workspaceGraphActive{SchemaVersion: workspaceGraphSchemaVersion, Workspace: workspace, Generation: "incomplete.tmp"}
+	data, err := json.Marshal(active)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(graphDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(graphDir, "active.json"), append(data, '\n'), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := activeWorkspaceGraphDir(workspace); !errors.Is(err, errWorkspaceGraphMissing) {
+		t.Fatalf("temporary active generation was accepted: %v", err)
+	}
+}
+
 func TestWorkspaceGraphBoundedCleanupPreservesActiveGeneration(t *testing.T) {
 	workspace := t.TempDir()
 	writeGraphFixture(t, filepath.Join(workspace, "feature.go"), "package feature\nfunc Anchor() {}\n")

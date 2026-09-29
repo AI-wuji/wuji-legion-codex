@@ -74,9 +74,9 @@ if ($Apply -and $pending.Count -gt 0) {
           if ($mode -eq 'Git') { throw "Git metadata missing for $($item.id): $($item.path)" }
           $mode = 'Archive'
         } else {
-          $dirty = @(& git -C $item.path status --porcelain)
+          $dirty = @(& git -c "safe.directory=$($item.path)" -C $item.path status --porcelain)
           if ($LASTEXITCODE -ne 0 -or $dirty.Count -gt 0) { throw "Cold source must be a clean Git worktree: $($item.id)" }
-          & git -c http.lowSpeedLimit=1 -c http.lowSpeedTime=30 -C $item.path fetch --depth=1 origin $item.head
+          & git -c "safe.directory=$($item.path)" -c http.lowSpeedLimit=1 -c http.lowSpeedTime=30 -C $item.path fetch --depth=1 origin $item.head
           if ($LASTEXITCODE -ne 0) {
             if ($mode -eq 'Git') { throw "Fetch failed; no lock entries were changed: $($item.id)" }
             $mode = 'Archive'
@@ -100,7 +100,7 @@ if ($Apply -and $pending.Count -gt 0) {
     foreach ($plan in $plans) {
       $item = $plan.item
       if ($plan.mode -eq 'Git') {
-        & git -C $item.path switch --detach $item.head
+        & git -c "safe.directory=$($item.path)" -C $item.path switch --detach $item.head
         if ($LASTEXITCODE -ne 0) { throw "Checkout failed: $($item.id)" }
         $switched += $item
         continue
@@ -118,12 +118,14 @@ if ($Apply -and $pending.Count -gt 0) {
       Move-Item -LiteralPath $plan.staged -Destination $target
     }
   } catch {
-    foreach ($entry in @($installed | Select-Object -Reverse)) {
+    for ($index = $installed.Count - 1; $index -ge 0; $index--) {
+      $entry = $installed[$index]
       if (Test-Path -LiteralPath $entry.target) { Remove-Item -LiteralPath $entry.target -Recurse -Force }
       if ($entry.backup -and (Test-Path -LiteralPath $entry.backup)) { Move-Item -LiteralPath $entry.backup -Destination $entry.target }
     }
-    foreach ($item in @($switched | Select-Object -Reverse)) {
-      & git -C $item.path switch --detach $item.locked 2>$null | Out-Null
+    for ($index = $switched.Count - 1; $index -ge 0; $index--) {
+      $item = $switched[$index]
+      & git -c "safe.directory=$($item.path)" -C $item.path switch --detach $item.locked 2>$null | Out-Null
     }
     throw
   } finally {

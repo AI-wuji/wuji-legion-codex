@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -9,24 +10,30 @@ import (
 )
 
 var modelPolicies = map[string]struct {
-	model     string
-	fallbacks []string
+	model              string
+	fallbacks          []string
+	reasoning          string
+	reasoningFallbacks []string
 }{
-	"luna":  {model: "gpt-5.6-luna", fallbacks: []string{"gpt-5.6-terra", "gpt-5.6-sol"}},
-	"terra": {model: "gpt-5.6-terra", fallbacks: []string{"gpt-5.6-sol"}},
-	"sol":   {model: "gpt-5.6-sol"},
+	// Luna/Terra/Sol are Legion reasoning roles, not model IDs. The native
+	// host owns the concrete model selected for the current ChatGPT account.
+	"luna":  {model: hostSelectedModel, reasoning: "low"},
+	"terra": {model: hostSelectedModel, reasoning: "medium"},
+	"sol":   {model: hostSelectedModel, reasoning: "max", reasoningFallbacks: []string{"xhigh"}},
 }
 
 const (
 	routeVersion       = "3.0"
 	activeSkillID      = "wuji-legion-codex-3-0"
-	ajiMainModel       = "gpt-5.6-terra"
+	hostSelectedModel  = "host-selected"
+	ajiMainModel       = hostSelectedModel
 	gptHierarchyMode   = "gpt-hierarchy"
 	nonGPTProviderMode = "explicit-non-gpt-provider-mode"
+	ponyTailDoctrine   = "ponytail-v3: minimum correct; least reasoning, tools and code"
 )
 
 var workerExecutionEvidenceFields = []string{
-	"schema_version", "worker_id", "requested_model", "session_key", "host_dispatch_id", "write_boundary", "attempts", "effective_model", "model_switch_count", "result_handle",
+	"schema_version", "worker_id", "requested_model", "requested_reasoning_effort", "session_key", "host_dispatch_id", "write_boundary", "attempts", "effective_model", "effective_reasoning_effort", "model_switch_count", "reasoning_switch_count", "result_handle",
 	"stable_prefix_bytes", "stable_prefix_sha256", "source_execution_bytes", "context_handle_ids", "context_bytes_sent", "context_payload_sha256",
 	"task_contract_bytes", "task_contract_sha256", "delegation_gate_reason",
 	"input_tokens", "cached_input_tokens", "output_tokens", "retry_count",
@@ -35,9 +42,12 @@ var workerExecutionEvidenceFields = []string{
 }
 
 const (
-	maxTaskContractBytes      = 2048
+	// Task contracts are compact control-plane records, not prompt transcripts.
+	// 4096 bytes leaves room for a selected expert's workflow and acceptance
+	// checks while remaining below the per-worker replay budget.
+	maxTaskContractBytes      = 4096
 	maxSharedContextBytes     = 4096
-	maxTotalReplayBytes       = 8192
+	maxTotalReplayBytes       = 9216
 	minContextCoverageBPS     = 6000
 	priorArtMaxSources        = 3
 	priorArtTimeBudgetSec     = 90
@@ -52,43 +62,57 @@ func modelSpec(modelClass string) (string, []string) {
 	return "", nil
 }
 
+func reasoningSpec(modelClass string) (string, []string) {
+	if spec, ok := modelPolicies[strings.ToLower(strings.TrimSpace(modelClass))]; ok {
+		return spec.reasoning, append([]string(nil), spec.reasoningFallbacks...)
+	}
+	return "", nil
+}
+
 func modelPolicy(userSelectedModel string) ModelPolicy {
 	userSelectedModel = strings.TrimSpace(userSelectedModel)
 	if userSelectedModel != "" && !isGPTModel(userSelectedModel) {
 		return ModelPolicy{
-			RoutingMode:       nonGPTProviderMode,
-			UserSelectedModel: userSelectedModel,
-			MainModel:         userSelectedModel,
-			ClassModels:       map[string]string{},
-			FallbackModels:    map[string][]string{},
-			Delegation:        "the user selected a non-GPT model, so preserve capability/provider mode routing and do not emit GPT hierarchy worker contracts.",
+			RoutingMode:              nonGPTProviderMode,
+			UserSelectedModel:        userSelectedModel,
+			MainModel:                userSelectedModel,
+			MainReasoningEffort:      "provider-defined",
+			ClassModels:              map[string]string{},
+			FallbackModels:           map[string][]string{},
+			ClassReasoningEfforts:    map[string]string{},
+			FallbackReasoningEfforts: map[string][]string{},
+			Delegation:               "the user selected a non-GPT model, so preserve capability/provider mode routing and do not emit GPT hierarchy worker contracts.",
 		}
 	}
 	classes := map[string]string{}
 	fallbacks := map[string][]string{}
+	classReasoning := map[string]string{}
+	fallbackReasoning := map[string][]string{}
 	for class, spec := range modelPolicies {
 		classes[class] = spec.model
 		fallbacks[class] = append([]string(nil), spec.fallbacks...)
+		classReasoning[class] = spec.reasoning
+		fallbackReasoning[class] = append([]string(nil), spec.reasoningFallbacks...)
 	}
 	mainModel := ajiMainModel
-	mainFallbacks := append([]string(nil), modelPolicies["terra"].fallbacks...)
+	mainReasoning := "medium"
+	mainFallbacks := []string(nil)
+	mainReasoningFallbacks := []string(nil)
 	if userSelectedModel != "" {
 		mainModel = userSelectedModel
-		switch strings.ToLower(userSelectedModel) {
-		case "gpt-5.6-terra":
-			mainFallbacks = append([]string(nil), modelPolicies["terra"].fallbacks...)
-		case "gpt-5.6-sol":
-			mainFallbacks = nil
-		}
 	}
 	return ModelPolicy{
-		RoutingMode:        gptHierarchyMode,
-		UserSelectedModel:  userSelectedModel,
-		MainModel:          mainModel,
-		MainFallbackModels: mainFallbacks,
-		ClassModels:        classes,
-		FallbackModels:     fallbacks,
-		Delegation:         "Aji is the sole user-facing judgment and reporting center; the named General Staff is a deterministic task-state mechanism, and only required execution nodes are created. Aji defaults to Terra and falls back to Sol before generation; task workers retain their declared availability chain and an established session remains sticky.",
+		RoutingMode:              gptHierarchyMode,
+		UserSelectedModel:        userSelectedModel,
+		MainModel:                mainModel,
+		MainReasoningEffort:      mainReasoning,
+		MainFallbackModels:       mainFallbacks,
+		MainFallbackReasoning:    mainReasoningFallbacks,
+		ClassModels:              classes,
+		FallbackModels:           fallbacks,
+		ClassReasoningEfforts:    classReasoning,
+		FallbackReasoningEfforts: fallbackReasoning,
+		Delegation:               "Aji is the sole user-facing center and uses the host-selected ChatGPT model with medium reasoning by default. Small tasks and conversation stay on Aji; complex work enters the deterministic General Staff state path. High-reasoning work uses max and falls back to xhigh only before generation; no model switch, A/B test, or post-generation downgrade is allowed.",
 	}
 }
 
@@ -109,6 +133,66 @@ func RouteWithModel(query string, manifests []Manifest, userSelectedModel string
 	return RouteWithContextAndModel(query, manifests, DelegationContext{}, userSelectedModel)
 }
 
+func shouldStayOnAji(query string, capability Manifest, secondary []string, officers []string, search SearchFirstPolicy, context DelegationContext, policy ModelPolicy) bool {
+	if policy.RoutingMode == nonGPTProviderMode {
+		return false
+	}
+	if context.Handle != "" {
+		return false
+	}
+	if context.ParentContextRequired {
+		return false
+	}
+	if search.Required || len(officers) > 0 || len(secondary) > 0 {
+		return false
+	}
+	if containsAny(query, "并行", "parallel", "串行", "sequential", "serial only") ||
+		needsSolJudgment(query) || needsInternalChallenge(query) ||
+		hasExplicitWebResearchIntent(query) || isBroadSearch(query) ||
+		needsPriorArtSearch(query, capability.ID, "") {
+		return false
+	}
+	if isComplexTaskSignal(query) && !isMechanicalTask(query) {
+		return false
+	}
+	if isSimpleQuestion(query) || isMechanicalTask(query) || isDeterministicEdit(query) {
+		return true
+	}
+	// Aji handles only a bounded conversational, mechanical, or deterministic
+	// action directly. An unfamiliar request still needs the staff state path
+	// so its scope and execution evidence are explicit.
+	return false
+}
+
+func isComplexTaskSignal(query string) bool {
+	return containsAny(query,
+		"然后", "接着", "并且", "同时", "之后", "最后", "先", "再",
+		"多步", "多阶段", "跨领域", "多个文件", "批量", "完整", "系统性",
+		"规划", "拆解", "调度", "工作流", "依赖", "集成", "迁移", "重构",
+		"验证并", "测试并", "发布", "部署", "上线", "全套", "端到端",
+		"then", "next", "and then", "after that", "multi-step", "multi-stage",
+		" and ", " & ", "并", "以及",
+		"cross-domain", "multiple files", "batch", "complete", "system-wide",
+		"plan", "decompose", "orchestrate", "workflow", "dependency", "integration",
+		"migration", "refactor", "verify and", "test and", "release", "deploy",
+		"end-to-end",
+	) || len([]rune(query)) > 180
+}
+
+func routeReasoning(query string, staffRequired bool) (string, []string) {
+	if staffRequired && (needsSolJudgment(query) || needsInternalChallenge(query) ||
+		containsAny(query, "高难度", "复杂推理", "困难", "complex", "high difficulty", "hard reasoning")) {
+		return "max", []string{"xhigh"}
+	}
+	if isSimpleQuestion(query) {
+		return "low", nil
+	}
+	if isMechanicalTask(query) || isDeterministicEdit(query) {
+		return "low", nil
+	}
+	return "medium", nil
+}
+
 func buildAjiTaskIntent(query string, capability Manifest, secondary []string, officers []string, search SearchFirstPolicy, delegated bool) AjiTaskIntent {
 	complexity := "direct"
 	minimum := "answer or perform the smallest correct action through the selected capability"
@@ -120,6 +204,9 @@ func buildAjiTaskIntent(query string, capability Manifest, secondary []string, o
 	} else if delegated {
 		complexity = "bounded-delegation"
 		minimum = "create only the execution branches required by the selected capability"
+	} else {
+		complexity = "small-direct"
+		minimum = "Aji performs the single bounded action directly; do not create General Staff state or a worker"
 	}
 	if len(secondary) > 0 || len(officers) > 0 {
 		complexity = "composed"
@@ -133,7 +220,7 @@ func buildAjiTaskIntent(query string, capability Manifest, secondary []string, o
 	}
 	return AjiTaskIntent{
 		Objective:               query,
-		Constraints:             []string{"Aji remains the only user-facing communicator", "General Staff is deterministic state and scheduling, not a model worker", "do not claim completion from child creation or self-reported receipts"},
+		Constraints:             []string{"Aji remains the only user-facing communicator", "General Staff is deterministic state and scheduling, not a model worker", "use the minimum correct path: direct answer before plan, one line before many, simple before complex", "do not claim completion from child creation or self-reported receipts"},
 		AcceptanceCriteria:      accepted,
 		Complexity:              complexity,
 		MinimumCorrectPath:      minimum,
@@ -229,7 +316,24 @@ func RouteWithContextModelAndResponseState(query string, manifests []Manifest, c
 		secondary = append(secondary, "search")
 		sort.Strings(secondary)
 	}
-	workers, delegation := workerPlan(q, selected, engine, context)
+	directAji := shouldStayOnAji(q, selected, secondaryWithoutResponsePolicy(secondary), officers, searchFirst, context, policy)
+	workers := []WorkerTask(nil)
+	delegation := DelegationDecision{
+		TaskContractBytes:    len([]byte(strings.TrimSpace(q))),
+		SelectedContextBytes: context.SelectedBytes,
+		ContextCoverageBPS:   context.CoverageBPS,
+		CodeExcerptCount:     context.CodeExcerptCount,
+		ContentAnchorCount:   context.ContentAnchorCount,
+		SelfContained:        context.SelfContained,
+	}
+	if directAji {
+		delegation.Reason = directAjiReason(q)
+		preflightWorkers = nil
+		searchFirst = SearchFirstPolicy{}
+		officerWorkers = nil
+	} else {
+		workers, delegation = workerPlan(q, selected, engine, context)
+	}
 	if policy.RoutingMode == nonGPTProviderMode {
 		preflightWorkers = nil
 		workers = nil
@@ -245,16 +349,190 @@ func RouteWithContextModelAndResponseState(query string, manifests []Manifest, c
 	}
 	attachSourceExecution(workers, sourceExecution)
 	attachAssetContracts(workers, selected, engine, assetContracts)
+	var expertRoute *ExpertRouteDecision
+	secondaryExpertRoutes := map[string]ExpertRouteDecision{}
+	if !directAji && policy.RoutingMode != nonGPTProviderMode && sourceActivationError == "" &&
+		selected.Root != "" && rank(selected.Status) >= rank("callable") {
+		_, catalogErr := os.Stat(filepath.Join(selected.Root, "capabilities", "experts", "manifest.json"))
+		// Standalone capability fixtures and external manifests need not own
+		// a Legion roster. An existing but invalid roster must fail closed.
+		if catalogErr != nil && !os.IsNotExist(catalogErr) {
+			sourceActivationError = "expert catalog: " + catalogErr.Error()
+		}
+		if catalogErr == nil {
+			commander, hasCommander, err := expertCommanderForCapability(selected.Root, selected.ID)
+			if err != nil {
+				sourceActivationError = "expert catalog: " + err.Error()
+			} else if hasCommander {
+				selection, err := SelectExpertForCapability(selected.Root, q, selected.ID)
+				if err != nil {
+					sourceActivationError = "expert selection: " + err.Error()
+				} else {
+					expertRoute = &ExpertRouteDecision{
+						Commander: commander.ID, CommanderName: commander.Name, Capability: selected.ID,
+						MoE: "sparse-role-moe", Selection: selection, ExecutionStatus: "contract-only; native-host-receipt-required",
+					}
+					if selection.State == "selected" {
+						catalog, _, err := loadExpertCatalog(selected.Root)
+						if err != nil {
+							sourceActivationError = "expert catalog: " + err.Error()
+						} else {
+							for _, expert := range catalog.Experts {
+								if expert.ID != selection.ExpertID {
+									continue
+								}
+								for _, sourceID := range expert.SourceIDs {
+									alreadyMounted := false
+									for _, mountedSource := range mounted {
+										if mountedSource.ID == sourceID {
+											alreadyMounted = true
+											break
+										}
+									}
+									if alreadyMounted {
+										continue
+									}
+									var source *Source
+									for index := range selected.Sources {
+										if selected.Sources[index].ID == sourceID {
+											source = &selected.Sources[index]
+											break
+										}
+									}
+									if source == nil || rank(sourceLifecycle(*source)) < rank("callable") {
+										sourceActivationError = "expert source is not callable: " + sourceID
+										break
+									}
+									path, ok := ResolveCompleteSourceAt(selected.Root, *source)
+									if !ok {
+										sourceActivationError = "expert source is unavailable: " + sourceID
+										break
+									}
+									extra := MountedSource{ID: sourceID, Path: path, Priority: sourcePriority(*source), Lifecycle: sourceLifecycle(*source), Entrypoint: source.Entrypoint, ActivationReason: "selected-expert:" + expert.ID}
+									contracts, err := BuildSourceExecutionContracts(selected, []MountedSource{extra})
+									if err != nil {
+										sourceActivationError = err.Error()
+										break
+									}
+									mounted = append(mounted, extra)
+									sourceExecution = append(sourceExecution, contracts...)
+									attachSourceExecution(workers, contracts)
+								}
+								if sourceActivationError != "" {
+									break
+								}
+								for index := range workers {
+									if workers[index].ID == "task-judgment" && selected.ID == "code" {
+										continue // no implementation promise without verified code context
+									}
+									if err := bindExpertWorker(&workers[index], expert, commander, selected.ID, selection.CatalogSHA256); err != nil {
+										sourceActivationError = err.Error()
+										break
+									}
+									expertRoute.BoundWorkers = append(expertRoute.BoundWorkers, workers[index].ID)
+								}
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	if sourceActivationError != "" {
+		workers = nil
+		officerWorkers = nil
+		delegation.Allowed = false
+		delegation.ImplementationAllowed = false
+		delegation.Reason = "selected-expert-contract-unavailable"
+		if expertRoute != nil {
+			expertRoute.BoundWorkers = nil
+		}
+	}
+	if sourceActivationError == "" && !directAji && policy.RoutingMode != nonGPTProviderMode {
+		for _, secondaryID := range secondaryWithoutResponsePolicy(secondary) {
+			if secondaryID == selected.ID || secondaryID == "search" {
+				continue
+			}
+			secondaryManifest, ok := capabilityManifest(manifests, secondaryID)
+			if !ok || rank(secondaryManifest.Status) < rank("callable") {
+				continue
+			}
+			// A secondary capability is one bounded branch of the already
+			// composed route. Do not recursively compose it again, otherwise a
+			// request such as image+video can grow a second-order route.
+			secondaryRoute := routeSingleCapability(q, secondaryManifest, context, userSelectedModel)
+			if secondaryRoute.SourceActivationError != "" {
+				sourceActivationError = "secondary " + secondaryID + ": " + secondaryRoute.SourceActivationError
+				break
+			}
+			for index := range secondaryRoute.Workers {
+				workerID := "secondary-" + secondaryID + "-" + secondaryRoute.Workers[index].ID
+				if err := rebaseWorkerTaskID(&secondaryRoute.Workers[index], workerID, q, context.Handle); err != nil {
+					sourceActivationError = "secondary " + secondaryID + ": " + err.Error()
+					break
+				}
+				workers = append(workers, secondaryRoute.Workers[index])
+			}
+			if sourceActivationError != "" {
+				break
+			}
+			if secondaryRoute.ExpertRoute != nil {
+				routeCopy := *secondaryRoute.ExpertRoute
+				for index, workerID := range routeCopy.BoundWorkers {
+					routeCopy.BoundWorkers[index] = "secondary-" + secondaryID + "-" + workerID
+				}
+				secondaryExpertRoutes[secondaryID] = routeCopy
+			}
+		}
+	}
+	if sourceActivationError != "" {
+		workers = nil
+		officerWorkers = nil
+		delegation.Allowed = false
+		delegation.ImplementationAllowed = false
+		delegation.Reason = "secondary-route-unavailable"
+	}
+	if len(workers) == 0 {
+		if expertRoute != nil {
+			expertRoute.BoundWorkers = nil
+			expertRoute.Experts = nil
+		}
+		for id, route := range secondaryExpertRoutes {
+			route.BoundWorkers = nil
+			route.Experts = nil
+			secondaryExpertRoutes[id] = route
+		}
+	}
 	// workerPlan may already have declined the fan-out because its original
 	// replay estimate exceeded the hard limit. Do not overwrite that useful
 	// evidence with a misleading zero after it clears the worker slice.
 	if len(workers) > 0 {
 		delegation.EstimatedReplayBytes = estimatedReplayBytes(workers)
+		delegation.TaskContractBytes = workers[0].AllocatedTaskContractBytes
+		delegation.TotalContractBytes = 0
+		for _, worker := range workers {
+			delegation.TotalContractBytes += worker.AllocatedTaskContractBytes
+			if worker.AllocatedTaskContractBytes > delegation.TaskContractBytes {
+				delegation.TaskContractBytes = worker.AllocatedTaskContractBytes
+			}
+		}
 	}
 	if len(workers) > 0 && delegation.EstimatedReplayBytes > maxTotalReplayBytes {
 		workers = nil
+		officerWorkers = nil
 		delegation.Allowed = false
+		delegation.ImplementationAllowed = false
 		delegation.Reason = "estimated-context-replay-exceeds-total-budget"
+		if expertRoute != nil {
+			expertRoute.BoundWorkers = nil
+		}
+	}
+	// The catalog is cold. A diagnostic selection is not a team activation,
+	// and even a unique match must not expose the whole roster or staged SOP.
+	// Only a successfully bound worker receives the selected expert's rules.
+	if expertRoute != nil && len(expertRoute.BoundWorkers) > 0 && len(workers) > 0 {
+		expertRoute.Experts = []string{expertRoute.Selection.ExpertID}
 	}
 	parallel := len(workers) > 1
 	provider, providerFallback := selectProvider(q, selected.Providers)
@@ -265,21 +543,69 @@ func RouteWithContextModelAndResponseState(query string, manifests []Manifest, c
 	if rank(selected.Status) < rank("callable") && selected.Fallback != "" {
 		primarySkill = selected.Fallback
 	}
-	executionLane := executionLane(len(preflightWorkers), len(workers))
+	staffRequired := !directAji && policy.RoutingMode != nonGPTProviderMode
+	executionLane := executionLane(len(preflightWorkers), len(workers), staffRequired)
 	if policy.RoutingMode == nonGPTProviderMode {
 		executionLane = "provider-mode-passthrough"
 	}
-	brain := "aji-terra-with-deterministic-general-staff"
+	reasoning, reasoningFallbacks := routeReasoning(q, staffRequired)
+	whiteHat := whiteHatDecision(q, staffRequired, selected.ID, secondary, officers, sourceActivationError)
+	policy.MainReasoningEffort = reasoning
+	policy.MainFallbackReasoning = append([]string(nil), reasoningFallbacks...)
+	brain := "aji-direct"
+	if staffRequired {
+		brain = "aji-with-deterministic-general-staff"
+	}
 	if policy.RoutingMode == nonGPTProviderMode {
 		brain = "aji-provider-mode"
 	}
+	staffReason := directAjiReason(q)
+	writeAuthority := "aji-scoped-artifact-write; no-unrequested-side-effects"
+	if staffRequired {
+		staffReason = "multi-step-cross-domain-high-risk-or-specialist-work"
+		writeAuthority = "assigned-execution-nodes-only; scoped-artifact-write; staff-and-aji-read-only"
+	}
+	roleGraph, roleGraphs, graphPreflight, graphWorkers, graphOfficerWorkers, graphErr := makeRoleGraphSet(q, selected.ID, secondaryWithoutResponsePolicy(secondary), directAji, context, expertRoute, secondaryExpertRoutes, preflightWorkers, workers, officerWorkers)
+	if graphErr != nil {
+		sourceActivationError = "role graph: " + graphErr.Error()
+		graphPreflight, graphWorkers, graphOfficerWorkers = nil, nil, nil
+		delegation.Allowed = false
+		delegation.ImplementationAllowed = false
+		delegation.Reason = "role-graph-invalid"
+		if expertRoute != nil {
+			expertRoute.BoundWorkers = nil
+			expertRoute.Experts = nil
+		}
+		for id, route := range secondaryExpertRoutes {
+			route.BoundWorkers = nil
+			route.Experts = nil
+			secondaryExpertRoutes[id] = route
+		}
+	}
+	preflightWorkers, workers, officerWorkers = graphPreflight, graphWorkers, graphOfficerWorkers
+	if len(workers) > 0 {
+		delegation.EstimatedReplayBytes = estimatedReplayBytes(workers)
+		delegation.TaskContractBytes = workers[0].AllocatedTaskContractBytes
+		delegation.TotalContractBytes = 0
+		for _, worker := range workers {
+			delegation.TotalContractBytes += worker.AllocatedTaskContractBytes
+			if worker.AllocatedTaskContractBytes > delegation.TaskContractBytes {
+				delegation.TaskContractBytes = worker.AllocatedTaskContractBytes
+			}
+		}
+	}
+	parallel = len(roleGraph.ParallelGroups) > 0
 	return RouteResult{
-		Version:           routeVersion,
-		Brain:             brain,
-		MainModel:         policy.MainModel,
-		GeneralStaffModel: policy.GeneralStaffModel,
-		ModelPolicy:       policy,
-		TaskIntent:        buildAjiTaskIntent(q, selected, secondary, officers, searchFirst, len(workers) > 0),
+		Version:               routeVersion,
+		Brain:                 brain,
+		MainModel:             policy.MainModel,
+		MainReasoningEffort:   reasoning,
+		MainFallbackReasoning: reasoningFallbacks,
+		GeneralStaffModel:     policy.GeneralStaffModel,
+		GeneralStaffRequired:  staffRequired,
+		GeneralStaffReason:    staffReason,
+		ModelPolicy:           policy,
+		TaskIntent:            buildAjiTaskIntent(q, selected, secondary, officers, searchFirst, staffRequired),
 		DelegationPolicy: DelegationPolicy{
 			CrossModelCacheAssumed:          false,
 			CacheScope:                      "model-local stable-prefix only",
@@ -295,14 +621,14 @@ func RouteWithContextModelAndResponseState(query string, manifests []Manifest, c
 		},
 		DelegationDecision: delegation,
 		TaskExecutionPolicy: TaskExecutionPolicy{
-			TaskShape: "small", ModelSelectionTiming: "once-at-task-start", SessionAffinity: "sticky-per-worker",
-			EscalationPolicy: "availability-only-fallback", MaxModelSwitches: 2,
+			TaskShape: taskShape(staffRequired), ModelSelectionTiming: "once-at-task-start", SessionAffinity: "sticky-per-worker",
+			EscalationPolicy: escalationPolicy(staffRequired), MaxModelSwitches: 0,
 			DowngradeAfterGeneration: false, PreflightBeforeExecution: len(preflightWorkers) > 0,
 		},
 		SearchFirstPolicy:       searchFirst,
 		ChangeCapsule:           changeCapsuleGate(q, selected),
-		Reasoning:               "max",
-		WriteAuthority:          "assigned-execution-nodes-only; scoped-artifact-write; staff-and-aji-read-only",
+		Reasoning:               reasoning,
+		WriteAuthority:          writeAuthority,
 		Nuwa:                    false,
 		Capability:              selected.ID,
 		CapabilityStatus:        selected.Status,
@@ -319,14 +645,20 @@ func RouteWithContextModelAndResponseState(query string, manifests []Manifest, c
 		AssetContracts:          assetContracts,
 		SourceActivationError:   sourceActivationError,
 		ExecutionLane:           executionLane,
+		MoE:                     "sparse-role-moe",
+		RoleGraph:               roleGraph,
+		RoleGraphs:              roleGraphs,
 		GeneralStaffWorker:      nil,
 		Parallel:                parallel,
 		PreflightWorkers:        preflightWorkers,
 		Workers:                 workers,
+		ExpertRoute:             expertRoute,
+		SecondaryExpertRoutes:   secondaryExpertRoutes,
 		Officers:                officers,
 		OfficerRecommendations:  officerRecommendations,
 		OfficerWorkers:          officerWorkers,
 		InternalAdversarialPass: len(officers) == 0 && needsInternalChallenge(q),
+		WhiteHat:                whiteHat,
 		FinishLine: []string{
 			"requested active target changed in place",
 			"selected capability behavior verified",
@@ -336,6 +668,48 @@ func RouteWithContextModelAndResponseState(query string, manifests []Manifest, c
 			"do not claim an officer executed without a validated officer receipt",
 		},
 	}
+}
+
+func whiteHatDecision(query string, staffRequired bool, capability string, secondary, officers []string, routeError string) WhiteHatDecision {
+	checks := []string{"premise-and-scope", "user-constraints", "side-effects", "evidence-boundary"}
+	concerns := []string{}
+	corrections := []string{}
+	if staffRequired {
+		checks = append(checks, "delegation-necessity", "completion-evidence")
+	}
+	if len(secondary) > 0 {
+		concerns = append(concerns, "composed-task-dependency")
+	}
+	if len(officers) > 0 || needsInternalChallenge(query) {
+		concerns = append(concerns, "independent-review-needed")
+	}
+	if routeError != "" {
+		concerns = append(concerns, "route-entrypoint-unavailable")
+		corrections = append(corrections, "do-not-claim-completion")
+	}
+	if capability == "security" || capability == "code-review" {
+		concerns = append(concerns, "elevated-risk-domain")
+	}
+	status := "checked"
+	if len(concerns) > 0 {
+		status = "checked-with-concerns"
+	}
+	return WhiteHatDecision{
+		Required:    true,
+		Status:      status,
+		Checks:      uniqueStrings(checks),
+		Concerns:    uniqueStrings(concerns),
+		Corrections: uniqueStrings(corrections),
+		Escalate:    len(concerns) > 0,
+	}
+}
+
+func routeSingleCapability(query string, capability Manifest, context DelegationContext, userSelectedModel string) RouteResult {
+	clone := capability
+	clone.Triggers = append([]string(nil), capability.Triggers...)
+	// A one-item manifest cannot discover another capability, so this call
+	// remains a single bounded branch rather than a recursive composition.
+	return RouteWithContextModelAndResponseState(query, []Manifest{clone}, context, userSelectedModel, false)
 }
 
 // selectRouteAssets binds presentation delivery engines to one trustworthy
@@ -387,11 +761,13 @@ func attachSourceExecution(workers []WorkerTask, contracts []SourceExecutionCont
 		return
 	}
 	for index := range workers {
-		workers[index].SourceExecution = append([]SourceExecutionContract(nil), contracts...)
+		workers[index].SourceExecution = append(workers[index].SourceExecution, contracts...)
 		for _, contract := range contracts {
 			workers[index].SourceExecutionBytes += contract.EntrypointBytes
 		}
-		workers[index].PromptOrder = append([]string{"stable_capability_prefix", "source_execution"}, workers[index].PromptOrder[1:]...)
+		if !containsString(workers[index].PromptOrder, "source_execution") {
+			workers[index].PromptOrder = append([]string{"stable_capability_prefix", "source_execution"}, workers[index].PromptOrder[1:]...)
+		}
 	}
 }
 
@@ -439,12 +815,46 @@ func hasCompositeOfficerRecommendation(recommendations []OfficerRecommendation) 
 	return false
 }
 
-func executionLane(preflightCount, workerCount int) string {
+func secondaryWithoutResponsePolicy(values []string) []string {
+	result := make([]string, 0, len(values))
+	for _, value := range values {
+		if value != responsePolicyCapabilityID {
+			result = append(result, value)
+		}
+	}
+	return result
+}
+
+func directAjiReason(query string) string {
+	if isSimpleQuestion(query) {
+		return "simple-question-direct"
+	}
+	return "small-task-direct"
+}
+
+func taskShape(staffRequired bool) string {
+	if staffRequired {
+		return "staff-routed"
+	}
+	return "aji-direct"
+}
+
+func escalationPolicy(staffRequired bool) string {
+	if staffRequired {
+		return "availability-only-fallback"
+	}
+	return "none"
+}
+
+func executionLane(preflightCount, workerCount int, staffRequired bool) string {
 	if preflightCount > 0 {
 		return "bounded-search-first"
 	}
 	if workerCount > 0 {
 		return "bounded-delegation"
+	}
+	if staffRequired {
+		return "general-staff"
 	}
 	return "direct"
 }
@@ -533,6 +943,10 @@ func intentBoosts(query, capabilityID string) int {
 	case "documents":
 		if containsAny(query, "docx", "word", "pdf", "xlsx", "excel", "电子表格", "报告文件") {
 			boost += 40
+		}
+		if containsAny(query, "做课", "课程设计", "课程大纲", "教学大纲", "培训教材", "学习资料", "自测题", "学习辅导", "知识库问答", "飞书知识库", "金山文档知识库") ||
+			(containsAny(query, "课件", "courseware") && !containsAny(query, "美化", "修改现有", "排版已有")) {
+			boost += 65
 		}
 	case "data":
 		if containsAny(query, "analyze data", "dataset", "correlation", "csv", "数据", "数据分析", "异常检测", "统计") {
@@ -1014,41 +1428,47 @@ func newWorkerTask(query, id, purpose, modelClass, model string, fallbacks, inpu
 	if len(fallbacks) > 0 {
 		availabilityFallbackOn = []string{"model-unavailable", "provider-error-before-generation"}
 	}
+	reasoning, reasoningFallbacks := reasoningSpec(modelClass)
+	if len(fallbacks) > 0 || len(reasoningFallbacks) > 0 {
+		availabilityFallbackOn = []string{"model-unavailable", "provider-error-before-generation"}
+	}
 	return WorkerTask{
-		ID:                         id,
-		Stage:                      "execution",
-		Purpose:                    purpose,
-		ModelClass:                 modelClass,
-		Model:                      model,
-		AvailabilityFallbackModels: append([]string(nil), fallbacks...),
-		AvailabilityFallbackOn:     availabilityFallbackOn,
-		FallbackModels:             nil,
-		SessionKey:                 sessionKey,
-		SessionAffinity:            "sticky-per-worker",
-		EscalationPolicy:           "availability-only-fallback",
-		MaxModelSwitches:           0,
-		Inputs:                     append([]string(nil), inputs...),
-		Protocol:                   append([]string(nil), protocol...),
-		TaskContract:               contract,
-		TaskContractSHA256:         sha256Hex([]byte(contract)),
-		ContextMode:                mode,
-		ContextHandles:             handles,
-		ContextArtifact:            artifact,
-		ContextPayload:             payload,
-		ContextPayloadSHA256:       payloadHash,
-		StableCapabilityPrefix:     stablePrefix,
-		StablePrefixSHA256:         sha256Hex([]byte(stablePrefix)),
-		StablePrefixBytes:          len([]byte(stablePrefix)),
-		PromptOrder:                promptOrder(mode),
-		AllocatedContextBytes:      allocated,
-		AllocatedTaskContractBytes: len([]byte(contract)),
-		MaxTaskContractBytes:       maxTaskContractBytes,
-		DelegationGateReason:       reason,
-		MaxAttempts:                1,
-		FallbackOn:                 nil,
-		Writes:                     writes,
-		ExecutionEvidenceRequired:  true,
-		ExecutionEvidenceFields:    append([]string(nil), workerExecutionEvidenceFields...),
+		ID:                          id,
+		Stage:                       "execution",
+		Purpose:                     purpose,
+		ModelClass:                  modelClass,
+		Model:                       model,
+		ReasoningEffort:             reasoning,
+		AvailabilityFallbackEfforts: append([]string(nil), reasoningFallbacks...),
+		AvailabilityFallbackModels:  append([]string(nil), fallbacks...),
+		AvailabilityFallbackOn:      availabilityFallbackOn,
+		FallbackModels:              nil,
+		SessionKey:                  sessionKey,
+		SessionAffinity:             "sticky-per-worker",
+		EscalationPolicy:            "availability-only-fallback",
+		MaxModelSwitches:            0,
+		Inputs:                      append([]string(nil), inputs...),
+		Protocol:                    append([]string(nil), protocol...),
+		TaskContract:                contract,
+		TaskContractSHA256:          sha256Hex([]byte(contract)),
+		ContextMode:                 mode,
+		ContextHandles:              handles,
+		ContextArtifact:             artifact,
+		ContextPayload:              payload,
+		ContextPayloadSHA256:        payloadHash,
+		StableCapabilityPrefix:      stablePrefix,
+		StablePrefixSHA256:          sha256Hex([]byte(stablePrefix)),
+		StablePrefixBytes:           len([]byte(stablePrefix)),
+		PromptOrder:                 promptOrder(mode),
+		AllocatedContextBytes:       allocated,
+		AllocatedTaskContractBytes:  len([]byte(contract)),
+		MaxTaskContractBytes:        maxTaskContractBytes,
+		DelegationGateReason:        reason,
+		MaxAttempts:                 1,
+		FallbackOn:                  nil,
+		Writes:                      writes,
+		ExecutionEvidenceRequired:   true,
+		ExecutionEvidenceFields:     append([]string(nil), workerExecutionEvidenceFields...),
 	}
 }
 
@@ -1065,7 +1485,7 @@ func stableCapabilityPrefix(capability Manifest, engine string, assets ...AssetI
 		Schema: "wuji-stable-capability-prefix-v1", Capability: capability.ID,
 		PrimarySkill: primarySkillForEngine(capability, engine), Engine: engine, WriteOwner: "assigned-execution-node-scoped",
 	}
-	prefix.ImplementationDoctrine = "ponytail-v3: universal-minimum-correct-task-judgment"
+	prefix.ImplementationDoctrine = ponyTailDoctrine
 	if len(assets) > 0 {
 		prefix.AssetContracts = append([]AssetInvocationContract(nil), assets...)
 	}
@@ -1083,16 +1503,41 @@ func primarySkillForEngine(capability Manifest, engineID string) string {
 }
 
 type workerContract struct {
-	Schema        string   `json:"schema"`
-	Objective     string   `json:"objective"`
-	Branch        string   `json:"branch"`
-	Purpose       string   `json:"purpose"`
-	Boundaries    []string `json:"boundaries"`
-	Acceptance    []string `json:"acceptance"`
-	Protocol      []string `json:"protocol,omitempty"`
-	ContextHandle string   `json:"context_handle,omitempty"`
-	SessionKey    string   `json:"session_key"`
-	WriteBoundary string   `json:"write_boundary"`
+	Schema          string               `json:"schema"`
+	Objective       string               `json:"objective"`
+	Branch          string               `json:"branch"`
+	Purpose         string               `json:"purpose"`
+	RoleID          string               `json:"role_id,omitempty"`
+	TaskGraphSHA256 string               `json:"graph_sha256,omitempty"`
+	ParentGraphID   string               `json:"parent_graph_id,omitempty"`
+	TaskGraphID     string               `json:"task_graph_id,omitempty"`
+	Boundaries      []string             `json:"boundaries"`
+	Acceptance      []string             `json:"acceptance"`
+	Protocol        []string             `json:"protocol,omitempty"`
+	ContextHandle   string               `json:"context_handle,omitempty"`
+	SessionKey      string               `json:"session_key"`
+	WriteBoundary   string               `json:"write_boundary"`
+	Expert          *expertTaskDirective `json:"expert,omitempty"`
+}
+
+type expertTaskDirective struct {
+	Commander      string                `json:"commander"`
+	Capability     string                `json:"capability"`
+	ID             string                `json:"id"`
+	CatalogSHA256  string                `json:"catalog_sha256"`
+	PromptCompiler string                `json:"prompt_compiler"`
+	Inputs         []string              `json:"inputs,omitempty"`
+	Outputs        []string              `json:"outputs,omitempty"`
+	Workflow       []string              `json:"workflow"`
+	Verification   []string              `json:"verification"`
+	Acceptance     []string              `json:"acceptance"`
+	Constraints    []string              `json:"constraints"`
+	ToolPolicy     []string              `json:"tool_policy"`
+	PonyTailRules  []string              `json:"ponytail_rules"`
+	WhiteHatChecks []string              `json:"white_hat_checks"`
+	TeamMission    string                `json:"team_mission,omitempty"`
+	TeamAcceptance []string              `json:"team_acceptance,omitempty"`
+	Methods        []expertAppliedMethod `json:"methods,omitempty"`
 }
 
 func marshalWorkerContract(query, id, purpose string, handles []string, sessionKey string, protocol []string, writes bool) string {
@@ -1123,23 +1568,21 @@ func marshalWorkerContract(query, id, purpose string, handles []string, sessionK
 func workerProtocol(query, id, purpose, stablePrefix string) []string {
 	value := strings.ToLower(query + " " + id + " " + purpose)
 	protocol := []string{
-		"first decide whether this needs action, a direct answer, or no action",
-		"reuse the existing Skill, plugin, MCP, template, dependency, native tool, or local artifact before inventing anything",
-		"choose the smallest correct path that satisfies the stated objective and acceptance criteria",
-		"keep scope bounded; reject incorrect premises and unrequested complexity",
-		"state the concrete completion evidence and side effects required before reporting success",
+		"answer directly or take no action when sufficient; otherwise use the smallest correct action",
+		"reuse existing Skill, plugin, MCP, template, dependency, native tool, or artifact first",
+		"one line before many; simple before complex; reason only as much as risk requires",
+		"reject wrong premises and unrequested scope; never skip required safety, facts, or verification",
+		"report concrete result evidence and side effects, not an unsupported completion claim",
 	}
 	if strings.Contains(value, "review") || strings.Contains(value, "审查") || strings.Contains(value, "评审") {
 		protocol = append(protocol, "separate specification conformance from engineering quality", "anchor findings to concrete files, symbols, or evidence", "rank findings by user impact and likelihood", "do not report stylistic preference as a defect")
 	}
 	if hasPonytailCodeDoctrine(stablePrefix) {
 		protocol = append(protocol,
-			"trace the actual flow and cite affected file or symbol anchors before choosing",
-			"choose the first valid rung: skip, reuse local code, standard library, native platform, installed dependency, one line, minimum code",
-			"for bugs, inspect every caller and fix the common root cause once, not each symptom",
-			"prefer deletion, fewest files, and the smallest correct diff; no unrequested abstraction, scaffolding, or dependency",
-			"for nontrivial logic, name one smallest runnable regression check; trivial one-line edits need no new test",
-			"do not weaken validation, error handling, data safety, security, accessibility, or explicit requirements",
+			"trace affected flow and callers; fix the shared root cause once",
+			"prefer skip, local reuse, standard library, platform, dependency, then minimum code",
+			"prefer deletion, fewest files and smallest diff; no unrequested abstraction",
+			"check nontrivial logic with the smallest runnable regression; preserve safety and requirements",
 		)
 	}
 	return protocol
@@ -1153,12 +1596,38 @@ func hasPonytailCodeDoctrine(stablePrefix string) bool {
 	if json.Unmarshal([]byte(stablePrefix), &prefix) != nil {
 		return false
 	}
-	return strings.HasPrefix(prefix.ImplementationDoctrine, "ponytail-v3:")
+	return strings.HasPrefix(prefix.ImplementationDoctrine, "ponytail-v3:") &&
+		(prefix.Capability == "code" || prefix.Capability == "code-review")
 }
 
 func taskSessionKey(query, workerID, contextHandle string) string {
 	payload := strings.Join([]string{"wuji-task-session-v1", strings.TrimSpace(query), workerID, contextHandle}, "\n")
 	return "wuji-session://sha256/" + sha256Hex([]byte(payload))
+}
+
+func rebaseWorkerTaskID(worker *WorkerTask, id, query, contextHandle string) error {
+	if worker == nil || strings.TrimSpace(id) == "" {
+		return fmt.Errorf("secondary worker identity is required")
+	}
+	var contract workerContract
+	if err := json.Unmarshal([]byte(worker.TaskContract), &contract); err != nil {
+		return err
+	}
+	worker.ID = id
+	worker.SessionKey = taskSessionKey(query, id, contextHandle)
+	contract.Branch = id
+	contract.SessionKey = worker.SessionKey
+	data, err := json.Marshal(contract)
+	if err != nil {
+		return err
+	}
+	if len(data) > maxTaskContractBytes {
+		return fmt.Errorf("worker %s task contract exceeds %d bytes", id, maxTaskContractBytes)
+	}
+	worker.TaskContract = string(data)
+	worker.TaskContractSHA256 = sha256Hex(data)
+	worker.AllocatedTaskContractBytes = len(data)
+	return nil
 }
 
 func promptOrder(mode string) []string {
@@ -1205,6 +1674,9 @@ func needsPriorArtSearch(query, capabilityID, engine string) bool {
 }
 
 func isDeterministicEdit(query string) bool {
+	if strings.Contains(query, "文案") && containsAny(query, "改", "替换", "调整") {
+		return true
+	}
 	return containsAny(query,
 		"错别字", "拼写", "改文案", "修改文案", "改文字", "修改文字", "重命名", "格式化", "改颜色", "修改颜色", "删除注释",
 		"typo", "spelling", "copy change", "rename", "format only", "change the text", "update the text", "delete comment",
@@ -1223,6 +1695,10 @@ func isMechanicalTask(query string) bool {
 		return false
 	}
 	value := strings.ToLower(query)
+	if (strings.Contains(value, "提取") && strings.Contains(value, "字幕")) ||
+		(strings.Contains(value, "extract") && strings.Contains(value, "subtitles")) {
+		return true
+	}
 	if isLocalExactSkillLookup(value) {
 		return true
 	}
@@ -1252,6 +1728,7 @@ func isSimpleQuestion(query string) bool {
 	if value == "hi" || value == "hello" || value == "你好" || value == "谢谢" || value == "thank you" || containsAny(value,
 		"你是谁", "who are you",
 		"是什么", "什么意思", "what is", "what does", "how are you",
+		"你觉得", "你认为", "怎么看", "如何看", "有什么看法", "what do you think", "how do you see",
 	) && !containsAny(value,
 		"检查", "分析", "比较", "诊断", "调试", "搜索", "调研", "设计", "计划", "实现", "修改", "修复", "创建", "安装", "审查", "验证",
 		"inspect", "analy", "compare", "diagnos", "debug", "search", "research", "design", "plan", "implement", "change", "fix", "create", "install", "review", "verify",

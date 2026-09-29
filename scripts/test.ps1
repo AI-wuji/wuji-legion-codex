@@ -14,11 +14,9 @@ $python = if ($env:WUJI_PYTHON) {
 }
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) { throw "Python runtime is missing: $python" }
 $previousGoTmpDir = $env:GOTMPDIR
-$previousGoCache = $env:GOCACHE
 $previousPythonUtf8 = $env:PYTHONUTF8
 $env:GOTMPDIR = Join-Path $root '.wuji\tmp'
-$env:GOCACHE = Join-Path $root '.wuji\gocache'
-New-Item -ItemType Directory -Force $env:GOTMPDIR,$env:GOCACHE | Out-Null
+New-Item -ItemType Directory -Force $env:GOTMPDIR | Out-Null
 Push-Location $root
 try {
   $unformatted = @(& $gofmt -l .\cmd .\internal)
@@ -39,7 +37,6 @@ try {
 } finally {
   Pop-Location
   $env:GOTMPDIR = $previousGoTmpDir
-  $env:GOCACHE = $previousGoCache
   $env:PYTHONUTF8 = $previousPythonUtf8
 }
 Write-Output 'wuji-3.0-tests-ok'

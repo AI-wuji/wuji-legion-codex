@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/AI-wuji/wuji-legion-codex-2.0/internal/core"
+	"github.com/AI-wuji/wuji-legion-codex-3.0/internal/core"
 )
 
 func TestReadBoundedContextModeFile(t *testing.T) {

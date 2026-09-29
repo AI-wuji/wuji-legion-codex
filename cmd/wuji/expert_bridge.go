@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/AI-wuji/wuji-legion-codex-2.0/internal/core"
+	"github.com/AI-wuji/wuji-legion-codex-3.0/internal/core"
 )
 
 const expertBridgeMaxJSONBytes int64 = 1 << 20
@@ -26,10 +26,17 @@ func runExpertBridge(args []string, stdout, stderr io.Writer) int {
 		fs.SetOutput(stderr)
 		root := fs.String("root", ".", "repository root")
 		query := fs.String("query", "", "task query")
+		capability := fs.String("capability", "", "selected commander capability; omit for catalog-wide diagnostics")
 		if fs.Parse(args[1:]) != nil || *query == "" {
 			return 2
 		}
-		result, err := core.SelectExpert(*root, *query)
+		var result core.ExpertSelection
+		var err error
+		if *capability != "" {
+			result, err = core.SelectExpertForCapability(*root, *query, *capability)
+		} else {
+			result, err = core.SelectExpert(*root, *query)
+		}
 		return expertBridgeOutput(result, err, stdout, stderr)
 	case "prepare":
 		fs := flag.NewFlagSet("expert-bridge prepare", flag.ContinueOnError)

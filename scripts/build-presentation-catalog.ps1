@@ -38,13 +38,13 @@ function Get-LockedSourcePath([string]$Id) {
   return $path
 }
 $rows = @()
-function Add-FileRows([string]$Scenario,[string]$Category,[string]$Source,[string]$Base,[string]$Filter,[switch]$Directory) {
+function Add-FileRows([string]$Scenario,[string]$Category,[string]$Source,[string]$Base,[string]$Filter,[switch]$Directory,[string]$SourceVersion='retained') {
   if (-not (Test-Path -LiteralPath $Base)) { return }
   $items = if ($Directory) { Get-ChildItem -LiteralPath $Base -Directory -Filter $Filter } else { Get-ChildItem -LiteralPath $Base -File -Filter $Filter }
   foreach ($item in $items) {
     $id = ($item.BaseName.ToLowerInvariant() -replace '[^a-z0-9]+','-').Trim('-')
     if (-not $id) { $id = ($item.Name.ToLowerInvariant() -replace '[^a-z0-9]+','-').Trim('-') }
-    $script:rows += [pscustomobject]@{scenario=$Scenario;category=$Category;id=$id;source=$Source;path=$item.FullName}
+    $script:rows += [pscustomobject]@{scenario=$Scenario;category=$Category;id=$id;source=$Source;source_version=$SourceVersion;path=$item.FullName}
   }
 }
 
@@ -63,10 +63,10 @@ $presentations = Get-ChildItem (Join-Path $env:USERPROFILE '.codex\plugins\cache
 }; Descending = $true } | Select-Object -First 1
 if ($presentations) {
   $compose = Join-Path $presentations.FullName 'skills\presentations\assets\builtin_templates\codex-grid-layout-library\artifact-tool-compose'
-  Add-FileRows 'editable-pptx' 'layout' 'openai-presentations' $compose 'slide-*.mjs'
+  Add-FileRows 'editable-pptx' 'layout' 'openai-presentations' $compose 'slide-*.mjs' -SourceVersion $presentations.Name
 }
-$pptMaster = Join-Path (Get-LockedSourcePath 'ppt-master') 'examples'
-Add-FileRows 'editable-pptx' 'example' 'ppt-master' $pptMaster 'ppt169_*' -Directory
+$pptMasterStyles = Join-Path (Get-LockedSourcePath 'ppt-master') 'skills\ppt-master\templates\styles'
+Add-FileRows 'editable-pptx' 'style' 'ppt-master' $pptMasterStyles '*.md'
 $baoyuStyles = Join-Path (Get-LockedSourcePath 'baoyu-skills') 'skills\baoyu-slide-deck\references\styles'
 Add-FileRows 'editable-pptx' 'style' 'baoyu-slide-deck' $baoyuStyles '*.md'
 $huashu = Join-Path (Get-LockedSourcePath 'huashu-design') 'assets\showcases\ppt'
@@ -82,8 +82,8 @@ $groups = @($rows | Group-Object scenario,category,id | ForEach-Object {
     category=$first.category
     id=$first.id
     asset_id=('presentation:' + $first.scenario + ':' + $first.category + ':' + $first.id)
-    preferred=[ordered]@{source=$first.source;source_version='retained';path=(Compress-WujiPath $first.path)}
-    variants=@($_.Group | ForEach-Object { [ordered]@{source=$_.source; source_version='retained'; path=(Compress-WujiPath $_.path)} })
+    preferred=[ordered]@{source=$first.source;source_version=$first.source_version;path=(Compress-WujiPath $first.path)}
+    variants=@($_.Group | ForEach-Object { [ordered]@{source=$_.source; source_version=$_.source_version; path=(Compress-WujiPath $_.path)} })
   }
 } | Sort-Object scenario,category,id)
 $doc = [ordered]@{

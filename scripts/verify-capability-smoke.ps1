@@ -84,7 +84,7 @@ if ($manifest.host_callable -and $Capability -in @('code','context','evolution')
       throw 'code smoke did not create the bounded no-context task judgment'
     }
     $directWorker = @($directRoute.workers)[0]
-    if ($directWorker.id -ne 'task-judgment' -or $directWorker.model -ne 'gpt-5.6-terra' -or $directWorker.writes -or $directWorker.context_mode -ne 'task-contract-only' -or $directWorker.allocated_context_bytes -ne 0) {
+    if ($directWorker.id -ne 'task-judgment' -or $directWorker.model -ne 'host-selected' -or $directWorker.reasoning_effort -ne 'medium' -or $directWorker.writes -or $directWorker.context_mode -ne 'task-contract-only' -or $directWorker.allocated_context_bytes -ne 0) {
       throw 'code smoke did not keep the no-context judgment bounded and read-only'
     }
     $rawContext = (& $wuji context-select --workspace $Root --query $codeQuery --max-bytes 2048 2>&1) -join [Environment]::NewLine
@@ -99,8 +99,8 @@ if ($manifest.host_callable -and $Capability -in @('code','context','evolution')
     if ($codeRoute.capability -ne 'code' -or $codeRoute.primary_skill -ne 'native Codex coding route') {
       throw 'code smoke did not reach the declared native Codex entrypoint'
     }
-    if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object model -ne 'gpt-5.6-terra').Count -ne 0) {
-      throw 'code smoke did not emit the bounded Terra worker plan'
+    if (@($codeRoute.workers).Count -ne 1 -or @($codeRoute.workers | Where-Object { $_.model -ne 'host-selected' -or $_.reasoning_effort -ne 'medium' }).Count -ne 0) {
+      throw 'code smoke did not emit the bounded host-selected medium worker plan'
     }
     $worker = @($codeRoute.workers)[0]
     if (-not $worker.execution_evidence_required -or ($worker.execution_evidence_fields -join ',') -ne 'schema_version,worker_id,requested_model,session_key,host_dispatch_id,write_boundary,attempts,effective_model,model_switch_count,result_handle,stable_prefix_bytes,stable_prefix_sha256,source_execution_bytes,context_handle_ids,context_bytes_sent,context_payload_sha256,task_contract_bytes,task_contract_sha256,delegation_gate_reason,input_tokens,cached_input_tokens,output_tokens,retry_count,attempt_failure_kinds,cache_domain,billing_unit,total_cost_microunits,execution_baseline_microunits,savings_microunits') {
@@ -109,7 +109,7 @@ if ($manifest.host_callable -and $Capability -in @('code','context','evolution')
     if ($worker.context_mode -ne 'shared-content-addressed-handle' -or $worker.context_handles[0] -ne $codeContext.context_handle -or $worker.context_artifact -ne $codeContext.artifact_path) {
       throw 'code smoke did not hand off the verified content-addressed context'
     }
-    if ($worker.allocated_context_bytes -ne $codeContext.payload_bytes -or $worker.context_payload_sha256 -ne $codeContext.payload_sha256 -or -not $worker.context_payload -or $worker.allocated_task_contract_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$worker.task_contract)) -or -not $worker.task_contract_sha256 -or $worker.max_task_contract_bytes -ne 2048) {
+    if ($worker.allocated_context_bytes -ne $codeContext.payload_bytes -or $worker.context_payload_sha256 -ne $codeContext.payload_sha256 -or -not $worker.context_payload -or $worker.allocated_task_contract_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$worker.task_contract)) -or -not $worker.task_contract_sha256 -or $worker.max_task_contract_bytes -ne 4096) {
       throw 'code smoke did not expose bounded handoff costs'
     }
     if (-not $worker.stable_capability_prefix -or $worker.stable_prefix_bytes -ne ([Text.Encoding]::UTF8.GetByteCount([string]$worker.stable_capability_prefix)) -or -not $worker.stable_prefix_sha256 -or $codeRoute.delegation_decision.estimated_replay_bytes -ne ($worker.stable_prefix_bytes + $worker.allocated_context_bytes + $worker.allocated_task_contract_bytes)) {

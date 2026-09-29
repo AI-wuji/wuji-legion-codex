@@ -73,6 +73,105 @@ func TestRepositoryAutomaticSourcesHaveSemanticRoutes(t *testing.T) {
 	}
 }
 
+func TestLocalMediaEditorsSelectColdExpertsWithoutGeneration(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifests, err := LoadManifests(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		query, expert string
+	}{
+		{"在剪映里剪辑视频并导出成片", "post-production"},
+		{"用 REAPER 制作 5.1 声场并混音", "voice-audio"},
+	} {
+		t.Run(tc.expert, func(t *testing.T) {
+			route := Route(tc.query, manifests)
+			if route.Capability != "video" || route.Provider != "local-media-editor" || route.ProviderFallback != "" {
+				t.Fatalf("local editor task was sent to a generator: cap=%s provider=%s fallback=%s", route.Capability, route.Provider, route.ProviderFallback)
+			}
+			if route.ExpertRoute == nil || route.ExpertRoute.Selection.State != "selected" ||
+				route.ExpertRoute.Selection.ExpertID != tc.expert || len(route.ExpertRoute.BoundWorkers) == 0 {
+				t.Fatalf("editor expert was not prepared: %#v; activation error=%s", route.ExpertRoute, route.SourceActivationError)
+			}
+			mounted := false
+			for _, source := range route.MountedSources {
+				if source.ID == "wuji-local-media-editor-expert" {
+					mounted = true
+				}
+			}
+			if !mounted {
+				t.Fatal("selected editor expert's cold source did not mount")
+			}
+			if route.ExpertRoute.ExecutionStatus != "contract-only; native-host-receipt-required" {
+				t.Fatalf("route implied actual editor control: %s", route.ExpertRoute.ExecutionStatus)
+			}
+		})
+	}
+	generation := Route("生成一个视频", manifests)
+	if generation.Provider != "agnes-video-v2.0" {
+		t.Fatalf("generation default changed: %s", generation.Provider)
+	}
+	for _, source := range generation.MountedSources {
+		if source.ID == "wuji-local-media-editor-expert" {
+			t.Fatal("editor instructions leaked into generation task")
+		}
+	}
+}
+
+func TestFusedExpertMethodsReachRealRouteOnlyOnMatch(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifests, err := LoadManifests(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		query, capability, expert, method string
+	}{
+		{"请给职场新人做课并产出可操作课件", "documents", "course-design", "learner-first-course"},
+		{"请总结学习资料并给自测题", "documents", "learning-coach", "bounded-study-practice"},
+		{"用金山文档知识库回答", "documents", "knowledge-base-qa", "authorized-knowledge-connector"},
+		{"请发布公众号文章", "writing", "publication-delivery", "wechat-publication-gate"},
+		{"把现有课件PPT美化一下", "presentation", "document-deck", "editable-deck-delivery"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.expert+"/"+tc.method, func(t *testing.T) {
+			route := Route(tc.query, manifests)
+			if route.Capability != tc.capability || route.ExpertRoute == nil ||
+				route.ExpertRoute.Selection.ExpertID != tc.expert || len(route.ExpertRoute.BoundWorkers) == 0 {
+				t.Fatalf("expert method did not reach real route: cap=%s expert=%#v error=%s", route.Capability, route.ExpertRoute, route.SourceActivationError)
+			}
+			found := false
+			for _, worker := range route.Workers {
+				var contract workerContract
+				if err := json.Unmarshal([]byte(worker.TaskContract), &contract); err != nil {
+					t.Fatal(err)
+				}
+				if contract.Expert == nil {
+					continue
+				}
+				if len(worker.TaskContract) > maxTaskContractBytes {
+					t.Fatalf("method exceeded task budget: %d", len(worker.TaskContract))
+				}
+				for _, method := range contract.Expert.Methods {
+					if method.ID == tc.method {
+						found = true
+					}
+				}
+			}
+			if !found {
+				t.Fatalf("selected expert %s has no task-scoped %s method", tc.expert, tc.method)
+			}
+		})
+	}
+}
+
 func TestOfficeCLIAdapterOnlyMountsForNarrowDocumentInspection(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
@@ -166,8 +265,8 @@ func TestSpecializedExtractionDoesNotFanOut(t *testing.T) {
 		Engines: []Engine{{ID: "web-research", Default: true}, {ID: "content-extraction", Triggers: []string{"youtube字幕"}}},
 	}}
 	got := Route("提取youtube字幕", items)
-	if got.Engine != "content-extraction" || got.Parallel || len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-terra" {
-		t.Fatalf("specialized extraction did not receive bounded task judgment: %#v", got)
+	if got.Engine != "content-extraction" || got.Parallel || got.GeneralStaffRequired || len(got.Workers) != 0 || got.ExecutionLane != "direct" {
+		t.Fatalf("single-step subtitle extraction did not stay on Aji: %#v", got)
 	}
 }
 
@@ -470,7 +569,7 @@ func TestPresentationDelegationRequiresExplicitSelfContainedHandoff(t *testing.T
 		},
 	}}
 	direct := Route("做一个PPT", items)
-	if direct.Parallel || len(direct.Workers) != 1 || direct.Workers[0].Model != "gpt-5.6-terra" || direct.DelegationDecision.Reason != "default-task-reasoning" {
+	if direct.Parallel || len(direct.Workers) != 1 || direct.Workers[0].Model != hostSelectedModel || direct.Workers[0].ReasoningEffort != "medium" || direct.DelegationDecision.Reason != "default-task-reasoning" {
 		t.Fatalf("presentation did not receive its bounded default task route: %#v", direct)
 	}
 	missingHandoff := Route("做一个PPT parallel", items)

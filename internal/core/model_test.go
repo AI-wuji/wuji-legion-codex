@@ -16,10 +16,10 @@ func TestRouteEmitsExecutableModelPolicy(t *testing.T) {
 	}}
 	context := delegationContextForTest(query, 512)
 	got := RouteWithContext(query, items, context)
-	if got.Version != "3.0" || got.MainModel != "gpt-5.6-terra" || !equalStrings(got.ModelPolicy.MainFallbackModels, []string{"gpt-5.6-sol"}) || got.GeneralStaffModel != "" || got.GeneralStaffWorker != nil || got.ModelPolicy.RoutingMode != gptHierarchyMode || got.ModelPolicy.ClassModels["sol"] != "gpt-5.6-sol" || got.ModelPolicy.ClassModels["terra"] != "gpt-5.6-terra" {
+	if got.Version != "3.0" || got.MainModel != hostSelectedModel || got.MainReasoningEffort != "medium" || len(got.ModelPolicy.MainFallbackModels) != 0 || got.GeneralStaffModel != "" || got.GeneralStaffWorker != nil || got.ModelPolicy.RoutingMode != gptHierarchyMode || got.ModelPolicy.ClassModels["sol"] != hostSelectedModel || got.ModelPolicy.ClassModels["terra"] != hostSelectedModel || got.ModelPolicy.ClassReasoningEfforts["terra"] != "medium" || got.ModelPolicy.ClassReasoningEfforts["sol"] != "max" || !equalStrings(got.ModelPolicy.FallbackReasoningEfforts["sol"], []string{"xhigh"}) {
 		t.Fatalf("main model policy is incomplete: %#v", got.ModelPolicy)
 	}
-	if len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-terra" || !equalStrings(got.Workers[0].AvailabilityFallbackModels, []string{"gpt-5.6-sol"}) || len(got.Workers[0].FallbackModels) != 0 {
+	if len(got.Workers) != 1 || got.Workers[0].Model != hostSelectedModel || got.Workers[0].ReasoningEffort != "medium" || len(got.Workers[0].AvailabilityFallbackModels) != 0 || len(got.Workers[0].AvailabilityFallbackEfforts) != 0 || len(got.Workers[0].FallbackModels) != 0 {
 		t.Fatalf("route did not emit an executable Terra policy: %#v", got.Workers)
 	}
 	if got.GeneralStaffWorker != nil {
@@ -29,7 +29,7 @@ func TestRouteEmitsExecutableModelPolicy(t *testing.T) {
 		t.Fatalf("Terra worker did not receive the bounded handoff: %#v", got)
 	}
 	worker := got.Workers[0]
-	if worker.MaxAttempts != 1 || len(worker.FallbackOn) != 0 || worker.MaxModelSwitches != 0 || !equalStrings(worker.AvailabilityFallbackOn, []string{"model-unavailable", "provider-error-before-generation"}) {
+	if worker.MaxAttempts != 1 || len(worker.FallbackOn) != 0 || worker.MaxModelSwitches != 0 || len(worker.AvailabilityFallbackOn) != 0 {
 		t.Fatalf("Terra worker did not separate availability selection from execution retries: %#v", worker)
 	}
 	if got.DelegationPolicy.CrossModelCacheAssumed || got.DelegationPolicy.CacheScope != "model-local stable-prefix only" || !got.DelegationPolicy.FallbackOnlyOnAvailabilityError {
@@ -69,10 +69,10 @@ func TestSearchWorkersUseConcreteLunaModel(t *testing.T) {
 		t.Fatalf("expected three research workers: %#v", got.Workers)
 	}
 	for _, worker := range got.Workers {
-		if worker.Model != "gpt-5.6-luna" || !equalStrings(worker.AvailabilityFallbackModels, []string{"gpt-5.6-terra", "gpt-5.6-sol"}) || len(worker.FallbackModels) != 0 {
+		if worker.Model != hostSelectedModel || worker.ReasoningEffort != "low" || len(worker.AvailabilityFallbackModels) != 0 || len(worker.AvailabilityFallbackEfforts) != 0 || len(worker.FallbackModels) != 0 {
 			t.Fatalf("research worker did not receive an executable Luna policy: %#v", worker)
 		}
-		if worker.MaxAttempts != 1 || len(worker.FallbackOn) != 0 || worker.MaxModelSwitches != 0 || !equalStrings(worker.AvailabilityFallbackOn, []string{"model-unavailable", "provider-error-before-generation"}) {
+		if worker.MaxAttempts != 1 || len(worker.FallbackOn) != 0 || worker.MaxModelSwitches != 0 || len(worker.AvailabilityFallbackOn) != 0 {
 			t.Fatalf("research worker can retry after paid generation: %#v", worker)
 		}
 	}
@@ -83,7 +83,7 @@ func TestModelClassesAreExplicitlyValidated(t *testing.T) {
 	if model != "" || fallbacks != nil {
 		t.Fatalf("unknown model class must not silently consume Sol: model=%s fallbacks=%#v", model, fallbacks)
 	}
-	if model, _ := modelSpec("terra"); model != "gpt-5.6-terra" {
+	if model, _ := modelSpec("terra"); model != hostSelectedModel {
 		t.Fatalf("Terra model class is not routable: %q", model)
 	}
 	if err := validateExperts([]Expert{{ID: "general-staff", Purpose: "normal implementation", ModelClass: "terra"}}); err != nil {
@@ -96,11 +96,11 @@ func TestModelClassesAreExplicitlyValidated(t *testing.T) {
 
 func TestHighReasoningJudgmentUsesOneSolWorker(t *testing.T) {
 	got := Route("architecture decision: use Sol", nil)
-	if got.MainModel != "gpt-5.6-terra" || got.GeneralStaffModel != "" || got.GeneralStaffWorker != nil || len(got.Workers) != 1 {
+	if got.MainModel != hostSelectedModel || got.MainReasoningEffort != "max" || !equalStrings(got.MainFallbackReasoning, []string{"xhigh"}) || got.GeneralStaffModel != "" || got.GeneralStaffWorker != nil || len(got.Workers) != 1 {
 		t.Fatalf("high-reasoning route is incomplete: %#v", got)
 	}
 	worker := got.Workers[0]
-	if worker.ID != "sol-judgment" || worker.Model != "gpt-5.6-sol" || len(worker.FallbackModels) != 0 || len(worker.FallbackOn) != 0 || worker.MaxAttempts != 1 || worker.Writes {
+	if worker.ID != "sol-judgment" || worker.Model != hostSelectedModel || worker.ReasoningEffort != "max" || !equalStrings(worker.AvailabilityFallbackEfforts, []string{"xhigh"}) || len(worker.FallbackModels) != 0 || len(worker.FallbackOn) != 0 || worker.MaxAttempts != 1 || worker.Writes {
 		t.Fatalf("Sol must be a bounded read-only judgment worker: %#v", worker)
 	}
 }

@@ -16,13 +16,13 @@ func TestCodeDelegationRequiresVerifiedBoundedContext(t *testing.T) {
 	}}
 
 	direct := Route(query, items)
-	if len(direct.Workers) != 1 || direct.Workers[0].ID != "task-judgment" || direct.Workers[0].Model != "gpt-5.6-terra" || direct.DelegationDecision.Reason != "verified-context-artifact-required" {
+	if len(direct.Workers) != 1 || direct.Workers[0].ID != "task-judgment" || direct.Workers[0].Model != hostSelectedModel || direct.Workers[0].ReasoningEffort != "medium" || direct.DelegationDecision.Reason != "verified-context-artifact-required" {
 		t.Fatalf("code without a verified context did not fall back to bounded Sol task judgment: %#v", direct)
 	}
 
 	context := delegationContextForTest(query, 1024)
 	delegated := RouteWithContext(query, items, context)
-	if len(delegated.Workers) != 1 || delegated.Workers[0].ID != "implementation" || delegated.Workers[0].Model != "gpt-5.6-sol" {
+	if len(delegated.Workers) != 1 || delegated.Workers[0].ID != "implementation" || delegated.Workers[0].Model != hostSelectedModel || delegated.Workers[0].ReasoningEffort != "max" {
 		t.Fatalf("expected one independent Sol implementation worker: %#v", delegated.Workers)
 	}
 	worker := delegated.Workers[0]

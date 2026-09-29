@@ -137,12 +137,13 @@
       ],
       "required": [
         "SKILL.md",
-        "references/content-rules.md",
+        "references/implementation.md",
         "container_tools/render_slides.py",
         "container_tools/slides_test.py",
-        "container_tools/setup_artifact_tool_workspace.mjs",
-        "assets/builtin_templates/codex-grid-layout-library/artifact-tool-compose/slide-*.mjs",
-        "assets/builtin_templates/codex-grid-layout-library/assets/previews/*.png"
+        "container_tools/render_presentation.mjs",
+        "artifact_tool_docs/API_QUICK_START.md",
+        "template_following_scripts/inspect_template_deck.mjs",
+        "template_following_scripts/check_template_fidelity.mjs"
       ],
       "priority": "secondary"
     },
@@ -248,10 +249,13 @@
       ],
       "required": [
         "skills/ppt-master/SKILL.md",
+        "skills/ppt-master/scripts/pptx_intake.py",
         "skills/ppt-master/scripts/pptx_to_svg.py",
         "skills/ppt-master/scripts/svg_to_pptx.py",
-        "skills/ppt-master/scripts/svg_editor/static/index.html",
-        "examples/ppt169_*"
+        "skills/ppt-master/scripts/pptx_template_import.py",
+        "skills/ppt-master/scripts/pptx_delivery_check.py",
+        "skills/ppt-master/scripts/native_payloads.py",
+        "LICENSE"
       ],
       "priority": "secondary"
     },

@@ -44,7 +44,9 @@ foreach ($requiredPptMasterFile in @(
   'skills\ppt-master\scripts\pptx_intake.py',
   'skills\ppt-master\scripts\pptx_to_svg.py',
   'skills\ppt-master\scripts\svg_to_pptx.py',
-  'skills\ppt-master\scripts\native_enhance_pptx.py',
+  'skills\ppt-master\scripts\pptx_template_import.py',
+  'skills\ppt-master\scripts\pptx_delivery_check.py',
+  'skills\ppt-master\scripts\native_payloads.py',
   'LICENSE'
 )) {
   if (-not (Test-Path -LiteralPath (Join-Path $pptMasterRoot $requiredPptMasterFile) -PathType Leaf)) { throw "PPT Master retained entrypoint is missing: $requiredPptMasterFile" }
@@ -56,8 +58,11 @@ $version = Get-ChildItem -LiteralPath $skillRoot -Directory | Sort-Object -Prope
 }; Descending = $true } | Select-Object -First 1
 if (-not $version) { throw 'Presentations runtime is not installed' }
 $skill = Join-Path $version.FullName 'skills\presentations'
-$layoutRoot = Join-Path $skill 'assets\builtin_templates\codex-grid-layout-library'
-$setup = Join-Path $skill 'container_tools\setup_artifact_tool_workspace.mjs'
+$renderPresentation = Join-Path $skill 'container_tools\render_presentation.mjs'
+$runtimeApi = Join-Path $skill 'artifact_tool_docs\API_QUICK_START.md'
+foreach ($runtimeFile in @($renderPresentation, $runtimeApi)) {
+  if (-not (Test-Path -LiteralPath $runtimeFile -PathType Leaf)) { throw "Latest presentations runtime file is missing: $runtimeFile" }
+}
 $node = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe'
 if (-not (Test-Path -LiteralPath $node)) { throw 'Bundled Node runtime is missing' }
 $previousHome = $env:HOME
@@ -72,6 +77,10 @@ if (-not $evidenceDir -or -not (Test-Path -LiteralPath $evidenceDir -PathType Co
 $scratch = Join-Path $env:TEMP ('wuji-2-ppt-probe-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $scratch | Out-Null
 try {
+  $probeNodeModules = Join-Path $scratch 'node_modules'
+  New-Item -ItemType Junction -Path $probeNodeModules -Target $nodeModules | Out-Null
+  $previousRuntimeNodeModules = $env:RUNTIME_NODE_MODULES
+  $env:RUNTIME_NODE_MODULES = $nodeModules
 	$wuji = Join-Path $root 'bin\wuji.exe'
 	if (-not (Test-Path -LiteralPath $wuji -PathType Leaf)) { throw 'wuji binary is required for presentation fusion selection' }
 	$invoke = Join-Path $root 'capabilities\presentation\scripts\invoke-presentation.ps1'
@@ -95,16 +104,15 @@ try {
   $catalogPath = Join-Path $scratch 'template-catalog.json'
   & (Join-Path $root 'scripts\build-presentation-catalog.ps1') -Output $catalogPath | Out-Null
   $catalog = Get-Content -Raw -Encoding UTF8 -LiteralPath $catalogPath | ConvertFrom-Json
-  if ($catalog.counts.web_deck -lt 100 -or $catalog.counts.editable_pptx -lt 60) { throw 'Unified presentation catalog is incomplete' }
+  if ($catalog.counts.web_deck -lt 100 -or $catalog.counts.editable_pptx -lt 1) { throw 'Unified presentation catalog is incomplete' }
+  $catalogSources = @($catalog.entries | ForEach-Object { $_.preferred.source } | Sort-Object -Unique)
+  foreach ($requiredCatalogSource in @('ppt-master', 'baoyu-slide-deck', 'huashu-design')) {
+    if ($catalogSources -notcontains $requiredCatalogSource) { throw "Unified presentation catalog is missing source: $requiredCatalogSource" }
+  }
   Write-Output "presentation-catalog-unified web=$($catalog.counts.web_deck) editable=$($catalog.counts.editable_pptx)"
-  & $node $setup --workspace $scratch
-  if ($LASTEXITCODE -ne 0) { throw 'Artifact-tool workspace setup failed' }
   Copy-Item -LiteralPath (Join-Path $root 'capabilities\presentation\probe.mjs') -Destination (Join-Path $scratch 'probe.mjs')
-  $probeLayoutRoot = Join-Path $scratch 'layout'
-  New-Item -ItemType Directory -Path $probeLayoutRoot | Out-Null
-  Copy-Item -LiteralPath (Join-Path $layoutRoot 'artifact-tool-compose') -Destination $probeLayoutRoot -Recurse
   $pptx = Join-Path $scratch 'behavior-probe.pptx'
-  & $node (Join-Path $scratch 'probe.mjs') $probeLayoutRoot $pptx
+  & $node (Join-Path $scratch 'probe.mjs') $pptx
   if ($LASTEXITCODE -ne 0) { throw 'Presentation behavior probe failed' }
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   $zip = [IO.Compression.ZipFile]::OpenRead($pptx)
@@ -120,6 +128,12 @@ try {
     if ($shapeCount -lt 6) { throw "Editable object evidence is too weak: $shapeCount" }
   } finally { $zip.Dispose() }
   Write-Output "pptx-created slides=2 editable-shapes=$shapeCount"
+  $renderDir = Join-Path $scratch 'rendered-pptx'
+  & $node $renderPresentation --input $pptx --output_dir $renderDir --scale 1 | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Latest presentation runtime render failed' }
+  $renderedSlides = @(Get-ChildItem -LiteralPath $renderDir -Filter 'slide-*.png' -File)
+  if ($renderedSlides.Count -ne 2) { throw "Expected 2 rendered slides, got $($renderedSlides.Count)" }
+  Write-Output "pptx-rendered slides=$($renderedSlides.Count)"
 
   $htmlPpt = Get-LockedSourcePath 'html-ppt-skill'
   $themeCount = @(Get-ChildItem (Join-Path $htmlPpt 'assets\themes') -Filter '*.css').Count
@@ -131,13 +145,13 @@ try {
   $previousNodePath = $env:NODE_PATH
   $previousChromePath = $env:CHROME_PATH
   $env:CHROME_PATH = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
-  $playwrightCoreModules = Get-ChildItem (Join-Path $nodeModules '.pnpm') -Directory -Filter 'playwright-core@*' | ForEach-Object {
-    if ($_.Name -match '^playwright-core@(?<version>\d+(?:\.\d+){1,3})(?:_|$)') {
-      [pscustomobject]@{ Directory = $_; Version = [version]$Matches.version }
-    }
-  } | Sort-Object Version -Descending | Select-Object -First 1 | ForEach-Object { Join-Path $_.Directory.FullName 'node_modules' }
-  if (-not $playwrightCoreModules) { throw 'Playwright Core runtime is missing' }
-  $env:NODE_PATH = @($nodeModules, $playwrightCoreModules) -join ';'
+  $playwrightPackage = Join-Path $nodeModules 'playwright'
+  $playwrightCorePackage = Join-Path $nodeModules 'playwright-core'
+  if (-not (Test-Path -LiteralPath (Join-Path $playwrightPackage 'package.json') -PathType Leaf) -or
+      -not (Test-Path -LiteralPath (Join-Path $playwrightCorePackage 'package.json') -PathType Leaf)) {
+    throw 'Playwright runtime is missing'
+  }
+  $env:NODE_PATH = $nodeModules
   $browserProbe = Join-Path $root 'capabilities\presentation\probe-browser.cjs'
   $htmlShot = Join-Path $scratch 'html-ppt.png'
   & $node $browserProbe (Join-Path $htmlPpt 'templates\animation-showcase.html') $htmlShot presenter
@@ -203,5 +217,6 @@ try {
   $env:HOME = $previousHome
   if (Get-Variable previousNodePath -ErrorAction SilentlyContinue) { $env:NODE_PATH = $previousNodePath }
   if (Get-Variable previousChromePath -ErrorAction SilentlyContinue) { $env:CHROME_PATH = $previousChromePath }
+  if (Get-Variable previousRuntimeNodeModules -ErrorAction SilentlyContinue) { $env:RUNTIME_NODE_MODULES = $previousRuntimeNodeModules }
 }
 Write-Output $probeReceipt

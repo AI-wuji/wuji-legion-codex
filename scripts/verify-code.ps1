@@ -31,17 +31,15 @@ if (-not (Test-Path -LiteralPath $wuji)) { & (Join-Path $Root 'scripts\build.ps1
 $raw = (& $wuji route --query 'implement parser normalization with a Go unit test' 2>&1) -join [Environment]::NewLine
 if ($LASTEXITCODE -ne 0) { throw "code route failed: $raw" }
 $route = $raw | ConvertFrom-Json
-$worker = @($route.workers | Where-Object { $_.model -eq 'gpt-5.6-terra' } | Select-Object -First 1)
-if ($route.capability -ne 'code' -or $worker.Count -ne 1 -or -not $worker[0].stable_capability_prefix) { throw 'code route did not emit one bounded Terra worker' }
+$worker = @($route.workers | Where-Object { $_.model -eq 'host-selected' -and $_.reasoning_effort -eq 'medium' } | Select-Object -First 1)
+if ($route.capability -ne 'code' -or $worker.Count -ne 1 -or -not $worker[0].stable_capability_prefix) { throw 'code route did not emit one bounded host-selected medium worker' }
 $prefix = $worker[0].stable_capability_prefix | ConvertFrom-Json
-if ($prefix.implementation_doctrine -ne 'ponytail-v3: universal-minimum-correct-task-judgment') { throw 'code route omitted the compact Ponytail doctrine marker' }
+if ($prefix.implementation_doctrine -ne 'ponytail-v3: minimum correct; least reasoning, tools and code') { throw 'code route omitted the compact Ponytail doctrine marker' }
 foreach ($required in @(
-  'trace the actual flow and cite affected file or symbol anchors before choosing',
-  'choose the first valid rung: skip, reuse local code, standard library, native platform, installed dependency, one line, minimum code',
-  'for bugs, inspect every caller and fix the common root cause once, not each symptom',
-  'prefer deletion, fewest files, and the smallest correct diff; no unrequested abstraction, scaffolding, or dependency',
-  'for nontrivial logic, name one smallest runnable regression check; trivial one-line edits need no new test',
-  'do not weaken validation, error handling, data safety, security, accessibility, or explicit requirements'
+  'trace affected flow and callers; fix the shared root cause once',
+  'prefer skip, local reuse, standard library, platform, dependency, then minimum code',
+  'prefer deletion, fewest files and smallest diff; no unrequested abstraction',
+  'check nontrivial logic with the smallest runnable regression; preserve safety and requirements'
 )) {
   if ($worker[0].protocol -notcontains $required -or $worker[0].task_contract -notmatch [regex]::Escape($required)) { throw "code route omitted executable Ponytail requirement: $required" }
 }

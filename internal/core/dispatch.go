@@ -46,6 +46,7 @@ type DispatchOptions struct {
 
 type DispatchAttempt struct {
 	Model             string   `json:"model"`
+	ReasoningEffort   string   `json:"reasoning_effort,omitempty"`
 	Arguments         []string `json:"arguments"`
 	ExitCode          int      `json:"exit_code"`
 	FailureKind       string   `json:"failure_kind,omitempty"`
@@ -62,6 +63,7 @@ type DispatchResult struct {
 	SessionKey               string                         `json:"session_key"`
 	ContractRequestID        string                         `json:"contract_request_id"`
 	RequestedModel           string                         `json:"requested_model"`
+	RequestedReasoningEffort string                         `json:"requested_reasoning_effort,omitempty"`
 	SucceededCLIModelRequest string                         `json:"succeeded_cli_model_request,omitempty"`
 	Status                   string                         `json:"status"`
 	WriteBoundary            string                         `json:"write_boundary"`
@@ -126,6 +128,9 @@ func DispatchWorker(worker WorkerTask, options DispatchOptions) (DispatchResult,
 	if len(worker.SourceExecution) > 0 && len(options.TrustedManifests) == 0 {
 		return DispatchResult{}, fmt.Errorf("trusted manifests are required for selected source dispatch")
 	}
+	if err := verifyWorkerExpertBinding(worker, options.TrustedManifests); err != nil {
+		return DispatchResult{}, err
+	}
 	verifiedSources, sourceVerification, err := VerifySourceExecutionContracts(options.TrustedManifests, worker.SourceExecution)
 	if err != nil {
 		return DispatchResult{}, err
@@ -139,19 +144,20 @@ func DispatchWorker(worker WorkerTask, options DispatchOptions) (DispatchResult,
 		writeBoundary = "scoped-artifact-write"
 	}
 	result := DispatchResult{
-		WorkerID:             worker.ID,
-		SessionKey:           worker.SessionKey,
-		ContractRequestID:    dispatchID(worker, outputDir),
-		RequestedModel:       worker.Model,
-		Status:               "native-host-dispatch-required",
-		WriteBoundary:        writeBoundary,
-		ModelEvidence:        "Only a Desktop native child created with this exact model can prove model execution. An external codex exec process is compatibility-only and is never native execution evidence.",
-		TelemetryStatus:      "unavailable-from-codex-cli",
-		DispatchMode:         "native-host-contract",
-		NativeHostRequired:   true,
-		PreparedPromptSHA256: hex.EncodeToString(promptDigest[:]),
-		PreparedPromptBytes:  len(prompt),
-		SourceContracts:      sourceVerification,
+		WorkerID:                 worker.ID,
+		SessionKey:               worker.SessionKey,
+		ContractRequestID:        dispatchID(worker, outputDir),
+		RequestedModel:           worker.Model,
+		RequestedReasoningEffort: worker.ReasoningEffort,
+		Status:                   "native-host-dispatch-required",
+		WriteBoundary:            writeBoundary,
+		ModelEvidence:            "Only a Desktop native child created with this exact model can prove model execution. An external codex exec process is compatibility-only and is never native execution evidence.",
+		TelemetryStatus:          "unavailable-from-codex-cli",
+		DispatchMode:             "native-host-contract",
+		NativeHostRequired:       true,
+		PreparedPromptSHA256:     hex.EncodeToString(promptDigest[:]),
+		PreparedPromptBytes:      len(prompt),
+		SourceContracts:          sourceVerification,
 	}
 	// The Desktop host reads the verified contract and creates the actual child.
 	// Availability selection is a finite, ordered chain and is only eligible
@@ -163,11 +169,24 @@ func DispatchWorker(worker WorkerTask, options DispatchOptions) (DispatchResult,
 	result.DispatchMode = "external-cli-compatibility-untrusted"
 	result.NativeHostRequired = true
 	result.Status = "compatibility-exec-failed-before-generation"
-	models := append([]string{worker.Model}, worker.AvailabilityFallbackModels...)
-	for index, model := range models {
+	fallbackCount := len(worker.AvailabilityFallbackModels)
+	if len(worker.AvailabilityFallbackEfforts) > fallbackCount {
+		fallbackCount = len(worker.AvailabilityFallbackEfforts)
+	}
+	for index := 0; index <= fallbackCount; index++ {
+		model := worker.Model
+		effort := worker.ReasoningEffort
+		if index > 0 {
+			if len(worker.AvailabilityFallbackModels) > 0 {
+				model = worker.AvailabilityFallbackModels[index-1]
+			}
+			if len(worker.AvailabilityFallbackEfforts) > 0 {
+				effort = worker.AvailabilityFallbackEfforts[index-1]
+			}
+		}
 		resultPath := filepath.Join(outputDir, fmt.Sprintf("%s-%s-%d.txt", safeDispatchName(worker.ID), dispatchSuffix(result.ContractRequestID), index+1))
-		arguments := append(append([]string{}, options.CodexArgumentPrefix...), codexArguments(model, workspace, resultPath, prompt)...)
-		attempt := DispatchAttempt{Model: model, Arguments: arguments}
+		arguments := append(append([]string{}, options.CodexArgumentPrefix...), codexArgumentsWithReasoning(model, effort, workspace, resultPath, prompt)...)
+		attempt := DispatchAttempt{Model: model, ReasoningEffort: effort, Arguments: arguments}
 		if options.DryRun {
 			attempt.ExitCode = 0
 			result.Attempts = append(result.Attempts, attempt)
@@ -198,7 +217,9 @@ func DispatchWorker(worker WorkerTask, options DispatchOptions) (DispatchResult,
 			result.Attempts = append(result.Attempts, attempt)
 			if commandErr == nil && commandResult.ExitCode == 0 {
 				result.Status = "compatibility-exec-completed-untrusted"
-				result.SucceededCLIModelRequest = model
+				if model != hostSelectedModel {
+					result.SucceededCLIModelRequest = model
+				}
 			} else {
 				result.Status = "compatibility-exec-failed-after-generation"
 			}
@@ -206,7 +227,7 @@ func DispatchWorker(worker WorkerTask, options DispatchOptions) (DispatchResult,
 		}
 		attempt.FailureKind = dispatchFailureKind(commandResult.Stderr, commandErr)
 		result.Attempts = append(result.Attempts, attempt)
-		if index == len(models)-1 || !containsString(worker.AvailabilityFallbackOn, attempt.FailureKind) {
+		if index == fallbackCount || !containsString(worker.AvailabilityFallbackOn, attempt.FailureKind) {
 			return result, nil
 		}
 	}
@@ -226,7 +247,22 @@ func codexArguments(model, workspace, resultPath, prompt string) []string {
 	// `codex exec` takes the task as its final positional PROMPT. Adding `--`
 	// before it suppresses that positional argument and makes the CLI read stdin,
 	// producing a generic interactive response instead of executing the worker.
-	return []string{"exec", "-m", model, "--sandbox", "read-only", "--ephemeral", "-C", workspace, "--output-last-message", resultPath, prompt}
+	arguments := []string{"exec"}
+	// An empty model or host-selected sentinel means: inherit the model already
+	// selected by the native Codex/ChatGPT host. Never send the sentinel as a
+	// literal model ID; ChatGPT-backed Codex accounts may reject it.
+	if strings.TrimSpace(model) != "" && model != hostSelectedModel {
+		arguments = append(arguments, "-m", model)
+	}
+	return append(arguments, "--sandbox", "read-only", "--ephemeral", "-C", workspace, "--output-last-message", resultPath, prompt)
+}
+
+func codexArgumentsWithReasoning(model, effort, workspace, resultPath, prompt string) []string {
+	arguments := codexArguments(model, workspace, resultPath, prompt)
+	if effort == "" {
+		return arguments
+	}
+	return append(arguments[:len(arguments)-1], "-c", "model_reasoning_effort="+effort, prompt)
 }
 
 func isActionableWorkerOutput(content []byte) bool {
@@ -417,15 +453,16 @@ func hasDispatchOutput(path string) bool {
 	return err == nil && len(strings.TrimSpace(string(content))) > 0
 }
 
-func dispatchFailureKind(stderr string, commandErr error) string {
+func dispatchFailureKind(stderr string, _ error) string {
 	text := strings.ToLower(stderr)
-	if strings.Contains(text, "model") && (strings.Contains(text, "not found") || strings.Contains(text, "unavailable") || strings.Contains(text, "unsupported")) {
+	if (strings.Contains(text, "model") || strings.Contains(text, "reasoning effort") || strings.Contains(text, "model_reasoning_effort")) &&
+		(strings.Contains(text, "not found") || strings.Contains(text, "unavailable") || strings.Contains(text, "unsupported") || strings.Contains(text, "invalid value")) {
 		return "model-unavailable"
 	}
-	if commandErr != nil {
+	if strings.Contains(text, "provider unavailable") || strings.Contains(text, "provider temporarily unavailable") {
 		return "provider-error-before-generation"
 	}
-	return "provider-error-before-generation"
+	return "command-failed-before-generation"
 }
 
 func dispatchID(worker WorkerTask, outputDir string) string {

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/AI-wuji/wuji-legion-codex-2.0/internal/core"
+	"github.com/AI-wuji/wuji-legion-codex-3.0/internal/core"
 )
 
 func TestTopLevelHelp(t *testing.T) {
@@ -50,7 +50,7 @@ func TestRouteRequiresQuery(t *testing.T) {
 
 func TestModelSelectionUsesGPTHierarchyOrProviderMode(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"route", "--query", "list files", "--model", "gpt-5.6-sol"}, &stdout, &stderr)
+	code := run([]string{"route", "--query", "list files", "--model", "gpt-6-sol"}, &stdout, &stderr)
 	if code != 0 || stderr.Len() != 0 {
 		t.Fatalf("GPT route failed: code=%d stderr=%q", code, stderr.String())
 	}
@@ -58,7 +58,7 @@ func TestModelSelectionUsesGPTHierarchyOrProviderMode(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &gptRoute); err != nil {
 		t.Fatalf("GPT route output is invalid: %v", err)
 	}
-	if gptRoute.Version != "3.0" || gptRoute.ModelPolicy.RoutingMode != "gpt-hierarchy" || gptRoute.ModelPolicy.UserSelectedModel != "gpt-5.6-sol" || gptRoute.MainModel != "gpt-5.6-sol" || gptRoute.GeneralStaffModel != "" || gptRoute.GeneralStaffWorker != nil || len(gptRoute.Workers) != 1 || gptRoute.Workers[0].Model != "gpt-5.6-luna" {
+	if gptRoute.Version != "3.0" || gptRoute.ModelPolicy.RoutingMode != "gpt-hierarchy" || gptRoute.ModelPolicy.UserSelectedModel != "gpt-6-sol" || gptRoute.MainModel != "gpt-6-sol" || gptRoute.GeneralStaffModel != "" || gptRoute.GeneralStaffWorker != nil || gptRoute.GeneralStaffRequired || len(gptRoute.Workers) != 0 || gptRoute.MainReasoningEffort != "low" {
 		t.Fatalf("GPT model selection did not use the explicit Aji model and bounded execution worker: %#v", gptRoute)
 	}
 
@@ -148,7 +148,7 @@ func TestValidateReceiptRequiresEvidenceFiles(t *testing.T) {
 func TestDispatchPreparesExactRouteSelectedNativeHostContract(t *testing.T) {
 	routePath := filepath.Join(t.TempDir(), "route.json")
 	route := core.RouteResult{Workers: []core.WorkerTask{{
-		ID: "mechanical", Model: "gpt-5.6-luna", SessionKey: "session-1", Writes: false, MaxAttempts: 1,
+		ID: "mechanical", Model: "host-selected", ReasoningEffort: "low", SessionKey: "session-1", Writes: false, MaxAttempts: 1,
 	}}}
 	routeData, err := json.Marshal(route)
 	if err != nil {
@@ -166,7 +166,7 @@ func TestDispatchPreparesExactRouteSelectedNativeHostContract(t *testing.T) {
 		t.Fatalf("dispatch dry run failed: code=%d stderr=%q", code, stderr.String())
 	}
 	var result core.DispatchResult
-	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result.Status != "native-host-dispatch-required" || !result.NativeHostRequired || result.RequestedModel != "gpt-5.6-luna" || result.PreparedPromptSHA256 == "" {
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil || result.Status != "native-host-dispatch-required" || !result.NativeHostRequired || result.RequestedModel != "host-selected" || result.PreparedPromptSHA256 == "" {
 		t.Fatalf("dispatch did not preserve worker route: result=%#v err=%v", result, err)
 	}
 }

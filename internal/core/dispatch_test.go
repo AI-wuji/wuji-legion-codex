@@ -52,8 +52,8 @@ func TestCompatibilityExecIsExplicitAndUntrusted(t *testing.T) {
 	result, err := DispatchWorker(worker, DispatchOptions{
 		Workspace: t.TempDir(), OutputDir: t.TempDir(), CompatibilityExec: true,
 		Runner: func(_ context.Context, _ string, arguments []string) (CodexCommandResult, error) {
-			if argumentValue(arguments, "-m") != worker.Model {
-				t.Fatalf("compatibility command changed requested model: %#v", arguments)
+			if containsString(arguments, "-m") {
+				t.Fatalf("host-selected compatibility command must not force a model: %#v", arguments)
 			}
 			if err := os.WriteFile(outputLastMessagePath(arguments), []byte("evidence"), 0o600); err != nil {
 				t.Fatal(err)
@@ -61,13 +61,13 @@ func TestCompatibilityExecIsExplicitAndUntrusted(t *testing.T) {
 			return CodexCommandResult{}, nil
 		},
 	})
-	if err != nil || result.Status != "compatibility-exec-completed-untrusted" || result.SucceededCLIModelRequest != worker.Model || len(result.Attempts) != 1 {
+	if err != nil || result.Status != "compatibility-exec-completed-untrusted" || result.SucceededCLIModelRequest != "" || len(result.Attempts) != 1 {
 		t.Fatalf("compatibility dispatch was incorrectly reported: %#v err=%v", result, err)
 	}
 }
 
 func TestCodexArgumentsPassWorkerPromptAsFinalPositionalArgument(t *testing.T) {
-	arguments := codexArguments("gpt-5.6-luna", "workspace", "result.txt", "{\"objective\":\"review\"}")
+	arguments := codexArguments(hostSelectedModel, "workspace", "result.txt", "{\"objective\":\"review\"}")
 	if containsString(arguments, "--") {
 		t.Fatalf("worker prompt was suppressed by option termination: %#v", arguments)
 	}
@@ -83,7 +83,7 @@ func TestDefaultCodexPathIsNeverEmpty(t *testing.T) {
 }
 
 func TestWorkerPromptMakesTheTaskContractActionable(t *testing.T) {
-	worker := testReceiptWorker()
+	worker := testHighReasoningReceiptWorker()
 	prompt := workerPrompt(worker)
 	if !strings.Contains(prompt, "Execute its objective now; do not ask for a separate task.") {
 		t.Fatalf("worker prompt does not instruct the worker to execute its task contract: %q", prompt)
@@ -120,7 +120,7 @@ func TestDispatchWorkerAcceptsDeclaredAvailabilityFallback(t *testing.T) {
 }
 
 func TestDispatchWorkerDoesNotRetryAfterGeneration(t *testing.T) {
-	worker := testReceiptWorker()
+	worker := testHighReasoningReceiptWorker()
 	outputDir := t.TempDir()
 	result, err := DispatchWorker(worker, DispatchOptions{
 		Workspace: t.TempDir(), OutputDir: outputDir, CompatibilityExec: true,
@@ -140,20 +140,36 @@ func TestDispatchWorkerDoesNotRetryAfterGeneration(t *testing.T) {
 }
 
 func TestDispatchWorkerHonorsBoundedAvailabilityFallbackFailures(t *testing.T) {
-	worker := testReceiptWorker()
+	worker := testHighReasoningReceiptWorker()
 	var calls int
 	result, err := DispatchWorker(worker, DispatchOptions{
 		Workspace: t.TempDir(), OutputDir: t.TempDir(), CompatibilityExec: true,
 		Runner: func(_ context.Context, _ string, _ []string) (CodexCommandResult, error) {
 			calls++
-			return CodexCommandResult{ExitCode: 1, Stderr: "unexpected command failure"}, errors.New("unexpected command failure")
+			return CodexCommandResult{ExitCode: 1, Stderr: "reasoning effort max unavailable"}, errors.New("reasoning effort max unavailable")
 		},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if calls != 2 || len(result.Attempts) != 2 || result.Attempts[0].FailureKind != "provider-error-before-generation" || result.Attempts[1].FailureKind != "provider-error-before-generation" {
+	if calls != 2 || len(result.Attempts) != 2 || result.Attempts[0].FailureKind != "model-unavailable" || result.Attempts[1].FailureKind != "model-unavailable" ||
+		result.Attempts[0].Model != hostSelectedModel || result.Attempts[1].Model != hostSelectedModel || result.Attempts[0].ReasoningEffort != "max" || result.Attempts[1].ReasoningEffort != "xhigh" {
 		t.Fatalf("dispatch ignored route fallback policy: %#v", result)
+	}
+}
+
+func TestDispatchWorkerDoesNotFallbackOnUnclassifiedCommandFailure(t *testing.T) {
+	worker := testHighReasoningReceiptWorker()
+	var calls int
+	result, err := DispatchWorker(worker, DispatchOptions{
+		Workspace: t.TempDir(), OutputDir: t.TempDir(), CompatibilityExec: true,
+		Runner: func(_ context.Context, _ string, _ []string) (CodexCommandResult, error) {
+			calls++
+			return CodexCommandResult{ExitCode: 1, Stderr: "permission denied"}, errors.New("permission denied")
+		},
+	})
+	if err != nil || calls != 1 || len(result.Attempts) != 1 || result.Attempts[0].FailureKind != "command-failed-before-generation" {
+		t.Fatalf("unclassified command failure triggered availability fallback: %#v err=%v", result, err)
 	}
 }
 
@@ -167,7 +183,7 @@ func TestDispatchWorkerRejectsExecutionRetryFields(t *testing.T) {
 
 func TestDispatchWorkerRejectsLegacyGPTModelsButAllowsExplicitOtherProviders(t *testing.T) {
 	legacy := testReceiptWorker()
-	legacy.Model = "gpt-5.4-mini"
+	legacy.Model = "gpt-5.6-terra"
 	if _, err := DispatchWorker(legacy, DispatchOptions{Workspace: t.TempDir(), OutputDir: t.TempDir()}); err == nil {
 		t.Fatal("dispatch accepted a legacy GPT worker model")
 	}

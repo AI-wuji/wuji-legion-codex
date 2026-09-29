@@ -72,14 +72,14 @@ func TestEveryNonConversationalTaskKeepsDeterministicStaffAndSimpleQuestionStays
 
 func TestFailureUsesDefaultRouteAndCodeReviewKeepsIndependentBranches(t *testing.T) {
 	failure := Route("debug timeout error", nil)
-	if len(failure.Workers) != 1 || failure.Workers[0].ID != "task-judgment" || failure.Workers[0].Model != "gpt-5.6-terra" {
+	if len(failure.Workers) != 1 || failure.Workers[0].ID != "task-judgment" || failure.Workers[0].Model != hostSelectedModel || failure.Workers[0].ReasoningEffort != "medium" {
 		t.Fatalf("failure task did not use the default bounded route: %#v", failure.Workers)
 	}
 	if len(failure.Workers[0].TaskContract) == 0 || len(workerProtocol("debug timeout error", "task-judgment", "", failure.Workers[0].StableCapabilityPrefix)) == 0 {
 		t.Fatalf("failure contract did not retain the universal PonyTail protocol: %#v", failure.Workers[0])
 	}
 	review := Route("review this pull request", []Manifest{{ID: "code-review", Triggers: []string{"review", "pull request"}, Status: "callable"}})
-	if len(review.Workers) != 2 || review.Workers[0].ID != "spec-conformance" || review.Workers[1].ID != "engineering-quality" || review.Workers[0].Model != "gpt-5.6-sol" || review.Workers[1].Model != "gpt-5.6-sol" {
+	if len(review.Workers) != 2 || review.Workers[0].ID != "spec-conformance" || review.Workers[1].ID != "engineering-quality" || review.Workers[0].Model != hostSelectedModel || review.Workers[1].Model != hostSelectedModel || review.Workers[0].ReasoningEffort != "max" || review.Workers[1].ReasoningEffort != "max" {
 		t.Fatalf("two-axis review was not made executable: %#v", review.Workers)
 	}
 }

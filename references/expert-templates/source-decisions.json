@@ -1,0 +1,287 @@
+{
+  "purpose": "Development-only provenance and admission decisions. The sole runtime expert catalog is capabilities/experts/manifest.json.",
+  "basis": "D:/下载/skill共享 top-level SKILL.md entries; no package installation or external account authorization is implied.",
+  "sources": [
+    {
+      "name": "投放素材生成器",
+      "method": "platform-adaptation",
+      "entry_sha256": "781ce9d2b21413c309b767813d231b88584d8e04fc20a6036d5780491f17efc0"
+    },
+    {
+      "name": "做课",
+      "method": "learner-first-course",
+      "entry_sha256": "18495529a88ca154e63bde0d4760d88765640794c254021a14bd117e6ca1584d"
+    },
+    {
+      "name": "ai-comic-video-replication",
+      "method": "production-state-gates",
+      "entry_sha256": "3e83812f999fd5e487e8177c0eec9407d18eb2f12e94d138a348f370e12bc302"
+    },
+    {
+      "name": "ai-landing-page-generator",
+      "method": "landing-page-visual-qa",
+      "entry_sha256": "95320273783403f0eb3bc598808c28177cd0af92a5b886e20e39da5d0cf72fc1"
+    },
+    {
+      "name": "ai-studio-quote",
+      "method": "scoped-proposal-pricing",
+      "entry_sha256": "edbfe09ed72c0faab0394304e887de3069fd8284b47670d0fc3a75b6ba00ce94"
+    },
+    {
+      "name": "colleague-skill",
+      "method": "persona-work-distillation",
+      "entry_sha256": "b179a8c638d19c3493be7b97159cc46aa170697a610336d2d3a38b66b6ec8dd0"
+    },
+    {
+      "name": "courseware-builder",
+      "method": "learner-first-course",
+      "entry_sha256": "1c05ff7b5c1de355e178d4c424ea2baa7aa370278b1c8edd5c60a0dcaf678647"
+    },
+    {
+      "name": "courseware-gen",
+      "method": "learner-first-course",
+      "entry_sha256": "3fc1f563ff27fe763f263a69ee404e979004cce4d4a18902a181c524be54ee81"
+    },
+    {
+      "name": "courseware-generator-pro",
+      "method": "learner-first-course",
+      "entry_sha256": "c3b4621907470ebdc28799b8310f912dc9fa23928b7ae4b2d9b83ac85aa39776"
+    },
+    {
+      "name": "customer-proposal-gen",
+      "method": "scoped-proposal-pricing",
+      "entry_sha256": "ff19ae2d0dae2b64439190ae1906b483609d0de7d9b1c120b3b601462b07c480"
+    },
+    {
+      "name": "deck-generator",
+      "method": "editable-deck-delivery",
+      "entry_sha256": "1f91a2f7198e1a40361e50e348c0514776185b31a968ca905506f24fffa9f05b"
+    },
+    {
+      "name": "excalidraw-diagram",
+      "method": "document-diagram-fidelity",
+      "entry_sha256": "f6134a14b72fa976af641848782c324d18e8e304016ee94499567a81cf08d7a0"
+    },
+    {
+      "name": "expert-interview-extraction",
+      "method": "interview-to-template",
+      "entry_sha256": "22be5ad10f4881b3832ff061532c764f183a94e9c47abba1c1cc21ad93b10031"
+    },
+    {
+      "name": "frontend-dev",
+      "method": "landing-page-visual-qa",
+      "entry_sha256": "6cc0f077f282b56b4fa666be6c7549f3176e88510eeda7becc271bf188a0444a"
+    },
+    {
+      "name": "gog",
+      "decision": "not-admitted",
+      "reason": "Google Workspace CLI needs separate authorization; existing host connector boundary remains authoritative.",
+      "entry_sha256": "90c282bda4097d2736d6c6df93f152843eff06e930e2f563989f869af3e8cc55"
+    },
+    {
+      "name": "gzh-typeset",
+      "method": "wechat-inline-layout",
+      "entry_sha256": "8647cf5461d9b7fb407efd925cd3e089f18bbb5a61463701030291ae8d55f5de"
+    },
+    {
+      "name": "html-ppt",
+      "method": "editable-deck-delivery",
+      "entry_sha256": "289e1cf2c0fa95b44795ccd557199ea7bc09ab30266a7327108e462e05c9aca8"
+    },
+    {
+      "name": "html-ppt-skill",
+      "decision": "not-admitted",
+      "reason": "Entry instructions duplicate html-ppt; asset differences have not demonstrated a distinct safe method or executable adapter.",
+      "entry_sha256": "289e1cf2c0fa95b44795ccd557199ea7bc09ab30266a7327108e462e05c9aca8"
+    },
+    {
+      "name": "humanizer",
+      "method": "natural-factual-writing",
+      "entry_sha256": "eb2d44bb02d10ec99ed6e57c50ee96f5d66c474df4533eb964def1e0a58c199a"
+    },
+    {
+      "name": "ima-skills",
+      "method": "authorized-knowledge-connector",
+      "entry_sha256": "b4caeb77060d870e0ee8d7d9be4e844513bf04c0e34552bb6b68344988b8b624"
+    },
+    {
+      "name": "image-to-video",
+      "method": "image-video-cost-receipt",
+      "entry_sha256": "24057567aaeed8f00255f9caba78f04861885722311269042c6ebe5673f3df7d"
+    },
+    {
+      "name": "impeccable",
+      "method": "landing-page-visual-qa",
+      "entry_sha256": "dc66284a2a16f49773eabe1b96a92ec88f9a5a7f39c1320a3c9b87940d679a7c"
+    },
+    {
+      "name": "kdocs",
+      "method": "authorized-knowledge-connector",
+      "entry_sha256": "529286aa0de629065f2c359f8b10f3f0f785226ba52cb8ebc9345c12690b1866"
+    },
+    {
+      "name": "kdocs-skill",
+      "method": "authorized-knowledge-connector",
+      "entry_sha256": "195699443d5f8a70bca9a836f4c38be58f4c1948a07786883297dc0b7237f379"
+    },
+    {
+      "name": "khazix-writer",
+      "method": "natural-factual-writing",
+      "entry_sha256": "793097056496151af534faa8ff9fa6223a193a1a3de6cec3042076fffc38e1cd"
+    },
+    {
+      "name": "lark-unified",
+      "method": "authorized-knowledge-connector",
+      "entry_sha256": "a137d2b2bdfbf7fb07cfde20a6f0e9c74833c9760fb91902de842e92dcd9fc1f"
+    },
+    {
+      "name": "minimax-docx",
+      "method": "document-diagram-fidelity",
+      "entry_sha256": "ca1bfe874dd38ddb4f06485c8b0f495dd61ef5b6fb84803671ed4c927a8e36fc"
+    },
+    {
+      "name": "minimax-xlsx",
+      "method": "spreadsheet-fidelity",
+      "entry_sha256": "4646a04046caf6dab1a8a965f86ef90b4e1e35665d2cc5da234c27e14c92bbf3"
+    },
+    {
+      "name": "mubu-integration",
+      "method": "authorized-knowledge-connector",
+      "entry_sha256": "ee22fbc014cf1cb03894adf730c78cca0a63524e7f037b47dbdc403d2a0396bf"
+    },
+    {
+      "name": "nano-banana-pro",
+      "method": "product-reference-image",
+      "entry_sha256": "2076d20bc4c0d9f0f4d034f488e1aeecad19ad8612a7c5173e99108dbcbeb279"
+    },
+    {
+      "name": "nano-banana-pro-product-image",
+      "method": "product-reference-image",
+      "entry_sha256": "ee132355e2af3625da16cb7acda9b58fa1f226148b8302a6d7794bbd8c78aed4"
+    },
+    {
+      "name": "new-project-launcher",
+      "method": "cross-artifact-business-facts",
+      "entry_sha256": "9606e04fe5ad6301b3d3f0f51ec5984fde9f24c49d2f30f78a5826d71145aa7e"
+    },
+    {
+      "name": "notebooklm-studio",
+      "method": "bounded-study-practice",
+      "entry_sha256": "0a0c65c49cbaa60770dbb70516b0bbb8ce7b9dc999b6fde25bec2fce45e3f7b5"
+    },
+    {
+      "name": "obe-course-outline",
+      "method": "outcome-aligned-syllabus",
+      "entry_sha256": "d7f2689ee635eae4ab34559c3852f3869218f7a215243431491ec285cedb3cd3"
+    },
+    {
+      "name": "obsidian",
+      "method": "authorized-knowledge-connector",
+      "entry_sha256": "da1c9a697fbd7cce6fbfd9aa5f96963097cb0aebb80c32a5541d1b279e4a3552"
+    },
+    {
+      "name": "openai-image-gen",
+      "decision": "not-admitted",
+      "reason": "Alternative paid provider is not the configured default and no adapter, credentials or cost authorization is established.",
+      "entry_sha256": "5fd65c055856f4b4f870110e7ec0849302862e68de7bdd2b0fbb7f56278e8fb0"
+    },
+    {
+      "name": "ppt-generator-skill",
+      "method": "editable-deck-delivery",
+      "entry_sha256": "cf6dc641d042334d344038e683cb4a680c1ebd09dde949b9f9ff6dfa617ccf92"
+    },
+    {
+      "name": "ppt-master",
+      "method": "editable-deck-delivery",
+      "entry_sha256": "e493180f479d3303fd7e643f878b61d8040b2892fef296106e1ec1023b7437b3"
+    },
+    {
+      "name": "pptx",
+      "decision": "not-admitted",
+      "reason": "The entry declares find-skills rather than a PPTX generator; the directory label is misleading.",
+      "entry_sha256": "f8e4fb07aad8863307f5f167fb3f58d54a20016309e5e834a8f062426bf1021d"
+    },
+    {
+      "name": "pptx-generator",
+      "method": "editable-deck-delivery",
+      "entry_sha256": "2d050eddab7df406b3e1f283ec44a435217f2f0273e1524a31428d8edbbb20fa"
+    },
+    {
+      "name": "precise-image-text-editor",
+      "method": "localized-image-text-edit",
+      "entry_sha256": "00b09f4a6068de33231b98f6aaf3cb8087dfd16a84e8c1150e5ff8640d7ea87c"
+    },
+    {
+      "name": "qq-email",
+      "method": "email-receipt-boundary",
+      "entry_sha256": "6e0e4eb1037cbacff64635127370bcdaddcdb3d4f7e4b5f08494bc4b584560a4"
+    },
+    {
+      "name": "skill_2053084036212973568",
+      "method": "authorized-knowledge-connector",
+      "entry_sha256": "7fa6c8de66ddbe5b3bf2f223c41d0d43868af0b1aed284d8e5f7aeaedb66d43a"
+    },
+    {
+      "name": "smart-page",
+      "method": "portable-workbench",
+      "entry_sha256": "cd0f26390c73b8828087f46ea6398711620b0aaed346933ab72a1f252e0064c0"
+    },
+    {
+      "name": "storyboard-generator",
+      "method": "generatable-shot-plan",
+      "entry_sha256": "813ac18def2e65b052069cf2525abba030efa6b1084359f9b381a9e89c13acbd"
+    },
+    {
+      "name": "tencent-meeting-skill",
+      "decision": "not-admitted",
+      "reason": "Meeting account operations and automatic feedback are not a generic knowledge task; host authorization and connector verification are absent.",
+      "entry_sha256": "2ca2b13c0b49310349b34595560840aa109163b07cdd8fc06cb47f31df2f401e"
+    },
+    {
+      "name": "tencent-news",
+      "method": "current-source-check",
+      "entry_sha256": "dc4392eb9e63acbb283f8fca99f1b59f1476c8d372bab4602bb18064ce1d647d"
+    },
+    {
+      "name": "training-mindmap-generator",
+      "method": "training-artifacts",
+      "entry_sha256": "d7fdd3052507d21795483c31d0277fb1da109a234da0b72b75856eefdfc8e2d7"
+    },
+    {
+      "name": "tutor-skills",
+      "method": "bounded-study-practice",
+      "entry_sha256": "8881ac458272a14895270f42147a1444cd191fbd7402a988977d28f47d5353a7"
+    },
+    {
+      "name": "wechat-article-pro",
+      "method": "natural-factual-writing",
+      "entry_sha256": "6d18b0356c8d4aed9a103ab4ff1ac2ae2712caa2f8e98f1203a2794a27233138"
+    },
+    {
+      "name": "wechat-article-search",
+      "method": "current-source-check",
+      "entry_sha256": "5be65e257a2693d564ae20371d1498f0071c81c56e82720549ad378c2cf108ea"
+    },
+    {
+      "name": "wechat-publisher",
+      "method": "wechat-publication-gate",
+      "entry_sha256": "5fd6c7e93f95e5945e87fc9b6a6b97be1588a708d67ac7a37a1ca479e43b548c"
+    },
+    {
+      "name": "wecom-unified",
+      "decision": "not-admitted",
+      "reason": "Enterprise WeChat account scopes and cross-domain write operations need separate connector authorization; no default activation.",
+      "entry_sha256": "df9735ade664bc87b13a677b2758ccc2f26d830443f0957ac512426237c518fa"
+    },
+    {
+      "name": "weekly-meeting-dashboard",
+      "method": "meeting-dashboard-evidence",
+      "entry_sha256": "bf9abe762fdd7ddfc59cbd3c63d60bced98f3eef028fa58d9424a60c9d1e9df6"
+    },
+    {
+      "name": "xmind",
+      "method": "mindmap-file-delivery",
+      "entry_sha256": "21936fdd9e5329cb08912bc7666ecbc49c424901815fa37aeb48e412dc490a31"
+    }
+  ]
+}

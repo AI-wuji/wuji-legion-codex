@@ -294,9 +294,12 @@ func responseRuleSuppressions(contexts map[string]bool, atoms []ResponseDirectiv
 // than accepting a model's self-reported compliance.
 type ResponseDraft struct {
 	FirstLineAction       bool
+	DirectOpening         bool
 	StepCount             int
 	ClosingActionCount    int
 	ClosingActionMinutes  int
+	VisibleResult         bool
+	CleanClose            bool
 	Continuation          bool
 	RestatesCurrentState  bool
 	Error                 bool
@@ -319,6 +322,9 @@ func ValidateResponseDraft(contract *ResponsePolicyContract, draft ResponseDraft
 	if _, ok := directives["first-action"]; ok && !draft.FirstLineAction {
 		violations = append(violations, "first-action")
 	}
+	if _, ok := directives["direct-opening"]; ok && !draft.DirectOpening {
+		violations = append(violations, "direct-opening")
+	}
 	if directive, ok := directives["bounded-steps"]; ok {
 		maximum := 5
 		if value, ok := directive.Parameters["max_items"].(float64); ok {
@@ -330,6 +336,12 @@ func ValidateResponseDraft(contract *ResponsePolicyContract, draft ResponseDraft
 	}
 	if _, ok := directives["single-next-action"]; ok && (draft.ClosingActionCount != 1 || draft.ClosingActionMinutes > 2) {
 		violations = append(violations, "single-next-action")
+	}
+	if _, ok := directives["visible-result"]; ok && !draft.VisibleResult {
+		violations = append(violations, "visible-result")
+	}
+	if _, ok := directives["clean-close"]; ok && !draft.CleanClose {
+		violations = append(violations, "clean-close")
 	}
 	if _, ok := directives["progress-state"]; ok && draft.Continuation && !draft.RestatesCurrentState {
 		violations = append(violations, "progress-state")

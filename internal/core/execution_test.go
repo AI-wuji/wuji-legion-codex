@@ -3,7 +3,7 @@ package core
 import "testing"
 
 func TestValidateWorkerReceiptEnforcesOrderedAvailabilityFallbackAndSavings(t *testing.T) {
-	worker := testLunaReceiptWorker()
+	worker := testHighReasoningReceiptWorker()
 	receipt := validReceipt(worker)
 	if err := ValidateWorkerReceipt(worker, receipt); err != nil {
 		t.Fatal(err)
@@ -21,7 +21,8 @@ func TestValidateWorkerReceiptEnforcesOrderedAvailabilityFallbackAndSavings(t *t
 		t.Fatal("out-of-order worker attempt was accepted")
 	}
 
-	noSaving := receipt
+	noSaving := validReceipt(testReceiptWorker())
+	worker = testReceiptWorker()
 	noSaving.TotalCostMicrounits = noSaving.ExecutionBaselineMicrounits
 	noSaving.SavingsMicrounits = 0
 	if err := ValidateWorkerReceipt(worker, noSaving); err == nil {
@@ -101,10 +102,21 @@ func validReceipt(worker WorkerTask) WorkerExecutionReceipt {
 	modelSwitches := 0
 	retryCount := 0
 	failureKinds := []string{}
-	models := append([]string{worker.Model}, worker.AvailabilityFallbackModels...)
-	for index, model := range models {
-		attempt := WorkerAttempt{Model: model, CacheDomain: "model-local:" + model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, SourceExecutionBytes: worker.SourceExecutionBytes, TaskContractBytes: worker.AllocatedTaskContractBytes}
-		if index < len(models)-1 {
+	fallbackCount := len(worker.AvailabilityFallbackModels)
+	if len(worker.AvailabilityFallbackEfforts) > fallbackCount {
+		fallbackCount = len(worker.AvailabilityFallbackEfforts)
+	}
+	for index := 0; index <= fallbackCount; index++ {
+		model := worker.Model
+		if index > 0 && len(worker.AvailabilityFallbackModels) > 0 {
+			model = worker.AvailabilityFallbackModels[index-1]
+		}
+		effort := worker.ReasoningEffort
+		if index > 0 && len(worker.AvailabilityFallbackEfforts) > 0 {
+			effort = worker.AvailabilityFallbackEfforts[index-1]
+		}
+		attempt := WorkerAttempt{Model: model, ReasoningEffort: effort, CacheDomain: "model-local:" + model, ContextBytes: worker.AllocatedContextBytes, StablePrefixBytes: worker.StablePrefixBytes, SourceExecutionBytes: worker.SourceExecutionBytes, TaskContractBytes: worker.AllocatedTaskContractBytes}
+		if index < fallbackCount {
 			attempt.FailureKind = "model-unavailable"
 			failureKinds = append(failureKinds, attempt.FailureKind)
 		} else {
@@ -118,12 +130,12 @@ func validReceipt(worker WorkerTask) WorkerExecutionReceipt {
 	}
 	if len(worker.AvailabilityFallbackModels) > 0 {
 		modelSwitches = len(worker.AvailabilityFallbackModels)
-		retryCount = len(worker.AvailabilityFallbackModels)
 	}
+	retryCount = len(attempts) - 1
 	return WorkerExecutionReceipt{
-		SchemaVersion: workerReceiptSchemaVersion, WorkerID: worker.ID, RequestedModel: worker.Model, SessionKey: worker.SessionKey,
+		SchemaVersion: workerReceiptSchemaVersion, WorkerID: worker.ID, RequestedModel: worker.Model, RequestedReasoningEffort: worker.ReasoningEffort, SessionKey: worker.SessionKey,
 		HostDispatchID: "codex-agent://test/worker", WriteBoundary: "read-only", Attempts: attempts,
-		EffectiveModel: effectiveModel, ModelSwitchCount: modelSwitches, ResultHandle: "wuji-result://sha256/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", ContextHandleIDs: worker.ContextHandles,
+		EffectiveModel: effectiveModel, EffectiveReasoningEffort: attempts[len(attempts)-1].ReasoningEffort, ModelSwitchCount: modelSwitches, ReasoningSwitchCount: len(worker.AvailabilityFallbackEfforts), ResultHandle: "wuji-result://sha256/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", ContextHandleIDs: worker.ContextHandles,
 		StablePrefixBytesSent: worker.StablePrefixBytes * len(attempts), StablePrefixSHA256: worker.StablePrefixSHA256,
 		SourceExecutionBytesSent: worker.SourceExecutionBytes * len(attempts),
 		ContextBytesSent:         worker.AllocatedContextBytes * len(attempts), ContextPayloadSHA256: worker.ContextPayloadSHA256,
@@ -135,7 +147,7 @@ func validReceipt(worker WorkerTask) WorkerExecutionReceipt {
 }
 
 func TestValidateWorkerReceiptRejectsFallbackAfterGeneration(t *testing.T) {
-	worker := testLunaReceiptWorker()
+	worker := testHighReasoningReceiptWorker()
 	receipt := validReceipt(worker)
 	receipt.Attempts[0].GenerationStarted = true
 	if err := ValidateWorkerReceipt(worker, receipt); err == nil {
@@ -144,32 +156,20 @@ func TestValidateWorkerReceiptRejectsFallbackAfterGeneration(t *testing.T) {
 }
 
 func TestValidateWorkerReceiptRejectsInvalidFallbackOrder(t *testing.T) {
-	worker := testLunaReceiptWorker()
+	worker := testHighReasoningReceiptWorker()
 	receipt := validReceipt(worker)
-	receipt.Attempts[1].Model = worker.AvailabilityFallbackModels[1]
-	receipt.Attempts[1].CacheDomain = "model-local:" + receipt.Attempts[1].Model
+	receipt.Attempts[1].ReasoningEffort = "high"
 	if err := ValidateWorkerReceipt(worker, receipt); err == nil {
 		t.Fatal("non-ascending fallback order was accepted")
 	}
 }
 
 func TestValidateWorkerReceiptRejectsSkippedFallbackModel(t *testing.T) {
-	worker := testLunaReceiptWorker()
+	worker := testHighReasoningReceiptWorker()
 	receipt := validReceipt(worker)
-	// A provider can return unavailable before generation, but it cannot skip a
-	// declared availability rung to report a stronger model as the next attempt.
-	receipt.Attempts = receipt.Attempts[:2]
-	receipt.Attempts[1].Model = worker.AvailabilityFallbackModels[1]
-	receipt.Attempts[1].CacheDomain = "model-local:" + receipt.Attempts[1].Model
-	receipt.EffectiveModel = receipt.Attempts[1].Model
-	receipt.ModelSwitchCount = 1
-	receipt.RetryCount = 1
-	receipt.StablePrefixBytesSent = worker.StablePrefixBytes * len(receipt.Attempts)
-	receipt.SourceExecutionBytesSent = worker.SourceExecutionBytes * len(receipt.Attempts)
-	receipt.ContextBytesSent = worker.AllocatedContextBytes * len(receipt.Attempts)
-	receipt.TaskContractBytes = worker.AllocatedTaskContractBytes * len(receipt.Attempts)
+	receipt.Attempts[1].ReasoningEffort = worker.ReasoningEffort
 	if err := ValidateWorkerReceipt(worker, receipt); err == nil {
-		t.Fatal("receipt that skipped a declared fallback model was accepted")
+		t.Fatal("receipt that skipped a declared fallback effort was accepted")
 	}
 }
 
@@ -179,6 +179,6 @@ func testReceiptWorker() WorkerTask {
 	return RouteWithContext(query, items, delegationContextForTest(query, 512)).Workers[0]
 }
 
-func testLunaReceiptWorker() WorkerTask {
-	return RouteWithContext("list files and count occurrences", nil, DelegationContext{SelfContained: true}).Workers[0]
+func testHighReasoningReceiptWorker() WorkerTask {
+	return Route("architecture decision: use Sol", nil).Workers[0]
 }

@@ -76,6 +76,14 @@
       "priority": "primary"
     },
     {
+      "id": "wuji-image-creation-expert",
+      "globs": ["${ROOT}/capabilities/image/skills/wuji-image-creation-expert"],
+      "required": ["SKILL.md"],
+      "lifecycle": "callable",
+      "entrypoint": "SKILL.md",
+      "priority": "optional"
+    },
+    {
       "id": "imagegen-complete",
       "globs": [
         "${USERPROFILE}/.codex/skills/.system/imagegen"

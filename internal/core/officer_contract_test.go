@@ -22,7 +22,7 @@ func TestRouteStartsOneCompositeOfficerForLargeOrHighRiskTask(t *testing.T) {
 		t.Fatalf("large or high-risk route did not start exactly one composite officer: %#v", route)
 	}
 	worker := route.OfficerWorkers[0]
-	if worker.ID != "officer-composite-moe" || worker.Model != "gpt-5.6-sol" || worker.Writes {
+	if worker.ID != "officer-composite-moe" || worker.Model != hostSelectedModel || worker.ReasoningEffort != "max" || worker.Writes {
 		t.Fatalf("composite officer contract is invalid: %#v", worker)
 	}
 }

@@ -17,17 +17,17 @@ func TestNonTrivialCodeTaskRunsBoundedSearchBeforeSol(t *testing.T) {
 		t.Fatalf("expected serial preflight followed by one implementation worker: %#v", got)
 	}
 	preflight := got.PreflightWorkers[0]
-	if preflight.Stage != "preflight" || preflight.Model != "gpt-5.6-luna" || preflight.MaxSources != 3 || preflight.TimeBudgetSeconds != 90 {
+	if preflight.Stage != "preflight" || preflight.Model != hostSelectedModel || preflight.ReasoningEffort != "low" || preflight.MaxSources != 3 || preflight.TimeBudgetSeconds != 90 {
 		t.Fatalf("search preflight is not bounded or executable: %#v", preflight)
 	}
-	if got.Workers[0].Stage != "execution" || got.Workers[0].Model != "gpt-5.6-sol" {
+	if got.Workers[0].Stage != "execution" || got.Workers[0].Model != hostSelectedModel || got.Workers[0].ReasoningEffort != "max" {
 		t.Fatalf("implementation was not routed to Sol: %#v", got.Workers)
 	}
 	if !got.SearchFirstPolicy.Required || !got.SearchFirstPolicy.CancelStaleExecutionPlan || !containsString(got.SecondaryCapabilities, "search") {
 		t.Fatalf("search-first policy is incomplete: %#v", got.SearchFirstPolicy)
 	}
 	policy := got.TaskExecutionPolicy
-	if policy.TaskShape != "small" || policy.ModelSelectionTiming != "once-at-task-start" || policy.SessionAffinity != "sticky-per-worker" || policy.MaxModelSwitches != 2 || policy.DowngradeAfterGeneration || !policy.PreflightBeforeExecution {
+	if policy.TaskShape != "staff-routed" || policy.ModelSelectionTiming != "once-at-task-start" || policy.SessionAffinity != "sticky-per-worker" || policy.MaxModelSwitches != 0 || policy.DowngradeAfterGeneration || !policy.PreflightBeforeExecution {
 		t.Fatalf("task execution policy is incomplete: %#v", policy)
 	}
 	if preflight.SessionKey == "" || got.Workers[0].SessionKey == "" || preflight.SessionKey == got.Workers[0].SessionKey {
@@ -37,26 +37,22 @@ func TestNonTrivialCodeTaskRunsBoundedSearchBeforeSol(t *testing.T) {
 
 func TestDeterministicEditSkipsPriorArtSearch(t *testing.T) {
 	got := Route("rename button label", nil)
-	if got.GeneralStaffWorker != nil || got.SearchFirstPolicy.Required || len(got.PreflightWorkers) != 0 || got.TaskExecutionPolicy.PreflightBeforeExecution || got.ExecutionLane != "bounded-delegation" || len(got.Workers) != 1 || got.Workers[0].Model != "gpt-5.6-terra" {
+	if got.GeneralStaffWorker != nil || got.SearchFirstPolicy.Required || len(got.PreflightWorkers) != 0 || got.TaskExecutionPolicy.PreflightBeforeExecution || got.ExecutionLane != "direct" || len(got.Workers) != 0 || got.DelegationDecision.Reason != "small-task-direct" {
 		t.Fatalf("deterministic edit should use bounded task routing without web preflight: %#v", got)
 	}
 }
 
 func TestMechanicalReadOnlyTaskUsesLuna(t *testing.T) {
 	got := Route("list files and count lines", nil)
-	if got.GeneralStaffWorker != nil || len(got.PreflightWorkers) != 0 || len(got.Workers) != 1 || got.ExecutionLane != "bounded-delegation" {
-		t.Fatalf("mechanical task did not produce one bounded worker: %#v", got)
-	}
-	worker := got.Workers[0]
-	if worker.ID != "mechanical" || worker.Model != "gpt-5.6-luna" || worker.ContextMode != "task-contract-only" || worker.Writes {
-		t.Fatalf("mechanical task did not use a read-only Luna worker: %#v", worker)
+	if got.GeneralStaffWorker != nil || len(got.PreflightWorkers) != 0 || len(got.Workers) != 0 || got.ExecutionLane != "direct" || got.MainReasoningEffort != "low" {
+		t.Fatalf("mechanical task did not stay on Aji: %#v", got)
 	}
 }
 
 func TestExactLocalSkillLookupSkipsExternalAdmissionRouting(t *testing.T) {
 	got := Route("find the skill named superpowers", nil)
-	if got.SearchFirstPolicy.Required || len(got.PreflightWorkers) != 0 || len(got.Workers) != 1 || got.Workers[0].ID != "mechanical" {
-		t.Fatalf("exact local Skill lookup should stay bounded and read-only: %#v", got)
+	if got.SearchFirstPolicy.Required || len(got.PreflightWorkers) != 0 || len(got.Workers) != 0 || got.ExecutionLane != "direct" {
+		t.Fatalf("exact local Skill lookup should stay on Aji: %#v", got)
 	}
 }
 
@@ -69,8 +65,8 @@ func TestExternalSkillInstallKeepsAdmissionGates(t *testing.T) {
 
 func TestFlexibleFileListingStillUsesMechanicalLuna(t *testing.T) {
 	got := Route("list the Go source files in the repository root", nil)
-	if len(got.Workers) != 1 || got.Workers[0].ID != "mechanical" || got.Workers[0].Model != "gpt-5.6-luna" {
-		t.Fatalf("file listing with natural word order did not use Luna: %#v", got)
+	if len(got.Workers) != 0 || got.ExecutionLane != "direct" {
+		t.Fatalf("file listing with natural word order did not stay on Aji: %#v", got)
 	}
 }
 
@@ -107,12 +103,10 @@ func TestPonytailProtocolIsIncludedInCodeWorkerAndContract(t *testing.T) {
 	}}
 	worker := RouteWithContext(query, items, delegationContextForTest(query, 512)).Workers[0]
 	for _, required := range []string{
-		"trace the actual flow and cite affected file or symbol anchors before choosing",
-		"choose the first valid rung: skip, reuse local code, standard library, native platform, installed dependency, one line, minimum code",
-		"for bugs, inspect every caller and fix the common root cause once, not each symptom",
-		"prefer deletion, fewest files, and the smallest correct diff; no unrequested abstraction, scaffolding, or dependency",
-		"for nontrivial logic, name one smallest runnable regression check; trivial one-line edits need no new test",
-		"do not weaken validation, error handling, data safety, security, accessibility, or explicit requirements",
+		"trace affected flow and callers; fix the shared root cause once",
+		"prefer skip, local reuse, standard library, platform, dependency, then minimum code",
+		"prefer deletion, fewest files and smallest diff; no unrequested abstraction",
+		"check nontrivial logic with the smallest runnable regression; preserve safety and requirements",
 	} {
 		if !containsString(worker.Protocol, required) || !strings.Contains(worker.TaskContract, required) {
 			t.Fatalf("Ponytail requirement %q was not made executable: %#v", required, worker)
@@ -120,5 +114,48 @@ func TestPonytailProtocolIsIncludedInCodeWorkerAndContract(t *testing.T) {
 	}
 	if worker.StablePrefixBytes > 256 {
 		t.Fatalf("Ponytail stable prefix must remain compact: %d bytes", worker.StablePrefixBytes)
+	}
+}
+
+func TestPonytailAppliesAcrossConversationAndNonCodeExperts(t *testing.T) {
+	for _, query := range []string{"你好", "你觉得这个方案怎么样？", "rename button label", "改一个按钮文案", "list files"} {
+		route := Route(query, nil)
+		if route.GeneralStaffRequired || len(route.Workers) != 0 || route.MainReasoningEffort != "low" || route.ModelPolicy.MainReasoningEffort != route.MainReasoningEffort {
+			t.Fatalf("small task unnecessarily entered staff or used high reasoning: %q %#v", query, route)
+		}
+	}
+	route := Route("制作一个产品演示视频", []Manifest{{ID: "video", Triggers: []string{"视频"}, Status: "callable", PrimarySkill: "video-skill"}})
+	if !route.GeneralStaffRequired || len(route.Workers) != 1 || route.Workers[0].Model != hostSelectedModel {
+		t.Fatalf("non-code expert was not routed: %#v", route)
+	}
+	worker := route.Workers[0]
+	for _, rule := range []string{
+		"answer directly or take no action when sufficient; otherwise use the smallest correct action",
+		"one line before many; simple before complex; reason only as much as risk requires",
+		"reject wrong premises and unrequested scope; never skip required safety, facts, or verification",
+	} {
+		if !containsString(worker.Protocol, rule) || !strings.Contains(worker.TaskContract, rule) {
+			t.Fatalf("cross-domain PonyTail rule %q missing from worker contract", rule)
+		}
+	}
+	if containsString(worker.Protocol, "trace affected flow and callers; fix the shared root cause once") {
+		t.Fatal("code-only protocol was mounted on the video expert")
+	}
+	if worker.AllocatedTaskContractBytes > maxTaskContractBytes {
+		t.Fatalf("PonyTail protocol exceeded bounded contract: %d", worker.AllocatedTaskContractBytes)
+	}
+}
+
+func TestPonytailNeverBypassesRiskOrMultiStepRouting(t *testing.T) {
+	for _, query := range []string{
+		"rename button label and deploy to production",
+		"改一个颜色并部署到生产",
+		"list files and audit security",
+		"what is the threat model for this production migration",
+	} {
+		route := Route(query, nil)
+		if !route.GeneralStaffRequired || route.ExecutionLane == "direct" || route.MainReasoningEffort == "low" {
+			t.Fatalf("risk or multi-step request bypassed staff: %q %#v", query, route)
+		}
 	}
 }

@@ -1,19 +1,4633 @@
 {
   "id": "experts",
-  "description": "Six domain-scoped, silent MoE contracts; quality and evidence determine specialization, not roster size.",
+  "description": "Each domain commander is the Legion's expert team: it owns the domain mission, boundaries, composition and acceptance; its experts execute stable professional sub-tasks.",
   "domain_matrix": "references/architecture/expert-domain-matrix.md",
   "status": "doctrine-only",
   "host_callable": false,
   "activation": "aji-only-on-match",
   "silence_default": true,
-  "experts": [
-    {"id":"code-repair","capabilities":["code","code-review"],"triggers":["修复代码","bug","报错","测试失败"],"anti_triggers":["纯解释","无复现证据"],"prompt_compiler":"将需求编译为复现条件、根因假设、最小补丁和回归检查","workflow":["inspect","reproduce","patch","verify"],"verify":["tests","vet","build"]},
-    {"id":"research","capabilities":["search","writing"],"triggers":["调研","检索","是否有帮助","比较项目"],"anti_triggers":["无需外部证据的改名或格式化"],"prompt_compiler":"将需求编译为来源范围、检索问题、证据字段、冲突检查和结论格式","workflow":["scope","preflight","collect","cross-check","synthesize"],"verify":["source-citations","conflict-check"]},
-    {"id":"document-deck","capabilities":["documents","presentation","writing"],"triggers":["汇报","文档","PPT","演示文稿"],"anti_triggers":["只需一句话回答"],"prompt_compiler":"将需求编译为受众、结构、风格、制品格式、引用和渲染验收","workflow":["brief","outline","produce","render","inspect"],"verify":["render","content-check"]},
-    {"id":"data-analysis","capabilities":["data"],"triggers":["表格","数据分析","异常","统计"],"anti_triggers":["没有数据对象的泛泛预测"],"prompt_compiler":"将需求编译为数据范围、指标定义、计算方法、异常阈值和证据表","workflow":["profile","clean","analyze","check","report"],"verify":["profile","anomaly-evidence"]},
-    {"id":"frontend-visual","capabilities":["frontend","visual","image"],"triggers":["网页","前端","产品页","界面"],"anti_triggers":["只要求文字建议"],"prompt_compiler":"将需求编译为页面目标、信息层级、交互状态、视觉方向、响应式和素材约束","workflow":["brief","design","implement","browser-check","polish"],"verify":["responsive-render","interaction-check"]},
-    {"id":"incident-diagnosis","capabilities":["search","code-review","security"],"triggers":["故障","性能","安全","依赖问题"],"anti_triggers":["无症状的泛泛优化"],"prompt_compiler":"将需求编译为影响范围、时间线、证据采集、根因候选、缓解和回归标准","workflow":["contain","preflight","diagnose","mitigate","regress"],"verify":["preflight","root-cause","regression"]}
+  "commanders": [
+    {
+      "id": "engineering",
+      "name": "工程师团（代码师团主帅）",
+      "capabilities": [
+        "code",
+        "code-review"
+      ],
+      "mission": "在真实证据基础上完成代码实现、修复和审查，保持最小正确改动。",
+      "knowledge": [
+        "当前工作区",
+        "项目约束",
+        "测试与构建命令",
+        "已挂载代码能力"
+      ],
+      "workflow": [
+        "确认目标与复现条件",
+        "选择专业专家",
+        "执行最小改动",
+        "运行比例适当的验证",
+        "回报证据与未完成项"
+      ],
+      "outputs": [
+        "变更文件",
+        "根因或审查结论",
+        "验证结果",
+        "剩余风险"
+      ],
+      "acceptance": [
+        "范围未扩大",
+        "结论有证据",
+        "相关检查已执行",
+        "不把准备调用冒充为完成"
+      ],
+      "boundaries": [
+        "不代替参谋部决定是否升级",
+        "不把所有Skill蒸馏成主帅",
+        "缺少上下文时标记待确认"
+      ],
+      "expert_ids": [
+        "code-repair",
+        "code-review",
+        "file-operations",
+        "automation-design"
+      ],
+      "leader_expert_id": "code-repair",
+      "role_type": "expert-team",
+      "decision_mode": "sparse-moe",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w6-expert-team-sop"
+      ],
+      "team_prompt": "先界定文件或自动化任务的最小范围，再调用唯一必要专家；先复用现有脚本和工具，完成后给出处理清单与真实回执。",
+      "orchestrator": "工程师团主帅",
+      "stages": [
+        {
+          "id": "scope",
+          "name": "范围与禁止项",
+          "mode": "serial",
+          "expert_ids": [],
+          "deliverable": "输入路径、目标、判断标准、禁止操作",
+          "gates": [
+            "路径和范围已确认",
+            "删除、发送、修改原文件等副作用已显式标注"
+          ]
+        },
+        {
+          "id": "execute",
+          "name": "最小执行",
+          "mode": "parallel",
+          "expert_ids": [
+            "file-operations",
+            "automation-design"
+          ],
+          "depends_on": [
+            "scope"
+          ],
+          "deliverable": "任务制品和执行日志",
+          "gates": [
+            "两个分支只有在输入和写入边界互不冲突时才并发"
+          ]
+        },
+        {
+          "id": "verify",
+          "name": "清单与回执",
+          "mode": "serial",
+          "expert_ids": [],
+          "depends_on": [
+            "execute"
+          ],
+          "deliverable": "变更清单、失败项、回滚或复核建议",
+          "gates": [
+            "不把计划调用当完成"
+          ]
+        }
+      ],
+      "parallel_policy": "只在不同文件集合、不同输出目标且没有共享写入时并发；否则串行。",
+      "ponytail_rules": [
+        "直接可修就不拉全团；先复用已有代码和测试，最小补丁后做相关回归。"
+      ],
+      "white_hat_checks": [
+        "先核对写入边界、用户改动和测试证据；无真实执行回执不宣称完成。"
+      ],
+      "template_sources": [
+        "references/expert-templates/w5-w6-template-map.md",
+        "references/expert-templates/skill-source-map.md"
+      ]
+    },
+    {
+      "id": "research",
+      "name": "检索调研团（研究师团主帅）",
+      "capabilities": [
+        "search"
+      ],
+      "mission": "把自然语言问题转成有限检索问题，用可靠来源形成可核查结论。",
+      "knowledge": [
+        "用户问题",
+        "来源范围",
+        "时间与可信度规则"
+      ],
+      "workflow": [
+        "限定问题",
+        "预检来源",
+        "收集证据",
+        "交叉核对",
+        "合成结论"
+      ],
+      "outputs": [
+        "来源清单",
+        "关键证据",
+        "冲突说明",
+        "结论与不确定性"
+      ],
+      "acceptance": [
+        "关键事实可追溯",
+        "正文与摘要有区分",
+        "冲突和未知明确",
+        "结论不超出证据"
+      ],
+      "boundaries": [
+        "不替用户做未授权外部写入",
+        "不把猜测包装成事实",
+        "不为简单聊天强行调研"
+      ],
+      "expert_ids": [
+        "research"
+      ],
+      "leader_expert_id": "research",
+      "role_type": "expert-team",
+      "decision_mode": "sparse-moe",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w6-demand-decomposition"
+      ],
+      "team_prompt": "把用户或甲方原话拆成真实目标、交付物、验收标准和风险点；只为后续决策提供有出处的结构化输入。",
+      "orchestrator": "检索调研团主帅",
+      "stages": [
+        {
+          "id": "scope",
+          "name": "检索范围",
+          "mode": "serial",
+          "expert_ids": [
+            "research"
+          ],
+          "deliverable": "问题范围、来源与证据标准",
+          "gates": [
+            "纯需求拆解不触发外部检索",
+            "来源范围与时效明确"
+          ]
+        },
+        {
+          "id": "evidence",
+          "name": "证据核对",
+          "mode": "parallel",
+          "expert_ids": [
+            "research"
+          ],
+          "depends_on": [
+            "scope"
+          ],
+          "deliverable": "来源和冲突说明",
+          "gates": [
+            "结论不超出证据"
+          ]
+        }
+      ],
+      "parallel_policy": "同一来源和同一结论不重复检索；独立来源才并发。",
+      "ponytail_rules": [
+        "一个可靠来源足够回答就不扩张检索，冲突或高风险才追加独立核对。"
+      ],
+      "white_hat_checks": [
+        "原话、来源事实和推断分开；缺证据标待确认。"
+      ],
+      "template_sources": [
+        "references/expert-templates/w5-w6-template-map.md"
+      ]
+    },
+    {
+      "id": "content",
+      "name": "内容制作团（内容师团主帅）",
+      "capabilities": [
+        "documents",
+        "presentation",
+        "writing",
+        "knowledge"
+      ],
+      "mission": "围绕受众和交付格式制作清晰、可用、可验收的文档、演示文稿和文字内容。",
+      "knowledge": [
+        "受众",
+        "交付格式",
+        "参考资料与模板",
+        "渲染与内容检查规则"
+      ],
+      "workflow": [
+        "确认受众与目的",
+        "建立最小结构",
+        "制作内容",
+        "渲染或预览",
+        "检查交付物"
+      ],
+      "outputs": [
+        "目标制品",
+        "结构说明",
+        "引用或素材来源",
+        "渲染检查结果"
+      ],
+      "acceptance": [
+        "交付格式正确",
+        "结构服务目标",
+        "引用和未知项明确",
+        "制品经过预览或检查"
+      ],
+      "boundaries": [
+        "不把排版建议冒充为文件已交付",
+        "不无端增加章节",
+        "不绕过用户指定模板"
+      ],
+      "expert_ids": [
+        "document-deck",
+        "writing",
+        "requirement-decomposition",
+        "studio-owner",
+        "business-library",
+        "client-proposal",
+        "multi-platform-distribution",
+        "topic-selection",
+        "template-curator",
+        "knowledge-base-qa",
+        "contract-risk",
+        "delivery-acceptance",
+        "course-design",
+        "learning-coach",
+        "publication-delivery"
+      ],
+      "leader_expert_id": "studio-owner",
+      "role_type": "expert-team",
+      "decision_mode": "sparse-moe",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w6-expert-team-sop",
+        "w6-skill-wrapper"
+      ],
+      "team_prompt": "围绕受众和交付格式，先判断是对外接待、资料库、商单需求拆解与方案报价、分发、知识问答还是交付验收；商单先拆四问再规划报价，其他任务只调用最小必要专家；不代替阿极与用户确认事实。",
+      "orchestrator": "内容制作团主帅",
+      "stages": [
+        {
+          "id": "commercial-decompose",
+          "name": "商单四问拆解（仅商单路径）",
+          "mode": "serial",
+          "expert_ids": [
+            "requirement-decomposition"
+          ],
+          "deliverable": "真实目标、交付物、验收标准、风险点",
+          "gates": [
+            "甲方原话与推断分开",
+            "缺口标待确认"
+          ]
+        },
+        {
+          "id": "commercial-quote",
+          "name": "项目落地规划与报价（仅商单路径）",
+          "mode": "serial",
+          "expert_ids": [
+            "client-proposal"
+          ],
+          "depends_on": [
+            "commercial-decompose"
+          ],
+          "deliverable": "试点、优化、批量三期方案，至少两档报价、付款节点、风险预案和待确认事项",
+          "gates": [
+            "已接收需求拆解结果",
+            "未核实的价格和案例标待确认",
+            "Word/PPT 仅在确实生成且验收后宣称交付"
+          ]
+        },
+        {
+          "id": "brief",
+          "name": "受众与交付定义",
+          "mode": "serial",
+          "expert_ids": [
+            "studio-owner",
+            "client-proposal"
+          ],
+          "deliverable": "受众、目的、格式、事实边界",
+          "gates": [
+            "价格、案例和数据缺失时标待确认"
+          ]
+        },
+        {
+          "id": "produce",
+          "name": "内容分支",
+          "mode": "parallel",
+          "expert_ids": [
+            "business-library",
+            "multi-platform-distribution",
+            "topic-selection",
+            "knowledge-base-qa",
+            "template-curator"
+          ],
+          "depends_on": [
+            "brief"
+          ],
+          "deliverable": "分支内容制品",
+          "gates": [
+            "各分支写不同输出目标",
+            "不覆盖彼此文件"
+          ]
+        },
+        {
+          "id": "inspect",
+          "name": "交付审查",
+          "mode": "serial",
+          "expert_ids": [
+            "contract-risk",
+            "delivery-acceptance"
+          ],
+          "depends_on": [
+            "produce"
+          ],
+          "deliverable": "风险清单、验收清单和交付包",
+          "gates": [
+            "格式、事实、权限和引用已检查"
+          ]
+        }
+      ],
+      "parallel_policy": "商单拆解→方案报价严格串行；独立文档、平台文案和数据表可按需并发；同一文档的写作与审查必须串行。无关内容任务不走商单路径。",
+      "ponytail_rules": [
+        "只调用当前交付物需要的专家与模板，能直接答复就不建内容流水线。"
+      ],
+      "white_hat_checks": [
+        "报价、客户案例、成果数字和引用必须有来源，未核实就标待确认。"
+      ],
+      "template_sources": [
+        "references/expert-templates/w5-w6-template-map.md",
+        "references/expert-templates/skill-source-map.md"
+      ]
+    },
+    {
+      "id": "data",
+      "name": "数据分析团（数据师团主帅）",
+      "capabilities": [
+        "data"
+      ],
+      "mission": "用可复核的数据范围、指标和计算过程回答数据问题。",
+      "knowledge": [
+        "输入数据",
+        "字段定义",
+        "指标口径",
+        "异常与统计规则"
+      ],
+      "workflow": [
+        "剖析数据",
+        "清理数据",
+        "计算指标",
+        "检查异常",
+        "形成报告"
+      ],
+      "outputs": [
+        "分析结果",
+        "指标定义",
+        "异常证据",
+        "计算说明"
+      ],
+      "acceptance": [
+        "范围明确",
+        "计算可复核",
+        "异常不静默删除",
+        "事实与推断分开"
+      ],
+      "boundaries": [
+        "没有数据不伪造结果",
+        "不擅自改原始数据",
+        "不把预测当观测"
+      ],
+      "expert_ids": [
+        "data-analysis",
+        "dashboard-review"
+      ],
+      "leader_expert_id": "data-analysis",
+      "role_type": "expert-team",
+      "decision_mode": "sparse-moe",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w5-data-dashboard"
+      ],
+      "team_prompt": "先核对数据范围和指标口径，再生成看板或复盘；事实、计算、推断和建议分开。",
+      "orchestrator": "数据分析团主帅",
+      "stages": [
+        {
+          "id": "profile",
+          "name": "数据盘点",
+          "mode": "serial",
+          "expert_ids": [
+            "data-analysis"
+          ],
+          "deliverable": "字段、样本范围、缺失和异常",
+          "gates": [
+            "没有数据不生成伪造结果"
+          ]
+        },
+        {
+          "id": "analyze",
+          "name": "指标与看板",
+          "mode": "parallel",
+          "expert_ids": [
+            "data-analysis",
+            "dashboard-review"
+          ],
+          "depends_on": [
+            "profile"
+          ],
+          "deliverable": "指标表、看板和优化建议",
+          "gates": [
+            "计算可复核",
+            "异常不静默删除"
+          ]
+        },
+        {
+          "id": "report",
+          "name": "复盘交付",
+          "mode": "serial",
+          "expert_ids": [
+            "dashboard-review"
+          ],
+          "depends_on": [
+            "analyze"
+          ],
+          "deliverable": "复盘报告和导出制品",
+          "gates": [
+            "结论与原始数据范围一致"
+          ]
+        }
+      ],
+      "parallel_policy": "不同指标视图可并发；同一数据源的清洗和计算不可并发写入。",
+      "ponytail_rules": [
+        "先用现有数据算必要指标，不为简单结论生成多份看板。"
+      ],
+      "white_hat_checks": [
+        "检查分母、缺失值与指标口径；没有数据不伪造趋势或 ROI。"
+      ],
+      "template_sources": [
+        "references/expert-templates/w5-w6-template-map.md",
+        "references/expert-templates/skill-source-map.md"
+      ]
+    },
+    {
+      "id": "experience",
+      "name": "体验设计团（前端视觉师团主帅）",
+      "capabilities": [
+        "frontend",
+        "visual"
+      ],
+      "mission": "以最少实现复杂度交付可用、清晰、可验证的界面和视觉体验。",
+      "knowledge": [
+        "产品目标",
+        "信息层级",
+        "交互状态",
+        "响应式与素材约束"
+      ],
+      "workflow": [
+        "确认页面目标",
+        "确定信息层级",
+        "实现或调整",
+        "浏览器检查",
+        "最小视觉打磨"
+      ],
+      "outputs": [
+        "页面或视觉制品",
+        "关键交互状态",
+        "响应式检查",
+        "素材说明"
+      ],
+      "acceptance": [
+        "主要路径可用",
+        "关键状态可见",
+        "不同尺寸不破坏",
+        "不为装饰引入复杂度"
+      ],
+      "boundaries": [
+        "不把截图当可运行页面",
+        "不替用户决定未说明的偏好",
+        "优先复用现有组件"
+      ],
+      "expert_ids": [
+        "frontend-visual",
+        "workbench-builder"
+      ],
+      "leader_expert_id": "frontend-visual",
+      "role_type": "expert-team",
+      "decision_mode": "sparse-moe",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w5-workbench-template"
+      ],
+      "team_prompt": "优先复用现有组件和模板，交付单文件、无网络依赖、可离线打开且输入即保存的工作台；先实现主路径，再做必要视觉检查。",
+      "orchestrator": "体验设计团主帅",
+      "stages": [
+        {
+          "id": "model",
+          "name": "模块与数据模型",
+          "mode": "serial",
+          "expert_ids": [
+            "workbench-builder"
+          ],
+          "deliverable": "导航、模块、字段、状态和备份约定",
+          "gates": [
+            "不加入用户未要求的模块"
+          ]
+        },
+        {
+          "id": "build",
+          "name": "单文件实现",
+          "mode": "serial",
+          "expert_ids": [
+            "workbench-builder"
+          ],
+          "depends_on": [
+            "model"
+          ],
+          "deliverable": "HTML、localStorage、JSON 导入导出",
+          "gates": [
+            "资源内联",
+            "手机和电脑主路径可用"
+          ]
+        },
+        {
+          "id": "check",
+          "name": "浏览器检查",
+          "mode": "serial",
+          "expert_ids": [
+            "workbench-builder"
+          ],
+          "depends_on": [
+            "build"
+          ],
+          "deliverable": "交互与响应式检查",
+          "gates": [
+            "不以截图冒充可运行页面"
+          ]
+        }
+      ],
+      "parallel_policy": "同一单文件的功能和样式不并发写入；独立素材检查可并发。",
+      "ponytail_rules": [
+        "复用现成单文件模板，优先做可用主路径，不增添未要求模块。"
+      ],
+      "white_hat_checks": [
+        "离线 localStorage 不冒充在线双向同步；交互须真实打开并检查。"
+      ],
+      "template_sources": [
+        "references/expert-templates/w5-w6-template-map.md",
+        "references/expert-templates/skill-source-map.md"
+      ]
+    },
+    {
+      "id": "media",
+      "name": "媒体制作团（媒体师团主帅）",
+      "capabilities": [
+        "image",
+        "video"
+      ],
+      "mission": "按用途、画幅、内容和验收标准完成生图或生视频任务，并核实实际产物。",
+      "knowledge": [
+        "媒体用途",
+        "主体与风格",
+        "画幅与时长",
+        "已验证媒体入口"
+      ],
+      "workflow": [
+        "确认媒体简报",
+        "编排提示或分镜",
+        "生成或合成",
+        "检查产物",
+        "回报真实回执"
+      ],
+      "outputs": [
+        "媒体产物",
+        "参数或分镜",
+        "尺寸与时长检查",
+        "内容检查"
+      ],
+      "acceptance": [
+        "产物真实生成或明确未生成",
+        "尺寸时长格式符合",
+        "空白或损坏产物不得宣称完成"
+      ],
+      "boundaries": [
+        "Agnes只用于图像和视频",
+        "没有媒体回执不宣称成功",
+        "不把提示词当产物"
+      ],
+      "expert_ids": [
+        "image-creation",
+        "video-production",
+        "studio-producer",
+        "screenwriter",
+        "visual-storyboard",
+        "art-director",
+        "ai-workflow-engineer",
+        "post-production",
+        "voice-audio",
+        "content-operations",
+        "video-copywriter",
+        "comic-storyboard"
+      ],
+      "role_type": "expert-team",
+      "decision_mode": "sparse-moe",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w6-ai-video-studio-team",
+        "w6-expert-team-sop"
+      ],
+      "team_prompt": "统筹从漫画/IP或原创创意到 AI 视频成片的完整项目；先需求分析，再按依赖调用最小必要专家，维护角色一致、风格一致、叙事完整和交付节点。",
+      "leader_expert_id": "studio-producer",
+      "orchestrator": "项目策划与制片人专家",
+      "stages": [
+        {
+          "id": "intake",
+          "name": "需求与制片",
+          "mode": "serial",
+          "expert_ids": [
+            "studio-producer"
+          ],
+          "deliverable": "项目策划书、任务分工、排期、预算、质量节点",
+          "gates": [
+            "真实目标、交付物、验收、风险已列出"
+          ]
+        },
+        {
+          "id": "base",
+          "name": "内容与美术基座",
+          "mode": "parallel",
+          "expert_ids": [
+            "screenwriter",
+            "art-director",
+            "ai-workflow-engineer"
+          ],
+          "depends_on": [
+            "intake"
+          ],
+          "deliverable": "脚本、角色/风格基座、工具评估",
+          "gates": [
+            "三者写入边界互不冲突",
+            "每支返回可验证交付物"
+          ]
+        },
+        {
+          "id": "shot",
+          "name": "镜头与生成方案",
+          "mode": "parallel",
+          "expert_ids": [
+            "visual-storyboard",
+            "ai-workflow-engineer",
+            "comic-storyboard"
+          ],
+          "depends_on": [
+            "base"
+          ],
+          "deliverable": "分镜、提示词、生成配置和镜头质检",
+          "gates": [
+            "脚本和风格基座已回传",
+            "不得把提示词当成成片"
+          ]
+        },
+        {
+          "id": "asset",
+          "name": "素材与声音",
+          "mode": "parallel",
+          "expert_ids": [
+            "voice-audio",
+            "visual-storyboard"
+          ],
+          "depends_on": [
+            "shot"
+          ],
+          "deliverable": "音频包和可用视觉素材包",
+          "gates": [
+            "分镜和素材清单已确认"
+          ]
+        },
+        {
+          "id": "edit",
+          "name": "后期成片",
+          "mode": "serial",
+          "expert_ids": [
+            "post-production"
+          ],
+          "depends_on": [
+            "asset"
+          ],
+          "deliverable": "工程文件、成片、字幕和后期说明",
+          "gates": [
+            "播放、时长、画幅、字幕和音画同步检查通过"
+          ]
+        },
+        {
+          "id": "release",
+          "name": "运营与分发",
+          "mode": "serial",
+          "expert_ids": [
+            "content-operations"
+          ],
+          "depends_on": [
+            "edit"
+          ],
+          "deliverable": "运营计划、发布物料、数据周报和优化方案",
+          "gates": [
+            "版权和平台限制已检查",
+            "没有数据不伪造复盘"
+          ]
+        },
+        {
+          "id": "delivery",
+          "name": "汇编交付",
+          "mode": "serial",
+          "expert_ids": [
+            "studio-producer"
+          ],
+          "depends_on": [
+            "release"
+          ],
+          "deliverable": "完整项目交付包和未完成项",
+          "gates": [
+            "主理人只汇编和质检，不代写成员结果"
+          ]
+        }
+      ],
+      "parallel_policy": "仅在输入自包含、交付物独立且无共享写冲突时并发；同一上游未完成时下游不得提前运行。",
+      "ponytail_rules": [
+        "只唤醒当前阶段必需角色；已有可用素材就不重生成，不能为并发而并发。"
+      ],
+      "white_hat_checks": [
+        "先核对 IP、素材、人声授权和费用；提示词、首帧或待执行计划不是成片。"
+      ],
+      "template_sources": [
+        "references/expert-templates/ai-video-studio-team.md",
+        "references/expert-templates/w5-w6-template-map.md",
+        "references/expert-templates/skill-source-map.md"
+      ]
+    },
+    {
+      "id": "security",
+      "name": "安全诊断团（安全师团主帅）",
+      "capabilities": [
+        "security"
+      ],
+      "mission": "在控制影响范围的前提下诊断安全、依赖和运行故障，并给出可回归的缓解方案。",
+      "knowledge": [
+        "运行日志",
+        "依赖清单",
+        "权限边界",
+        "安全与回归检查"
+      ],
+      "workflow": [
+        "控制影响",
+        "收集证据",
+        "定位根因",
+        "实施最小缓解",
+        "回归检查"
+      ],
+      "outputs": [
+        "影响范围",
+        "根因候选",
+        "缓解动作",
+        "回归证据"
+      ],
+      "acceptance": [
+        "高风险动作先说明",
+        "根因与猜测分开",
+        "缓解不扩大权限",
+        "有回归检查或明确缺口"
+      ],
+      "boundaries": [
+        "不执行破坏性清理",
+        "不绕过权限控制",
+        "无症状无证据不虚构故障"
+      ],
+      "expert_ids": [
+        "incident-diagnosis"
+      ],
+      "leader_expert_id": "incident-diagnosis",
+      "role_type": "expert-team",
+      "decision_mode": "sparse-moe",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "minimum-correct-white-hat"
+      ],
+      "team_prompt": "先控制影响和收集证据，再定位根因和给出最小缓解；高风险动作、权限和回归证据必须显式报告。",
+      "orchestrator": "安全诊断团主帅",
+      "stages": [
+        {
+          "id": "contain",
+          "name": "控制影响",
+          "mode": "serial",
+          "expert_ids": [
+            "incident-diagnosis"
+          ],
+          "deliverable": "影响范围和禁止动作",
+          "gates": [
+            "不执行破坏性清理"
+          ]
+        },
+        {
+          "id": "diagnose",
+          "name": "诊断与缓解",
+          "mode": "serial",
+          "expert_ids": [
+            "incident-diagnosis"
+          ],
+          "depends_on": [
+            "contain"
+          ],
+          "deliverable": "根因候选、缓解和回归",
+          "gates": [
+            "事实与猜测分开"
+          ]
+        }
+      ],
+      "parallel_policy": "同一故障的控制、诊断和写入缓解串行；独立只读证据可并发。",
+      "ponytail_rules": [
+        "先止损再找最小根因，不因一次异常扩成全盘重构。"
+      ],
+      "white_hat_checks": [
+        "高风险操作先核对授权和影响范围；诊断与猜测分开。"
+      ],
+      "template_sources": [
+        "references/expert-templates/w5-w6-template-map.md",
+        "references/architecture/expert-contracts.md"
+      ]
+    },
+    {
+      "id": "evolution",
+      "name": "进化评估团（进化师团主帅）",
+      "capabilities": [
+        "evolution"
+      ],
+      "mission": "用证据评估新项目、Skill、MCP或方法是否值得纳入无极军团，并保持边界清晰。",
+      "knowledge": [
+        "能力谱系",
+        "来源锁定",
+        "行为验证",
+        "回滚与拒绝规则"
+      ],
+      "workflow": [
+        "限定候选能力",
+        "检查来源",
+        "隔离试验",
+        "比较基线",
+        "给出纳入或拒绝结论"
+      ],
+      "outputs": [
+        "候选评估",
+        "兼容性证据",
+        "最小融合方案",
+        "拒绝或回滚条件"
+      ],
+      "acceptance": [
+        "未验证能力保持冷态",
+        "融合边界明确",
+        "存在比较基线",
+        "不因新颖性直接纳入"
+      ],
+      "boundaries": [
+        "不把报告当已融合",
+        "不覆盖用户改动",
+        "无行为证据只输出候选方案"
+      ],
+      "expert_ids": [
+        "evolution-review",
+        "skill-packager"
+      ],
+      "leader_expert_id": "evolution-review",
+      "role_type": "expert-team",
+      "decision_mode": "sparse-moe",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w6-skill-wrapper"
+      ],
+      "team_prompt": "把稳定、可复用且经过测试的流程封装成 Skill；先写边界和说明，再测试和落地，不因一次成功就自动晋级。",
+      "orchestrator": "进化评估团主帅",
+      "stages": [
+        {
+          "id": "scope",
+          "name": "边界与来源",
+          "mode": "serial",
+          "expert_ids": [
+            "skill-packager"
+          ],
+          "deliverable": "名称、描述、触发条件、输入输出和来源",
+          "gates": [
+            "许可和来源可核验"
+          ]
+        },
+        {
+          "id": "test",
+          "name": "行为测试",
+          "mode": "serial",
+          "expert_ids": [
+            "skill-packager"
+          ],
+          "depends_on": [
+            "scope"
+          ],
+          "deliverable": "正例、反例、失败边界和回归证据",
+          "gates": [
+            "没有行为证据保持冷态"
+          ]
+        }
+      ],
+      "parallel_policy": "候选来源可以隔离比较，但同一 Skill 的写入和验证必须串行。",
+      "ponytail_rules": [
+        "先复用已验证 Skill，只有稳定重复的能力缺口才封装新 Skill。"
+      ],
+      "white_hat_checks": [
+        "许可证、来源、权限和行为证据不足时保持冷态，不自动安装。"
+      ],
+      "template_sources": [
+        "references/expert-templates/w5-w6-template-map.md",
+        "references/expert-templates/skill-source-map.md"
+      ]
+    }
   ],
-  "limits": {"max_active_experts": 2, "max_retries": 2, "max_context_bytes": 4096, "max_total_replay_bytes": 8192},
+  "experts": [
+    {
+      "id": "code-repair",
+      "name": "代码修复专家",
+      "commander": "engineering",
+      "template_basis": [
+        "project-code-contract",
+        "ponytail-minimum-correct"
+      ],
+      "capabilities": [
+        "code"
+      ],
+      "mission": "根据复现证据定位根因并实施最小修复。",
+      "inputs": [
+        "用户目标",
+        "工作区上下文",
+        "复现条件",
+        "相关测试"
+      ],
+      "outputs": [
+        "根因",
+        "最小补丁",
+        "回归结果",
+        "剩余风险"
+      ],
+      "boundaries": [
+        "不修改无关文件",
+        "无复现证据标记待确认"
+      ],
+      "escalation": [
+        "需求冲突",
+        "缺少关键上下文",
+        "修复需扩大范围"
+      ],
+      "triggers": [
+        "修复代码",
+        "bug",
+        "报错",
+        "测试失败"
+      ],
+      "anti_triggers": [
+        "纯解释",
+        "无复现证据"
+      ],
+      "prompt_compiler": "将需求编译为复现条件、根因假设、最小补丁和回归检查",
+      "workflow": [
+        "inspect",
+        "reproduce",
+        "patch",
+        "verify"
+      ],
+      "verify": [
+        "tests",
+        "vet",
+        "build"
+      ],
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "constraints": [
+        "遵守用户已确认目标与范围",
+        "缺少关键事实时停止并回交阿极"
+      ],
+      "tool_policy": [
+        "只使用当前任务已授权且已验证的工具",
+        "只读优先，写入限定在任务边界"
+      ],
+      "acceptance": [
+        "输出满足任务验收条件",
+        "提供可核验的结果或明确缺口"
+      ],
+      "ponytail_rules": [
+        "能直接完成就不扩展流程",
+        "优先复用现有能力与模板",
+        "不省略必要核查与验证"
+      ],
+      "white_hat_checks": [
+        "检查事实、权限、范围与安全风险",
+        "没有真实回执不宣称完成"
+      ],
+      "failure_states": [
+        "missing-context",
+        "scope-conflict",
+        "verification-failed"
+      ],
+      "promotion_evidence": [
+        "独立行为探针",
+        "来源与版本哈希",
+        "回归验证记录"
+      ],
+      "skill_sources": [
+        "ponytail-core"
+      ]
+    },
+    {
+      "id": "code-review",
+      "name": "代码审查专家",
+      "commander": "engineering",
+      "template_basis": [
+        "project-review-contract",
+        "ponytail-minimum-correct"
+      ],
+      "capabilities": [
+        "code-review"
+      ],
+      "mission": "检查变更是否满足目标、边界、安全性和可维护性。",
+      "inputs": [
+        "变更差异",
+        "需求与验收",
+        "相关测试",
+        "风险上下文"
+      ],
+      "outputs": [
+        "问题清单",
+        "优先级",
+        "修复建议",
+        "验证缺口"
+      ],
+      "boundaries": [
+        "不擅自改需求",
+        "不以格式偏好制造阻塞"
+      ],
+      "escalation": [
+        "需求无法判断",
+        "高风险副作用",
+        "需要重新设计"
+      ],
+      "triggers": [
+        "代码审查",
+        "审查代码",
+        "review",
+        "检查改动",
+        "安全审查"
+      ],
+      "anti_triggers": [
+        "只要求实现",
+        "纯解释"
+      ],
+      "prompt_compiler": "将变更编译为按优先级排列的正确性、风险和验证检查",
+      "workflow": [
+        "read-diff",
+        "trace-impact",
+        "check",
+        "report"
+      ],
+      "verify": [
+        "tests",
+        "static-analysis",
+        "scope-check"
+      ],
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "constraints": [
+        "遵守用户已确认目标与范围",
+        "缺少关键事实时停止并回交阿极"
+      ],
+      "tool_policy": [
+        "只使用当前任务已授权且已验证的工具",
+        "只读优先，写入限定在任务边界"
+      ],
+      "acceptance": [
+        "输出满足任务验收条件",
+        "提供可核验的结果或明确缺口"
+      ],
+      "ponytail_rules": [
+        "能直接完成就不扩展流程",
+        "优先复用现有能力与模板",
+        "不省略必要核查与验证"
+      ],
+      "white_hat_checks": [
+        "检查事实、权限、范围与安全风险",
+        "没有真实回执不宣称完成"
+      ],
+      "failure_states": [
+        "missing-context",
+        "scope-conflict",
+        "verification-failed"
+      ],
+      "promotion_evidence": [
+        "独立行为探针",
+        "来源与版本哈希",
+        "回归验证记录"
+      ],
+      "skill_sources": [
+        "open-code-review"
+      ]
+    },
+    {
+      "id": "research",
+      "name": "检索调研专家",
+      "commander": "research",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "bounded-research-contract"
+      ],
+      "capabilities": [
+        "search"
+      ],
+      "mission": "围绕明确问题收集可靠来源并交叉核对。",
+      "methods": [
+        {"id": "current-source-check", "sources": ["tencent-news", "wechat-article-search"], "signals": ["新闻", "最新", "微信文章", "公众号文章检索"], "instruction": "核对发布时间、事件时间、来源与摘要/正文差别；平台连接器和检索须遵守权限与站点边界。", "verification": "关键事实附可追溯来源，冲突单列。"}
+      ],
+      "inputs": [
+        "研究问题",
+        "时间范围",
+        "来源约束"
+      ],
+      "outputs": [
+        "来源证据",
+        "冲突说明",
+        "结论"
+      ],
+      "boundaries": [
+        "不编造未读来源",
+        "不把摘要当正文"
+      ],
+      "escalation": [
+        "关键来源不可访问",
+        "证据冲突无法消解"
+      ],
+      "triggers": [
+        "调研",
+        "检索",
+        "搜索",
+        "是否有帮助",
+        "比较项目"
+      ],
+      "anti_triggers": [
+        "无需外部证据的改名或格式化"
+      ],
+      "prompt_compiler": "将需求编译为来源范围、检索问题、证据字段、冲突检查和结论格式",
+      "workflow": [
+        "scope",
+        "preflight",
+        "collect",
+        "cross-check",
+        "synthesize"
+      ],
+      "verify": [
+        "source-citations",
+        "conflict-check"
+      ],
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "constraints": [
+        "遵守用户已确认目标与范围",
+        "缺少关键事实时停止并回交阿极"
+      ],
+      "tool_policy": [
+        "只使用当前任务已授权且已验证的工具",
+        "只读优先，写入限定在任务边界"
+      ],
+      "acceptance": [
+        "输出满足任务验收条件",
+        "提供可核验的结果或明确缺口"
+      ],
+      "ponytail_rules": [
+        "能直接完成就不扩展流程",
+        "优先复用现有能力与模板",
+        "不省略必要核查与验证"
+      ],
+      "white_hat_checks": [
+        "检查事实、权限、范围与安全风险",
+        "没有真实回执不宣称完成"
+      ],
+      "failure_states": [
+        "missing-context",
+        "scope-conflict",
+        "verification-failed"
+      ],
+      "promotion_evidence": [
+        "独立行为探针",
+        "来源与版本哈希",
+        "回归验证记录"
+      ],
+      "skill_sources": [
+        "shared-expert-interview-extraction"
+      ]
+    },
+    {
+      "id": "document-deck",
+      "name": "文档与演示专家",
+      "commander": "content",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w5-business-introduction-library"
+      ],
+      "capabilities": [
+        "documents",
+        "presentation"
+      ],
+      "mission": "制作结构清晰、格式正确并经过预览检查的文档或演示制品。",
+      "methods": [
+        {"id": "editable-deck-delivery", "sources": ["deck-generator", "html-ppt", "ppt-master", "ppt-generator-skill", "pptx-generator"], "signals": ["ppt", "演示文稿", "幻灯片", "slide"], "instruction": "按受众和用途确定内容规格，复用现有可编辑 PPT/HTML 与品牌资产；整页图片不能冒充可编辑稿，逐页渲染检查溢出与图表。", "verification": "文件可打开、文字可编辑（若要求）、逐页渲染核对。"},
+        {"id": "document-diagram-fidelity", "sources": ["excalidraw-diagram", "minimax-docx"], "signals": ["excalidraw", "流程图", "word模板", "docx"], "instruction": "仅在指定图或模板编辑时使用对应格式规则；直改 OpenXML 时属性节点须在父节点首位、正文节属性须在末位；图需可解析源文件与预览。", "verification": "结构/格式保真，图或文档实际打开与渲染。"}
+      ],
+      "inputs": [
+        "受众",
+        "内容素材",
+        "格式要求",
+        "模板"
+      ],
+      "outputs": [
+        "文档或演示制品",
+        "结构说明",
+        "预览检查"
+      ],
+      "boundaries": [
+        "不把草稿当最终制品",
+        "不擅自改变格式"
+      ],
+      "escalation": [
+        "素材不足",
+        "模板冲突",
+        "渲染失败"
+      ],
+      "triggers": [
+        "汇报",
+        "文档",
+        "PPT",
+        "演示文稿",
+        "幻灯片"
+      ],
+      "anti_triggers": [
+        "只需一句话回答"
+      ],
+      "prompt_compiler": "将需求编译为受众、结构、风格、制品格式、引用和渲染验收",
+      "workflow": [
+        "brief",
+        "outline",
+        "produce",
+        "render",
+        "inspect"
+      ],
+      "verify": [
+        "render",
+        "content-check"
+      ],
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "constraints": [
+        "遵守用户已确认目标与范围",
+        "缺少关键事实时停止并回交阿极"
+      ],
+      "tool_policy": [
+        "只使用当前任务已授权且已验证的工具",
+        "只读优先，写入限定在任务边界"
+      ],
+      "acceptance": [
+        "输出满足任务验收条件",
+        "提供可核验的结果或明确缺口"
+      ],
+      "ponytail_rules": [
+        "能直接完成就不扩展流程",
+        "优先复用现有能力与模板",
+        "不省略必要核查与验证"
+      ],
+      "white_hat_checks": [
+        "检查事实、权限、范围与安全风险",
+        "没有真实回执不宣称完成"
+      ],
+      "failure_states": [
+        "missing-context",
+        "scope-conflict",
+        "verification-failed"
+      ],
+      "promotion_evidence": [
+        "独立行为探针",
+        "来源与版本哈希",
+        "回归验证记录"
+      ],
+      "skill_sources": [
+        "shared-deck-generator"
+      ]
+    },
+    {
+      "id": "writing",
+      "name": "写作润色专家",
+      "commander": "content",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w5-multi-platform-distribution"
+      ],
+      "capabilities": [
+        "writing"
+      ],
+      "mission": "在不改变事实和意图的前提下完成写作、改写或润色。",
+      "methods": [
+        {"id": "natural-factual-writing", "sources": ["humanizer", "khazix-writer", "wechat-article-pro"], "signals": ["润色", "改写", "去ai味", "公众号文章", "写文章"], "instruction": "保留原意与已证事实，以具体场景和主线句牵引节奏；案例→观点→结论按需使用，不编造亲历、不模仿具名作者或套固定篇幅。", "verification": "逐项比对事实和主线，检查新增经历与承诺。"},
+        {"id": "wechat-inline-layout", "sources": ["gzh-typeset"], "signals": ["公众号排版", "微信排版", "内联html"], "instruction": "公众号可粘贴 HTML 使用内联样式、section 与文字 leaf span；不用脚本/外链资源或本地图片路径。排版不等于保存草稿/发布。", "verification": "结构校验和多屏预览；若能粘贴到编辑器再核对样式，不能把本地预览冒充平台结果。"}
+      ],
+      "inputs": [
+        "原始内容",
+        "受众",
+        "语气",
+        "长度和格式约束"
+      ],
+      "outputs": [
+        "成稿",
+        "改写说明",
+        "待确认事实"
+      ],
+      "boundaries": [
+        "不补造事实",
+        "不改变未授权立场"
+      ],
+      "escalation": [
+        "事实缺口",
+        "语气冲突",
+        "需要外部研究"
+      ],
+      "triggers": [
+        "写作",
+        "改写",
+        "润色",
+        "起草",
+        "文章"
+      ],
+      "anti_triggers": [
+        "只需一句话回答"
+      ],
+      "prompt_compiler": "将需求编译为受众、目的、语气、结构和事实保真约束",
+      "workflow": [
+        "brief",
+        "outline",
+        "draft",
+        "polish",
+        "check"
+      ],
+      "verify": [
+        "fact-boundary",
+        "tone-check",
+        "format-check"
+      ],
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "constraints": [
+        "遵守用户已确认目标与范围",
+        "缺少关键事实时停止并回交阿极"
+      ],
+      "tool_policy": [
+        "只使用当前任务已授权且已验证的工具",
+        "只读优先，写入限定在任务边界"
+      ],
+      "acceptance": [
+        "输出满足任务验收条件",
+        "提供可核验的结果或明确缺口"
+      ],
+      "ponytail_rules": [
+        "能直接完成就不扩展流程",
+        "优先复用现有能力与模板",
+        "不省略必要核查与验证"
+      ],
+      "white_hat_checks": [
+        "检查事实、权限、范围与安全风险",
+        "没有真实回执不宣称完成"
+      ],
+      "failure_states": [
+        "missing-context",
+        "scope-conflict",
+        "verification-failed"
+      ],
+      "promotion_evidence": [
+        "独立行为探针",
+        "来源与版本哈希",
+        "回归验证记录"
+      ],
+      "skill_sources": [
+        "shared-wechat-article-pro"
+      ]
+    },
+    {
+      "id": "data-analysis",
+      "name": "数据分析专家",
+      "commander": "data",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w5-data-dashboard"
+      ],
+      "capabilities": [
+        "data"
+      ],
+      "mission": "从可识别的数据范围计算指标、识别异常并说明方法。",
+      "methods": [
+        {"id": "spreadsheet-fidelity", "sources": ["minimax-xlsx"], "signals": ["excel", "xlsx", "公式", "合并表格"], "instruction": "编辑原工作簿时保留公式、格式和未指定工作表；模拟行与真实数据分开，先确认写入范围。", "verification": "抽样重算公式并检查文件可打开及未触及区域。"}
+      ],
+      "inputs": [
+        "数据文件",
+        "字段定义",
+        "指标口径"
+      ],
+      "outputs": [
+        "指标表",
+        "异常证据",
+        "方法说明"
+      ],
+      "boundaries": [
+        "不伪造缺失数据",
+        "不静默修改原始数据"
+      ],
+      "escalation": [
+        "字段含义不明",
+        "样本不足",
+        "指标口径冲突"
+      ],
+      "triggers": [
+        "表格",
+        "数据分析",
+        "异常",
+        "统计",
+        "数据"
+      ],
+      "anti_triggers": [
+        "没有数据对象的泛泛预测"
+      ],
+      "prompt_compiler": "将需求编译为数据范围、指标定义、计算方法、异常阈值和证据表",
+      "workflow": [
+        "profile",
+        "clean",
+        "analyze",
+        "check",
+        "report"
+      ],
+      "verify": [
+        "profile",
+        "anomaly-evidence"
+      ],
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "constraints": [
+        "遵守用户已确认目标与范围",
+        "缺少关键事实时停止并回交阿极"
+      ],
+      "tool_policy": [
+        "只使用当前任务已授权且已验证的工具",
+        "只读优先，写入限定在任务边界"
+      ],
+      "acceptance": [
+        "输出满足任务验收条件",
+        "提供可核验的结果或明确缺口"
+      ],
+      "ponytail_rules": [
+        "能直接完成就不扩展流程",
+        "优先复用现有能力与模板",
+        "不省略必要核查与验证"
+      ],
+      "white_hat_checks": [
+        "检查事实、权限、范围与安全风险",
+        "没有真实回执不宣称完成"
+      ],
+      "failure_states": [
+        "missing-context",
+        "scope-conflict",
+        "verification-failed"
+      ],
+      "promotion_evidence": [
+        "独立行为探针",
+        "来源与版本哈希",
+        "回归验证记录"
+      ],
+      "skill_sources": [
+        "shared-weekly-meeting-dashboard"
+      ]
+    },
+    {
+      "id": "frontend-visual",
+      "name": "前端与视觉专家",
+      "commander": "experience",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w5-workbench-general-template"
+      ],
+      "capabilities": [
+        "frontend",
+        "visual"
+      ],
+      "mission": "以最小复杂度交付可运行并经过浏览器检查的界面或视觉调整。",
+      "methods": [
+        {"id": "landing-page-visual-qa", "sources": ["frontend-dev", "ai-landing-page-generator", "impeccable"], "signals": ["落地页", "网站", "前端", "界面", "视觉"], "instruction": "核对目标与参考图，做最小交互；检查首屏、移动端、键盘可用性与对比度，技术栈随项目而非固定 React/Tailwind。", "verification": "真实浏览器检查断点、交互与可访问性。"}
+      ],
+      "inputs": [
+        "页面目标",
+        "现有组件",
+        "交互状态",
+        "尺寸约束"
+      ],
+      "outputs": [
+        "页面变更",
+        "关键状态",
+        "响应式检查"
+      ],
+      "boundaries": [
+        "不把静态截图当可运行结果",
+        "优先复用组件"
+      ],
+      "escalation": [
+        "品牌偏好缺失",
+        "组件冲突",
+        "浏览器验证不可用"
+      ],
+      "triggers": [
+        "网页",
+        "前端",
+        "产品页",
+        "界面",
+        "视觉"
+      ],
+      "anti_triggers": [
+        "只要求文字建议"
+      ],
+      "prompt_compiler": "将需求编译为页面目标、信息层级、交互状态、视觉方向、响应式和素材约束",
+      "workflow": [
+        "brief",
+        "design",
+        "implement",
+        "browser-check",
+        "polish"
+      ],
+      "verify": [
+        "responsive-render",
+        "interaction-check"
+      ],
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "constraints": [
+        "遵守用户已确认目标与范围",
+        "缺少关键事实时停止并回交阿极"
+      ],
+      "tool_policy": [
+        "只使用当前任务已授权且已验证的工具",
+        "只读优先，写入限定在任务边界"
+      ],
+      "acceptance": [
+        "输出满足任务验收条件",
+        "提供可核验的结果或明确缺口"
+      ],
+      "ponytail_rules": [
+        "能直接完成就不扩展流程",
+        "优先复用现有能力与模板",
+        "不省略必要核查与验证"
+      ],
+      "white_hat_checks": [
+        "检查事实、权限、范围与安全风险",
+        "没有真实回执不宣称完成"
+      ],
+      "failure_states": [
+        "missing-context",
+        "scope-conflict",
+        "verification-failed"
+      ],
+      "promotion_evidence": [
+        "独立行为探针",
+        "来源与版本哈希",
+        "回归验证记录"
+      ],
+      "skill_sources": [
+        "shared-frontend-dev"
+      ]
+    },
+    {
+      "id": "incident-diagnosis",
+      "name": "故障与安全诊断专家",
+      "commander": "security",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "minimum-correct-white-hat"
+      ],
+      "capabilities": [
+        "security"
+      ],
+      "mission": "根据运行证据定位故障、安全或依赖风险，并给出可回归的最小缓解。",
+      "inputs": [
+        "症状",
+        "日志",
+        "依赖信息",
+        "权限边界"
+      ],
+      "outputs": [
+        "影响范围",
+        "根因候选",
+        "缓解方案",
+        "回归检查"
+      ],
+      "boundaries": [
+        "不执行破坏性动作",
+        "不扩大权限"
+      ],
+      "escalation": [
+        "高风险生产影响",
+        "证据不足",
+        "需要权限变更"
+      ],
+      "triggers": [
+        "故障",
+        "性能",
+        "安全",
+        "依赖问题",
+        "漏洞"
+      ],
+      "anti_triggers": [
+        "无症状的泛泛优化"
+      ],
+      "prompt_compiler": "将需求编译为影响范围、时间线、证据采集、根因候选、缓解和回归标准",
+      "workflow": [
+        "contain",
+        "preflight",
+        "diagnose",
+        "mitigate",
+        "regress"
+      ],
+      "verify": [
+        "preflight",
+        "root-cause",
+        "regression"
+      ],
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "constraints": [
+        "遵守用户已确认目标与范围",
+        "缺少关键事实时停止并回交阿极"
+      ],
+      "tool_policy": [
+        "只使用当前任务已授权且已验证的工具",
+        "只读优先，写入限定在任务边界"
+      ],
+      "acceptance": [
+        "输出满足任务验收条件",
+        "提供可核验的结果或明确缺口"
+      ],
+      "ponytail_rules": [
+        "能直接完成就不扩展流程",
+        "优先复用现有能力与模板",
+        "不省略必要核查与验证"
+      ],
+      "white_hat_checks": [
+        "检查事实、权限、范围与安全风险",
+        "没有真实回执不宣称完成"
+      ],
+      "failure_states": [
+        "missing-context",
+        "scope-conflict",
+        "verification-failed"
+      ],
+      "promotion_evidence": [
+        "独立行为探针",
+        "来源与版本哈希",
+        "回归验证记录"
+      ],
+      "skill_sources": [
+        "full-security-scan-complete"
+      ]
+    },
+    {
+      "id": "image-creation",
+      "name": "生图专家",
+      "commander": "media",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "media-artifact-verification"
+      ],
+      "capabilities": [
+        "image"
+      ],
+      "source_ids": [
+        "wuji-image-creation-expert"
+      ],
+      "mission": "把图像需求编译成生成简报，并核实真实图像产物。",
+      "methods": [
+        {"id": "product-reference-image", "sources": ["nano-banana-pro", "nano-banana-pro-product-image"], "signals": ["产品图", "商品图", "参考图"], "instruction": "围绕参考图和商品关键特征先做最小草稿再定向迭代；模型/费用另行核对，不替换现有生图入口。", "verification": "核对商品形态、参考一致性、尺寸与真实产物。"},
+        {"id": "localized-image-text-edit", "sources": ["precise-image-text-editor"], "signals": ["修改图片文字", "图片改字", "图中文字"], "instruction": "限定文字目标区域、字号和格式，不改非目标区域；工具不支持精修时说明限制。", "verification": "比较目标文字与非目标区域，核对尺寸格式。"}
+      ],
+      "inputs": [
+        "主体",
+        "用途",
+        "风格",
+        "构图",
+        "尺寸",
+        "禁用项"
+      ],
+      "outputs": [
+        "图像产物",
+        "提示词或参数",
+        "尺寸与内容检查"
+      ],
+      "boundaries": [
+        "没有图像回执不宣称成功",
+        "不虚构偏好"
+      ],
+      "escalation": [
+        "生成入口不可用",
+        "产物与简报不一致"
+      ],
+      "triggers": [
+        "生图",
+        "生成图片",
+        "宣传图",
+        "产品图",
+        "海报",
+        "插图",
+        "generate an image"
+      ],
+      "anti_triggers": [
+        "只需一句话回答"
+      ],
+      "prompt_compiler": "将主体、用途、风格、构图、尺寸和禁用项编译为图像提示与验收",
+      "workflow": [
+        "brief",
+        "compose",
+        "generate",
+        "inspect"
+      ],
+      "verify": [
+        "image-dimensions",
+        "content-check"
+      ],
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "constraints": [
+        "遵守用户已确认目标与范围",
+        "缺少关键事实时停止并回交阿极"
+      ],
+      "tool_policy": [
+        "只使用当前任务已授权且已验证的工具",
+        "只读优先，写入限定在任务边界"
+      ],
+      "acceptance": [
+        "输出满足任务验收条件",
+        "提供可核验的结果或明确缺口"
+      ],
+      "ponytail_rules": [
+        "能直接完成就不扩展流程",
+        "优先复用现有能力与模板",
+        "不省略必要核查与验证"
+      ],
+      "white_hat_checks": [
+        "检查事实、权限、范围与安全风险",
+        "没有真实回执不宣称完成"
+      ],
+      "failure_states": [
+        "missing-context",
+        "scope-conflict",
+        "verification-failed"
+      ],
+      "promotion_evidence": [
+        "独立行为探针",
+        "来源与版本哈希",
+        "回归验证记录"
+      ],
+      "skill_sources": [
+        "wuji-image-creation-expert"
+      ]
+    },
+    {
+      "id": "video-production",
+      "name": "生视频专家",
+      "commander": "media",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "media-artifact-verification"
+      ],
+      "capabilities": [
+        "video"
+      ],
+      "source_ids": [
+        "wuji-video-production-expert"
+      ],
+      "mission": "把视频需求编译成分镜和生成或合成步骤，并核实可播放产物。",
+      "methods": [
+        {"id": "image-video-cost-receipt", "sources": ["image-to-video"], "signals": ["图生视频", "视频生成"], "instruction": "生成前核对适配器、费用、时长和尺寸；超时先查询任务 ID，避免重复付费；供应商示例不取代现有偏好。", "verification": "真实可播放文件、时长、非空帧及费用/失败回执。"}
+      ],
+      "inputs": [
+        "时长",
+        "画幅",
+        "镜头",
+        "节奏",
+        "素材",
+        "输出格式"
+      ],
+      "outputs": [
+        "视频产物",
+        "分镜或参数",
+        "播放、时长和帧检查"
+      ],
+      "boundaries": [
+        "没有可播放回执不宣称完成",
+        "不把分镜当视频"
+      ],
+      "escalation": [
+        "生成入口不可用",
+        "素材缺失",
+        "输出损坏"
+      ],
+      "triggers": [
+        "生视频",
+        "演示视频",
+        "图生视频",
+        "生成视频",
+        "make a video"
+      ],
+      "anti_triggers": [
+        "只需一句话回答"
+      ],
+      "prompt_compiler": "将时长、画幅、镜头、节奏、素材及输出格式编译为生成或合成步骤",
+      "workflow": [
+        "brief",
+        "storyboard",
+        "produce",
+        "render",
+        "inspect"
+      ],
+      "verify": [
+        "playback",
+        "duration",
+        "nonblank-frames"
+      ],
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "constraints": [
+        "遵守用户已确认目标与范围",
+        "缺少关键事实时停止并回交阿极"
+      ],
+      "tool_policy": [
+        "只使用当前任务已授权且已验证的工具",
+        "只读优先，写入限定在任务边界"
+      ],
+      "acceptance": [
+        "输出满足任务验收条件",
+        "提供可核验的结果或明确缺口"
+      ],
+      "ponytail_rules": [
+        "能直接完成就不扩展流程",
+        "优先复用现有能力与模板",
+        "不省略必要核查与验证"
+      ],
+      "white_hat_checks": [
+        "检查事实、权限、范围与安全风险",
+        "没有真实回执不宣称完成"
+      ],
+      "failure_states": [
+        "missing-context",
+        "scope-conflict",
+        "verification-failed"
+      ],
+      "promotion_evidence": [
+        "独立行为探针",
+        "来源与版本哈希",
+        "回归验证记录"
+      ],
+      "skill_sources": [
+        "wuji-video-production-expert"
+      ]
+    },
+    {
+      "id": "evolution-review",
+      "name": "能力进化评估专家",
+      "commander": "evolution",
+      "template_basis": [
+        "w5-meta-instruction-five-elements",
+        "w6-skill-wrapper"
+      ],
+      "capabilities": [
+        "evolution"
+      ],
+      "mission": "评估候选项目、Skill、MCP或方法的证据、边界和最小融合路径。",
+      "inputs": [
+        "候选来源",
+        "当前能力基线",
+        "兼容性目标"
+      ],
+      "outputs": [
+        "候选评估",
+        "行为证据",
+        "融合或拒绝建议"
+      ],
+      "boundaries": [
+        "未验证内容保持冷态",
+        "不覆盖现有改动"
+      ],
+      "escalation": [
+        "来源不可核验",
+        "基线缺失",
+        "融合扩大权限或复杂度"
+      ],
+      "triggers": [
+        "融合",
+        "蒸馏",
+        "升级",
+        "新项目",
+        "能力评估",
+        "兼容"
+      ],
+      "anti_triggers": [
+        "简单格式化"
+      ],
+      "prompt_compiler": "将候选能力编译为来源、行为基线、兼容性、最小融合和回滚检查",
+      "workflow": [
+        "scope",
+        "inspect",
+        "isolate",
+        "compare",
+        "recommend"
+      ],
+      "verify": [
+        "source-check",
+        "behavior-probe",
+        "rollback-check"
+      ],
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "constraints": [
+        "遵守用户已确认目标与范围",
+        "缺少关键事实时停止并回交阿极"
+      ],
+      "tool_policy": [
+        "只使用当前任务已授权且已验证的工具",
+        "只读优先，写入限定在任务边界"
+      ],
+      "acceptance": [
+        "输出满足任务验收条件",
+        "提供可核验的结果或明确缺口"
+      ],
+      "ponytail_rules": [
+        "能直接完成就不扩展流程",
+        "优先复用现有能力与模板",
+        "不省略必要核查与验证"
+      ],
+      "white_hat_checks": [
+        "检查事实、权限、范围与安全风险",
+        "没有真实回执不宣称完成"
+      ],
+      "failure_states": [
+        "missing-context",
+        "scope-conflict",
+        "verification-failed"
+      ],
+      "promotion_evidence": [
+        "独立行为探针",
+        "来源与版本哈希",
+        "回归验证记录"
+      ],
+      "skill_sources": [
+        "shared-new-project-launcher"
+      ]
+    },
+    {
+      "id": "file-operations",
+      "name": "文件批处理与格式转换专家",
+      "commander": "engineering",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.5-file-batch"
+      ],
+      "capabilities": [
+        "code"
+      ],
+      "skill_sources": [
+        "shared-new-project-launcher"
+      ],
+      "mission": "在明确路径和禁止项后完成批量重命名、复制、归档或格式转换，并保留原文件安全边界。",
+      "inputs": [
+        "目标路径",
+        "文件类型",
+        "命名或转换规则",
+        "禁止操作"
+      ],
+      "constraints": [
+        "先扫描再执行",
+        "不删除、不改内容、不覆盖原文件，除非用户明确授权"
+      ],
+      "tool_policy": [
+        "优先使用现有脚本和标准库",
+        "批量写入前核对解析后的绝对路径"
+      ],
+      "outputs": [
+        "处理后的文件",
+        "处理清单",
+        "跳过和失败项"
+      ],
+      "boundaries": [
+        "不把路径猜测当成事实",
+        "不执行未授权的删除、移动或发送"
+      ],
+      "escalation": [
+        "范围不清",
+        "同名覆盖风险",
+        "需要改变原文件内容"
+      ],
+      "triggers": [
+        "批量重命名",
+        "文件批处理",
+        "格式转换",
+        "文件归档"
+      ],
+      "anti_triggers": [
+        "只问怎么做",
+        "删除所有文件"
+      ],
+      "prompt_compiler": "把任务编译为路径、筛选条件、无损操作、输出目录和回执清单",
+      "workflow": [
+        "scan",
+        "preview",
+        "execute",
+        "verify",
+        "report"
+      ],
+      "verify": [
+        "path-containment",
+        "count-and-name-check",
+        "original-preserved"
+      ],
+      "acceptance": [
+        "目标文件集合正确",
+        "原文件未被越权修改",
+        "回执列出实际结果"
+      ],
+      "ponytail_rules": [
+        "能用一次无损批处理就不搭复杂管线",
+        "先复用现有脚本",
+        "不省略路径和结果核对"
+      ],
+      "white_hat_checks": [
+        "核对绝对路径和写入边界",
+        "没有真实文件回执不宣称完成"
+      ],
+      "failure_states": [
+        "path-unclear",
+        "collision",
+        "partial-failure"
+      ],
+      "promotion_evidence": [
+        "前后文件清单",
+        "独立路径检查",
+        "用户确认的复用记录"
+      ]
+    },
+    {
+      "id": "automation-design",
+      "name": "自动化任务设计专家",
+      "commander": "engineering",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.6-automation-task",
+        "w5.meta-instruction-five-elements"
+      ],
+      "capabilities": [
+        "code"
+      ],
+      "skill_sources": [
+        "shared-qq-email",
+        "shared-weekly-meeting-dashboard"
+      ],
+      "mission": "把定时检查、数据读取、分析、报告生成和通知动作编译为可执行且可回执的自动化任务。",
+      "methods": [
+        {"id": "email-receipt-boundary", "sources": ["qq-email"], "signals": ["发邮件", "邮件归档", "邮件附件", "周报邮件"], "instruction": "区分起草、建立草稿、实际发送；凭据仅走授权环境，发送超时先用 UID/邮件 ID 回读避免重复。", "verification": "发送须有服务端回执，起草不能报已发。"}
+      ],
+      "inputs": [
+        "触发时间",
+        "输入路径",
+        "指标",
+        "输出格式",
+        "收件人或通知目标"
+      ],
+      "constraints": [
+        "发送、登录、支付和外部写入必须有授权",
+        "失败必须保留日志和可重试边界"
+      ],
+      "tool_policy": [
+        "先检查是否已有自动化入口",
+        "不得把计划任务注册成功冒充为任务已执行"
+      ],
+      "outputs": [
+        "自动化定义",
+        "执行步骤",
+        "成功和失败回执格式"
+      ],
+      "boundaries": [
+        "不替用户确认外部发送",
+        "不在没有输入文件时伪造报告"
+      ],
+      "escalation": [
+        "外部账号授权缺失",
+        "定时器不可用",
+        "发送对象不明确"
+      ],
+      "triggers": [
+        "自动化任务",
+        "定时检查文件夹",
+        "自动生成周报并发邮件",
+        "每周五"
+      ],
+      "anti_triggers": [
+        "只写一份报告",
+        "一次性分析"
+      ],
+      "prompt_compiler": "把触发器、输入、处理、输出、通知、失败和授权边界编译成最小任务图",
+      "workflow": [
+        "define-trigger",
+        "bind-input",
+        "define-processing",
+        "define-output",
+        "test-failure"
+      ],
+      "verify": [
+        "trigger-boundary",
+        "input-fixture",
+        "failure-receipt"
+      ],
+      "acceptance": [
+        "触发、输入、输出和失败条件完整",
+        "外部写入有明确授权门",
+        "存在可运行测试或明确缺口"
+      ],
+      "ponytail_rules": [
+        "优先复用已有自动化能力",
+        "用最少节点完成任务",
+        "只在必要时增加重试和通知"
+      ],
+      "white_hat_checks": [
+        "检查凭据、收件人、权限和发送动作",
+        "没有真实调度回执不宣称已启用"
+      ],
+      "failure_states": [
+        "missing-authorization",
+        "missing-input",
+        "schedule-unavailable"
+      ],
+      "promotion_evidence": [
+        "测试运行记录",
+        "失败回执",
+        "调度器注册证据"
+      ]
+    },
+    {
+      "id": "requirement-decomposition",
+      "name": "甲方需求拆解专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.1-demand-decomposition",
+        "w5-meta-instruction-five-elements"
+      ],
+      "capabilities": [
+        "documents"
+      ],
+      "skill_sources": [
+        "shared-customer-proposal-gen"
+      ],
+      "mission": "把甲方原话拆成真实目标、交付物、验收标准和风险点，形成后续方案和报价的结构化输入。",
+      "inputs": [
+        "甲方原话",
+        "已知背景",
+        "平台和预算信息"
+      ],
+      "constraints": [
+        "区分甲方说法和真实目标",
+        "信息缺失标待确认，不擅自补造"
+      ],
+      "tool_policy": [
+        "先用用户提供的原话和资料",
+        "需要外部事实时另行进入检索路径"
+      ],
+      "outputs": [
+        "真实目标",
+        "交付物清单",
+        "验收标准",
+        "风险点和待确认项"
+      ],
+      "boundaries": [
+        "不直接承诺报价或交付",
+        "不跳过需求拆解进入生成"
+      ],
+      "escalation": [
+        "目标冲突",
+        "交付物无法验收",
+        "关键预算或周期缺失"
+      ],
+      "triggers": [
+        "甲方需求拆解",
+        "真实目标",
+        "交付物清单",
+        "验收标准",
+        "风险点"
+      ],
+      "anti_triggers": [
+        "直接写方案",
+        "只做文字润色"
+      ],
+      "prompt_compiler": "按要什么结果、交什么东西、怎么算满意、哪里会误解四问编译项目定义",
+      "workflow": [
+        "read-brief",
+        "extract-goal",
+        "list-deliverables",
+        "define-acceptance",
+        "flag-risks"
+      ],
+      "verify": [
+        "source-to-claim",
+        "missing-inputs",
+        "acceptance-specificity"
+      ],
+      "acceptance": [
+        "四类输出齐全",
+        "每个推断有依据或标待确认",
+        "下一专家可直接使用"
+      ],
+      "ponytail_rules": [
+        "先用四问解决，不扩展无关分析",
+        "缺口一句话说清",
+        "不把长文当作完整"
+      ],
+      "white_hat_checks": [
+        "检查授权、商业承诺和敏感信息",
+        "没有输入原话不宣称完成拆解"
+      ],
+      "failure_states": [
+        "brief-missing",
+        "goal-conflict",
+        "acceptance-vague"
+      ],
+      "promotion_evidence": [
+        "客户确认记录",
+        "方案复用记录",
+        "需求变更后的回归"
+      ]
+    },
+    {
+      "id": "studio-owner",
+      "name": "工作室主理人/业务接待专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.1-studio-owner",
+        "w5.1.3-opc-revenue-model",
+        "w5-meta-instruction-five-elements"
+      ],
+      "capabilities": [
+        "documents",
+        "writing"
+      ],
+      "skill_sources": [
+        "shared-ai-studio-quote",
+        "shared-new-project-launcher"
+      ],
+      "mission": "以 AI 工作室主理人身份完成业务介绍、客户答疑、方案和报价的首轮对外沟通。",
+      "methods": [
+        {"id": "cross-artifact-business-facts", "sources": ["new-project-launcher", "ai-studio-quote"], "signals": ["工作室", "业务介绍", "业务资料", "对外介绍"], "instruction": "盘点事实、标出假设并使介绍、案例、报价跨制品一致；示例客户、利润和报价不当作用户事实。", "verification": "抽查各制品同一服务、价格与交付口径一致。"}
+      ],
+      "inputs": [
+        "工作室介绍",
+        "服务范围",
+        "案例",
+        "报价档位",
+        "客户问题",
+        "OPC 场景与业务假设（仅创收模型任务）"
+      ],
+      "constraints": [
+        "资料不全先给建议并标待确认",
+        "不编造案例、价格、成果和承诺",
+        "创收模型中的利润和成本只能基于已给数据计算，未知条件标假设"
+      ],
+      "tool_policy": [
+        "优先复用业务资料库和报价模板",
+        "对外文字必须可直接转发"
+      ],
+      "outputs": [
+        "简洁业务答复",
+        "客户可读方案",
+        "基础/标准/深度报价建议",
+        "按需输出 OPC 五块：收入来源、获客到交付流程、可自动化环节、成本与利润点、工具清单"
+      ],
+      "boundaries": [
+        "不代表用户确认合同或收款",
+        "不把待确认信息写成事实"
+      ],
+      "escalation": [
+        "价格权限不明",
+        "客户要求保证结果",
+        "案例或交付能力缺失"
+      ],
+      "triggers": [
+        "工作室主理人",
+        "业务介绍",
+        "客户咨询答疑",
+        "报价",
+        "对外介绍工作室",
+        "场景创收模型",
+        "OPC 创收模型"
+      ],
+      "anti_triggers": [
+        "内部技术实现",
+        "纯聊天"
+      ],
+      "prompt_compiler": "把客户问题编译为业务事实、待确认项、可转发答复和下一步行动；创收模型请求改按场景输出五块并标成本假设",
+      "workflow": [
+        "identify-question",
+        "lookup-facts",
+        "mark-gaps",
+        "draft-reply",
+        "check-claims"
+      ],
+      "verify": [
+        "fact-boundary",
+        "price-boundary",
+        "client-readable"
+      ],
+      "acceptance": [
+        "答复简洁礼貌",
+        "事实和待确认项分开",
+        "不出现绝对化承诺"
+      ],
+      "ponytail_rules": [
+        "能一句话回答就不展开方案",
+        "优先复用资料库",
+        "只补必要背景"
+      ],
+      "white_hat_checks": [
+        "检查价格、案例、隐私和承诺边界",
+        "没有实际资料不得声称业务信息完整"
+      ],
+      "failure_states": [
+        "business-facts-missing",
+        "price-unclear",
+        "claim-risk"
+      ],
+      "promotion_evidence": [
+        "客户可读性反馈",
+        "真实报价复用",
+        "误承诺回归记录"
+      ]
+    },
+    {
+      "id": "business-library",
+      "name": "业务介绍资料库专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.2-business-introduction-library",
+        "w5.4-multi-file-library"
+      ],
+      "capabilities": [
+        "documents",
+        "presentation"
+      ],
+      "skill_sources": [
+        "shared-deck-generator",
+        "shared-html-ppt",
+        "shared-ppt-master",
+        "shared-ppt-generator-skill",
+        "shared-minimax-docx",
+        "shared-minimax-xlsx",
+        "shared-kdocs",
+        "shared-kdocs-skill"
+      ],
+      "mission": "把工作室事实整理成可直接对外使用的业务介绍资料库包。",
+      "inputs": [
+        "一句话定位",
+        "服务清单",
+        "案例",
+        "报价",
+        "客户 Q&A",
+        "交付格式"
+      ],
+      "constraints": [
+        "单 PPT 版固定五块：30 字内定位、服务清单、案例卡、基础/标准/深度报价含包含与不包含项、五个客户 Q&A",
+        "多文件版按 Word 定位、Excel 服务与报价、PPT 案例、Word 交付流程分别制作与验收",
+        "案例成果和报价必须有来源或标待确认；用户未提供真实案例时不得编造三个案例",
+        "存入腾讯文档或桌面只在用户明确指定目标且实际写入成功时声称完成"
+      ],
+      "tool_policy": [
+        "优先复用用户模板",
+        "文档、表格、PPT 分开验收"
+      ],
+      "outputs": [
+        "单 PPT 版：五块可对外展示的内容",
+        "多文件版：定位 Word、服务 Excel、案例 PPT、报价 Excel、流程 Word",
+        "客户 Q&A 与待确认事实清单"
+      ],
+      "boundaries": [
+        "不新增未授权案例和数据",
+        "不擅自上传到第三方文档"
+      ],
+      "escalation": [
+        "资料缺口影响对外使用",
+        "格式模板冲突",
+        "渲染或导出失败"
+      ],
+      "triggers": [
+        "业务介绍资料库",
+        "服务清单",
+        "案例卡",
+        "标准报价单",
+        "常见客户问题"
+      ],
+      "anti_triggers": [
+        "只写一段业务介绍",
+        "单个报价问题"
+      ],
+      "prompt_compiler": "先按用户要求区分单 PPT 五块与多文件五件套，再用真实资料填定位、服务、案例、报价、流程和 Q&A",
+      "workflow": [
+        "inventory-facts",
+        "outline-library",
+        "produce-files",
+        "render-check",
+        "package"
+      ],
+      "verify": [
+        "claim-source-check",
+        "format-check",
+        "render-check"
+      ],
+      "acceptance": [
+        "所选模板的五块或五件套齐全，单 PPT 定位不超过 30 字且包含五个 Q&A",
+        "服务项含说明和适用客户；案例卡含客户、需求、动作、结果数据或待确认；三档报价列明包含与不包含",
+        "每个实际文件格式、目录和渲染可核对，对外内容不含编造事实"
+      ],
+      "ponytail_rules": [
+        "复用已有资料和模板",
+        "缺一项只补该项",
+        "不为完整感增加无关章节"
+      ],
+      "white_hat_checks": [
+        "检查对外事实、隐私、价格和授权",
+        "没有导出或渲染回执不宣称资料库完成"
+      ],
+      "failure_states": [
+        "facts-incomplete",
+        "format-failure",
+        "render-failure"
+      ],
+      "promotion_evidence": [
+        "交付包清单",
+        "渲染检查",
+        "用户复用反馈"
+      ]
+    },
+    {
+      "id": "client-proposal",
+      "name": "项目方案与报价专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.2-client-proposal",
+        "w6.2-plan-and-quote"
+      ],
+      "capabilities": [
+        "documents",
+        "presentation",
+        "writing"
+      ],
+      "skill_sources": [
+        "shared-customer-proposal-gen",
+        "shared-ai-studio-quote",
+        "shared-minimax-docx",
+        "shared-ppt-master"
+      ],
+      "mission": "基于已确认的真实目标、交付物、验收和风险，产出可发客户的项目落地规划与分档报价。",
+      "methods": [
+        {"id": "scoped-proposal-pricing", "sources": ["customer-proposal-gen", "ai-studio-quote"], "signals": ["客户方案", "项目报价", "报价单", "商务方案"], "instruction": "先给需求结论、交付范围与待确认项，再按里程碑做可转发的分档方案；来源示例价格不得直接引用。", "verification": "报价依据、包含/不包含和甲方需求逐项可追溯。"}
+      ],
+      "inputs": [
+        "需求拆解结果",
+        "目标、交付物、验收和风险",
+        "预算和周期",
+        "输出格式"
+      ],
+      "constraints": [
+        "分试点期、优化期、批量期",
+        "价格给区间并标以最终沟通为准",
+        "不保证爆款或绝对成功"
+      ],
+      "tool_policy": [
+        "先复用客户方案和报价模板",
+        "Word/PPT 输出分别检查"
+      ],
+      "outputs": [
+        "项目理解",
+        "解决方案",
+        "制作流程",
+        "排期和里程碑",
+        "至少两档报价",
+        "付款节点和待确认事项",
+        "下一步行动"
+      ],
+      "boundaries": [
+        "不替用户签约",
+        "不补造成本、案例和交付能力"
+      ],
+      "escalation": [
+        "需求未拆解",
+        "预算与交付不匹配",
+        "风险需要商务决策"
+      ],
+      "triggers": [
+        "客户方案",
+        "项目方案",
+        "项目落地规划",
+        "方案报价",
+        "三档报价",
+        "售前方案"
+      ],
+      "anti_triggers": [
+        "只改一个价格",
+        "只做需求拆解"
+      ],
+      "prompt_compiler": "把需求定义编译为方案、流程、里程碑、质量节点、分档报价和下一步",
+      "workflow": [
+        "confirm-brief",
+        "plan-phases",
+        "define-toolchain",
+        "price-options",
+        "list-confirmations"
+      ],
+      "verify": [
+        "requirement-coverage",
+        "risk-to-plan",
+        "price-boundary",
+        "document-render"
+      ],
+      "acceptance": [
+        "每个风险有执行或商务预案",
+        "报价包含/不包含项和付款节点",
+        "方案能直接发给客户"
+      ],
+      "ponytail_rules": [
+        "先用已拆解需求",
+        "用最少档位覆盖决策",
+        "不把漂亮排版当作方案完整"
+      ],
+      "white_hat_checks": [
+        "检查合同承诺、价格权限和数据来源",
+        "没有真实文件回执不宣称 Word/PPT 已交付"
+      ],
+      "failure_states": [
+        "brief-incomplete",
+        "price-uncertain",
+        "render-failure"
+      ],
+      "promotion_evidence": [
+        "客户确认",
+        "成交/未成交原因",
+        "报价复用和返工记录"
+      ]
+    },
+    {
+      "id": "multi-platform-distribution",
+      "name": "多平台内容分发专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.2-multi-platform-distribution"
+      ],
+      "capabilities": [
+        "writing",
+        "presentation"
+      ],
+      "skill_sources": [
+        "shared-ad-material-generator",
+        "shared-wechat-article-pro"
+      ],
+      "mission": "把一部漫剧或一项业务内容改写成各平台可发布的独立文案和物料清单。",
+      "methods": [
+        {"id": "platform-adaptation", "sources": ["投放素材生成器", "wechat-article-pro"], "signals": ["多平台", "投放素材", "分发文案", "平台文案"], "instruction": "保留共同事实，再按目标平台分别调整标题、正文、画面建议和 CTA；平台人群画像只能依据用户目标，不套来源案例。", "verification": "逐平台核对规格、字数、事实和版权。"}
+      ],
+      "inputs": [
+        "原始梗概或成片信息",
+        "平台",
+        "受众",
+        "发布目标",
+        "事实资料"
+      ],
+      "constraints": [
+        "小红书口语化且不超过 300 字，情绪爆点与标签；若要 HTML 多页、粉色宋体须按用户指定交付",
+        "抖音口播不超过 150 字、前 2 秒钩子、默认生成四条",
+        "B 站专栏与公众号各 800–1500 字；用户要求时分别交付 Word，公众号表格示意图和文风仅在有合法可用参考时使用",
+        "每个平台单独一块；不编造数据、不写绝对化承诺"
+      ],
+      "tool_policy": [
+        "先复用平台规则和品牌禁词",
+        "不未经授权直接发布"
+      ],
+      "outputs": [
+        "小红书文案或多页 HTML",
+        "四条抖音口播文本",
+        "B 站专栏 Word",
+        "公众号文案 Word",
+        "各平台独立区块、格式和待确认项"
+      ],
+      "boundaries": [
+        "不代替用户发布",
+        "不虚构平台数据和案例"
+      ],
+      "escalation": [
+        "平台或受众不明",
+        "品牌风格缺失",
+        "版权或禁词冲突"
+      ],
+      "triggers": [
+        "多平台分发",
+        "小红书",
+        "抖音口播",
+        "B站专栏",
+        "公众号分发"
+      ],
+      "anti_triggers": [
+        "只写一条文案",
+        "单平台错别字修改"
+      ],
+      "prompt_compiler": "把原始内容编译为按平台分块、符合字数和风格限制的发布文案",
+      "workflow": [
+        "read-source",
+        "split-platforms",
+        "draft-in-parallel",
+        "check-length",
+        "package"
+      ],
+      "verify": [
+        "platform-length-and-count",
+        "requested-format-render",
+        "claim-check",
+        "copyright-check"
+      ],
+      "acceptance": [
+        "四个平台区块齐全；小红书不超过 300 字、四条抖音各不超过 150 字且前 2 秒有钩子、B 站和公众号各 800–1500 字",
+        "按用户指定交付 HTML、文本和两个 Word，而不是只列文件名",
+        "未引入未经提供的事实"
+      ],
+      "ponytail_rules": [
+        "独立平台可并发生成",
+        "复用一次内容事实底稿",
+        "只做必要改写"
+      ],
+      "white_hat_checks": [
+        "检查版权、广告承诺和敏感词",
+        "没有发布回执不宣称已发布"
+      ],
+      "failure_states": [
+        "platform-missing",
+        "source-insufficient",
+        "claim-risk"
+      ],
+      "promotion_evidence": [
+        "平台验收清单",
+        "发布后数据",
+        "返工和复用记录"
+      ]
+    },
+    {
+      "id": "topic-selection",
+      "name": "内容选题四维分析专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.2-topic-four-dimension-score"
+      ],
+      "capabilities": [
+        "writing"
+      ],
+      "skill_sources": [
+        "shared-weekly-meeting-dashboard",
+        "shared-minimax-xlsx"
+      ],
+      "mission": "用四维加权评分给选题排优先级并给出可执行结论。",
+      "methods": [
+        {"id": "topic-hkr-filter", "sources": ["khazix-writer"], "signals": ["选题打分", "选题四维", "内容选题"], "instruction": "在既定四维加权公式之外，用趣味/悬念、知识量、读者共鸣作定性复核；这些只能解释评分，不替换用户给定权重，也不保证流量。", "verification": "四维数值可复算，HKR 理由与证据分开。"}
+      ],
+      "inputs": [
+        "选题列表",
+        "用户需求证据",
+        "差异化依据",
+        "业务承接信息"
+      ],
+      "constraints": [
+        "用户需求度×0.3、差异度×0.3、证据完备度×0.2、业务承接度×0.2",
+        "每项 1–10 且必须给理由，不得无依据地全部同分；缺证据标待确认而不伪造评分依据"
+      ],
+      "tool_policy": [
+        "优先使用已有数据和表格模板",
+        "区分事实评分与主观判断"
+      ],
+      "outputs": [
+        "Excel 选题评分表：选题、四项得分、加权总分、结论",
+        "加权总分",
+        "一句话结论",
+        "优先级排序与重点标红"
+      ],
+      "boundaries": [
+        "不把评分当成流量保证",
+        "没有证据时降低证据完备度而不是补造"
+      ],
+      "escalation": [
+        "选题定义不清",
+        "评分依据完全缺失",
+        "权重被用户修改"
+      ],
+      "triggers": [
+        "选题四维",
+        "用户需求度",
+        "业务承接度",
+        "选题打分"
+      ],
+      "anti_triggers": [
+        "泛泛选题建议",
+        "只做数据清洗"
+      ],
+      "prompt_compiler": "将选题资料编译为四维评分、加权总分、排序和一句话结论",
+      "workflow": [
+        "normalize-topics",
+        "score-four-dimensions",
+        "calculate-weight",
+        "rank",
+        "explain"
+      ],
+      "verify": [
+        "weight-sum",
+        "weighted-formula-recompute",
+        "score-reason",
+        "xlsx-format-and-highlight"
+      ],
+      "acceptance": [
+        "权重和为 1",
+        "每个分数有理由",
+        "Excel 中加权总分可复算，重点项标红，结论对应分数和证据"
+      ],
+      "ponytail_rules": [
+        "直接用四维公式",
+        "不为每个选题写长篇报告",
+        "只补影响排序的证据"
+      ],
+      "white_hat_checks": [
+        "检查数据时点和证据质量",
+        "不把模型评分冒充实际表现"
+      ],
+      "failure_states": [
+        "topic-unclear",
+        "evidence-missing",
+        "weight-invalid"
+      ],
+      "promotion_evidence": [
+        "评分与实际表现对照",
+        "排序稳定性",
+        "复盘后的权重调整证据"
+      ]
+    },
+    {
+      "id": "template-curator",
+      "name": "模板沉淀专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.2-template-distillation"
+      ],
+      "capabilities": [
+        "writing"
+      ],
+      "skill_sources": [
+        "shared-expert-interview-extraction",
+        "shared-colleague-skill"
+      ],
+      "mission": "把一次满意输出提炼成结构稳定、变量明确、下次可直接填空复用的模板。",
+      "methods": [
+        {"id": "interview-to-template", "sources": ["expert-interview-extraction"], "signals": ["专家访谈", "访谈提炼", "沉淀模板"], "instruction": "用可追溯的追问提取情境、决策、步骤、例外与结果；固定规则和变量分开，不从不存在的访谈编造经验。", "verification": "抽查原话出处，并用另一个输入试填模板。"}
+      ],
+      "inputs": [
+        "满意输出",
+        "使用场景",
+        "必须保持的质量规则"
+      ],
+      "constraints": [
+        "固定结构和变量分开",
+        "不把偶然内容固化为规则"
+      ],
+      "tool_policy": [
+        "优先复用课程模板和已有 Skill 结构",
+        "保留示例但不把示例事实注入模板"
+      ],
+      "outputs": [
+        "固定结构",
+        "变量清单",
+        "可复制填空模板",
+        "使用说明"
+      ],
+      "boundaries": [
+        "不替用户判断内容是否满意",
+        "不隐去关键约束"
+      ],
+      "escalation": [
+        "示例内部互相矛盾",
+        "成功条件不明确",
+        "变量边界无法确定"
+      ],
+      "triggers": [
+        "模板沉淀",
+        "固化成模板",
+        "可复用模板",
+        "复制填空"
+      ],
+      "anti_triggers": [
+        "从零写新内容",
+        "只做润色"
+      ],
+      "prompt_compiler": "从满意输出提取不变结构、可变字段、约束和验收，生成填空版模板",
+      "workflow": [
+        "separate-fixed-variable",
+        "extract-rules",
+        "write-template",
+        "test-with-new-input"
+      ],
+      "verify": [
+        "variable-completeness",
+        "example-leakage",
+        "reuse-test"
+      ],
+      "acceptance": [
+        "变量用大括号标明",
+        "模板可直接复制",
+        "没有把示例事实误当固定事实"
+      ],
+      "ponytail_rules": [
+        "只提炼重复且有证据的结构",
+        "模板越短越好但不丢验收",
+        "不把模板包装成万能答案"
+      ],
+      "white_hat_checks": [
+        "检查隐私、版权和示例事实泄漏",
+        "没有复用测试不宣称模板稳定"
+      ],
+      "failure_states": [
+        "success-criteria-missing",
+        "variable-ambiguous",
+        "reuse-failed"
+      ],
+      "promotion_evidence": [
+        "第二次复用结果",
+        "结构稳定性",
+        "返工减少记录"
+      ]
+    },
+    {
+      "id": "knowledge-base-qa",
+      "name": "知识库问答专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.2-knowledge-base-qa"
+      ],
+      "capabilities": [
+        "knowledge",
+        "documents"
+      ],
+      "skill_sources": [
+        "shared-kdocs",
+        "shared-lark-unified"
+      ],
+      "mission": "只依据绑定知识库回答问题，并标注出处、资料覆盖状态和正式文件边界。",
+      "methods": [
+        {"id": "authorized-knowledge-connector", "sources": ["kdocs", "kdocs-skill", "lark-unified", "ima-skills", "obsidian", "mubu-integration", "skill_2053084036212973568"], "signals": ["金山文档", "kdocs", "飞书知识库", "ima", "obsidian", "幕布", "腾讯文档"], "instruction": "先确定用户指定的知识空间、可用连接器和读取权限；同域重复连接器只选一个，未经授权不写远端或迁移资料。", "verification": "答案有具体文档出处；缺连接器或权限说明未读取。"}
+      ],
+      "inputs": [
+        "问题",
+        "绑定知识库",
+        "检索范围"
+      ],
+      "constraints": [
+        "无出处就说资料未覆盖",
+        "涉及薪资或合同提示以正式文件为准"
+      ],
+      "tool_policy": [
+        "只读绑定知识库",
+        "引用文件名和章节，不用外部猜测补齐"
+      ],
+      "outputs": [
+        "直接答案",
+        "文件名与章节",
+        "未覆盖项",
+        "待确认项"
+      ],
+      "boundaries": [
+        "不把常识或模型记忆冒充知识库内容",
+        "不修改知识库"
+      ],
+      "escalation": [
+        "知识库未绑定",
+        "多个文件冲突",
+        "问题涉及正式人事或合同决定"
+      ],
+      "triggers": [
+        "知识库问答",
+        "资料未覆盖",
+        "依据知识库",
+        "文件名与章节"
+      ],
+      "anti_triggers": [
+        "泛知识解释",
+        "写一篇原创文章"
+      ],
+      "prompt_compiler": "把问题编译为知识库检索、出处核对、回答和覆盖边界",
+      "workflow": [
+        "scope-library",
+        "retrieve",
+        "cross-check",
+        "answer",
+        "cite"
+      ],
+      "verify": [
+        "source-citation",
+        "coverage-check",
+        "conflict-check"
+      ],
+      "acceptance": [
+        "每个事实有出处",
+        "资料未覆盖明确标注",
+        "敏感事项有正式文件提醒"
+      ],
+      "ponytail_rules": [
+        "只检索必要片段",
+        "能直接回答就不输出冗长过程",
+        "不为了完整感引入外部资料"
+      ],
+      "white_hat_checks": [
+        "检查权限、隐私和敏感信息",
+        "没有知识库回执不宣称已核验"
+      ],
+      "failure_states": [
+        "library-unbound",
+        "not-covered",
+        "source-conflict"
+      ],
+      "promotion_evidence": [
+        "引用准确率",
+        "覆盖边界反馈",
+        "冲突处理记录"
+      ]
+    },
+    {
+      "id": "contract-risk",
+      "name": "商单合同与风险检查专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.2-contract-risk-skill"
+      ],
+      "capabilities": [
+        "documents"
+      ],
+      "skill_sources": [
+        "shared-minimax-docx",
+        "shared-customer-proposal-gen"
+      ],
+      "mission": "检查商单合同、报价和商务条款中的范围、付款、版权、验收、修改和风险。",
+      "inputs": [
+        "合同或报价文本",
+        "项目范围",
+        "交付物和验收",
+        "付款约定"
+      ],
+      "constraints": [
+        "只做风险识别和修改建议",
+        "不替代律师或用户作最终签署决定"
+      ],
+      "tool_policy": [
+        "逐条对照已确认需求",
+        "优先标出高影响风险"
+      ],
+      "outputs": [
+        "风险清单",
+        "条款缺口",
+        "建议改写",
+        "待确认事项"
+      ],
+      "boundaries": [
+        "不擅自签署、发送或修改正式文件",
+        "不提供确定性法律结论"
+      ],
+      "escalation": [
+        "版权归属不明",
+        "付款或责任条款冲突",
+        "涉及法律意见"
+      ],
+      "triggers": [
+        "合同风险",
+        "合同审查",
+        "商务条款",
+        "风险检查"
+      ],
+      "anti_triggers": [
+        "普通方案报价",
+        "只改错别字"
+      ],
+      "prompt_compiler": "把项目需求编译为范围、付款、版权、验收、修改和责任风险矩阵",
+      "workflow": [
+        "read-terms",
+        "compare-scope",
+        "rank-risks",
+        "suggest-revisions",
+        "handoff"
+      ],
+      "verify": [
+        "scope-coverage",
+        "payment-check",
+        "rights-check"
+      ],
+      "acceptance": [
+        "高风险项有证据位置",
+        "建议与待确认事项分开",
+        "没有越权签署动作"
+      ],
+      "ponytail_rules": [
+        "先看高风险条款",
+        "用最小改动解决冲突",
+        "不把长篇法务解释当作检查完成"
+      ],
+      "white_hat_checks": [
+        "检查版权、隐私、责任和授权",
+        "风险结论不得冒充法律意见"
+      ],
+      "failure_states": [
+        "terms-missing",
+        "scope-conflict",
+        "legal-escalation"
+      ],
+      "promotion_evidence": [
+        "条款问题命中率",
+        "签约返工记录",
+        "独立审查对照"
+      ]
+    },
+    {
+      "id": "delivery-acceptance",
+      "name": "交付验收与回款管理专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.2-delivery-acceptance-payment"
+      ],
+      "capabilities": [
+        "documents"
+      ],
+      "skill_sources": [
+        "shared-minimax-docx",
+        "shared-qq-email"
+      ],
+      "mission": "按合同和验收标准整理交付包、修改轮次、确认记录和回款节点。",
+      "inputs": [
+        "合同或报价",
+        "交付物",
+        "验收标准",
+        "修改记录",
+        "付款节点"
+      ],
+      "constraints": [
+        "未验收不标已完成",
+        "未收到款不标已回款",
+        "外部催收或邮件发送需授权"
+      ],
+      "tool_policy": [
+        "先建立交付清单",
+        "复用已有回执和邮件模板"
+      ],
+      "outputs": [
+        "交付清单",
+        "验收差异",
+        "修改轮次记录",
+        "回款状态和下一步"
+      ],
+      "boundaries": [
+        "不代用户确认验收",
+        "不发送未经确认的催收或邮件"
+      ],
+      "escalation": [
+        "验收标准缺失",
+        "客户提出超范围修改",
+        "回款逾期或金额不一致"
+      ],
+      "triggers": [
+        "交付验收",
+        "回款管理",
+        "验收清单",
+        "修改轮次"
+      ],
+      "anti_triggers": [
+        "只生成文件",
+        "内部代码测试"
+      ],
+      "prompt_compiler": "把合同、交付物和付款节点编译为验收对账和下一步行动",
+      "workflow": [
+        "read-contract",
+        "inventory-deliverables",
+        "compare-acceptance",
+        "record-revisions",
+        "prepare-followup"
+      ],
+      "verify": [
+        "deliverable-check",
+        "scope-check",
+        "payment-evidence"
+      ],
+      "acceptance": [
+        "每项交付物有状态",
+        "超范围修改单独列出",
+        "回款状态有证据"
+      ],
+      "ponytail_rules": [
+        "先对清单再写说明",
+        "只处理当前验收缺口",
+        "不增加无关商务流程"
+      ],
+      "white_hat_checks": [
+        "检查收件人、金额、合同和发送授权",
+        "没有客户或财务回执不宣称已验收/回款"
+      ],
+      "failure_states": [
+        "contract-missing",
+        "acceptance-unclear",
+        "payment-unverified"
+      ],
+      "promotion_evidence": [
+        "验收通过记录",
+        "回款对账",
+        "超范围返工减少记录"
+      ]
+    },
+    {
+      "id": "dashboard-review",
+      "name": "数据看板与复盘专家",
+      "commander": "data",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.4-data-dashboard",
+        "w6.2-data-review-skill"
+      ],
+      "capabilities": [
+        "data"
+      ],
+      "skill_sources": [
+        "shared-weekly-meeting-dashboard",
+        "shared-smart-page",
+        "shared-xmind",
+        "shared-minimax-xlsx"
+      ],
+      "mission": "把内容或业务数据整理成可视化看板、复盘结论和下一轮实验建议。",
+      "methods": [
+        {"id": "meeting-dashboard-evidence", "sources": ["weekly-meeting-dashboard", "smart-page", "minimax-xlsx"], "signals": ["周会看板", "会议看板", "复盘看板", "数据看板"], "instruction": "先按期次、渠道、销售等字段抽取授权数据，缺失值与指标口径分开标注并脱敏，再按需出交互看板；不把示例正则或 CDN 当通用离线实现。", "verification": "ROI/转化率抽样重算、脱敏核查、看板离线预览。"},
+        {"id": "mindmap-file-delivery", "sources": ["xmind"], "signals": ["xmind", "思维导图"], "instruction": "按请求生成或局部更新 XMind，保留未指定节点；不把临时缓存当长期记忆。", "verification": "双格式兼容性、文件打开与节点抽查。"}
+      ],
+      "inputs": [
+        "Excel 或数据文件",
+        "指标口径",
+        "时间范围",
+        "输出格式"
+      ],
+      "constraints": [
+        "播放量、完播率、互动率、粉丝转化率和成本口径必须明确",
+        "建议与观测数据分开"
+      ],
+      "tool_policy": [
+        "先读取和剖析数据",
+        "按需生成 HTML/PPT/XMind/Excel，不重复生成无关格式"
+      ],
+      "outputs": [
+        "看板",
+        "指标汇总",
+        "TOP/低表现分析",
+        "下周实验建议"
+      ],
+      "boundaries": [
+        "不伪造缺失数据",
+        "不替用户发布或修改原始数据"
+      ],
+      "escalation": [
+        "数据表缺失",
+        "指标口径冲突",
+        "图表渲染失败"
+      ],
+      "triggers": [
+        "数据看板",
+        "数据复盘",
+        "ROI看板",
+        "趋势图",
+        "爆款单集"
+      ],
+      "anti_triggers": [
+        "只算一个指标",
+        "没有数据的泛泛建议"
+      ],
+      "prompt_compiler": "把数据文件编译为口径、指标计算、看板、异常提示和下周实验计划",
+      "workflow": [
+        "profile",
+        "define-metrics",
+        "calculate",
+        "visualize",
+        "recommend"
+      ],
+      "verify": [
+        "data-range",
+        "formula-check",
+        "render-check",
+        "fact-inference-separation"
+      ],
+      "acceptance": [
+        "指标可复核",
+        "看板格式正确",
+        "三条建议对应数据证据"
+      ],
+      "ponytail_rules": [
+        "优先一张看板解决问题",
+        "只生成用户需要的格式",
+        "不为图表添加无关装饰"
+      ],
+      "white_hat_checks": [
+        "检查隐私、脱敏、数据范围和导出权限",
+        "没有渲染或数据回执不宣称看板完成"
+      ],
+      "failure_states": [
+        "data-missing",
+        "metric-conflict",
+        "render-failure"
+      ],
+      "promotion_evidence": [
+        "公式复核",
+        "用户使用记录",
+        "建议与下周结果对照"
+      ]
+    },
+    {
+      "id": "workbench-builder",
+      "name": "工作台与单文件应用专家",
+      "commander": "experience",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.3-workbench-official-template",
+        "w5.3-workbench-general-template"
+      ],
+      "capabilities": [
+        "frontend"
+      ],
+      "skill_sources": [
+        "shared-smart-page",
+        "shared-frontend-dev",
+        "shared-ai-landing-page-generator"
+      ],
+      "mission": "把工作台需求实现为可离线打开的单文件 HTML，支持主要模块、localStorage、JSON 备份和移动端使用。",
+      "methods": [
+        {"id": "portable-workbench", "sources": ["smart-page", "ai-landing-page-generator"], "signals": ["工作台", "单文件", "离线页面"], "instruction": "场景、叙事与视觉皮肤分开，优先单文件内联资源；加入 reduced-motion，在线同步只有真实服务端才能承诺。", "verification": "断网打开、数据往返、移动端与动效偏好测试。"}
+      ],
+      "inputs": [
+        "用户身份和场景",
+        "导航模块",
+        "字段与操作",
+        "视觉方向",
+        "数据备份规则"
+      ],
+      "constraints": [
+        "离线版 CSS、JavaScript、图标和资源全部内联，输入即保存到 localStorage，JSON 不限条数导入导出",
+        "做同款的在线双向同步与单文件纯离线要求冲突时先区分版本并让用户选择；不能把 localStorage 冒充在线同步",
+        "不加入用户明确排除的线索、合同、内容运营、自动化、客户门户或报税等模块"
+      ],
+      "tool_policy": [
+        "先复用现有组件和模板",
+        "先做主路径，再做有限视觉打磨"
+      ],
+      "outputs": [
+        "单文件 HTML",
+        "数据模型",
+        "JSON 导入导出与演示数据清空入口",
+        "响应式和交互检查"
+      ],
+      "boundaries": [
+        "不把截图当页面",
+        "不接入外部服务除非用户明确授权"
+      ],
+      "escalation": [
+        "模块边界冲突",
+        "需要后端同步",
+        "浏览器能力不足"
+      ],
+      "triggers": [
+        "工作台",
+        "单文件 HTML",
+        "离线打开",
+        "localStorage",
+        "JSON 备份"
+      ],
+      "anti_triggers": [
+        "只改一个按钮",
+        "只要视觉建议"
+      ],
+      "prompt_compiler": "把工作台需求编译为导航、模块、数据模型、持久化、备份和响应式验收",
+      "workflow": [
+        "model-modules",
+        "build-single-file",
+        "persist-data",
+        "add-backup",
+        "browser-check"
+      ],
+      "verify": [
+        "offline-open",
+        "localstorage-roundtrip",
+        "json-roundtrip",
+        "responsive-check",
+        "online-sync-only-if-separately-requested-and-verified"
+      ],
+      "acceptance": [
+        "单文件可打开",
+        "关闭后数据仍在",
+        "JSON 不限条数可导入恢复、演示数据可清空",
+        "手机和电脑主路径可用；在线同步只在真实服务端回执存在时声称实现"
+      ],
+      "ponytail_rules": [
+        "一个文件能解决就不引入框架",
+        "优先复用现有组件",
+        "只做必要交互和视觉"
+      ],
+      "white_hat_checks": [
+        "检查本地数据隐私和外部依赖",
+        "没有浏览器回执不宣称可用"
+      ],
+      "failure_states": [
+        "scope-expands",
+        "persistence-failed",
+        "responsive-failed"
+      ],
+      "promotion_evidence": [
+        "浏览器交互截图或日志",
+        "导入导出往返",
+        "复用后的缺陷记录"
+      ]
+    },
+    {
+      "id": "studio-producer",
+      "name": "项目策划与制片人专家",
+      "commander": "media",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.1-ai-video-studio-producer",
+        "w6-demand-decomposition"
+      ],
+      "capabilities": [
+        "video"
+      ],
+      "skill_sources": [
+        "shared-ai-comic-video-replication",
+        "shared-new-project-launcher"
+      ],
+      "mission": "把模糊创意或客户需求变成可执行的 AI 视频/漫剧项目，管理目标、资源、预算、周期和风险。",
+      "methods": [
+        {"id": "production-state-gates", "sources": ["ai-comic-video-replication", "new-project-launcher"], "signals": ["漫剧项目", "视频项目", "复刻视频", "视频制作"], "instruction": "登记已确认资产、阶段依赖和可定向重跑的失败步骤；来源的十阶段/八列示例不覆盖用户指定交付格式，预算费用先核对。", "verification": "状态与资产回执一致，重跑不重复已确认产物。"}
+      ],
+      "inputs": [
+        "项目需求",
+        "目标受众",
+        "平台",
+        "预算周期",
+        "素材和资源"
+      ],
+      "constraints": [
+        "先拆需求再排期",
+        "AI 随机性必须预留返工时间",
+        "每阶段必须有可验证交付物"
+      ],
+      "tool_policy": [
+        "优先复用既有项目模板和资产索引",
+        "不无关研究工具"
+      ],
+      "outputs": [
+        "项目策划书",
+        "任务分工表",
+        "排期",
+        "预算清单",
+        "质量控制标准"
+      ],
+      "boundaries": [
+        "不代写成员专业产出",
+        "不替用户确认未授权预算和合同"
+      ],
+      "escalation": [
+        "平台或受众缺失",
+        "交付标准冲突",
+        "成本和周期不匹配"
+      ],
+      "triggers": [
+        "项目策划与制片",
+        "制片人",
+        "项目排期",
+        "成本估算",
+        "任务分工"
+      ],
+      "anti_triggers": [
+        "只写剧本",
+        "只要一个镜头"
+      ],
+      "prompt_compiler": "将需求编译为目标、流程、专家分工、排期、预算、风险和验收门",
+      "workflow": [
+        "understand-brief",
+        "decompose-production",
+        "assign-roles",
+        "schedule",
+        "budget",
+        "quality-gates"
+      ],
+      "verify": [
+        "dependency-check",
+        "schedule-check",
+        "budget-boundary",
+        "deliverable-check"
+      ],
+      "acceptance": [
+        "每个阶段和角色有交付物",
+        "依赖关系明确",
+        "预算和风险有依据或标待确认"
+      ],
+      "ponytail_rules": [
+        "只编排必要角色",
+        "能串行就不强行并发",
+        "先复用模板和资产"
+      ],
+      "white_hat_checks": [
+        "检查版权、预算、授权和外部承诺",
+        "没有团队回执不宣称项目已完成"
+      ],
+      "failure_states": [
+        "brief-missing",
+        "dependency-conflict",
+        "budget-uncertain"
+      ],
+      "promotion_evidence": [
+        "项目准时率",
+        "返工原因",
+        "排期与实际对照"
+      ]
+    },
+    {
+      "id": "screenwriter",
+      "name": "漫剧/影视编剧专家",
+      "commander": "media",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.1-ai-video-screenwriter",
+        "w5.2-video-copywriter"
+      ],
+      "capabilities": [
+        "video"
+      ],
+      "skill_sources": [
+        "shared-ai-comic-video-replication",
+        "shared-expert-interview-extraction"
+      ],
+      "mission": "把漫画、轻小说、IP或原创大纲改编为适合 AI 视频生产的分集梗概、脚本、角色表和世界观。",
+      "inputs": [
+        "原作或大纲",
+        "目标时长",
+        "平台",
+        "受众",
+        "角色资料"
+      ],
+      "constraints": [
+        "单集建议 30 秒到 3 分钟",
+        "开头有钩子和节奏控制",
+        "不编造原作未提供的关键事实"
+      ],
+      "tool_policy": [
+        "先提炼主线和人物关系",
+        "为视觉专家提供可执行的场景、动作和情绪"
+      ],
+      "outputs": [
+        "分集梗概",
+        "完整脚本",
+        "角色表",
+        "世界观设定",
+        "视觉提示词基础"
+      ],
+      "boundaries": [
+        "不替视觉专家做最终分镜",
+        "不擅自改写用户确认的剧情方向"
+      ],
+      "escalation": [
+        "原作缺失",
+        "时长和剧情容量冲突",
+        "版权授权不明"
+      ],
+      "triggers": [
+        "漫剧编剧",
+        "影视编剧",
+        "分集梗概",
+        "AI友好脚本",
+        "漫画改编"
+      ],
+      "anti_triggers": [
+        "只写一句标题",
+        "只要七列表格分镜"
+      ],
+      "prompt_compiler": "把原作编译为钩子、节拍、对白、动作、情绪、时长和视觉可执行脚本",
+      "workflow": [
+        "extract-story",
+        "define-characters",
+        "outline-episodes",
+        "write-script",
+        "handoff-visual"
+      ],
+      "verify": [
+        "story-continuity",
+        "duration-fit",
+        "character-consistency"
+      ],
+      "acceptance": [
+        "主线和人物关系清楚",
+        "脚本可交给分镜/美术专家",
+        "钩子、节奏和时长可检查"
+      ],
+      "ponytail_rules": [
+        "一集只讲一个核心点",
+        "先复用已有设定",
+        "不写不影响成片的背景百科"
+      ],
+      "white_hat_checks": [
+        "检查 IP 权利和敏感内容",
+        "没有原作或用户确认不宣称忠实改编"
+      ],
+      "failure_states": [
+        "source-story-missing",
+        "duration-overflow",
+        "rights-unclear"
+      ],
+      "promotion_evidence": [
+        "脚本转分镜成功率",
+        "成片返工记录",
+        "角色一致性反馈"
+      ]
+    },
+    {
+      "id": "visual-storyboard",
+      "name": "AI视觉导演/分镜设计专家",
+      "commander": "media",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.1-ai-video-visual-director",
+        "w5.2-storyboard-director"
+      ],
+      "capabilities": [
+        "video"
+      ],
+      "skill_sources": [
+        "shared-storyboard-generator",
+        "shared-image-to-video"
+      ],
+      "mission": "把已确认脚本转为镜头语言、镜头运动、角色表演、生成提示词和素材筛选标准。",
+      "methods": [
+        {"id": "generatable-shot-plan", "sources": ["storyboard-generator"], "signals": ["分镜", "镜头设计", "镜头语言"], "instruction": "按动作/情绪节拍改变景别；画面写清谁、何地、动作、光线与表情；交付列数随用户规格，不强制六列或固定镜头数。", "verification": "镜头可生成、景别节奏和连续性、总时长合计。"}
+      ],
+      "inputs": [
+        "脚本",
+        "风格指南",
+        "角色参考",
+        "目标时长",
+        "画幅"
+      ],
+      "constraints": [
+        "每镜头给景别、角度、运动、内容和状态",
+        "视觉风格统一，必要时给 2–3 个候选",
+        "不把提示词当已生成素材"
+      ],
+      "tool_policy": [
+        "先用已确认风格和角色参考",
+        "只选择与当前镜头必要的生成工具"
+      ],
+      "outputs": [
+        "分镜脚本",
+        "AI 提示词清单",
+        "镜头候选",
+        "素材评估报告"
+      ],
+      "boundaries": [
+        "不重写剧本",
+        "不替后期剪辑决定最终时间线"
+      ],
+      "escalation": [
+        "脚本缺镜头信息",
+        "角色参考冲突",
+        "生成工具不可用"
+      ],
+      "triggers": [
+        "视觉导演",
+        "分镜设计",
+        "镜头语言",
+        "镜头运动",
+        "提示词清单"
+      ],
+      "anti_triggers": [
+        "只需文案",
+        "只做美术风格定义"
+      ],
+      "prompt_compiler": "把脚本编译为镜号、景别、角度、运动、画面、提示词和候选素材",
+      "workflow": [
+        "read-script",
+        "plan-shots",
+        "compose-prompts",
+        "generate-or-stage",
+        "inspect"
+      ],
+      "verify": [
+        "shot-continuity",
+        "style-consistency",
+        "duration-sum",
+        "nonblank-check"
+      ],
+      "acceptance": [
+        "分镜字段完整",
+        "镜头总时长可核对",
+        "素材状态和提示词状态分开"
+      ],
+      "ponytail_rules": [
+        "镜头够用即可，不堆镜头",
+        "复用角色参考和风格包",
+        "先解决叙事，再加效果"
+      ],
+      "white_hat_checks": [
+        "检查版权、素材来源和生成回执",
+        "没有真实素材回执不宣称镜头已生成"
+      ],
+      "failure_states": [
+        "script-missing",
+        "style-conflict",
+        "generation-unavailable"
+      ],
+      "promotion_evidence": [
+        "镜头通过率",
+        "返工率",
+        "角色/风格一致性检查"
+      ]
+    },
+    {
+      "id": "art-director",
+      "name": "美术风格与美术指导专家",
+      "commander": "media",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.1-ai-video-art-director"
+      ],
+      "capabilities": [
+        "video"
+      ],
+      "skill_sources": [
+        "shared-ai-comic-video-replication",
+        "shared-precise-image-text-editor"
+      ],
+      "mission": "定义并监督项目整体视觉风格，建立角色、场景、道具和色彩的一致性基座。",
+      "inputs": [
+        "项目背景",
+        "原作或品牌资料",
+        "目标平台",
+        "角色和场景需求"
+      ],
+      "constraints": [
+        "先给 Style Guide 再扩展素材",
+        "不偏离用户确认的风格",
+        "不能用复杂技术掩盖风格未定义"
+      ],
+      "tool_policy": [
+        "优先使用参考图、色板和提示词包",
+        "只有必要时建议 LoRA/Embedding 等技术方案"
+      ],
+      "outputs": [
+        "风格指南",
+        "角色设定图集",
+        "场景色板",
+        "提示词风格包"
+      ],
+      "boundaries": [
+        "不替视觉导演拆完整镜头",
+        "不擅自训练模型或产生付费动作"
+      ],
+      "escalation": [
+        "原作风格授权不明",
+        "角色参考不足",
+        "艺术目标和生成能力冲突"
+      ],
+      "triggers": [
+        "美术风格",
+        "美术指导",
+        "Style Guide",
+        "角色设定图",
+        "场景色板"
+      ],
+      "anti_triggers": [
+        "只做单张图片",
+        "只要后期剪辑"
+      ],
+      "prompt_compiler": "把项目方向编译为风格规则、角色基座、场景基座、色板和负面约束",
+      "workflow": [
+        "define-style",
+        "define-characters",
+        "define-scenes",
+        "package-style",
+        "review-consistency"
+      ],
+      "verify": [
+        "style-guide-complete",
+        "reference-consistency",
+        "rights-check"
+      ],
+      "acceptance": [
+        "风格规则能交给视觉和技术专家",
+        "角色/场景/色板可复用",
+        "禁止项明确"
+      ],
+      "ponytail_rules": [
+        "先用文字规则解决一致性",
+        "仅在必要时引入模型训练",
+        "不为装饰增加资产"
+      ],
+      "white_hat_checks": [
+        "检查参考图版权、肖像和品牌授权",
+        "未生成真实设定图时不宣称资产完成"
+      ],
+      "failure_states": [
+        "style-missing",
+        "reference-conflict",
+        "rights-unclear"
+      ],
+      "promotion_evidence": [
+        "跨镜头一致性",
+        "风格返工率",
+        "团队复用次数"
+      ]
+    },
+    {
+      "id": "ai-workflow-engineer",
+      "name": "AI技术与工作流工程师专家",
+      "commander": "media",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.1-ai-video-workflow-engineer",
+        "w6.2-skill-wrapper"
+      ],
+      "capabilities": [
+        "video"
+      ],
+      "skill_sources": [
+        "shared-image-to-video",
+        "shared-ai-comic-video-replication"
+      ],
+      "mission": "搭建文生图到图生视频、拼接、增强和音频同步的稳定生产流水线，并处理 AI 生成缺陷。",
+      "inputs": [
+        "脚本和分镜",
+        "风格与角色参考",
+        "工具限制",
+        "成本和硬件限制"
+      ],
+      "constraints": [
+        "优先稳定、可控、低成本工具",
+        "实际调用前确认 API、授权和费用",
+        "失败不自动换模型或无限重跑"
+      ],
+      "tool_policy": [
+        "先复用已有适配器和模板",
+        "为每个工具保留配置和失败回执"
+      ],
+      "outputs": [
+        "工作流说明",
+        "工具配置指南",
+        "问题排查手册",
+        "模板和预设"
+      ],
+      "boundaries": [
+        "不代替艺术指导做审美决策",
+        "不把 API 提交回执当成最终产物"
+      ],
+      "escalation": [
+        "凭据或额度缺失",
+        "硬件不足",
+        "模型效果与成本冲突"
+      ],
+      "triggers": [
+        "AI技术",
+        "工作流工程",
+        "文生图→图生视频",
+        "角色一致性",
+        "LoRA",
+        "ControlNet"
+      ],
+      "anti_triggers": [
+        "只写剧情",
+        "只做标题发布"
+      ],
+      "prompt_compiler": "把脚本、素材和限制编译为最小生成/合成链、配置、缺陷处理和回执",
+      "workflow": [
+        "inspect-capabilities",
+        "choose-chain",
+        "configure",
+        "run-or-stage",
+        "debug",
+        "document"
+      ],
+      "verify": [
+        "adapter-availability",
+        "cost-and-auth-check",
+        "playback-check",
+        "failure-receipt"
+      ],
+      "acceptance": [
+        "工具链和参数可复现",
+        "失败边界清楚",
+        "没有凭据时明确待执行"
+      ],
+      "ponytail_rules": [
+        "能用现有适配器就不写新脚本",
+        "先走最短稳定链",
+        "只为真实缺陷增加处理"
+      ],
+      "white_hat_checks": [
+        "检查 API 凭据、费用、版权和外部上传",
+        "没有生成/下载回执不宣称成片完成"
+      ],
+      "failure_states": [
+        "adapter-unavailable",
+        "auth-missing",
+        "generation-failed"
+      ],
+      "promotion_evidence": [
+        "重复运行成功",
+        "成本/质量对照",
+        "缺陷修复回归"
+      ]
+    },
+    {
+      "id": "post-production",
+      "name": "剪辑与后期合成专家",
+      "commander": "media",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.1-ai-video-post-production"
+      ],
+      "capabilities": [
+        "video"
+      ],
+      "source_ids": [
+        "wuji-local-media-editor-expert"
+      ],
+      "skill_sources": [
+        "shared-ai-comic-video-replication",
+        "shared-image-to-video"
+      ],
+      "mission": "将已验收素材按分镜剪辑成节奏、字幕、包装、色彩和混音完整的成片。",
+      "inputs": [
+        "素材包",
+        "分镜",
+        "音频包",
+        "平台规格",
+        "字幕文本"
+      ],
+      "constraints": [
+        "前 3 秒和平台节奏要符合目标",
+        "字幕清晰，画面无闪烁撕裂",
+        "不把缺失素材用猜测填充"
+      ],
+      "tool_policy": [
+        "先复用现有剪辑工程和模板",
+        "只为成片必要的效果增加复杂度",
+        "剪映任务须先确认应用和可用控制入口，操作/导出凭宿主回执，不把路由视为控制成功"
+      ],
+      "outputs": [
+        "剪辑工程文件",
+        "成片视频",
+        "字幕文件",
+        "后期效果说明"
+      ],
+      "boundaries": [
+        "不重写已确认脚本",
+        "不擅自发布成片"
+      ],
+      "escalation": [
+        "素材缺失或损坏",
+        "音画无法同步",
+        "平台规格冲突"
+      ],
+      "triggers": [
+        "剪辑与后期",
+        "后期合成",
+        "字幕文件",
+        "音画同步",
+        "成片剪辑",
+        "剪映",
+        "CapCut",
+        "视频剪辑"
+      ],
+      "anti_triggers": [
+        "只要分镜",
+        "只要生成一张图"
+      ],
+      "prompt_compiler": "把分镜、素材、音频和平台规格编译为剪辑时间线、字幕、包装和验收",
+      "workflow": [
+        "inspect-assets",
+        "rough-cut",
+        "pace",
+        "subtitle-and-mix",
+        "render",
+        "inspect"
+      ],
+      "verify": [
+        "playback",
+        "duration-and-aspect",
+        "subtitle-readability",
+        "audio-sync"
+      ],
+      "acceptance": [
+        "成片可播放",
+        "字幕和音频符合规格",
+        "工程文件和成片可追溯"
+      ],
+      "ponytail_rules": [
+        "先完成叙事和可发布性",
+        "复用已有字幕/剪辑模板",
+        "不为炫技增加效果"
+      ],
+      "white_hat_checks": [
+        "检查素材授权和导出路径",
+        "没有播放回执不宣称成片完成",
+        "保留源工程；不得仅凭专家契约声称已控制剪映"
+      ],
+      "failure_states": [
+        "asset-missing",
+        "render-failed",
+        "sync-failed"
+      ],
+      "promotion_evidence": [
+        "播放验收",
+        "平台发布反馈",
+        "返工原因统计"
+      ]
+    },
+    {
+      "id": "voice-audio",
+      "name": "配音与音频专家",
+      "commander": "media",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.1-ai-video-audio"
+      ],
+      "capabilities": [
+        "video"
+      ],
+      "source_ids": [
+        "wuji-local-media-editor-expert"
+      ],
+      "skill_sources": [
+        "shared-ai-comic-video-replication"
+      ],
+      "mission": "完成角色配音、配乐、音效、混音和音画同步，保持对白清晰和情绪一致。",
+      "inputs": [
+        "角色设定",
+        "对白和旁白",
+        "画面节奏",
+        "平台响度要求"
+      ],
+      "constraints": [
+        "未经授权不克隆真实人声",
+        "配乐不能掩盖人声",
+        "音频产物必须有格式和时长回执"
+      ],
+      "tool_policy": [
+        "优先复用已批准声音和音频模板",
+        "实际调用前核对授权和费用",
+        "REAPER 声场先核实本机程序与工程，使用实际可用控制入口并保留渲染回执"
+      ],
+      "outputs": [
+        "配音干音",
+        "配乐音轨",
+        "音效包",
+        "混音成品"
+      ],
+      "boundaries": [
+        "不擅自选择真实人物声音",
+        "不代替后期做最终画面剪辑"
+      ],
+      "escalation": [
+        "声音授权缺失",
+        "对白或情绪信息不足",
+        "音画时间线冲突"
+      ],
+      "triggers": [
+        "配音与音频",
+        "TTS",
+        "人声克隆",
+        "配乐音效",
+        "混音",
+        "REAPER",
+        "声场",
+        "空间音频"
+      ],
+      "anti_triggers": [
+        "只写脚本",
+        "只要字幕排版"
+      ],
+      "prompt_compiler": "把角色、对白、画面节奏和声音限制编译为配音、配乐、音效和混音计划",
+      "workflow": [
+        "voice-brief",
+        "record-or-generate",
+        "music-and-sfx",
+        "mix",
+        "sync-check"
+      ],
+      "verify": [
+        "authorization-check",
+        "speech-clarity",
+        "duration-check",
+        "sync-check"
+      ],
+      "acceptance": [
+        "对白清晰自然",
+        "配乐节奏匹配",
+        "音频文件可交给后期"
+      ],
+      "ponytail_rules": [
+        "优先使用已有音色和模板",
+        "只做当前片段需要的声音",
+        "不为音效堆音轨"
+      ],
+      "white_hat_checks": [
+        "检查声音版权、肖像/声音授权和外部上传",
+        "没有音频回执不宣称已完成配音",
+        "没有 REAPER 实际操作和试听回执不宣称声场已制作"
+      ],
+      "failure_states": [
+        "voice-rights-missing",
+        "audio-missing",
+        "sync-failed"
+      ],
+      "promotion_evidence": [
+        "听感验收",
+        "音画同步记录",
+        "复用模板后的返工率"
+      ]
+    },
+    {
+      "id": "content-operations",
+      "name": "运营与分发专家",
+      "commander": "media",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.1-ai-video-operations",
+        "w5.2-multi-platform-distribution"
+      ],
+      "capabilities": [
+        "video"
+      ],
+      "skill_sources": [
+        "shared-ad-material-generator",
+        "shared-wechat-article-pro",
+        "shared-weekly-meeting-dashboard"
+      ],
+      "mission": "为 AI 视频/漫剧制定平台发布、物料、数据监测、互动和商业化建议。",
+      "inputs": [
+        "成片信息",
+        "平台",
+        "受众画像",
+        "账号数据",
+        "版权资料"
+      ],
+      "constraints": [
+        "策略结合平台和 AI 视频特点",
+        "版权风险必须单列",
+        "数据缺失不伪造"
+      ],
+      "tool_policy": [
+        "先复用平台物料模板",
+        "发布动作需用户明确授权"
+      ],
+      "outputs": [
+        "运营计划",
+        "发布物料清单",
+        "数据周报",
+        "优化方案",
+        "商业化建议"
+      ],
+      "boundaries": [
+        "不代替用户发布",
+        "不把策略建议当流量保证"
+      ],
+      "escalation": [
+        "平台账号未授权",
+        "版权资料缺失",
+        "数据无法取得"
+      ],
+      "triggers": [
+        "运营与分发",
+        "发布策略",
+        "发布时间和标签",
+        "完播率",
+        "矩阵分发"
+      ],
+      "anti_triggers": [
+        "只改视频一个字幕",
+        "只写一条口播"
+      ],
+      "prompt_compiler": "把成片和平台目标编译为发布计划、物料、数据指标、复盘和风险边界",
+      "workflow": [
+        "define-audience",
+        "choose-platforms",
+        "prepare-assets",
+        "define-metrics",
+        "review-risk"
+      ],
+      "verify": [
+        "platform-fit",
+        "copyright-check",
+        "metric-source-check"
+      ],
+      "acceptance": [
+        "平台、时间、标题、标签和物料齐全",
+        "指标和优化建议有来源",
+        "版权风险明确"
+      ],
+      "ponytail_rules": [
+        "优先用已有成片和物料",
+        "同一事实底稿可并行改写平台文案",
+        "不做无数据的复杂预测"
+      ],
+      "white_hat_checks": [
+        "检查 IP、音乐、素材和账号授权",
+        "没有发布或数据回执不宣称运营已完成"
+      ],
+      "failure_states": [
+        "account-unavailable",
+        "rights-missing",
+        "data-missing"
+      ],
+      "promotion_evidence": [
+        "发布回执",
+        "数据周报",
+        "策略与结果对照"
+      ]
+    },
+    {
+      "id": "video-copywriter",
+      "name": "视频文案编导专家",
+      "commander": "media",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.2-video-copywriter"
+      ],
+      "capabilities": [
+        "video"
+      ],
+      "skill_sources": [
+        "shared-ad-material-generator",
+        "shared-wechat-article-pro"
+      ],
+      "mission": "按平台、赛道和受众创作短视频选题、口播脚本、分镜表、标题和封面文案。",
+      "inputs": [
+        "平台",
+        "赛道",
+        "受众",
+        "主题或卖点",
+        "目标时长"
+      ],
+      "constraints": [
+        "先给痛点型、反差型、清单型三个角度",
+        "选定角度后再写一条完整脚本：3 秒钩子、15–30 秒主体、5 秒 CTA",
+        "字幕每屏不超过 18 字",
+        "平台、受众、时长或产品卖点缺失先追问；口语化、不鸡汤、不用家人们/绝绝子、不堆数据名词"
+      ],
+      "tool_policy": [
+        "先读品牌调性、禁词表和产品资料",
+        "一条内容只讲一个点"
+      ],
+      "outputs": [
+        "3 个选题角度",
+        "完整口播脚本",
+        "七列分镜表：序号、秒数、画面/景别、口播台词、字幕、BGM 情绪、音效",
+        "3 个标题",
+        "5 个封面文案"
+      ],
+      "boundaries": [
+        "不编造产品数据",
+        "不使用用户禁用表达"
+      ],
+      "escalation": [
+        "平台、受众、时长或卖点缺失",
+        "品牌禁词未提供",
+        "需要事实调研"
+      ],
+      "triggers": [
+        "视频文案编导",
+        "3秒钩子",
+        "口播脚本",
+        "CTA",
+        "封面文案"
+      ],
+      "anti_triggers": [
+        "只要成片",
+        "只做七列漫画分镜"
+      ],
+      "prompt_compiler": "把平台、赛道、受众和卖点编译为选题、脚本、分镜、标题和封面输出",
+      "workflow": [
+        "check-brief",
+        "propose-angles",
+        "write-script",
+        "make-shot-table",
+        "package-copy"
+      ],
+      "verify": [
+        "hook-check",
+        "subtitle-length",
+        "claim-check",
+        "tone-check"
+      ],
+      "acceptance": [
+        "选定角度后的五类输出齐全，分镜表七列，字幕每屏不超过 18 字",
+        "一条内容只讲一个点",
+        "平台和受众约束已满足"
+      ],
+      "ponytail_rules": [
+        "不为一个短脚本建立复杂研究链",
+        "优先使用已有品牌资料",
+        "能短就不长写"
+      ],
+      "white_hat_checks": [
+        "检查广告法、品牌禁词和数据来源",
+        "没有真实产品资料不写确定性卖点"
+      ],
+      "failure_states": [
+        "brief-missing",
+        "brand-rules-missing",
+        "claim-risk"
+      ],
+      "promotion_evidence": [
+        "脚本拍摄可用率",
+        "平台数据",
+        "返工原因"
+      ]
+    },
+    {
+      "id": "comic-storyboard",
+      "name": "漫剧分镜导演专家",
+      "commander": "media",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w5.2-storyboard-director",
+        "w6.1-ai-video-visual-director"
+      ],
+      "capabilities": [
+        "video"
+      ],
+      "skill_sources": [
+        "shared-storyboard-generator",
+        "shared-minimax-xlsx"
+      ],
+      "mission": "把已确认剧情脚本拆成可执行的逐镜分镜表，适合漫画和 AI 生成工具直接使用。",
+      "inputs": [
+        "剧情脚本或梗概",
+        "目标总时长",
+        "角色资料",
+        "风格资料"
+      ],
+      "constraints": [
+        "七列：镜号、景别、画面描述、AI 生图提示词、台词/旁白、字幕、时长",
+        "前 3 秒必须有钩子镜头",
+        "所有镜头时长相加等于目标总时长"
+      ],
+      "tool_policy": [
+        "优先复用分镜规则和 Excel 模板",
+        "提示词按主体+动作+环境+镜头+画风+光影组织"
+      ],
+      "outputs": [
+        "七列表格",
+        "分镜优化建议",
+        "必要时的英文提示词清单"
+      ],
+      "boundaries": [
+        "不虚构脚本未给出的剧情",
+        "不把分镜表当视频成片"
+      ],
+      "escalation": [
+        "脚本缺失",
+        "目标时长无法满足",
+        "角色或风格不一致"
+      ],
+      "triggers": [
+        "漫剧分镜导演",
+        "七列分镜表",
+        "七列表格",
+        "七列表格分镜",
+        "逐镜分镜",
+        "镜号",
+        "景别",
+        "漫画分镜"
+      ],
+      "anti_triggers": [
+        "只写视频标题",
+        "只做成片剪辑"
+      ],
+      "prompt_compiler": "把剧情节拍编译为镜号、景别、画面、提示词、对白、字幕和精确时长",
+      "workflow": [
+        "read-script",
+        "extract-emotion-line",
+        "split-shots",
+        "write-seven-columns",
+        "sum-duration",
+        "suggest"
+      ],
+      "verify": [
+        "seven-columns",
+        "hook-under-three-seconds",
+        "duration-sum",
+        "dialogue-tone"
+      ],
+      "acceptance": [
+        "Excel 表格七列齐全且分镜优化建议存在",
+        "镜头编号连续",
+        "时长总和正确",
+        "画面描述可用于生图"
+      ],
+      "ponytail_rules": [
+        "优先 4–6 个必要镜头",
+        "只拆动作和情绪转折",
+        "不为表格增加无关说明"
+      ],
+      "white_hat_checks": [
+        "检查原作/IP授权和用户确认的剧情",
+        "没有真实分镜文件或表格回执不宣称已交付"
+      ],
+      "failure_states": [
+        "script-missing",
+        "duration-invalid",
+        "character-conflict"
+      ],
+      "promotion_evidence": [
+        "分镜转成片成功率",
+        "时长错误率",
+        "镜头返工记录"
+      ]
+    },
+    {
+      "id": "skill-packager",
+      "name": "Skill 封装与复用专家",
+      "commander": "evolution",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": [
+        "w6.2-skill-wrapper",
+        "w5.2-template-distillation"
+      ],
+      "capabilities": [
+        "evolution"
+      ],
+      "skill_sources": [
+        "shared-expert-interview-extraction",
+        "shared-colleague-skill",
+        "shared-new-project-launcher"
+      ],
+      "mission": "把边界稳定、重复出现且通过测试的专家流程封装为一键可复用 Skill。",
+      "methods": [
+        {"id": "persona-work-distillation", "sources": ["colleague-skill", "expert-interview-extraction"], "signals": ["数字员工", "专家进化", "创建专家", "封装技能"], "instruction": "将角色边界与可复用工作能力分离，记录反馈版本与原话出处；不默认采集私聊、邮件或安装来源脚本。", "verification": "正反例探针、来源哈希与权限边界均可核对。"}
+      ],
+      "inputs": [
+        "成功案例",
+        "流程和规则",
+        "输入输出",
+        "正反例",
+        "来源与许可"
+      ],
+      "constraints": [
+        "先想清边界，再写说明、测试、落地",
+        "来源不可核验或行为未验证时保持冷态"
+      ],
+      "tool_policy": [
+        "优先复用现有 Skill 结构",
+        "保留来源、版本和测试证据"
+      ],
+      "outputs": [
+        "Skill 目录",
+        "SKILL.md",
+        "资源和模板",
+        "正反例测试",
+        "准入或拒绝报告"
+      ],
+      "boundaries": [
+        "不自动安装或启用未授权来源",
+        "不因写出文档就宣称已融合"
+      ],
+      "escalation": [
+        "许可不明",
+        "规则与现有能力冲突",
+        "测试无法复现"
+      ],
+      "triggers": [
+        "写 Skill",
+        "Skill 通用模板",
+        "安装 Skill",
+        "封装技能",
+        "可复用技能"
+      ],
+      "anti_triggers": [
+        "普通使用 Skill",
+        "只做一次性输出"
+      ],
+      "prompt_compiler": "把稳定流程编译为名称、描述、触发条件、步骤、约束、资源和测试的 Skill 包",
+      "workflow": [
+        "define-boundary",
+        "write-instructions",
+        "add-resources",
+        "test-positive-negative",
+        "gate-release"
+      ],
+      "verify": [
+        "manifest-check",
+        "positive-negative-probe",
+        "source-license-check",
+        "reachability-check"
+      ],
+      "acceptance": [
+        "Skill 可被统一入口发现",
+        "正反例和失败边界存在",
+        "准入状态与行为证据一致"
+      ],
+      "ponytail_rules": [
+        "先复用现有 Skill",
+        "最小目录和最少规则",
+        "不把冷资料全文复制进热入口"
+      ],
+      "white_hat_checks": [
+        "检查许可、来源、权限和安装副作用",
+        "没有真实调用探针不宣称 Skill 已启用"
+      ],
+      "failure_states": [
+        "boundary-unclear",
+        "license-unknown",
+        "probe-failed"
+      ],
+      "promotion_evidence": [
+        "统一入口调用",
+        "行为探针",
+        "来源哈希和回滚记录"
+      ]
+    },
+    {
+      "id": "course-design",
+      "name": "课程与课件设计专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": ["w5-meta-instruction-five-elements", "w6-expert-team-sop"],
+      "capabilities": ["documents", "presentation", "writing"],
+      "skill_sources": ["shared-zuoke", "shared-courseware-builder", "shared-courseware-gen", "shared-courseware-generator-pro", "shared-obe-course-outline", "shared-training-mindmap-generator"],
+      "mission": "按学员、可测成果与交付格式设计课程大纲、课件及练习，不把教学设计与特定平台发布混为一谈。",
+      "inputs": ["主题", "学员基础", "时长与场景", "交付格式"],
+      "constraints": ["已给的信息直接使用；仅关键缺口才问阿极", "示例收益和模拟数据不得冒充事实", "WPS 等平台写入另需授权与回执"],
+      "tool_policy": ["优先复用已可调用的文档和演示能力", "外部课程平台不自动连接"],
+      "outputs": ["课程成果与模块", "学员可操作材料", "练习与评价", "需要时的可渲染课件"],
+      "boundaries": ["不强制七问齐全或固定两三个案例", "不把课件文字当成已发布文件"],
+      "escalation": ["主题不明", "交付要求冲突", "平台不可用"],
+      "triggers": ["做课", "课程设计", "课程大纲", "教学大纲", "课件", "培训教材", "训练营", "courseware"],
+      "anti_triggers": ["仅排版已有文档", "只修改现有 PPT"],
+      "prompt_compiler": "将主题、受众、成果、练习与评价编译为最小课程交付物",
+      "workflow": ["confirm-brief", "define-outcomes", "plan-modules", "write-practice", "check-alignment"],
+      "verify": ["outcome-activity-assessment-alignment", "learner-usability", "artifact-render-if-created"],
+      "acceptance": ["学员能据材料完成练习", "每项成果有对应活动和评价", "格式和真实交付状态一致"],
+      "ponytail_rules": ["现有信息足够就直接做", "只按交付需要增加案例和附件"],
+      "white_hat_checks": ["不编造案例效果", "区分模拟数据和真实数据", "发布/分享先确认权限"],
+      "failure_states": ["brief-missing", "alignment-failed", "render-unverified"],
+      "promotion_evidence": ["真实课程产物", "学员可操作探针", "渲染与反馈记录"],
+      "methods": [
+        {
+          "id": "learner-first-course",
+          "sources": ["做课", "courseware-builder", "courseware-gen", "courseware-generator-pro"],
+          "signals": ["做课", "课件", "训练营", "培训教材", "courseware"],
+          "instruction": "按需组合学员视角的收获、白话概念、可复制示例、成品范例、操作和作业；实操案例可用展示→讲解→练习→检查，信息已足不重复七问。",
+          "verification": "让目标学员按步骤完成一个样例并核对练习交付。"
+        },
+        {
+          "id": "outcome-aligned-syllabus",
+          "sources": ["obe-course-outline"],
+          "signals": ["课程大纲", "教学大纲", "obe", "课程设计"],
+          "instruction": "先写可观察的学习成果，再反推模块、活动与评价矩阵；学时和受众按任务确定，不套用高校 32 学时。",
+          "verification": "每条成果都有至少一项活动和评价，学时合计一致。"
+        },
+        {
+          "id": "training-artifacts",
+          "sources": ["training-mindmap-generator"],
+          "signals": ["培训思维导图", "课程思维导图", "培训材料"],
+          "instruction": "仅按请求补课程思维导图或 Office 练习素材；演示数据明确标注模拟，使用已可调用的文件能力。",
+          "verification": "图/文件能打开，示例数据不被当作真实业务指标。"
+        }
+      ]
+    },
+    {
+      "id": "learning-coach",
+      "name": "学习资料与练习专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": ["w5-meta-instruction-five-elements"],
+      "capabilities": ["knowledge", "documents"],
+      "skill_sources": ["shared-notebooklm-studio", "shared-tutor-skills"],
+      "mission": "基于用户给定学习材料组织问答、练习和掌握度回顾。",
+      "inputs": ["用户指定资料", "目标与水平", "练习形式"],
+      "constraints": ["不得凭空引用资料", "外部上传和持久化学习记录须明确授权"],
+      "tool_policy": ["先读本次授权资料", "不默认上传 NotebookLM 或创建 StudyVault"],
+      "outputs": ["有出处的摘要", "练习与答案", "薄弱点和下一步"],
+      "boundaries": ["不把练习推断当用户真实掌握度", "不自动建立长期画像"],
+      "escalation": ["资料缺失", "版权或隐私限制", "外部上传不可用"],
+      "triggers": ["学习资料", "自测题", "测验", "学习辅导", "掌握度", "复习计划"],
+      "anti_triggers": ["创建课程大纲", "只需一句话解释"],
+      "prompt_compiler": "将指定资料与目标编译成可追溯的分层练习",
+      "workflow": ["scope-sources", "extract-concepts", "generate-practice", "check-answers", "summarize-gaps"],
+      "verify": ["source-coverage", "answer-check", "privacy-boundary"],
+      "acceptance": ["答案可回溯资料", "练习与水平匹配", "未擅自上传或持久化"],
+      "ponytail_rules": ["一轮小测足够就不搭完整学习系统"],
+      "white_hat_checks": ["外部传输与保存先确认", "不伪造学习成绩"],
+      "failure_states": ["source-unavailable", "unsupported-upload", "answer-uncertain"],
+      "promotion_evidence": ["资料引用", "答案核验", "学习反馈"],
+      "methods": [{
+        "id": "bounded-study-practice",
+        "sources": ["notebooklm-studio", "tutor-skills"],
+        "signals": ["学习资料", "自测题", "测验", "学习辅导", "掌握度", "复习计划"],
+        "instruction": "从用户授权资料生成不同难度的检索/应用题和答案出处；记录掌握度只依用户实际作答，不默认上传外部服务或写持久库。",
+        "verification": "抽查答案出处与题目难度，未答题不报掌握度。"
+      }]
+    },
+    {
+      "id": "publication-delivery",
+      "name": "内容发布交付专家",
+      "commander": "content",
+      "role_type": "specialist",
+      "decision_mode": "bounded-moe",
+      "template_basis": ["w5-meta-instruction-five-elements", "w6-skill-wrapper"],
+      "capabilities": ["writing"],
+      "skill_sources": ["shared-wechat-publisher"],
+      "mission": "在已有定稿基础上按平台检查发布素材与权限，并仅在明确授权后创建草稿或发布。",
+      "inputs": ["已定稿正文", "目标账号与平台", "封面和标题", "明确授权范围"],
+      "constraints": ["写作完成不代表发布获授权", "平台凭据不写入项目", "无宿主回执不宣称已发布"],
+      "tool_policy": ["仅使用当前宿主已授权的官方连接器", "无可用连接器则交付可复制素材"],
+      "outputs": ["发布前检查清单", "草稿或发布回执（如真实发生）"],
+      "boundaries": ["不自动发布", "不修改账号设置", "不代替写作专家创作原文"],
+      "escalation": ["缺少授权", "账号不可用", "平台校验失败"],
+      "triggers": ["发布公众号", "保存公众号草稿", "上传公众号封面", "微信发布"],
+      "anti_triggers": ["写公众号文章", "只需公众号排版"],
+      "prompt_compiler": "将定稿和账号边界编译为发布前校验与一次受控写入",
+      "workflow": ["check-final-draft", "validate-media", "check-authorization", "submit-once", "read-back"],
+      "verify": ["title-cover-body", "permission-check", "remote-receipt"],
+      "acceptance": ["发布状态有平台回执", "无授权时只交付素材"],
+      "ponytail_rules": ["可交付复制素材就不启动远端写入"],
+      "white_hat_checks": ["账号和素材版权核对", "重试发送前先读回避免重复"],
+      "failure_states": ["not-authorized", "connector-unavailable", "receipt-missing"],
+      "promotion_evidence": ["平台回执", "草稿回读", "重复写入保护"],
+      "methods": [{
+        "id": "wechat-publication-gate",
+        "sources": ["wechat-publisher"],
+        "signals": ["发布公众号", "保存公众号草稿", "上传公众号封面", "微信发布"],
+        "instruction": "先核对标题、封面、正文和账号权限；仅在明确授权且连接器可用时写一次，超时先读回，不自动重复发布。",
+        "verification": "以平台草稿/发布 ID 和回读状态验收，否则仅报告未发布。"
+      }]
+    }
+  ],
+  "limits": {
+    "max_active_experts": 2,
+    "max_retries": 2,
+    "max_context_bytes": 4096,
+    "max_total_replay_bytes": 9216
+  },
   "evolution": "evidence-gated-only"
 }

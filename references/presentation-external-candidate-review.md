@@ -1,6 +1,6 @@
 # Presentation External Candidate Review
 
-Status: reviewed and distilled on 2026-07-18. Stars are GitHub REST snapshots collected on that date. External projects remain evidence or cold sources unless the local callable slice and behavior probe say otherwise.
+Status: reviewed and distilled on 2026-09-29. Stars are historical GitHub REST snapshots; current source commits are tracked in `sources.lock.json`. External projects remain evidence or cold sources unless the local callable slice and behavior probe say otherwise.
 
 ## Search Evidence
 
@@ -18,7 +18,7 @@ The bounded source branch used the required official -> GitHub -> community orde
 
 | Project | Stars | License | Source and verification evidence | 2.1 decision |
 | --- | ---: | --- | --- | --- |
-| [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | 39,669 | MIT | Local pinned snapshot `fa3161cf7bb1cb858be0cfe694f8f45d3e87d4eb`; `skills/ppt-master/SKILL.md`; `scripts/pptx_intake.py`, `pptx_to_svg.py`, `svg_to_pptx.py`, `pptx_template_import.py`, and `native_enhance_pptx.py`; MIT `LICENSE`. | Retain as internal atoms. Distill intake, template fidelity, SVG/DrawingML conversion, native enhancement, notes/timing/transition boundaries, and visual regression rules. Do not expose its workflow as a user route. |
+| [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | historical snapshot | MIT | Current pinned snapshot is recorded in `sources.lock.json`; `skills/ppt-master/SKILL.md` is version 6.6.0; retained entrypoints include `pptx_intake.py`, `pptx_to_svg.py`, `svg_to_pptx.py`, `pptx_template_import.py`, `pptx_delivery_check.py`, and `native_payloads.py`; MIT `LICENSE`. | Retain as internal atoms. Distill intake, template fidelity, SVG/DrawingML conversion, native delivery checks, notes/timing/transition boundaries, and visual regression rules. Do not expose its workflow as a user route. |
 | [hakimel/reveal.js](https://github.com/hakimel/reveal.js) | 71,961 | MIT | `dist/reveal.js`, `dist/reveal.mjs`, `scripts/test.js`, and HTML/React tests; MIT `LICENSE`. | Reject as a second web runtime. Distill the 16:9 stage, keyboard/deep-link navigation, presenter behavior, and export checks into the existing web-deck contract. |
 | [gitbrent/PptxGenJS](https://github.com/gitbrent/PptxGenJS) | 5,857 | MIT | `src/pptxgen.ts`, `writeFile()` export, `TESTING.md`, browser worker/Vite/Node tests, and MIT `LICENSE`. Official docs returned HTTP 200. | Retain the generator contract only: native slide/text/shape/image/table/chart output and deterministic file export. The local artifact-tool generator is the callable implementation; do not add a parallel dependency. |
 | [scanny/python-pptx](https://github.com/scanny/python-pptx) | 3,453 | MIT | `src/pptx/api.py`, `src/pptx/presentation.py`, `tests/test_api.py`, `tests/test_presentation.py`, and MIT `LICENSE`. | Reject for this fusion: its semantic editing model is useful evidence, but adding a Python runtime is not the smallest compatible JS/TS slice. |
@@ -42,7 +42,7 @@ These are the original or previously retained presentation sources. They remain 
 | --- | --- | --- |
 | `html-ppt-skill` / [lewislulu/html-ppt-skill](https://github.com/lewislulu/html-ppt-skill) | Pinned local audit `f3a8435d3901697d5ac5e64d356c933637e43107`; MIT; themes, templates, animation effects, runtime, and render script. GitHub snapshot was 7,210 stars. | Web-deck visual atoms, template catalog, browser render probe; never a second user-facing route. |
 | `dashi-ppt-skill` / [chuspeeism/dashi-ppt-skill](https://github.com/chuspeeism/dashi-ppt-skill) | Local user Skill and audited upstream are distinct; AGPL upstream is not copied into the repository. | Layout/fillPlan/capacity doctrine only; local adapter is narrow and separately behavior-verified where its probe passes. |
-| `ppt-master` / [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | Pinned MIT source with intake, SVG/DrawingML, template import, native enhancement, and render scripts; 39,669 stars in the snapshot. | Editable-deck conversion, fidelity, enhancement, and regression atoms. |
+| `ppt-master` / [hugohe3/ppt-master](https://github.com/hugohe3/ppt-master) | Pinned MIT source with intake, SVG/DrawingML, template import, native delivery checks, and render scripts; current commit and tree hash are in `sources.lock.json`. | Editable-deck conversion, fidelity, native delivery, and regression atoms. |
 | `huashu-design` / [alchaincyf/huashu-design](https://github.com/alchaincyf/huashu-design) | Pinned source in `sources.lock.json`; complete package retained cold. | HTML-to-PPTX design reasoning, export boundary, and verification atoms. |
 | `humanize-ppt` / [LearnPrompt/humanize-ppt](https://github.com/LearnPrompt/humanize-ppt) | Pinned source and tests in `sources.lock.json`; retained complete and cold. | Narrative planning, audience intent, media slots, and slide-plan QA. |
 | `frontend-slides` / [zarazhangrui/frontend-slides](https://github.com/zarazhangrui/frontend-slides) | Pinned source with MIT license and large template pack. | Web layout/style presets, template catalog inputs, and animation patterns. |

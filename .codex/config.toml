@@ -1,5 +1,6 @@
-model = "gpt-5.6-terra"
-model_reasoning_effort = "xhigh"
+# The host selects the concrete model for the current Codex/ChatGPT account.
+# Legion controls reasoning effort and never forces a model ID here.
+model_reasoning_effort = "medium"
 model_auto_compact_token_limit = 90000
 model_auto_compact_token_limit_scope = "body_after_prefix"
 tool_output_token_limit = 6000

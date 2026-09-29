@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/AI-wuji/wuji-legion-codex-2.0/internal/core"
+	"github.com/AI-wuji/wuji-legion-codex-3.0/internal/core"
 )
 
 // runContextModePrepare is kept separate so main.go only needs to dispatch this helper.

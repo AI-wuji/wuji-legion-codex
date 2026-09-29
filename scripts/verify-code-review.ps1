@@ -7,16 +7,8 @@ if ($sourceMatches.Count -ne 1) { throw 'sources.lock.json must contain exactly 
 $source = & (Join-Path $PSScriptRoot 'expand-wuji-path.ps1') -PathValue $sourceMatches[0].path -Root $root
 if (-not (Test-Path -LiteralPath $source -PathType Container)) { throw "Locked source is missing: open-code-review ($source)" }
 $go = & (Join-Path $PSScriptRoot 'resolve-locked-go.ps1') -Root $root
-$cache = Join-Path $root '.wuji\open-code-review'
-$previousGoCache = $env:GOCACHE
-$previousGoModCache = $env:GOMODCACHE
-$previousGoTmpDir = $env:GOTMPDIR
 $previousGoProxy = $env:GOPROXY
-$env:GOCACHE = Join-Path $cache 'build'
-$env:GOMODCACHE = Join-Path $cache 'modules'
-$env:GOTMPDIR = Join-Path $cache 'tmp'
 $env:GOPROXY = if ($env:GOPROXY) { $env:GOPROXY } else { 'https://goproxy.cn,direct' }
-New-Item -ItemType Directory -Force $env:GOCACHE,$env:GOMODCACHE,$env:GOTMPDIR | Out-Null
 $out = Join-Path $env:TEMP ('opencodereview-' + [guid]::NewGuid().ToString('N') + '.exe')
 Push-Location $source
 try {
@@ -28,8 +20,5 @@ try {
 } finally {
   Pop-Location
   Remove-Item -LiteralPath $out -Force -ErrorAction SilentlyContinue
-  $env:GOCACHE = $previousGoCache
-  $env:GOMODCACHE = $previousGoModCache
-  $env:GOTMPDIR = $previousGoTmpDir
   $env:GOPROXY = $previousGoProxy
 }

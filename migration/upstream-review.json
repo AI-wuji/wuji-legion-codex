@@ -1,21 +1,21 @@
 {
   "version": "2.0",
-  "checked_at": "2026-07-12",
+  "checked_at": "2026-09-29",
   "rule": "Review the current upstream before deciding whether to update, distill, exclude, or implement. A newer HEAD is not automatic admission.",
   "entries": [
     {
       "source": "ppt-master",
-      "locked": "8abb484e1826e59b0b9398f5dc8ec4c5b1bb73fa",
-      "reviewed_head": "fa3161cf7bb1cb858be0cfe694f8f45d3e87d4eb",
-      "ahead_by": 385,
+      "locked": "680de11f1bef4628b68d5daad9dffec569fbd51f",
+      "reviewed_head": "680de11f1bef4628b68d5daad9dffec569fbd51f",
+      "ahead_by": 0,
       "decision": "update",
       "reason": "The changes contain substantial PPTX fidelity, native object reconstruction, layout-contract, UTF-8, and first-page quality-gate fixes that directly improve the retained editable-deck capability."
     },
     {
       "source": "huashu-design",
-      "locked": "3f410cf9b4394bc57855cb9d1b8786c98d09fd5c",
-      "reviewed_head": "0e7ec8aca0058184c1a9e06e57697e84f68a3f0f",
-      "ahead_by": 25,
+      "locked": "0830494ecb1c117e25b313a8114fe55a6bf2b125",
+      "reviewed_head": "0830494ecb1c117e25b313a8114fe55a6bf2b125",
+      "ahead_by": 0,
       "decision": "update-and-distill",
       "reason": "Retain the complete cold package, but expose only its newer design-reasoning and execution-guard behavior through the 2.0 presentation and visual scenarios."
     },
@@ -29,9 +29,9 @@
     },
     {
       "source": "open-design",
-      "locked": "9a3424d68c342e6392ab4c9f4722d2b535707787",
-      "reviewed_head": "4567a0d57557b29eb79ef1f7a40826f2b801d982",
-      "ahead_by": 1004,
+      "locked": "5b19dfa4351b3eed33826ee72746a7c653c23a54",
+      "reviewed_head": "5b19dfa4351b3eed33826ee72746a7c653c23a54",
+      "ahead_by": 0,
       "decision": "exclude-new-runtime",
       "reason": "The new upstream is an independent daemon, authentication, provider, library, and agent platform. Importing it would recreate a second host and control surface; the previously bounded taste evidence remains optional until separately re-evaluated."
     }

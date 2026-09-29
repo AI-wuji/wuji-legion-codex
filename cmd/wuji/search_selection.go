@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/AI-wuji/wuji-legion-codex-2.0/internal/core"
+	"github.com/AI-wuji/wuji-legion-codex-3.0/internal/core"
 )
 
 const searchSelectionMaxInputBytes = 256 * 1024

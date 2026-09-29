@@ -18,8 +18,8 @@ if (-not (Test-Path -LiteralPath $result.artifact_path -PathType Leaf)) { throw 
 $routeRaw = & $wuji route --query $query --context-artifact $result.artifact_path
 if ($LASTEXITCODE -ne 0) { throw 'route rejected the generated context artifact' }
 $route = $routeRaw | ConvertFrom-Json
-if (@($route.workers).Count -ne 1 -or $route.workers[0].model -ne 'gpt-5.6-terra') {
-  throw 'verified compact context did not unlock one Terra implementation worker'
+if (@($route.workers).Count -ne 1 -or $route.workers[0].model -ne 'host-selected' -or $route.workers[0].reasoning_effort -ne 'medium') {
+  throw 'verified compact context did not unlock one host-selected medium implementation worker'
 }
 if ($route.workers[0].context_handles[0] -ne $result.context_handle -or $route.workers[0].allocated_context_bytes -ne $result.selected_bytes) {
   throw 'route did not preserve the verified context handoff'

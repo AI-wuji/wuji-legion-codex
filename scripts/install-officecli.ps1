@@ -11,7 +11,7 @@ $scratch = Join-Path $env:TEMP ('wuji-officecli-install-' + [guid]::NewGuid().To
 New-Item -ItemType Directory -Force -Path $scratch | Out-Null
 try {
   $download = Join-Path $scratch $spec.binary
-  Invoke-WebRequest -Headers @{ 'User-Agent' = 'Wuji-2.0' } -Uri $spec.url -OutFile $download
+  Invoke-WebRequest -Headers @{ 'User-Agent' = 'Wuji-3.0' } -Uri $spec.url -OutFile $download
   $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $download).Hash.ToLowerInvariant()
   if ($actual -ne $spec.sha256.ToLowerInvariant()) { throw "OfficeCLI checksum mismatch: expected $($spec.sha256), got $actual" }
   $target = [IO.Path]::GetFullPath($Destination)
