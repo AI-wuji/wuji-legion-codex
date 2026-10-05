@@ -1,0 +1,117 @@
+# 4.0 执行进度
+
+日期：2026-10-05。活动计划仍为 v1.7，核心入口现已按用户最新要求接入并验证；下方旧阶段记录保留历史，不覆盖本页末尾最新状态。核心入口先用、专业能力按真实任务扩展；95项完整验收账不删减，但不再作为基础入口的前置门。
+
+| 阶段 | 状态 | 证据与下一门 |
+|---|---|---|
+| P0 来源与宿主 | G0来源/设计输入门通过 | 96必需记录hash未变，128候选字段出处齐全，104当前使用逐项说明；45不明身份来源不导入，外部真实工具门仍未通过 |
+| P1 设计冻结 | G1通过，baseline-1.1 | 72需求/95验收/57职责/128候选映射、30公共契约、职责/写权及13组设计推演已冻结；只证明设计 |
+| P2 核心实现 | G2局部门通过，宿主能力仍unknown | 全新Rust/SQLite核心、u真实engineering→validation→acceptance闭环通过；effective model/effort/quota/fee仍unknown |
+| P3 专家与负责人 | G3通过，目录保持cold | 57职责、69原子组装、composition manifest已写；runtime_admission=false、formal_model_experts=0 |
+| P4 工具与专业工作流 | G4 blocked | 本地软件研发、ComfyUI 图像和 ffmpeg 视频技术探针已验证；OfficeCLI/音频专业链和专业 holdout 仍缺 |
+| P5 经验与进化 | G5局部通过 | Rust治理核心与4项回归通过；无后台学习服务、常驻模型或跨scope双写 |
+| P6 全量复查与包 | 完整验收未通过 | 当前审计 `passed=false`；全量专业验收仍有缺口，不能宣称95项通过 |
+| P7 Codex部署 | 核心入口已接入；完整能力部署未完成 | 全局规则在项目外新对话验证；4.0 Skill已安装且与3.0共存；`config.toml` 未由本次改动修改 |
+
+## 2026-10-03 最新连续执行状态
+
+- G2 的最新权威证据是 `outputs/p2/native-real-execution-report-2026-10-03.json`：u 工作区的 producer/reviewer 独立线程、artifact/hash、关闭和进程退出均对账，`accept-native` 已 accepted。此门只覆盖 P2 有界任务，不把宿主有效模型、档位、配额、费用或专业效果未知改成已知。
+- P3/G3 已完成结构化冷目录；P4/G4 已有本地软件研发、ComfyUI 图像和 ffmpeg 视频技术探针，OfficeCLI、音频链及专业效果仍保持 blocked。
+- P5/G5 已完成确定性治理核心；P6 已生成 `outputs/p6/full-audit-report.json`、`outputs/p6/release-manifest.json` 和 `outputs/p6/wuji-legion-4.0-p6-package.zip`。
+- G6 当前不通过：95 项验收矩阵仍为 `not_run`，专业 holdout 与真实媒体/工具条件不足。P7、Codex 配置、插件、凭据、音频设备和用户资料均未修改。
+
+## 已实际完成
+
+- 独立创建 `E:/wuji-projects/wuji-legion-codex-4.0`，全新审计工具、设计和Rust产品均在本目录；原实现、模板、配置、数据库和测试未复制。
+- 清点COURSE/WB-SOURCE/RESEARCH/FOREIGN/YUELAN/E-SKILLS；保留原路径、内容hash与延期hash原因，不把镜像当新增专业能力。
+- 安全核对用户提供ZIP：27成员与对应源文件内容一致，未执行、未解包写回原资料。
+- 已完整读取课程附件473行、课程缓存2761行、WorkBuddy11角色及相关评测、FOREIGN全部58个SKILL.md入口及17份独有技术文本（其中ComfyUI排障上轮完成）；初始登记94项文本全部读完。hash、范围和具体取舍见 `outputs/p0/source-coverage.json`。入口全文不等于包中脚本/引用/图像已读，不称全量蒸馏已完成。
+- 只读核对宿主版本、白名单配置字段及命令帮助；凭据、私有URL、developer正文不写入报告。
+- 新写审计工具47项测试通过，包括路径/ZIP/哈希/镜像差异、阅读缺口/变更失效、必要引用注册保留、配置敏感值不导出、PDF抽取/页范围/变更失效；运行证据见 `outputs/p0/audit-tests.json`。不是军团95项场景已通过。
+- 四份悦蓝文旅PDF已原生抽取（62/53/58/47页）；首份62页已有逐页视觉阅读证据。第二份53页已渲染和目检，但未成功保存逐页确认，不在机器覆盖账中计已读。后续不再重复逐页读取这些美化资料；按最新授权使用已有总结、备注逐字稿及必要的原版定点对照。未上传资料、安装OCR模型或改音频设备。
+- WorkBuddy `deep_悦蓝教案.md` 256行及 `deep_悦蓝成片与声音.md` 339行已完整读完，登记hash/阅读范围/取舍；用于4.0方法理解，不冒称底层全部原文已读。已定位L2“我做的”和“别人的/原版”目录；未声称全目录备注已读。
+
+## 接续顺序
+
+2026-10-03用户追加统一原则：先搜索已有实践及验证结果，只有决定性证据缺口才自行验证。已更新AGENTS并保存ADR001与公开先例研究报告；Temporal Core/Codex/Goose/Restate等作为架构依据，Go/Python路线作为反向证据。取消默认本地语言/性能/协议实验；未运行实验或安装，未把外部实践记作4.0已执行。原选型报告已修订，历史待批状态已由用户“先修订1.5再执行”替代：v1.6正式采用Rust小核心，不再重复征求语言批准。
+
+2026-10-03用户追加要求：先分析3.0再提出语言和融合兼容性方案。已保存 `docs/language-and-integration-proposal-2026-10-03.md` 及配套只读证据JSON；优先评估Rust小核心，但没有构建/性能对照或兼容性通过证据，该历史提案已纳入v1.6，原v1.5 Go路线被替代。未安装Rust/MSVC、未写核心、未修改3.0。语言决定已记录；依赖准入与G0/G1仍须闭合。
+
+1. 已有总结用于资料理解；L2自制资料只在必要时补读备注逐字稿，非自制资料定点对照原版。不重新展开全部原文/美化版/媒体通读。
+2. 完成104历史来源的逐项采用类型/拒绝或阻断理由；只对拟采用的技术核一手版本、许可证与必要执行资产。
+3. 完成57职责去向与128原子候选的出处/单责任/差异/消费者对账；补齐原子证据与语义重叠账，不批量造正式专家。
+4. Rust1.99.0、rusqlite0.40.2、libsqlite3-sys0.38.2与SQLite3.53.4精确上游候选已登记；发现最新包装器仍内置3.53.2，因此改评上游支持的隔离静态链接，不盲用旧引擎。已有MSVC/SDK定点定位，未安装/编译；SQLite候选的8包依赖闭包已由隔离的官方Cargo解析并保存审计锁，八份MIT许可全文已核；不等于根Cargo.lock或运行编译。实际有效模型/档位仍未完成。详见 `docs/p0-rust-sqlite-source-review-2026-10-03.md`。
+5. G0通过后立即进入P1冻结契约、图谱、工作流、写权与测试映射，再推进P2核心实现至P6；P7仍单独授权。
+
+首批交付不是“全部完成”。用户最新持续目标为P0—P6、复查修复优化重验、保存产物并交付报告，不再包含关机；不要求用户逐轮继续。该目标不是4.0运行中的常驻模型/服务，也不能代替真实阶段证据。
+
+## v1.6修订初期的历史观察（非当前状态）
+
+- 完整v1.6已登记唯一版本/hash；72需求、95验收、57职责、104来源、128候选、48主题均保留，原v1.5内容hash未变。
+- 96项既有阅读记录未清空；38个候选已补字段级方法出处与差异，仍有90个待补，全部保持未准入/未实现。未重新通读美化课件。
+- 五个明确技术来源已有上游发布/commit/许可元数据快照；Trivy官方历史安全通告作为反证保存，不把metadata或最新版当运行安全证明。
+- Rust/Cargo工具与缓存仅在项目.dev中隔离；SQLite候选8包闭包/许可已核。审计空lib不含军团代码，未执行cargo build/test、模型生成或收费动作。
+- 安装态只读差异和P7恢复边界已保存；没有改当前Codex、插件、音频设备、原项目或用户文件。
+- 修订执行初期G0/G1均未通过；此历史观察不覆盖下述最新阶段审查。辅助测试47项通过不算95项军团运行验收。
+
+## 当前接续审查
+
+- G0来源与宿主设计输入门已通过，权威状态见 `docs/phase-gates.json`，逐项审查见 `outputs/p0/g0-review-2026-10-03.json`。这不代表104上游都已读、原子已准入、专业工作流可交付或运行系统已编写。
+- 128候选字段出处已补齐，原38项保留，90项新增有人工声明和原始/总结/用户规范的分型；所用15本地方法源及全部96必需阅读源hash均未变。
+- 104历史意图仍为34拒绝/56蒸馏候选/12工具候选/2资产定位；当前45不明身份项明确不导入，不能拿同名搜索结果擅自激活。18补充类候选已入统一来源账并关联模块/原子/验收。
+- JSON/SHA2依赖加入官方Cargo审计锁，29个registry包（Windows可达28）归档摘要已核；MIT选项与Unicode-3.0额外义务完整核对。随后由官方Cargo独立生成根产品锁并实际执行选定构建入口；候选锁与产品锁不混同。
+- developer字段11个语义组已审，覆盖43非空行hash；只临时脱敏阅读，没有原配置/正文副本或生产修改。真实模型/档位、并发/释放仍unknown，G2不得用配置或mock替代。
+- G1已完成设计审查并冻结baseline-1.1；原baseline-1保留，schema别名/哈希域修订有独立delta，不静默更改。来源收束报告见 `docs/p0-source-reconciliation-2026-10-03.md`。
+
+## 当前产品证据与接续
+
+- 全新Rust产品已实际链接项目隔离SQLite3.53.4；根Cargo.lock由官方Cargo离线生成，未复制旧实现或审计锁。CLI的check/hash/init/status/plan/recover/host-status可运行；不是可安装生产版。
+- 本次接续开始时40项Rust产品测试通过，另9项P1审计工具测试、1001项结构检查通过。原47项P0辅助测试是独立历史结果。当前结果以 `outputs/p2/core-build-review.json` 和最新测试日志为准，任何局部测试都不等于95项完整运行验收全部通过。
+- 只有固定本地UTF-8文件处理器及3项程序验收准入；冷候选全部runtime_admission=false，正式模型专家0、原生代理0、生产安装0。
+- 已补输入注册/采用、完整下游持久失效、图修订CAS与不可变原锁、unknown查询/上下文检查点；独立OS进程竞争、并行文件及强中断测试已运行。冷候选检索/brief-overview-source投影已实现但runtime_admission=false。此前61项Rust/9项CLI为历史结果；当前70项Rust/13项CLI通过，新增部分是G2最小职责与不派发原生请求准备，不是模型执行。报告见docs/p2-local-core-implementation-2026-10-03.md及docs/p2-native-preparation-2026-10-03.md。
+- 实际有效模型/三档、原生额度及免费前置仍unknown；不得由配置、网页、mock、test_local或CLI帮助补齐。已批准持续建设不授权付费、擅自换模或P7安装。Q/R两组真实隔离会话已分别观察到匹配thread/closed与owned process exit，但这只证明生命周期事实，不证明backend effective model/effort、额度或计费。
+
+## G2最小职责与原生准备增量（历史阶段记录）
+
+以下内容记录 Q/R 阶段的历史审查结果；当前权威状态以本文前部、docs/phase-gates.json 和 outputs/p6/full-audit-report.json 为准，不能据此覆盖后续 u 任务已通过的有界验收。
+
+2026-10-03继续按v1.6推进：新写两个工程/独立评审候选与prepare-native只准备接口；五要素、反触发、专业IO、required检查、取消/失败和精确字段方法出处齐全。已按官方资料与本机0.160.0schema核thread/start及turn/start的model/effort形状；独立Process环境纯导出，不复制当前配置或凭据。
+
+当前98项Rust、5项native-task-driver、23项NativeSession与6项DAG测试通过，cargo build通过；20份冻结文件hash未变。完整95场景执行/通过仍0；两个prepared候选不是正式模型专家。schema的ReasoningEffort只要求非空字符串，不能证明medium/high/xhigh支持；首次假设错误与修正成功日志分开保存。
+
+本次有实质建设进展；持续目标仍active，不标完工。Q/R的engineering与validation都真实落盘并关闭，但R的独立评审明确给出`engineering.behavior-current=false`、`engineering.regression-current=false`、`validation.behavior-current=false`、`validation.regression-evidence=false`，`accept-native`按规则返回`ValidationStale`；这是当时 Q/R 阶段的真实结果，不是当前 G2 权威状态。完整报告见`outputs/p2/native-real-execution-report-2026-10-03.json`，执行记录见`docs/p2-native-execution-2026-10-03.md`；后续 u 任务已在本文前部记录为有界验收通过。当前Codex配置仍未修改。
+
+## G2真实隔离执行与验收增量
+
+- 已修复并重验五个根因：剥离并记录非权威`transport_provenance`、消除NativeSession重复start、接受并校验实际事件`emittedAtMs`、允许validation准备阶段保留已完成上游输出、按消息ID去重避免模型产物重复拼接。
+- Q/R两组新工作区各完成engineering与validation；每个节点均有独立thread/start、turn/start、turn/completed、thread/closed及owned process exit，producer/reviewer线程不同，产物hash与SQLite绑定一致。
+- Q的旧驱动输出含重复JSON/函数，R在去重修复后产物为单份Python源文件；R reviewer仍拒绝缺少可验证行为与回归证据，系统没有把模型文字或总分转成通过。
+- L/M/N/P的未知尝试全部保留unknown且不重派；Q/R槽位均有匹配关闭证据。有效模型、effective effort、native quota、fee/billing attestation仍保持unknown。
+
+## 2026-10-04 连续建设检查点
+
+真实状态见docs/continuation-report-2026-10-04.md；Rust 170、Python 197；G6 20/92通过，3项G7后置。仍有内部未完工作，不将其全部包装成外部阻断。OfficeCLI已找到并完成有界实测。历史配置差异操作者unknown，本轮前后未变；P7/关机均不执行。
+
+## 2026-10-05 连续建设检查点
+
+真实状态见docs/continuation-report-2026-10-04.md；Rust 172、Python 257；G6 22/92通过，3项G7后置。仍有内部未完工作，不将其全部包装成外部阻断。OfficeCLI已找到并完成有界实测。历史配置差异操作者unknown，本轮前后未变；P7和最后正常关机已获条件授权，当前未达条件所以均未执行，详情见docs/goal-execution-boundaries-2026-10-05.md。
+
+## 2026-10-05 核心收尾检查点
+
+4.0核心入口已装备，3.0运行挂载已撤销；本轮Rust 172、Python 257（跳过1）回归通过，G6 22/92，另3项G7保留。MCP和专业应用按真实任务延后，不预检、不扩建；本轮未修改Codex保护配置，不关机。
+
+## 2026-10-05 核心收尾检查点
+
+4.0核心入口已装备，3.0运行挂载已撤销；本轮Rust 172、Python 257（跳过1）回归通过，G6 22/92，另3项G7保留。MCP和专业应用按真实任务延后，不预检、不扩建；本轮未修改Codex保护配置，不关机。
+
+## 2026-10-05 核心收尾检查点
+
+4.0核心入口已装备，3.0运行挂载已撤销；本轮Rust 172、Python 257（跳过1）回归通过，G6 22/92，另3项G7保留。MCP和专业应用按真实任务延后，不预检、不扩建；本轮未修改Codex保护配置，不关机。
+
+## 2026-10-05 核心收尾检查点
+
+4.0核心入口已装备，3.0运行挂载已撤销；本轮Rust 172、Python 258（跳过1）回归通过，G6 22/92，另3项G7保留。MCP和专业应用按真实任务延后，不预检、不扩建；本轮未修改Codex保护配置，不关机。
+
+## 2026-10-05 核心收尾检查点
+
+4.0核心入口已装备，3.0运行挂载已撤销；本轮Rust 172、Python 258（跳过1）回归通过，G6 22/92，另3项G7保留。MCP和专业应用按真实任务延后，不预检、不扩建；本轮未修改Codex保护配置，不关机。
