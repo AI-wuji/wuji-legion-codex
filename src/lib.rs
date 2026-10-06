@@ -22,6 +22,7 @@ pub mod native_protocol;
 pub mod native_wire;
 pub mod native_execution;
 mod local_state;
+mod local_identity;
 mod revisions;
 mod checkpoint;
 pub mod strict_json;

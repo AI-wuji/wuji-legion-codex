@@ -14,6 +14,10 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "outputs/p6/release-manifest.json"
 PACKAGE_PATH = ROOT / "outputs/p6/wuji-legion-4.0-p6-package.zip"
 STAGING_PATH = ROOT / "release/p6"
+SOURCE_PATH_MIGRATIONS = {
+    "docs/design-deltas/026-budget-semantics-and-gpt-6.1-sol-context-correction-2026-10-06.md":
+        "docs/design-deltas/026-budget-semantics-and-gpt-6.1-sol-context-correction-2026-10-05.md",
+}
 
 
 def sha256(path: Path) -> str:
@@ -25,7 +29,20 @@ def sha256(path: Path) -> str:
 
 
 def retained_manifest_entries(previous: dict) -> list[dict[str, object]]:
-    return [entry for entry in previous["files"] if entry["path"].casefold() not in EXTERNAL_ARCHIVE_ATTESTATIONS]
+    retained = []
+    paths = {}
+    for entry in previous["files"]:
+        if entry["path"].casefold() in EXTERNAL_ARCHIVE_ATTESTATIONS:
+            continue
+        current_path = SOURCE_PATH_MIGRATIONS.get(entry["path"], entry["path"])
+        if current_path in paths:
+            previous_path = paths[current_path]
+            if previous_path != entry["path"] and (previous_path in SOURCE_PATH_MIGRATIONS or entry["path"] in SOURCE_PATH_MIGRATIONS):
+                continue
+            raise ValueError("Duplicate retained package source path")
+        paths[current_path] = entry["path"]
+        retained.append(dict(entry, path=current_path))
+    return retained
 
 
 def manifest_files() -> list[dict[str, object]]:
@@ -52,6 +69,13 @@ def manifest_files() -> list[dict[str, object]]:
         "outputs/p6/acceptance-execution.json",
         "outputs/p6/rust-full-tests.log",
         "outputs/p6/python-tool-tests.log",
+        "outputs/p6/continuation-2026-10-06/core-completion-execution.json",
+        "outputs/p6/continuation-2026-10-06/core-completion-rust.log",
+        "outputs/p6/continuation-2026-10-06/core-completion-python.log",
+        "outputs/p6/continuation-2026-10-06/remaining-48-execution.json",
+        "outputs/p6/continuation-2026-10-06/failed-missing-artifact-repair/core-completion-execution.json",
+        "outputs/p6/continuation-2026-10-06/failed-missing-artifact-repair/core-completion-rust.log",
+        "outputs/p6/continuation-2026-10-06/failed-missing-artifact-repair/core-completion-python.log",
         "outputs/p6/continuation-2026-10-04/parallel-workers-report.json",
         "outputs/p4/tool-discovery-2026-10-04.json",
         "outputs/p4/officecli-probe-evidence.json",
@@ -166,6 +190,7 @@ def base_manifest(files: list[dict[str, object]]) -> dict[str, object]:
         "install_authorized": False,
         "production_modified": False,
         "external_archive_attestations": sorted(EXTERNAL_ARCHIVE_ATTESTATIONS),
+        "source_path_migrations": SOURCE_PATH_MIGRATIONS,
         "p7": False,
         "limitations": [
             "G4 incomplete: some professional adapters/holdouts remain unimplemented; specific external limits are separately recorded",

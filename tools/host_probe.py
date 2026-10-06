@@ -10,7 +10,7 @@ import tomllib
 
 from preflight import ROOT, stamp, write_json
 
-CONFIG = Path.home() / ".codex" / "config.toml"
+CONFIG = Path("C:/Users/Administrator/.codex/config.toml")
 
 
 def cli_metadata(path: str, args: list[str]) -> dict:

@@ -103,6 +103,7 @@ pub(crate) fn current_resource(connection: &Connection, workspace: &Workspace, s
 pub(crate) fn current_resource_resolved(connection: &Connection, workspace: &Workspace, scope: &str,
     kind: ResourceKind, envelope: &Value, now: i64,
     resolve: &mut impl FnMut(&ExactRef) -> Result<Option<Value>>) -> Result<()> {
+    crate::local_identity::require(connection,workspace,scope)?;
     let last_clock: i64 = connection.query_row("SELECT last_clock_ms FROM workspace_meta WHERE singleton=1",[],|row|row.get(0))?;
     if now < last_clock { return Err(Error::new(ErrorKind::ClockUntrusted,"resource query clock moved backwards")); }
     let payload = &envelope["payload"];
@@ -140,6 +141,7 @@ pub(crate) fn current_resource_resolved(connection: &Connection, workspace: &Wor
             let knowledge = match resolve(&reference)? {
                 Some(knowledge) => knowledge,
                 None => {
+                    require_record_scope(connection,ResourceKind::Knowledge,&reference.id,scope)?;
                     resource_write_authority(connection,ResourceKind::Knowledge,&reference.id)?;
                     let stored: Option<(String,String)> = connection.query_row(
                         "SELECT envelope_json,content_hash FROM knowledge_records WHERE id=?1 AND revision=?2 AND scope=?3 AND state='active_local'",
@@ -185,6 +187,13 @@ pub(crate) fn valid_event(event: &str) -> Result<()> {
     Ok(())
 }
 
+pub(crate) fn require_record_scope(connection: &Connection, kind: ResourceKind, id: &str, scope: &str) -> Result<()> {
+    let mismatch: bool = connection.query_row(&format!("SELECT EXISTS(SELECT 1 FROM {} WHERE id=?1 AND scope<>?2)",kind.table()),
+        params![id,scope], |row| row.get(0))?;
+    if mismatch { return Err(Error::new(ErrorKind::ScopeDenied,"resource identity has a version in another scope")); }
+    Ok(())
+}
+
 pub(crate) fn resource_write_authority(connection: &Connection, kind: ResourceKind, id: &str) -> Result<()> {
     let frozen: bool = connection.query_row("SELECT EXISTS(SELECT 1 FROM resource_transfers WHERE kind=?1 AND resource_id=?2)",params![kind.contract(),id],|row|row.get(0))?;
     if frozen { return Err(Error::new(ErrorKind::ValidationStale,"resource ownership is frozen for transfer or moved to a read-only shared reference")); }
@@ -211,6 +220,11 @@ impl Store {
         let reference = exact(envelope, kind)?;
         let operation = strict_json::digest(&json!({"kind":kind.contract(),"envelope":envelope,"expected_revision":expected_revision}))?;
         let transaction = self.connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        crate::local_identity::require(&transaction,&self.workspace,&self.scope)?;
+        if reference.scope != self.scope || envelope["payload"]["scope"] != self.scope {
+            return Err(Error::new(ErrorKind::ScopeDenied,"proposal belongs to another resource scope"));
+        }
+        require_record_scope(&transaction,kind,&reference.id,&self.scope)?;
         if let Some(result) = replay(&transaction, event, &operation)? { return Ok(result); }
         resource_write_authority(&transaction,kind,&reference.id)?;
         let now = wall_clock()?;
@@ -240,13 +254,15 @@ impl Store {
         }
         let operation = strict_json::digest(&json!({"operation":"local-isolated-review","reference":reference}))?;
         let transaction = self.connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        crate::local_identity::require(&transaction,&self.workspace,&self.scope)?;
+        require_record_scope(&transaction,kind,&reference.id,&self.scope)?;
         if let Some(result) = replay(&transaction, event, &operation)? { return Ok(result); }
         resource_write_authority(&transaction,kind,&reference.id)?;
         let now = wall_clock()?;
         check_clock(&transaction, now)?;
         let stored: Option<(String,String,String)> = transaction.query_row(
-            &format!("SELECT envelope_json,content_hash,state FROM {} WHERE id=?1 AND revision=?2",kind.table()),
-            params![reference.id,sql_revision(reference.revision)?], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?))).optional()?;
+            &format!("SELECT envelope_json,content_hash,state FROM {} WHERE id=?1 AND revision=?2 AND scope=?3",kind.table()),
+            params![reference.id,sql_revision(reference.revision)?,self.scope], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?))).optional()?;
         let (text,hash,state) = stored.ok_or_else(|| Error::new(ErrorKind::Reference,"resource candidate not recorded"))?;
         if hash != reference.sha256 || strict_json::object_digest(&strict_json::parse(text.as_bytes())?)? != hash {
             return Err(Error::new(ErrorKind::HashMismatch,"resource candidate hash differs from reviewed reference"));
@@ -258,8 +274,8 @@ impl Store {
             [&reference.id], |row| row.get(0))?;
         if latest != sql_revision(reference.revision)? { return Err(Error::new(ErrorKind::RevisionConflict,"a newer candidate exists")); }
         current_resource(&transaction, &self.workspace, &self.scope, kind, &strict_json::parse(text.as_bytes())?, now)?;
-        transaction.execute(&format!("UPDATE {} SET state='superseded' WHERE id=?1 AND state='active_local'",kind.table()), [&reference.id])?;
-        transaction.execute(&format!("UPDATE {} SET state='active_local' WHERE id=?1 AND revision=?2",kind.table()), params![reference.id,sql_revision(reference.revision)?])?;
+        transaction.execute(&format!("UPDATE {} SET state='superseded' WHERE id=?1 AND scope=?2 AND state='active_local'",kind.table()), params![reference.id,self.scope])?;
+        transaction.execute(&format!("UPDATE {} SET state='active_local' WHERE id=?1 AND revision=?2 AND scope=?3",kind.table()), params![reference.id,sql_revision(reference.revision)?,self.scope])?;
         let result = json!({"reference":reference,"state":"active_local","authority":"isolated-development-review", "runtime_admission":false,"professional_effectiveness":"not_claimed","global_admission":false,"observation_kind":"historical_transaction_result_not_current_eligibility"});
         record_event(&transaction,event,&operation,&result)?;
         transaction.commit()?;
@@ -269,16 +285,18 @@ impl Store {
     pub fn retire_resource(&mut self, kind: ResourceKind, reference: &ExactRef, event: &str) -> Result<Value> {
         valid_event(event)?;
         Schemas::frozen()?.check_definition("ExactRef", &serde_json::to_value(reference)?)?;
-        if reference.scope != self.scope || reference.r#type != kind.contract() || reference.release != RESOURCE_RELEASE {
+        if reference.scope != self.scope || reference.r#type != kind.contract() || reference.release != RESOURCE_RELEASE || reference.schema_version != 1 {
             return Err(Error::new(ErrorKind::ScopeDenied,"retirement is limited to the exact same-scope resource"));
         }
         let operation = strict_json::digest(&json!({"operation":"retire","reference":reference}))?;
         let transaction = self.connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        crate::local_identity::require(&transaction,&self.workspace,&self.scope)?;
+        require_record_scope(&transaction,kind,&reference.id,&self.scope)?;
         if let Some(result) = replay(&transaction,event,&operation)? { return Ok(result); }
         resource_write_authority(&transaction,kind,&reference.id)?;
         check_clock(&transaction,wall_clock()?)?;
-        let changed = transaction.execute(&format!("UPDATE {} SET state='retired' WHERE id=?1 AND revision=?2 AND content_hash=?3 AND state IN ('candidate','active_local')",kind.table()),
-            params![reference.id,sql_revision(reference.revision)?,reference.sha256])?;
+        let changed = transaction.execute(&format!("UPDATE {} SET state='retired' WHERE id=?1 AND revision=?2 AND content_hash=?3 AND scope=?4 AND state IN ('candidate','active_local')",kind.table()),
+            params![reference.id,sql_revision(reference.revision)?,reference.sha256,self.scope])?;
         if changed != 1 { return Err(Error::new(ErrorKind::RevisionConflict,"resource already changed, missing or retired")); }
         let result = json!({"reference":reference,"state":"retired","scope":self.scope});
         record_event(&transaction,event,&operation,&result)?;
@@ -290,18 +308,27 @@ impl Store {
         if cap == 0 || cap > 64 || trigger.len() > 1024 {
             return Err(Error::new(ErrorKind::BudgetExhausted,"resource query requires cap 1..64 and bounded exact trigger"));
         }
-        let mut statement = self.connection.prepare(&format!("SELECT envelope_json,content_hash FROM {} WHERE scope=?1 AND state='active_local' AND NOT EXISTS(SELECT 1 FROM resource_transfers WHERE kind=?2 AND resource_id=id) ORDER BY id LIMIT 513",kind.table()))?;
-        let rows: Vec<(String,String)> = statement.query_map(params![self.scope,kind.contract()], |row| Ok((row.get(0)?,row.get(1)?)))?.collect::<std::result::Result<_,_>>()?;
+        let transaction = self.connection.unchecked_transaction()?;
+        crate::local_identity::require(&transaction,&self.workspace,&self.scope)?;
+        let mut statement = transaction.prepare(&format!("SELECT id,revision,envelope_json,content_hash FROM {} WHERE scope=?1 AND state='active_local' AND NOT EXISTS(SELECT 1 FROM resource_transfers WHERE kind=?2 AND resource_id=id) ORDER BY id LIMIT 513",kind.table()))?;
+        let rows: Vec<(String,i64,String,String)> = statement.query_map(params![self.scope,kind.contract()], |row| Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?)))?.collect::<std::result::Result<_,_>>()?;
         if rows.len() > 512 { return Err(Error::new(ErrorKind::BudgetExhausted,"resource scan cap exceeded; narrow scope")); }
         let now = wall_clock()?;
         let mut entries = Vec::new();
         let mut rejected = Vec::new();
-        for (text,hash) in rows {
+        for (id,revision,text,hash) in rows {
+            require_record_scope(&transaction,kind,&id,&self.scope)?;
             let envelope = strict_json::parse(text.as_bytes())?;
             let reference = exact(&envelope,kind)?;
+            if reference.scope != self.scope || envelope["payload"]["scope"] != self.scope {
+                return Err(Error::new(ErrorKind::ScopeDenied,"stored resource envelope belongs to another scope"));
+            }
+            if reference.id != id || sql_revision(reference.revision)? != revision {
+                return Err(Error::new(ErrorKind::HashMismatch,"stored resource row differs from its envelope identity"));
+            }
             if reference.sha256 != hash { return Err(Error::new(ErrorKind::HashMismatch,"stored resource changed")); }
             if kind == ResourceKind::Experience && !trigger.is_empty() && envelope["payload"]["trigger"] != trigger { continue; }
-            match current_resource(&self.connection,&self.workspace,&self.scope,kind,&envelope,now) {
+            match current_resource(&transaction,&self.workspace,&self.scope,kind,&envelope,now) {
                 Ok(()) => entries.push(json!({"reference":reference,"envelope":envelope})),
                 Err(error) if matches!(error.kind, ErrorKind::ValidationStale | ErrorKind::Reference | ErrorKind::HashMismatch | ErrorKind::PathDenied | ErrorKind::Io) =>
                     rejected.push(json!({"reference":reference,"reason":format!("{:?}",error.kind)})),

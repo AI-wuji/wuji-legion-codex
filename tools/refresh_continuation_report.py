@@ -3,8 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import json
 from pathlib import Path
+import argparse
+import hashlib
 
-from p6_acceptance import ROOT, SEMANTIC_PYTHON_CASES, SUPPORTING_PYTHON_CASES, digest
+from p6_acceptance import ROOT, SEMANTIC_PYTHON_CASES, SUPPORTING_PYTHON_CASES, digest, evaluate
+from p6_package_validation import confined_path, strict_json
 from execution_baseline import load_active
 
 
@@ -14,12 +17,109 @@ def write_json(relative: str, value: dict) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def core_closeout_state(acceptance: dict, deployment: dict) -> dict:
+    states = {row["id"]: row["status"] for row in acceptance.get("matrix", [])}
+    remaining = [identifier for identifier in ("T19", "T22")
+                 if acceptance.get("evidence_valid") is not True or states.get(identifier) != "passed"]
+    entry = deployment.get("entry", {})
+    skill = entry.get("core_skill_observation", {})
+    agents = entry.get("global_agents_observation", {})
+    if skill.get("installed") is not True or skill.get("state") != "source_match":
+        remaining.append("current_core_skill_source_match")
+    if agents.get("default_entry_rule_present") is not True or agents.get("white_hat_rule_present") is not True:
+        remaining.append("current_global_entry_rule_observation")
+    return {"core_closeout_complete": not remaining,
+            "next_local_work": [{"id": identifier, "action": "resolve_current_core_gap_and_check_matched_evidence"}
+                                for identifier in remaining],
+            "basis": "current evidenced repair, local resource ACL and observed core deployment only; not full capability acceptance"}
+
+
+def current_core_projection(root: Path = ROOT, *,
+                            receipt_path: str = "outputs/p6/continuation-2026-10-06/core-completion-execution.json",
+                            deployment: dict | None = None, config_path: Path | None = None) -> dict:
+    path = confined_path(root, receipt_path)
+    if not path.is_file():
+        return {"scope": "current_scoped_core_not_full_acceptance", "receipt_path": receipt_path,
+                "evidence_valid": False, "state": "receipt_missing",
+                "closeout": {"core_closeout_complete": False,
+                             "next_local_work": [{"id": "current_core_receipt", "action": "execute_current_core_checks"}]}}
+    try:
+        content = path.read_bytes()
+        receipt = strict_json(content.decode("utf-8"))
+        if any(not isinstance(receipt.get(section, {}), dict)
+               for section in ("rust", "python", "configuration", "tool_evidence_hashes")):
+            raise ValueError("Invalid execution receipt section")
+        specs = strict_json((root / "docs/acceptance-map.json").read_text(encoding="utf-8"))
+        evaluated = evaluate(root, specs, receipt, receipt_path=receipt_path)
+    except (OSError, ValueError, TypeError, KeyError):
+        return {"scope": "current_scoped_core_not_full_acceptance", "receipt_path": receipt_path,
+                "evidence_valid": False, "state": "receipt_invalid",
+                "full_spec_retested": False, "full_capability_acceptance_complete": False,
+                "configuration_content_exported": False,
+                "closeout": {"core_closeout_complete": False,
+                             "next_local_work": [{"id": "current_core_receipt", "action": "replace_invalid_or_unreadable_execution_evidence"}]}}
+    if deployment is None:
+        from wuji4 import status
+        deployment = status()
+    closeout = core_closeout_state(evaluated, deployment)
+    configuration = config_path if config_path is not None else Path.home() / ".codex/config.toml"
+    try:
+        current_hash = digest(configuration) if configuration.is_file() else None
+    except OSError:
+        current_hash = None
+    protection = receipt.get("configuration", {})
+    config_preserved = (current_hash is not None and protection.get("unchanged") is True
+                        and protection.get("before_sha256") == current_hash == protection.get("after_sha256"))
+    if not config_preserved:
+        closeout["core_closeout_complete"] = False
+        closeout["next_local_work"].append({"id": "current_configuration_evidence", "action": "observe_without_modifying_configuration"})
+    return {"scope": "current_scoped_core_not_full_acceptance", "receipt_path": receipt_path,
+            "receipt_sha256": hashlib.sha256(content).hexdigest(), "evidence_valid": evaluated["evidence_valid"],
+            "state": "current" if evaluated["evidence_valid"] else "failed_or_stale",
+            "configuration_preserved": config_preserved, "configuration_content_exported": False,
+            "deployment_observation": deployment.get("entry", {}),
+            "matched_current_scenarios": [row for row in evaluated["matrix"] if row["status"] == "passed"],
+            "current_scoped_statuses": [{"id": row["id"], "status": row["status"]} for row in evaluated["matrix"]],
+            "full_spec_retested": False, "full_capability_acceptance_complete": False,
+            "closeout": closeout}
+
+
+def refresh_current_remaining() -> dict:
+    projection = current_core_projection()
+    formal_path = ROOT / "outputs/p6/acceptance-execution.json"
+    formal = json.loads(formal_path.read_text(encoding="utf-8"))
+    remaining = [row for row in formal["matrix"] if row["status"] != "passed"]
+    observed = datetime.now(timezone.utc).isoformat()
+    report = {"schema_version": 1, "observed_at": observed, "goal_complete": False,
+              "goal_complete_basis": "full frozen capability acceptance, not the current scoped chat goal",
+              "core_closeout_complete": projection["closeout"]["core_closeout_complete"],
+              "full_capability_acceptance_complete": False,
+              "goal_boundaries": "docs/goal-execution-boundaries-2026-10-05.md",
+              "p7_conditionally_authorized": True, "shutdown_conditionally_authorized": False,
+              "authorization_is_not_execution_or_gate_completion": True,
+              "no_user_continue_prompt_required": True,
+              "next_local_work": projection["closeout"]["next_local_work"],
+              "current_core": projection,
+              "historical_formal_ledger": "outputs/p6/acceptance-execution.json",
+              "historical_formal_ledger_sha256": digest(formal_path),
+              "historical_status_counts": formal["summary"]["status_counts"],
+              "remaining_scenarios_basis": "historical formal ledger retained unchanged; current scoped coverage is in current_core",
+              "remaining_scenarios": remaining,
+              "peripheral_validation": "deferred_until_a_real_task_requires_it",
+              "acceptance_ledger_is_not_a_prebuild_backlog": True,
+              "formal_acceptance_rewritten": False, "P7": False, "shutdown": False}
+    write_json("outputs/p6/remaining-work.json", report)
+    return report
+
+
 def main() -> None:
     receipt = json.loads((ROOT / "outputs/p6/test-execution.json").read_text(encoding="utf-8"))
     acceptance = json.loads((ROOT / "outputs/p6/acceptance-execution.json").read_text(encoding="utf-8"))
     if not acceptance["evidence_valid"] or receipt["rust"]["exit_code"] != 0 or not receipt["python"]["passed"]:
         raise ValueError("Current failed or stale execution cannot generate a successful continuation report")
     summary = acceptance["summary"]
+    from wuji4 import status
+    closeout = core_closeout_state(acceptance, status())
     counts = summary["status_counts"]
     observed = datetime.now(timezone.utc).isoformat()
     date = str(datetime.now(timezone(timedelta(hours=8))).date())
@@ -72,7 +172,7 @@ def main() -> None:
         "passed": acceptance["evidence_valid"] and bool(resource_cases) and all(state == "passed" for state in resource_cases.values()),
         "test_cases": resource_cases, "source": "src/resources.rs", "source_sha256": digest(ROOT / "src/resources.rs"),
         "schema": "src/resource_schema.sql", "schema_sha256": digest(ROOT / "src/resource_schema.sql"),
-        "workspace_schema_version": 6, "second_task_fact_database": False,
+        "workspace_schema_version": 7, "second_task_fact_database": False,
         "knowledge_and_experience_types_separate": True, "runtime_or_global_admission": False,
         "isolated_single_owner_transfer": "implemented_with_queryable_ack_and_source_readonly",
         "isolated_catalog_publication": "immutable_files_one_pointer_full_deterministic_composition",
@@ -89,20 +189,21 @@ def main() -> None:
         "test_cases": experience_cases, "execution_receipt": "outputs/p6/test-execution.json",
         "execution_receipt_sha256": digest(ROOT / "outputs/p6/test-execution.json"),
         "T21_scope": "reviewed exact local experience used by a related deterministic task; stale and self-publication denied",
-        "T22_scope": "project isolation and explicit review permit only; complete user identity/ACL not implemented",
+        "T22_scope": "Windows single-owner SID/ACL/scope with current semantic evidence required; no DACL changes or multi-tenant service claim",
         "consumer": "bounded regression task, not autonomous model learning",
         "runtime_or_global_admission": False, "P7": False, "shutdown": False})
     remaining = [row for row in acceptance["matrix"] if row["required_for_g6"] and row["status"] != "passed"]
     write_json("outputs/p6/remaining-work.json", {
         "schema_version": 1, "observed_at": observed, "goal_complete": False,
-        "core_closeout_complete": True,
+        "core_closeout_complete": closeout["core_closeout_complete"],
         "full_capability_acceptance_complete": False,
         "goal_boundaries": "docs/goal-execution-boundaries-2026-10-05.md",
         "p7_conditionally_authorized": True,
         "shutdown_conditionally_authorized": False,
         "authorization_is_not_execution_or_gate_completion": True,
         "no_user_continue_prompt_required": True,
-        "next_local_work": [],
+        "next_local_work": closeout["next_local_work"],
+        "core_closeout_basis": closeout["basis"],
         "peripheral_validation": "deferred_until_a_real_task_requires_it",
         "acceptance_ledger_is_not_a_prebuild_backlog": True,
         "remaining_scenarios": remaining, "P7": False, "shutdown": False})
@@ -173,7 +274,8 @@ G4仍未通过：REAPER/音频专业链、专业图像/视频/音频holdout等�
     readme = ROOT / "README.md"
     current = readme.read_text(encoding="utf-8")
     paragraphs = current.splitlines()
-    paragraphs = [f"当前阶段：4.0核心入口已装备并完成本轮内部收尾；Rust {receipt['rust']['tests_passed']}项、Python {receipt['python']['tests_run']}项回归通过（跳过{receipt['python'].get('skipped', 0)}项）。全量验收仍为{summary['passed_for_g6']}/92项G6通过，另3项G7保留；MCP及专业应用不预检，真实任务需要时再接入。最新复查见 docs/continuation-report-2026-10-04.md。" if line.startswith("当前阶段：") else line for line in paragraphs]
+    core_summary = "本轮核心收尾条件已满足" if closeout["core_closeout_complete"] else "本轮核心收尾仍有具体缺口，继续执行"
+    paragraphs = [f"当前阶段：4.0核心入口状态见当前部署观察；{core_summary}；Rust {receipt['rust']['tests_passed']}项、Python {receipt['python']['tests_run']}项回归通过（跳过{receipt['python'].get('skipped', 0)}项）。全量验收仍为{summary['passed_for_g6']}/92项G6通过，另3项G7保留；MCP及专业应用不预检，真实任务需要时再接入。最新复查见 docs/continuation-report-2026-10-04.md。" if line.startswith("当前阶段：") else line for line in paragraphs]
     paragraphs = [line.replace("OfficeCLI\u6587\u672cPPTX\u4e0e\u72ec\u7acbffmpeg\u77ed\u89c6\u9891\u5df2\u6709\u6709\u754c\u5b9e\u9645\u8bc1\u636e", "OfficeCLI\u6587\u672cPPTX\u3001XLSX\u6709\u754c\u94fe\u548c\u72ec\u7acbffmpeg\u77ed\u89c6\u9891\u5df2\u6709\u5b9e\u9645\u8bc1\u636e") for line in paragraphs]
     readme.write_text("\n".join(paragraphs) + "\n", encoding="utf-8")
     progress = ROOT / "docs/progress.md"
@@ -183,8 +285,17 @@ G4仍未通过：REAPER/音频专业链、专业图像/视频/音频holdout等�
     if heading in current_progress:
         current_progress = current_progress[:current_progress.index(heading)]
     progress.write_text(current_progress.rstrip() + "\n" + note, encoding="utf-8")
-    print(json.dumps({"summary": summary, "current_report": "docs/continuation-report-2026-10-04.md", "core_closeout_complete": True, "full_capability_complete": False}, ensure_ascii=False))
+    print(json.dumps({"summary": summary, "current_report": "docs/continuation-report-2026-10-04.md", **closeout, "full_capability_complete": False}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Refresh current scoped status without rewriting the frozen acceptance ledger")
+    parser.add_argument("--current-core", action="store_true")
+    options = parser.parse_args()
+    if options.current_core:
+        report = refresh_current_remaining()
+        print(json.dumps({"core_closeout_complete": report["core_closeout_complete"],
+                          "next_local_work": report["next_local_work"],
+                          "full_capability_acceptance_complete": False}, ensure_ascii=False))
+    else:
+        main()

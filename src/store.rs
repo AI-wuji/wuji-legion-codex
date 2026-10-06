@@ -11,7 +11,7 @@ use std::path::Path;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const APPLICATION_ID: i64 = 1465201712;
-const SCHEMA_VERSION: i64 = 6;
+const SCHEMA_VERSION: i64 = 7;
 const SQLITE_SOURCE_ID: &str = "2026-07-24 19:02:57 bf7c7f30031888f4e796e429ab3978879485813aaca6f641c7b33e4e09459bcc";
 
 pub(crate) fn bounded_file(path: &Path) -> Result<Vec<u8>> {
@@ -94,7 +94,11 @@ impl Store {
         let database = workspace.resolve(Path::new(".wuji4/state.sqlite"))?;
         let existed = database.exists();
         if !existed && !create { return Err(Error::new(ErrorKind::Reference, "workspace database missing")); }
-        let mut connection = Connection::open(&database)?;
+        let initial_identity = if existed { None } else { Some(crate::local_identity::current()?) };
+        if !existed { OpenOptions::new().write(true).create_new(true).open(&database)?; }
+        let mut connection = if existed {
+            Connection::open_with_flags(&database,rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)?
+        } else { Connection::open(&database)? };
         connection.busy_timeout(Duration::from_millis(500))?;
         connection.pragma_update(None, "foreign_keys", "ON")?;
         let application: i64 = connection.pragma_query_value(None, "application_id", |row| row.get(0))?;
@@ -102,21 +106,22 @@ impl Store {
         let root_hash = strict_json::sha256(workspace.root().to_string_lossy().as_bytes());
         let scope = format!("project:{}", &root_hash[..24]);
         if existed {
-            if application != APPLICATION_ID || (version != SCHEMA_VERSION && !([2,3,4,5].contains(&version) && create)) {
+            if application != APPLICATION_ID || (version != SCHEMA_VERSION && !([2,3,4,5,6].contains(&version) && create)) {
                 return Err(Error::new(ErrorKind::MigrationUnsupported, "unknown or newer database; no mutation"));
             }
             let stored: (String, String) = connection.query_row("SELECT scope,root_hash FROM workspace_meta WHERE singleton=1", [], |row| Ok((row.get(0)?, row.get(1)?)))?;
             if stored != (scope.clone(), root_hash.clone()) {
                 return Err(Error::new(ErrorKind::ScopeDenied, "workspace identity mismatch"));
             }
+            crate::local_identity::require(&connection,&workspace,&scope)?;
             if [2,3,4,5].contains(&version) {
-                let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-                if version == 2 { transaction.execute_batch(include_str!("resource_schema.sql"))?; }
-                if version <= 3 { transaction.execute_batch(include_str!("transfer_schema.sql"))?; }
-                if version <= 4 { transaction.execute_batch(include_str!("task_catalog_schema.sql"))?; }
-                transaction.execute_batch(include_str!("received_schema.sql"))?;
-                transaction.commit()?;
+                return Err(Error::new(ErrorKind::MigrationUnsupported,"legacy resource owner migration is not authorized; database left unchanged"));
             }
+            connection = Connection::open_with_flags(&database,rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE)?;
+            connection.busy_timeout(Duration::from_millis(500))?;
+            connection.pragma_update(None,"foreign_keys","ON")?;
+            crate::local_identity::require(&connection,&workspace,&scope)?;
+            if version == 6 { Self::upgrade_artifact_history(&mut connection,&workspace,&scope)?; }
         } else {
             let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
             transaction.execute_batch(include_str!("state_schema.sql"))?;
@@ -125,6 +130,8 @@ impl Store {
             transaction.execute_batch(include_str!("task_catalog_schema.sql"))?;
             transaction.execute_batch(include_str!("received_schema.sql"))?;
             transaction.execute("INSERT INTO workspace_meta(singleton,scope,root_hash,last_clock_ms) VALUES(1,?1,?2,?3)", params![scope, root_hash, wall_clock()?])?;
+            crate::local_identity::initialize(&transaction,&workspace,&scope,initial_identity.as_ref().unwrap())?;
+            transaction.pragma_update(None,"user_version",SCHEMA_VERSION)?;
             transaction.commit()?;
         }
         if rusqlite::version() != "3.53.4" {
@@ -133,11 +140,39 @@ impl Store {
         Ok(Self { connection, workspace, scope })
     }
 
+    fn upgrade_artifact_history(connection: &mut Connection, workspace: &Workspace, scope: &str) -> Result<()> {
+        connection.pragma_update(None,"foreign_keys","OFF")?;
+        let result = (|| {
+            let transaction = connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+            let application: i64 = transaction.pragma_query_value(None,"application_id",|row|row.get(0))?;
+            let version: i64 = transaction.pragma_query_value(None,"user_version",|row|row.get(0))?;
+            if application != APPLICATION_ID || version != 6 {
+                return Err(Error::new(ErrorKind::MigrationUnsupported,"artifact migration source changed; no mutation"));
+            }
+            crate::local_identity::require(&transaction,workspace,scope)?;
+            let columns: String = transaction.query_row("SELECT group_concat(name,',') FROM (SELECT name FROM pragma_table_xinfo('artifacts') ORDER BY cid)",[],|row|row.get(0))?;
+            let extensions: i64 = transaction.query_row("SELECT count(*) FROM sqlite_master WHERE tbl_name='artifacts' AND type IN ('index','trigger') AND sql IS NOT NULL",[],|row|row.get(0))?;
+            if columns != "id,task_id,node_id,attempt_id,path,sha256,bytes,revision,producer,state" || extensions != 0 {
+                return Err(Error::new(ErrorKind::MigrationUnsupported,"unexpected artifact schema extensions; no mutation"));
+            }
+            transaction.execute_batch(include_str!("artifact_history_migration.sql"))?;
+            let violations: i64 = transaction.query_row("SELECT count(*) FROM pragma_foreign_key_check",[],|row|row.get(0))?;
+            if violations != 0 {
+                return Err(Error::new(ErrorKind::MigrationUnsupported,"artifact migration would leave broken references; rolled back"));
+            }
+            transaction.commit()?;
+            Ok(())
+        })();
+        connection.pragma_update(None,"foreign_keys","ON")?;
+        result
+    }
+
     pub fn scope(&self) -> &str { &self.scope }
 
     pub fn local_role_ref(&self) -> ExactRef {
-        let source = json!({"resources":strict_json::sha256(include_bytes!("resources.rs")),"resource_schema":strict_json::sha256(include_bytes!("resource_schema.sql")),"store":strict_json::sha256(include_bytes!("store.rs")),"local_state":strict_json::sha256(include_bytes!("local_state.rs")),"revisions":strict_json::sha256(include_bytes!("revisions.rs")),"checkpoint":strict_json::sha256(include_bytes!("checkpoint.rs")),"policy":strict_json::sha256(include_bytes!("policy.rs")),"graph":strict_json::sha256(include_bytes!("graph.rs")),"schema":strict_json::sha256(include_bytes!("state_schema.sql")),"contracts":strict_json::sha256(include_bytes!("contracts.rs")),"contract_schema":strict_json::sha256(include_bytes!("../schemas/contracts.schema.json")),"error":strict_json::sha256(include_bytes!("error.rs")),"manifest":strict_json::sha256(include_bytes!("../Cargo.toml")),"dependency_lock":strict_json::sha256(include_bytes!("../Cargo.lock")),"strict_json":strict_json::sha256(include_bytes!("strict_json.rs"))});
+        let source = json!({"resources":strict_json::sha256(include_bytes!("resources.rs")),"resource_schema":strict_json::sha256(include_bytes!("resource_schema.sql")),"local_identity":strict_json::sha256(include_bytes!("local_identity.rs")),"store":strict_json::sha256(include_bytes!("store.rs")),"local_state":strict_json::sha256(include_bytes!("local_state.rs")),"revisions":strict_json::sha256(include_bytes!("revisions.rs")),"checkpoint":strict_json::sha256(include_bytes!("checkpoint.rs")),"policy":strict_json::sha256(include_bytes!("policy.rs")),"graph":strict_json::sha256(include_bytes!("graph.rs")),"schema":strict_json::sha256(include_bytes!("state_schema.sql")),"contracts":strict_json::sha256(include_bytes!("contracts.rs")),"contract_schema":strict_json::sha256(include_bytes!("../schemas/contracts.schema.json")),"error":strict_json::sha256(include_bytes!("error.rs")),"manifest":strict_json::sha256(include_bytes!("../Cargo.toml")),"dependency_lock":strict_json::sha256(include_bytes!("../Cargo.lock")),"strict_json":strict_json::sha256(include_bytes!("strict_json.rs"))});
         let identity = json!({"base":source,"received":strict_json::sha256(include_bytes!("received.rs")),"received_schema":strict_json::sha256(include_bytes!("received_schema.sql")),"transfers":strict_json::sha256(include_bytes!("transfers.rs")),"transfer_schema":strict_json::sha256(include_bytes!("transfer_schema.sql")),"task_catalog":strict_json::sha256(include_bytes!("task_catalog.rs")),"task_catalog_schema":strict_json::sha256(include_bytes!("task_catalog_schema.sql")),"registry":strict_json::sha256(include_bytes!("registry.rs")),"registry_schema":strict_json::sha256(include_bytes!("registry_schema.sql")),"composer":strict_json::sha256(include_bytes!("composer.rs"))});
+        let identity = json!({"base":identity,"artifact_history_migration":strict_json::sha256(include_bytes!("artifact_history_migration.sql"))});
         ExactRef { id:"program/local-file-writer".into(), r#type:"file".into(), scope:self.scope.clone(), revision:1, sha256:strict_json::digest(&identity).expect("static source identity"), release:"test-local-core-1".into(), schema_version:1 }
     }
 

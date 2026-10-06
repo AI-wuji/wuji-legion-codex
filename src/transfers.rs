@@ -2,7 +2,7 @@ use crate::contracts::Schemas;
 use crate::error::{Error, ErrorKind, Result};
 use crate::graph::ExactRef;
 use crate::policy::Workspace;
-use crate::resources::{ResourceKind,current_resource_resolved,exact,record_event,replay,resource_write_authority,valid_event};
+use crate::resources::{ResourceKind,current_resource_resolved,exact,record_event,replay,require_record_scope,resource_write_authority,valid_event};
 use crate::store::{Store,check_clock,wall_clock};
 use crate::strict_json;
 use rusqlite::{Connection,OptionalExtension,TransactionBehavior,params};
@@ -30,6 +30,8 @@ impl LocalTransferPermit {
         if self.source != source.workspace.root() || self.target != target.workspace.root() || source.scope == target.scope {
             return Err(Error::new(ErrorKind::ScopeDenied,"transfer permit is bound to exact source and target workspaces"));
         }
+        crate::local_identity::require(&source.connection,&source.workspace,&source.scope)?;
+        crate::local_identity::require(&target.connection,&target.workspace,&target.scope)?;
         Ok(())
     }
 }
@@ -76,6 +78,8 @@ pub(crate) fn checked_payload_grant(text: &str, checksum: &str, source_scope: &s
 
 pub(crate) fn received_knowledge(source: &Connection, target: &Connection, source_scope: &str, target_scope: &str,
     permit: &LocalTransferPermit, reference: &ExactRef) -> Result<Option<Value>> {
+    crate::local_identity::require(source,&Workspace::open(&permit.source)?,source_scope)?;
+    crate::local_identity::require(target,&Workspace::open(&permit.target)?,target_scope)?;
     let source_row: Option<(String,String,String,String)> = source.query_row(
         "SELECT transfer_id,payload_hash,payload_json,state FROM resource_transfers WHERE kind='KnowledgeRecord' AND resource_id=?1",
         [&reference.id],|row|Ok((row.get(0)?,row.get(1)?,row.get(2)?,row.get(3)?))).optional()?;
@@ -112,10 +116,13 @@ impl Store {
             return Err(Error::new(ErrorKind::ScopeDenied,"transfer source must be exact same-scope resource"));
         }
         let transaction = self.connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
-        let previous: Option<(String,String)> = transaction.query_row("SELECT payload_json,state FROM resource_transfers WHERE transfer_id=?1",[transfer_id],|row|Ok((row.get(0)?,row.get(1)?))).optional()?;
-        if let Some((text,state)) = previous {
-            let payload: TransferPayload = serde_json::from_value(strict_json::parse(text.as_bytes())?)?;
-            if payload.source_reference != *reference || payload.kind != kind.contract() || payload.target_scope != target.scope || payload.target_root != permit.target {
+        crate::local_identity::require(&transaction,&self.workspace,&self.scope)?;
+        crate::local_identity::require(&target.connection,&target.workspace,&target.scope)?;
+        require_record_scope(&transaction,kind,&reference.id,&self.scope)?;
+        let previous: Option<(String,String,String)> = transaction.query_row("SELECT payload_json,payload_hash,state FROM resource_transfers WHERE transfer_id=?1",[transfer_id],|row|Ok((row.get(0)?,row.get(1)?,row.get(2)?))).optional()?;
+        if let Some((text,checksum,state)) = previous {
+            let payload = checked_payload_grant(&text,&checksum,&self.scope,&target.scope,permit)?;
+            if payload.transfer_id != transfer_id || payload.source_reference != *reference || payload.kind != kind.contract() {
                 return Err(Error::new(ErrorKind::EventConflict,"transfer ID already identifies another move"));
             }
             return Ok(json!({"transfer_id":transfer_id,"source_reference":reference,"state":state,"target_scope":target.scope,"runtime_or_global_admission":false}));
@@ -149,6 +156,8 @@ impl Store {
         let payload = checked_payload(&text,&checksum,source,self,permit)?;
         let kind = if payload.kind == "KnowledgeRecord" { ResourceKind::Knowledge } else { ResourceKind::Experience };
         let transaction = self.connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        crate::local_identity::require(&transaction,&self.workspace,&self.scope)?;
+        crate::local_identity::require(&source.connection,&source.workspace,&source.scope)?;
         let previous: Option<String> = transaction.query_row("SELECT payload_hash FROM received_resources WHERE transfer_id=?1",[transfer_id],|row|row.get(0)).optional()?;
         if let Some(previous) = previous {
             if previous != checksum { return Err(Error::new(ErrorKind::EventConflict,"received transfer ID has another payload")); }
@@ -188,6 +197,8 @@ impl Store {
         permit.check(self,target)?;
         let ack = target.resource_transfer_ack(self,permit,transfer_id)?;
         let transaction = self.connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        crate::local_identity::require(&transaction,&self.workspace,&self.scope)?;
+        crate::local_identity::require(&target.connection,&target.workspace,&target.scope)?;
         check_clock(&transaction,wall_clock()?)?;
         let changed = transaction.execute("UPDATE resource_transfers SET state='shared_ref',ack_json=?1 WHERE transfer_id=?2 AND payload_hash=?3 AND state IN ('transfer_pending','shared_ref')",params![serde_json::to_string(&ack)?,transfer_id,ack["payload_hash"].as_str().unwrap()])?;
         if changed != 1 { return Err(Error::new(ErrorKind::RevisionConflict,"source transfer differs from target's queryable ACK")); }
@@ -214,6 +225,8 @@ impl Store {
         let next = expected.checked_add(1).ok_or_else(||Error::new(ErrorKind::RevisionConflict,"owner revision overflow"))?;
         self.resource_transfer_ack(source,permit,transfer_id)?;
         let transaction = self.connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        crate::local_identity::require(&transaction,&self.workspace,&self.scope)?;
+        crate::local_identity::require(&source.connection,&source.workspace,&source.scope)?;
         if let Some(result) = replay(&transaction,key,&operation)? { return Ok(result); }
         check_clock(&transaction,wall_clock()?)?;
         let changed = transaction.execute("UPDATE received_resources SET state='retired',owner_revision=?1 WHERE transfer_id=?2 AND owner_revision=?3 AND state='active_local'",params![next,transfer_id,expected])?;

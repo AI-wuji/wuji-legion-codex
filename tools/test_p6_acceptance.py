@@ -4,8 +4,11 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest import mock
 
 from p6_acceptance import ROOT, SEMANTIC_CASES, SEMANTIC_PYTHON_CASES, SUPPORTING_CASES, SUPPORTING_PYTHON_CASES, digest, evaluate, semantic_cases, source_snapshot
+from refresh_continuation_report import core_closeout_state, current_core_projection
 
 
 class P6AcceptanceTests(unittest.TestCase):
@@ -43,6 +46,157 @@ class P6AcceptanceTests(unittest.TestCase):
 
     def report(self):
         return evaluate(self.root, self.specs, self.receipt)
+
+    def test_supplementary_receipt_references_the_execution_that_was_evaluated(self):
+        relative = "outputs/p6/current-core.json"
+        report = evaluate(self.root, self.specs, self.receipt, receipt_path=relative)
+        self.assertTrue(report["evidence_valid"])
+        self.assertEqual(report["execution_receipt"], relative)
+        for identifier in ("T19", "T22"):
+            row = next(row for row in report["matrix"] if row["id"] == identifier)
+            self.assertIn(relative, row["evidence_refs"])
+            self.assertNotIn("outputs/p6/test-execution.json", row["evidence_refs"])
+
+    def test_execution_receipt_reference_cannot_escape_the_project(self):
+        for relative in ("../private.json", "C:/private.json", "/private.json", "outputs\\private.json"):
+            with self.subTest(relative=relative), self.assertRaises(ValueError):
+                evaluate(self.root, self.specs, self.receipt, receipt_path=relative)
+
+    def test_current_receipt_reference_does_not_promote_stale_sources(self):
+        (self.root / "Cargo.toml").write_text("changed", encoding="utf-8")
+        report = evaluate(self.root, self.specs, self.receipt, receipt_path="outputs/p6/current-core.json")
+        self.assertFalse(report["evidence_valid"])
+        self.assertEqual(next(row for row in report["matrix"] if row["id"] == "T19")["status"], "failed_or_stale")
+
+    def current_projection_fixture(self):
+        configuration = self.root / "approved-config.txt"
+        configuration.write_text("fixture-only", encoding="utf-8")
+        receipt = json.loads(json.dumps(self.receipt))
+        receipt["configuration"] = {"before_sha256": digest(configuration), "after_sha256": digest(configuration), "unchanged": True}
+        receipt["core_closeout"] = {"core_closeout_complete": True}
+        path = self.root / "outputs/p6/current-core.json"
+        path.write_text(json.dumps(receipt), encoding="utf-8")
+        deployment = {"entry": {"core_skill_observation": {"installed": True, "state": "source_match"},
+                                "global_agents_observation": {"default_entry_rule_present": True, "white_hat_rule_present": True}}}
+        return configuration, path, deployment
+
+    def test_current_projection_separates_scoped_closeout_from_full_acceptance(self):
+        configuration, path, deployment = self.current_projection_fixture()
+        report = current_core_projection(self.root, receipt_path=path.relative_to(self.root).as_posix(),
+                                         deployment=deployment, config_path=configuration)
+        self.assertTrue(report["evidence_valid"])
+        self.assertTrue(report["closeout"]["core_closeout_complete"])
+        self.assertFalse(report["full_capability_acceptance_complete"])
+        self.assertFalse(report["full_spec_retested"])
+        self.assertIn("T19", [row["id"] for row in report["matched_current_scenarios"]])
+
+    def test_current_projection_recomputes_instead_of_trusting_old_complete_flag(self):
+        configuration, path, deployment = self.current_projection_fixture()
+        (self.root / "Cargo.toml").write_text("changed", encoding="utf-8")
+        report = current_core_projection(self.root, receipt_path=path.relative_to(self.root).as_posix(),
+                                         deployment=deployment, config_path=configuration)
+        self.assertFalse(report["evidence_valid"])
+        self.assertFalse(report["closeout"]["core_closeout_complete"])
+        self.assertEqual(report["matched_current_scenarios"], [])
+
+    def test_current_projection_denies_closeout_on_configuration_evidence_drift(self):
+        configuration, path, deployment = self.current_projection_fixture()
+        configuration.write_text("later-user-change", encoding="utf-8")
+        report = current_core_projection(self.root, receipt_path=path.relative_to(self.root).as_posix(),
+                                         deployment=deployment, config_path=configuration)
+        self.assertTrue(report["evidence_valid"])
+        self.assertFalse(report["configuration_preserved"])
+        self.assertFalse(report["closeout"]["core_closeout_complete"])
+        self.assertEqual(report["closeout"]["next_local_work"][-1]["id"], "current_configuration_evidence")
+        self.assertEqual(configuration.read_text(encoding="utf-8"), "later-user-change")
+
+    def test_current_projection_missing_receipt_keeps_work_open(self):
+        report = current_core_projection(self.root, receipt_path="outputs/p6/missing.json")
+        self.assertFalse(report["evidence_valid"])
+        self.assertFalse(report["closeout"]["core_closeout_complete"])
+        self.assertEqual(report["state"], "receipt_missing")
+
+    def test_unreadable_configuration_denies_closeout_without_repairing_it(self):
+        configuration, path, deployment = self.current_projection_fixture()
+        before = configuration.read_bytes()
+        with mock.patch("refresh_continuation_report.digest", side_effect=PermissionError("unreadable fixture")):
+            report = current_core_projection(self.root, receipt_path=path.relative_to(self.root).as_posix(),
+                                             deployment=deployment, config_path=configuration)
+        self.assertTrue(report["evidence_valid"])
+        self.assertFalse(report["configuration_preserved"])
+        self.assertFalse(report["closeout"]["core_closeout_complete"])
+        self.assertEqual(configuration.read_bytes(), before)
+
+    def test_invalid_current_receipt_cannot_crash_or_keep_cached_complete(self):
+        configuration, path, deployment = self.current_projection_fixture()
+        original = path.read_text(encoding="utf-8")
+        malformed_section = json.loads(original)
+        malformed_section["rust"] = None
+        malformed_configuration = json.loads(original)
+        malformed_configuration["configuration"] = []
+        for content in ("{", "[]", original.replace("{", '{"configuration": null,', 1),
+                        original[:-1] + ', "untrusted": NaN}', json.dumps(malformed_section),
+                        json.dumps(malformed_configuration)):
+            with self.subTest(content=content[:48]):
+                path.write_text(content, encoding="utf-8")
+                report = current_core_projection(self.root, receipt_path=path.relative_to(self.root).as_posix(),
+                                                 deployment=deployment, config_path=configuration)
+                self.assertFalse(report["evidence_valid"])
+                self.assertFalse(report["closeout"]["core_closeout_complete"])
+                self.assertEqual(report["state"], "receipt_invalid")
+
+    def test_execution_log_paths_must_be_canonical_not_windows_aliases(self):
+        for relative in ("outputs/p6/./rust.log", "outputs//p6/rust.log", "outputs/p6/rust.log.", "outputs/p6/rust.log "):
+            with self.subTest(relative=relative):
+                self.receipt["rust"]["log_path"] = relative
+                report = self.report()
+                self.assertFalse(report["checks"]["logs_current"])
+                self.assertFalse(report["evidence_valid"])
+
+    def test_linked_log_metadata_is_rejected_before_reading_bytes(self):
+        rust = self.root / self.receipt["rust"]["log_path"]
+        original_lstat = Path.lstat
+        original_read_bytes = Path.read_bytes
+        reads = []
+
+        def linked_metadata(path):
+            metadata = original_lstat(path)
+            if path == rust:
+                return SimpleNamespace(st_mode=metadata.st_mode, st_file_attributes=0x400)
+            return metadata
+
+        def record_read(path):
+            reads.append(path)
+            return original_read_bytes(path)
+
+        with mock.patch.object(Path, "lstat", linked_metadata), mock.patch.object(Path, "read_bytes", record_read):
+            report = self.report()
+        self.assertFalse(report["evidence_valid"])
+        self.assertNotIn(rust, reads)
+
+    def test_log_hash_and_cases_are_bound_to_one_byte_snapshot(self):
+        rust = self.root / self.receipt["rust"]["log_path"]
+        passed_text = rust.read_text(encoding="utf-8")
+        rust.write_text(passed_text.replace(" ... ok", " ... FAILED", 1), encoding="utf-8")
+        self.receipt["rust"]["log_sha256"] = digest(rust)
+        original_read_text = Path.read_text
+
+        def changed_second_read(path, *arguments, **keywords):
+            return passed_text if path == rust else original_read_text(path, *arguments, **keywords)
+
+        with mock.patch.object(Path, "read_text", changed_second_read):
+            report = self.report()
+        self.assertFalse(report["checks"]["rust_case_records_match_log"])
+        self.assertFalse(report["evidence_valid"])
+
+    def test_contradictory_rust_case_records_cannot_be_last_writer_wins(self):
+        rust = self.root / self.receipt["rust"]["log_path"]
+        case = semantic_cases("T19")[0]
+        rust.write_text(f"test {case} ... FAILED\n" + rust.read_text(encoding="utf-8"), encoding="utf-8")
+        self.receipt["rust"]["log_sha256"] = digest(rust)
+        report = self.report()
+        self.assertFalse(report["checks"]["rust_case_records_match_log"])
+        self.assertEqual(report["summary"]["passed_for_g6"], 0)
 
     def test_complete_semantics_only_and_partial_never_promoted(self):
         report = self.report()
@@ -134,20 +288,55 @@ class P6AcceptanceTests(unittest.TestCase):
         self.assertEqual(row["status"], "failed_or_stale")
 
     def test_t22_project_scope_evidence_does_not_claim_complete_user_acl(self):
-        self.specs["tests"].append(self.spec("T22"))
-        path = self.root / "docs/acceptance-map.json"
-        path.write_text(json.dumps(self.specs), encoding="utf-8")
-        self.receipt["acceptance_spec_sha256"] = digest(path)
-        self.receipt["source_hashes"] = source_snapshot(self.root)
-        self.receipt["source_hashes_after"] = dict(self.receipt["source_hashes"])
+        missing = semantic_cases("T22")[0]
+        del self.receipt["rust"]["cases"][missing]
+        rust_log = self.root / self.receipt["rust"]["log_path"]
+        rust_log.write_text(rust_log.read_text(encoding="utf-8").replace(f"test {missing} ... ok\n", ""), encoding="utf-8")
+        self.receipt["rust"]["log_sha256"] = digest(rust_log)
         python_log = self.root / self.receipt["python"]["log_path"]
         for case in SUPPORTING_PYTHON_CASES["T22"]:
             self.receipt["python"]["cases"][case] = "passed"
             python_log.write_text(python_log.read_text(encoding="utf-8") + f"{case.rsplit('.', 1)[-1]} ({case}) ... ok\n", encoding="utf-8")
         self.receipt["python"]["log_sha256"] = digest(python_log)
         row = next(row for row in self.report()["matrix"] if row["id"] == "T22")
-        self.assertEqual(row["status"], "partial")
-        self.assertEqual(row["missing_scope"], "per_user_identity_and_acl")
+        self.assertEqual(row["status"], "failed_or_stale")
+        self.assertIn(missing, row["test_cases"])
+
+    def test_t22_acl_pass_keeps_os_and_single_owner_scope_explicit(self):
+        row = next(row for row in self.report()["matrix"] if row["id"] == "T22")
+        self.assertEqual(row["status"], "passed")
+        self.assertIn("Windows single-owner", row["coverage"])
+        self.assertIn("administrator tamper resistance", row["coverage"])
+
+    def test_closeout_does_not_stop_on_report_generation_or_historical_passes(self):
+        deployment = {"entry": {"core_skill_observation": {"installed": True, "state": "source_match"},
+                                "global_agents_observation": {"default_entry_rule_present": True, "white_hat_rule_present": True}}}
+        acceptance = {"evidence_valid": True, "matrix": [{"id": "T19", "status": "partial"}, {"id": "T22", "status": "passed"}]}
+        result = core_closeout_state(acceptance, deployment)
+        self.assertFalse(result["core_closeout_complete"])
+        self.assertEqual([row["id"] for row in result["next_local_work"]], ["T19"])
+        acceptance["matrix"][0]["status"] = "passed"
+        self.assertTrue(core_closeout_state(acceptance, deployment)["core_closeout_complete"])
+        acceptance["evidence_valid"] = False
+        self.assertFalse(core_closeout_state(acceptance, deployment)["core_closeout_complete"])
+        acceptance["evidence_valid"] = True
+        deployment["entry"]["core_skill_observation"]["state"] = "source_mismatch"
+        self.assertFalse(core_closeout_state(acceptance, deployment)["core_closeout_complete"])
+
+    def test_t19_requires_both_actual_repair_and_no_progress_negative_cases(self):
+        for missing in semantic_cases("T19"):
+            with self.subTest(missing=missing):
+                receipt = json.loads(json.dumps(self.receipt))
+                receipt["rust"]["cases"].pop(missing)
+                path = self.root / receipt["rust"]["log_path"]
+                original = path.read_text(encoding="utf-8")
+                path.write_text(original.replace(f"test {missing} ... ok\n", ""), encoding="utf-8")
+                receipt["rust"]["log_sha256"] = digest(path)
+                report = evaluate(self.root, self.specs, receipt)
+                self.assertTrue(report["evidence_valid"])
+                row = next(row for row in report["matrix"] if row["id"] == "T19")
+                self.assertEqual(row["status"], "failed_or_stale")
+                path.write_text(original, encoding="utf-8")
 
     def test_local_revalidation_requires_complete_workflow_and_negative_cases(self):
         missing = semantic_cases("T18")[1]

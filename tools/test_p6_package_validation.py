@@ -12,10 +12,19 @@ import zipfile
 
 from p6_acceptance import ROOT
 import p6_package_validation as validation
-from package_p6 import retained_manifest_entries
+from package_p6 import SOURCE_PATH_MIGRATIONS, retained_manifest_entries
 
 
 class PackageValidationTests(unittest.TestCase):
+    def test_known_source_rename_is_explicit_and_does_not_drop_unknown_missing_paths(self):
+        old_path, current_path = next(iter(SOURCE_PATH_MIGRATIONS.items()))
+        previous = {"files": [{"path": old_path}, {"path": current_path}, {"path": "missing-unrelated.md"}]}
+        self.assertEqual(retained_manifest_entries(previous), [
+            {"path": current_path}, {"path": "missing-unrelated.md"}])
+        self.assertEqual(previous["files"][0]["path"], old_path)
+        with self.assertRaisesRegex(ValueError, "Duplicate retained"):
+            retained_manifest_entries({"files": [{"path": "src/lib.rs"}, {"path": "src/lib.rs"}]})
+
     def test_final_archive_audit_is_external_and_cannot_self_reenter_the_package_closure(self):
         for path in ("outputs/p6/full-audit-report.json", "OUTPUTS/P6/FULL-AUDIT-REPORT.JSON"):
             with self.assertRaises(ValueError):
@@ -75,6 +84,27 @@ class PackageValidationTests(unittest.TestCase):
         embedded["files"][0]["sha256"] = "0" * 64
         self.write_archive(embedded=embedded)
         self.assertFalse(self.result()["passed"])
+
+    def test_embedded_manifest_type_substitutions_are_rejected(self):
+        variants = [
+            ("schema_version", dict(self.embedded, schema_version=True)),
+            ("install_authorized", dict(self.embedded, install_authorized=0)),
+        ]
+        embedded = copy.deepcopy(self.embedded)
+        embedded["files"][0]["bytes"] = float(embedded["files"][0]["bytes"])
+        variants.append(("file_size", embedded))
+        for field, embedded in variants:
+            with self.subTest(field=field):
+                self.write_archive(embedded=embedded)
+                result = self.result()
+                self.assertFalse(result["embedded_manifest_valid"], result)
+                self.assertFalse(result["passed"], result)
+
+    def test_embedded_manifest_object_key_order_does_not_affect_validation(self):
+        embedded = dict(reversed(list(self.embedded.items())))
+        embedded["files"] = [dict(reversed(list(entry.items()))) for entry in self.embedded["files"]]
+        self.write_archive(embedded=embedded)
+        self.assertTrue(self.result()["passed"], self.result())
 
     def test_duplicate_zip_members_are_rejected(self):
         self.write_archive(duplicate=True)

@@ -223,6 +223,8 @@ fn validate_version(connection: &Connection, workspace: &crate::policy::Workspac
 
 pub(crate) fn current_view(connection: &Connection, workspace: &crate::policy::Workspace, source: &Store, scope: &str,
     permit: &LocalTransferPermit, id: &str, now: i64) -> Result<Value> {
+    crate::local_identity::require(connection,workspace,scope)?;
+    crate::local_identity::require(&source.connection,&source.workspace,&source.scope)?;
     let origin=origin(connection,source,scope,permit,id)?;
     if origin.state!="active_local" { return Err(Error::new(ErrorKind::ValidationStale,"received resource ownership is retired")); }
     let (version,state)=load_version(connection,&origin,scope,origin.revision)?;
@@ -259,6 +261,8 @@ impl Store {
         let operation_hash=strict_json::digest(&json!({"operation":"received-content-delta","transfer_id":id,"source_scope":source.scope,
             "target_scope":self.scope,"request":request}))?;
         let transaction=self.connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        crate::local_identity::require(&transaction,&self.workspace,&self.scope)?;
+        crate::local_identity::require(&source.connection,&source.workspace,&source.scope)?;
         if let Some(result)=replay(&transaction,key,&operation_hash)? { return Ok(result); }
         let now=wall_clock()?;
         check_clock(&transaction,now)?;
@@ -322,6 +326,8 @@ impl Store {
         let operation=strict_json::digest(&json!({"operation":"received-content-independent-local-review","source_scope":source.scope,
             "target_scope":self.scope,"transfer_id":id,"reference":requested}))?;
         let transaction=self.connection.transaction_with_behavior(TransactionBehavior::Immediate)?;
+        crate::local_identity::require(&transaction,&self.workspace,&self.scope)?;
+        crate::local_identity::require(&source.connection,&source.workspace,&source.scope)?;
         if let Some(result)=replay(&transaction,key,&operation)? { return Ok(result); }
         let now=wall_clock()?;
         check_clock(&transaction,now)?;

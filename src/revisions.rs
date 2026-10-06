@@ -18,6 +18,14 @@ fn behavior(node: &Node) -> Result<String> {
 
 impl Store {
     pub fn revise_local_plan(&mut self, envelope: &Value, expected: i64, event_id: &str) -> Result<Value> {
+        self.revise_local_plan_internal(envelope,expected,event_id,false)
+    }
+
+    pub fn repair_local_plan(&mut self, envelope: &Value, expected: i64, event_id: &str) -> Result<Value> {
+        self.revise_local_plan_internal(envelope,expected,event_id,true)
+    }
+
+    fn revise_local_plan_internal(&mut self, envelope: &Value, expected: i64, event_id: &str, repair: bool) -> Result<Value> {
         ActorContext::trusted_local(&self.scope,Role::Aji).require(&self.scope,Operation::Revise)?;
         if expected < 1 || event_id.is_empty() || event_id.len() > 128 {
             return Err(Error::new(ErrorKind::Shape,"revision needs predecessor and bounded user event id"));
@@ -36,7 +44,9 @@ impl Store {
         if ids.len() > 256 { return Err(Error::new(ErrorKind::BudgetExhausted,"P2 plan node cap 256")); }
         let role = self.local_role_ref();
         let plan_hash = strict_json::object_digest(envelope)?;
-        let payload_hash = strict_json::digest(&json!({"expected":expected,"plan_hash":plan_hash,"event":event_id,"scope":self.scope}))?;
+        let mut event = json!({"expected":expected,"plan_hash":plan_hash,"event":event_id,"scope":self.scope});
+        if repair { event["mode"] = json!("evidenced-repair"); }
+        let payload_hash = strict_json::digest(&event)?;
         let key = format!("revise:{}",strict_json::digest(&json!([self.scope,workflow.workflow_id,event_id]))?);
         let _catalog_guard = self.hold_task_catalog(&workflow.workflow_id)?;
         self.refresh_local_evidence()?;
@@ -47,7 +57,7 @@ impl Store {
         if current != expected || ["cancel_requested","cancelled"].contains(&status.as_str()) {
             return Err(Error::new(ErrorKind::RevisionConflict,"stale/cancelled graph cannot be revised"));
         }
-        if used >= cap { return Err(Error::new(ErrorKind::BudgetExhausted,"task point-revision cap")); }
+        if !repair && used >= cap { return Err(Error::new(ErrorKind::BudgetExhausted,"explicit local user-plan revision cap")); }
         let prior_json: String = transaction.query_row("SELECT envelope_json FROM task_plans WHERE task_id=?1 AND graph_revision=?2",params![workflow.workflow_id,current],|row| row.get(0))?;
         let prior = strict_json::parse(prior_json.as_bytes())?;
         if prior["payload"]["budget"] != envelope["payload"]["budget"] || prior["payload"]["catalog_version"] != envelope["payload"]["catalog_version"] {
@@ -81,10 +91,46 @@ impl Store {
         let mut live = transaction.prepare("SELECT id FROM nodes WHERE task_id=?1 AND state IN ('claimed','running','produced','validating','blocked','failed')")?;
         let live_ids: Vec<String> = live.query_map([&workflow.workflow_id],|row| row.get(0))?.collect::<std::result::Result<_,_>>()?;
         drop(live);
-        seeds.extend(live_ids);
+        if !repair { seeds.extend(live_ids); }
+        let mut defect_nodes = BTreeSet::<String>::new();
+        if repair {
+            let mut statement = transaction.prepare(
+                "SELECT DISTINCT i.node_id FROM invalidations i JOIN nodes n ON n.task_id=i.task_id AND n.id=i.node_id WHERE i.task_id=?1 AND i.reason='local-input-or-output-no-longer-current' AND n.state<>'succeeded' AND i.graph_revision>=COALESCE((SELECT MAX(v.graph_revision) FROM validations v JOIN artifacts a ON a.id=v.artifact_id WHERE a.task_id=i.task_id AND a.node_id=i.node_id AND v.verdict='pass'),0)")?;
+            defect_nodes = statement.query_map([&workflow.workflow_id],|row| row.get(0))?.collect::<std::result::Result<_,_>>()?;
+            drop(statement);
+            for node in &workflow.nodes {
+                if defect_nodes.contains(&node.id) && previous.get(&node.id).is_some_and(|old| node.revision > old.revision) {
+                    seeds.insert(node.id.clone());
+                }
+            }
+        }
         if seeds.is_empty() { return Err(Error::new(ErrorKind::RevisionConflict,"no semantic change; no progress is not a new revision")); }
         let combined: Vec<_> = old_edges.iter().chain(&workflow.edges).cloned().collect();
         let affected = graph::affected(&seeds.into_iter().collect::<Vec<_>>(),&combined);
+        if repair {
+            defect_nodes.retain(|node| affected.contains(node));
+            if defect_nodes.is_empty() {
+                return Err(Error::new(ErrorKind::ValidationStale,"repair requires an actual unresolved local evidence invalidation, not caller-declared findings"));
+            }
+            let permitted = graph::affected(&defect_nodes.iter().cloned().collect::<Vec<_>>(),&old_edges);
+            if affected != permitted || !proposed.is_subset(&previous.keys().cloned().collect()) || old_pairs != new_pairs {
+                return Err(Error::new(ErrorKind::ScopeDenied,"bounded repair may only revise the evidenced defect chain; structural user changes require revise"));
+            }
+            let mut statement = transaction.prepare("SELECT result_json FROM events WHERE task_id=?1 AND event_key LIKE 'revise:%' ORDER BY event_key LIMIT 2049")?;
+            let texts: Vec<String> = statement.query_map([&workflow.workflow_id],|row| row.get(0))?.collect::<std::result::Result<_,_>>()?;
+            drop(statement);
+            if texts.len() > 2048 { return Err(Error::new(ErrorKind::BudgetExhausted,"repair history exceeds bounded review window")); }
+            let history: Vec<Value> = texts.iter().map(|text| strict_json::parse(text.as_bytes())).collect::<Result<_>>()?;
+            for node in &defect_nodes {
+                let last_verified: i64 = transaction.query_row(
+                    "SELECT COALESCE(MAX(v.graph_revision),0) FROM validations v JOIN artifacts a ON a.id=v.artifact_id WHERE a.task_id=?1 AND a.node_id=?2 AND v.verdict='pass'",params![workflow.workflow_id,node],|row| row.get(0))?;
+                let repairs: Vec<&Value> = history.iter().filter(|result| result["defect_nodes"].as_array().is_some_and(|nodes| nodes.iter().any(|item| item.as_str()==Some(node)))).collect();
+                let without_progress = repairs.iter().filter(|result| result["graph_revision"].as_i64().is_some_and(|revision| revision>last_verified)).count() as u64;
+                if repairs.len() as u64 >= workflow.budget.max_point_revisions || without_progress >= workflow.budget.max_no_progress {
+                    return Err(Error::new(ErrorKind::BudgetExhausted,format!("evidenced node {node} reached its pinned repair or no-progress cap")));
+                }
+            }
+        }
         for node in &workflow.nodes {
             let required = match previous.get(&node.id) {
                 Some(old) if affected.contains(&node.id) => old.revision.checked_add(1).ok_or_else(|| Error::new(ErrorKind::RevisionConflict,"node revision overflow"))?,
@@ -93,10 +139,10 @@ impl Store {
             };
             if node.revision != required { return Err(Error::new(ErrorKind::RevisionConflict,format!("node {} must have revision {}",node.id,required))); }
         }
-        let changed = transaction.execute("UPDATE tasks SET graph_revision=?3,plan_hash=?4,revisions_used=revisions_used+1,status='active' WHERE id=?1 AND graph_revision=?2",params![workflow.workflow_id,expected,next,plan_hash])?;
+        let changed = transaction.execute("UPDATE tasks SET graph_revision=?3,plan_hash=?4,revisions_used=revisions_used+?5,status='active' WHERE id=?1 AND graph_revision=?2",params![workflow.workflow_id,expected,next,plan_hash,i64::from(!repair)])?;
         if changed != 1 { return Err(Error::new(ErrorKind::RevisionConflict,"graph compare-and-swap lost")); }
         let existing_affected = affected.iter().filter(|id| previous.contains_key(*id)).cloned().collect();
-        invalidate(&transaction,&workflow.workflow_id,&existing_affected,"user-graph-revision")?;
+        invalidate(&transaction,&workflow.workflow_id,&existing_affected,if repair { "evidenced-local-repair" } else { "user-graph-revision" })?;
         for node in &workflow.nodes {
             let hash = strict_json::digest(&json!({"node":node,"release":workflow.catalog_version}))?;
             let spec = serde_json::to_string(node)?;
@@ -112,7 +158,8 @@ impl Store {
         for edge in &workflow.edges { transaction.execute("INSERT INTO dependencies(task_id,source,target) VALUES(?1,?2,?3)",params![workflow.workflow_id,edge.from,edge.to])?; }
         transaction.execute("INSERT INTO task_plans(task_id,graph_revision,plan_hash,envelope_json) VALUES(?1,?2,?3,?4)",params![workflow.workflow_id,next,plan_hash,serde_json::to_string(envelope)?])?;
         transaction.execute("UPDATE tasks SET status='active' WHERE id=?1",[&workflow.workflow_id])?;
-        let result = json!({"task_id":workflow.workflow_id,"graph_revision":next,"affected_nodes":affected,"plan_hash":plan_hash,"slots_released":0,"history_retained":true,"native_execution":false});
+        let mut result = json!({"task_id":workflow.workflow_id,"graph_revision":next,"affected_nodes":affected,"plan_hash":plan_hash,"slots_released":0,"history_retained":true,"native_execution":false});
+        if repair { result["defect_nodes"] = json!(defect_nodes); result["revision_reason"] = json!("evidenced-local-repair"); }
         event_insert(&transaction,&key,&workflow.workflow_id,&payload_hash,&result)?;
         transaction.commit()?;
         Ok(result)

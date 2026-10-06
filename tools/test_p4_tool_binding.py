@@ -1,4 +1,5 @@
 import copy
+from contextlib import contextmanager
 import hashlib
 import json
 from pathlib import Path
@@ -21,39 +22,80 @@ def load_json(relative: str) -> dict:
 
 
 class P4ToolBindingTests(unittest.TestCase):
+    @contextmanager
+    def video_binding_fixture(self):
+        with tempfile.TemporaryDirectory(
+                prefix="t85-binding-", dir=ROOT / ".dev/core-test-workspaces") as temporary:
+            fixture_root = Path(temporary)
+            implementation_hashes = {}
+            for relative in ("adapters/p4/ffmpeg_workflow.py", "adapters/p4/media_workflow.py", "tools/wuji4.py"):
+                source = fixture_root / relative
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_bytes((ROOT / relative).read_bytes())
+                implementation_hashes[relative] = digest(source)
+            manifest = {
+                "schema_version": 1,
+                "tools": [{
+                    "id": video.VIDEO_TOOL_ID,
+                    "status": "available-local-bounded",
+                    "runtime_admission": True,
+                    "version": video.VIDEO_TOOL_VERSION,
+                    "adapter": "adapters/p4/ffmpeg_workflow.py",
+                    "workflow_entrypoint": "tools/wuji4.py run-video",
+                    "reviewed_binding": {
+                        "revision": 1,
+                        "identity": {
+                            "server": video.VIDEO_TOOL_SERVER,
+                            "tool": video.VIDEO_TOOL_NAME,
+                            "entrypoint": video.media.DEFAULT_FFMPEG.as_posix(),
+                            "binary_sha256": video.media.PINNED_FFMPEG_SHA256,
+                            "version_prefix": "ffmpeg version 7.1-essentials_build-",
+                        },
+                        "interface": copy.deepcopy(video.VIDEO_INTERFACE),
+                        "implementation_hashes": implementation_hashes,
+                    },
+                }],
+            }
+            binding = fixture_root / "tool-manifest.json"
+            binding.write_text(json.dumps(manifest), encoding="utf-8")
+            with mock.patch.object(video, "ROOT", fixture_root), mock.patch.object(video, "BINDING_MANIFEST", binding):
+                yield fixture_root, manifest
+
     def test_video_binding_includes_exact_version_schema_and_identity(self):
-        binding = video.reviewed_binding()
+        with self.video_binding_fixture():
+            binding = video.reviewed_binding()
         self.assertEqual(binding["tool_id"], "video-render")
         self.assertEqual(binding["version"], "ffmpeg-7.1-observed")
         self.assertEqual(binding["identity"]["server"], "local-process")
         self.assertEqual(binding["identity"]["tool"], "video-render/png-to-mp4")
         self.assertEqual(binding["interface"], video.VIDEO_INTERFACE)
+        self.assertEqual(binding["implementation_hashes"], {
+            relative: digest(ROOT / relative) for relative in binding["implementation_hashes"]
+        })
 
     def test_video_binding_rejects_same_name_alias_and_directory_fallback(self):
-        original = json.loads(video.BINDING_MANIFEST.read_text(encoding="utf-8"))
         for mutation in ("same-name", "missing-target"):
-            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory(
-                    dir=ROOT / ".dev" / "core-test-workspaces") as temporary:
-                altered = Path(temporary) / "tool-manifest.json"
-                manifest = copy.deepcopy(original)
+            with self.subTest(mutation=mutation), self.video_binding_fixture() as (_, manifest):
+                video.reviewed_binding()
                 if mutation == "same-name":
                     alias = copy.deepcopy(next(tool for tool in manifest["tools"] if tool["id"] == "video-render"))
                     alias["id"] = "video-render-alias"
                     manifest["tools"].append(alias)
                 else:
                     manifest["tools"] = [tool for tool in manifest["tools"] if tool["id"] != "video-render"]
-                altered.write_text(json.dumps(manifest), encoding="utf-8")
-                with mock.patch.object(video, "BINDING_MANIFEST", altered):
-                    with self.assertRaises(ValueError):
-                        video.reviewed_binding()
+                video.BINDING_MANIFEST.write_text(json.dumps(manifest), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "ambiguous|Exact unique"):
+                    video.reviewed_binding()
 
     def test_video_dispatch_rejects_binding_drift_before_process_start(self):
-        with tempfile.TemporaryDirectory(dir=ROOT / ".dev" / "core-test-workspaces") as temporary:
-            workspace = Path(temporary)
+        with self.video_binding_fixture() as (fixture_root, _):
+            workspace = fixture_root / ".dev/core-test-workspaces/dispatch"
+            workspace.mkdir(parents=True)
             source = workspace / "source.png"
             source.write_bytes((ROOT / "outputs/p4/comfyui-probe-output.png").read_bytes())
-            binding = workspace / "tool-manifest.json"
-            binding.write_bytes(video.BINDING_MANIFEST.read_bytes())
+            binding = video.BINDING_MANIFEST
+            expected_binding = video.reviewed_binding()
+            video.require_current_binding(expected_binding)
             original_append = video.media.append_process_command
             process_calls = []
 
@@ -62,7 +104,7 @@ class P4ToolBindingTests(unittest.TestCase):
                     binding.write_text(binding.read_text(encoding="utf-8") + "\n", encoding="utf-8")
                 return original_append(receipt, phase, argv, cwd, timeout, parse_json, before_dispatch)
 
-            with mock.patch.object(video, "BINDING_MANIFEST", binding), mock.patch.object(
+            with mock.patch.object(
                     video.media, "append_process_command", side_effect=mutate_before_dispatch), mock.patch.object(
                     video.media.subprocess, "run", side_effect=lambda *args, **kwargs: process_calls.append(args) or None):
                 result = video.run(workspace, input_path=source)
@@ -74,12 +116,62 @@ class P4ToolBindingTests(unittest.TestCase):
             self.assertEqual(result["commands"][0]["dispatch_guard"], "rejected")
             self.assertFalse(result["commands"][0]["owned_process_exit_observed"])
 
+    def test_video_binding_rejects_schema_identity_version_duplicate_and_source_drift(self):
+        mutations = {
+            "manifest-schema": "schema is unsupported",
+            "interface-schema": "identity or interface schema drift",
+            "typed-interface": "identity or interface schema drift",
+            "identity": "identity or interface schema drift",
+            "version": "version or reviewed binding is not admitted",
+            "duplicate-id": "Exact unique",
+            "source-hash": "implementation drift",
+            "source-bytes": "implementation drift",
+        }
+        for mutation, message in mutations.items():
+            with self.subTest(mutation=mutation), self.video_binding_fixture() as (fixture_root, manifest):
+                video.reviewed_binding()
+                tool = manifest["tools"][0]
+                if mutation == "manifest-schema":
+                    manifest["schema_version"] = 2
+                elif mutation == "interface-schema":
+                    tool["reviewed_binding"]["interface"]["duration_us"] = 2000000
+                elif mutation == "typed-interface":
+                    tool["reviewed_binding"]["interface"]["input_direct_child"] = 1
+                elif mutation == "identity":
+                    tool["reviewed_binding"]["identity"]["server"] = "different-remote-server"
+                elif mutation == "version":
+                    tool["version"] = "unverified-version"
+                elif mutation == "duplicate-id":
+                    manifest["tools"].append(copy.deepcopy(tool))
+                elif mutation == "source-hash":
+                    tool["reviewed_binding"]["implementation_hashes"]["tools/wuji4.py"] = "changed"
+                else:
+                    (fixture_root / "tools/wuji4.py").write_bytes(b"changed isolated source")
+                video.BINDING_MANIFEST.write_text(json.dumps(manifest), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, message):
+                    video.reviewed_binding()
+
+    def test_video_historical_binding_and_execution_evidence_are_rejected_as_stale(self):
+        manifest_path = video.BINDING_MANIFEST
+        evidence_path = ROOT / "outputs/p4/video-framework-workflow-evidence.json"
+        manifest_before = manifest_path.read_bytes()
+        evidence_before = evidence_path.read_bytes()
+        with self.video_binding_fixture() as (_, manifest):
+            video.reviewed_binding()
+            manifest["tools"][0]["reviewed_binding"]["implementation_hashes"]["tools/wuji4.py"] = "0" * 64
+            video.BINDING_MANIFEST.write_text(json.dumps(manifest), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "implementation drift"):
+                video.reviewed_binding()
+        self.assertEqual(manifest_path.read_bytes(), manifest_before)
+        self.assertEqual(evidence_path.read_bytes(), evidence_before)
+
     def test_framework_video_evidence_binds_current_sources_artifact_and_real_decode(self):
         evidence = load_json("outputs/p4/video-framework-workflow-evidence.json")
         self.assertTrue(evidence["passed"])
         self.assertEqual(evidence["result_state"], "completed_bounded_task")
         self.assertEqual(evidence["framework_execution"]["exit_code"], 0)
-        self.assertEqual(evidence["framework_execution"]["source_sha256"], digest(ROOT / "tools/wuji4.py"))
+        self.assertEqual(evidence["framework_execution"]["source_sha256"], digest(ROOT / "tools/wuji4.py"),
+                         "stale video execution evidence: framework source changed; no video rerun is claimed")
         for relative, expected in evidence["implementation_hashes"].items():
             self.assertEqual(expected, digest(ROOT / relative))
         artifact = evidence["retained_artifact"]

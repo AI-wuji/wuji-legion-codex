@@ -472,3 +472,4 @@ mod tests {
         assert!(state.in_flight_lock("task-1").is_none());
     }
 }
+

@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import importlib
 import json
+import stat
 import sys
 from pathlib import Path
 
@@ -28,7 +29,17 @@ ROOT = run_legion_task.ROOT
 PACK = run_legion_task.PACK
 MANIFEST = PACK / "task-entry.json"
 TOOL_MANIFEST = ROOT / "catalog/p4/tool-manifests.json"
-CONFIG = Path("C:/Users/Administrator/.codex/config.toml")
+CONFIG = Path.home() / ".codex/config.toml"
+SOURCE_SKILL = PACK / "skills/wuji-legion-4-0"
+CORE_SKILL_FILES = (
+    "SKILL.md",
+    "references/documents.md",
+    "references/engineering.md",
+    "references/evolution.md",
+    "references/leader-routing.md",
+    "references/media.md",
+    "references/research.md",
+)
 
 
 def digest(path: Path) -> str:
@@ -61,11 +72,113 @@ def pack_paths(value: dict) -> dict[str, Path]:
     return resolved
 
 
+def _observation_path(path: Path, boundary: Path) -> None:
+    relative = path.relative_to(boundary)
+    current = boundary
+    for part in (None, *relative.parts):
+        if part is not None:
+            current = current / part
+        metadata = current.lstat()
+        if (stat.S_ISLNK(metadata.st_mode)
+                or getattr(metadata, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)):
+            raise ValueError("linked observation path is not admitted")
+
+
+def _core_skill_inventory(root: Path, boundary: Path) -> dict[str, Path]:
+    _observation_path(root, boundary)
+    if not root.is_dir():
+        raise ValueError("core skill root must be a directory")
+    files = {}
+    for child in root.iterdir():
+        _observation_path(child, boundary)
+        if child.name == "references" and child.is_dir():
+            for reference in child.iterdir():
+                _observation_path(reference, boundary)
+                suffix = "/" if reference.is_dir() else ""
+                files[f"references/{reference.name}{suffix}"] = reference
+        else:
+            suffix = "/" if child.is_dir() else ""
+            files[f"{child.name}{suffix}"] = child
+    return files
+
+
+def _core_skill_observation(home: Path) -> dict:
+    installed = home / ".agents/skills/wuji-legion-codex-4-0"
+    result = {"path": str(installed), "source_path": str(SOURCE_SKILL),
+              "installed": False, "state": "unknown", "file_hashes": {}}
+    expected = set(CORE_SKILL_FILES)
+    stage = "source"
+    try:
+        source_files = _core_skill_inventory(SOURCE_SKILL, ROOT)
+        if set(source_files) != expected:
+            result.update(state="source_mismatch", reason="source_file_set_mismatch")
+            return result
+        stage = "installed"
+        installed_files = _core_skill_inventory(installed, home)
+        if set(installed_files) != expected:
+            result.update(state="source_mismatch", reason="installed_file_set_mismatch",
+                          missing_files=sorted(expected - set(installed_files)),
+                          unexpected_files=sorted(set(installed_files) - expected))
+            return result
+        for name in CORE_SKILL_FILES:
+            if not (stat.S_ISREG(source_files[name].stat().st_mode)
+                    and stat.S_ISREG(installed_files[name].stat().st_mode)):
+                raise ValueError("core skill entries must be regular files")
+            source_hash = digest(source_files[name])
+            installed_hash = digest(installed_files[name])
+            result["file_hashes"][name] = {"source_sha256": source_hash,
+                                         "installed_sha256": installed_hash,
+                                         "matches": source_hash == installed_hash}
+        result["installed"] = all(item["matches"] for item in result["file_hashes"].values())
+        result["state"] = "source_match" if result["installed"] else "source_mismatch"
+    except FileNotFoundError:
+        result.update(state="missing" if stage == "installed" else "source_mismatch",
+                      reason=f"{stage}_path_missing")
+    except ValueError:
+        result.update(state="invalid_path", reason=f"{stage}_path_not_admitted")
+    except OSError:
+        result.update(state="unknown", reason=f"{stage}_observation_unavailable")
+    return result
+
+
+def _global_entry_observation(home: Path) -> dict:
+    path = home / ".codex/AGENTS.md"
+    result = {"path": str(path), "state": "unknown", "default_entry_rule_present": None,
+              "white_hat_rule_present": None, "content_exported": False,
+              "new_chat_behavior": "unverified"}
+    try:
+        _observation_path(path, home)
+        if not stat.S_ISREG(path.stat().st_mode):
+            raise ValueError("global entry must be a regular file")
+        text = path.read_text(encoding="utf-8-sig")
+        lines = text.splitlines()
+        version_present = "无极军团" in text and "4.0" in text
+        result.update(
+            state="observed_rule_text_only",
+            default_entry_rule_present=version_present and any(
+                "默认" in line and ("入口" in line or "新对话" in line) for line in lines),
+            white_hat_rule_present=version_present and any(
+                "白帽" in line and any(marker in line for marker in ("内置", "核对", "判断", "通路"))
+                for line in lines),
+        )
+    except FileNotFoundError:
+        result.update(state="missing", default_entry_rule_present=False, white_hat_rule_present=False)
+    except UnicodeError:
+        result["state"] = "unknown"
+    except ValueError:
+        result["state"] = "invalid_path"
+    except OSError:
+        result["state"] = "unknown"
+    return result
+
+
 def status() -> dict:
     active = load_active()
     value = manifest()
     paths = pack_paths(value)
-    config_hash = digest(CONFIG) if CONFIG.is_file() else None
+    home = Path.home()
+    core_skill = _core_skill_observation(home)
+    global_entry = _global_entry_observation(home)
     return {
         "schema_version": 1,
         "kind": "wuji_legion_4_framework_status",
@@ -75,7 +188,10 @@ def status() -> dict:
         "entry": {
             "manifest": MANIFEST.relative_to(ROOT).as_posix(),
             "manifest_sha256": digest(MANIFEST),
-            "installed": value["installed"],
+            "installed": core_skill["installed"],
+            "source_policy": {name: value[name] for name in ("installed", "automatic_discovery_enabled", "P7")},
+            "core_skill_observation": core_skill,
+            "global_agents_observation": global_entry,
             "automatic_discovery_enabled": value["automatic_discovery_enabled"],
             "P7": value["P7"],
             "pack_files": {name: {"path": path.relative_to(ROOT).as_posix(), "sha256": digest(path)}
@@ -85,6 +201,8 @@ def status() -> dict:
         "capabilities": {
             "simple_tasks": "direct",
             "professional_guidance": "on_demand",
+            "staff_delegation": "bounded_recipe_selection",
+            "expert_catalog": "cold_metadata_only",
             "bounded_local_file_task": "available" if run_legion_task.EXECUTABLE.is_file() else "unavailable",
             "native_model_dispatch": "not_admitted",
             "professional_effectiveness": "not_claimed",
@@ -93,11 +211,24 @@ def status() -> dict:
             "rust_cli_path": run_legion_task.EXECUTABLE.relative_to(ROOT).as_posix(),
             "rust_cli_present": run_legion_task.EXECUTABLE.is_file(),
             "resident_service": False,
-            "global_installation": False,
+            "global_installation": core_skill["installed"],
+            "global_installation_basis": "core_skill_file_set_and_byte_hash_match_only",
+        },
+        "staff_delegation": {
+            "manifest": "catalog/p3/delegation-manifest.json",
+            "manifest_sha256": digest(run_legion_task.DELEGATION_MANIFEST),
+            "state": "recipe_selection_only",
+            "multiple_explicit_subtasks": True,
+            "conditional_expert_selection": True,
+            "shared_budget": True,
+            "parallel_preparation_only": True,
+            "return_path": "expert -> leader -> staff -> aji",
+            "runtime_admission": False,
         },
         "protected_codex_configuration": {
             "path": str(CONFIG),
-            "sha256": config_hash,
+            "sha256": None,
+            "content_read": False,
             "content_exported": False,
             "modified_by_framework": False,
         },
@@ -129,6 +260,7 @@ def doctor() -> dict:
         checks["pack_files"] = False
         details["manifest_error"] = str(error)
     checks["rust_cli"] = run_legion_task.EXECUTABLE.is_file()
+    checks["delegation_manifest"] = run_legion_task.DELEGATION_MANIFEST.is_file()
     checks["protected_config_readable"] = CONFIG.is_file()
     checks["no_global_installation"] = True
     checks["no_resident_service"] = True
@@ -255,6 +387,8 @@ def main() -> None:
     commands.add_parser("capabilities")
     route_parser = commands.add_parser("route")
     route_parser.add_argument("kind")
+    delegation_parser = commands.add_parser("delegate")
+    delegation_parser.add_argument("request_json")
     copy_parser = commands.add_parser("run-copy")
     copy_parser.add_argument("workspace")
     copy_parser.add_argument("task")
@@ -293,6 +427,11 @@ def main() -> None:
             result = capabilities()
         elif arguments.command == "route":
             result = run_legion_task.route(arguments.kind)
+        elif arguments.command == "delegate":
+            request_path = Path(arguments.request_json).resolve(strict=True)
+            if not request_path.is_file() or request_path.stat().st_size > 32 * 1024:
+                raise ValueError("Delegation request must be a bounded JSON file")
+            result = run_legion_task.delegate(strict_json(request_path.read_text(encoding="utf-8")))
         elif arguments.command == "run-copy":
             result = run_legion_task.run_copy(arguments.workspace, arguments.task, arguments.source,
                                               arguments.output, arguments.confirmation)
@@ -334,4 +473,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
     main()

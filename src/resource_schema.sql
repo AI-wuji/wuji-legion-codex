@@ -23,4 +23,12 @@ CREATE TABLE resource_events (
     payload_hash TEXT NOT NULL,
     result_json TEXT NOT NULL
 );
+CREATE TABLE local_resource_acl (
+    singleton INTEGER PRIMARY KEY CHECK(singleton=1),
+    acl_version INTEGER NOT NULL CHECK(acl_version=1),
+    owner_sid TEXT NOT NULL,
+    scope TEXT NOT NULL,
+    root_hash TEXT NOT NULL,
+    enabled INTEGER NOT NULL CHECK(enabled IN (0,1))
+);
 PRAGMA user_version = 3;

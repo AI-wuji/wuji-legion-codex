@@ -16,6 +16,26 @@ SEMANTIC_CASES = {
     "T12": "store::tests::t12_full_local_repeated_events_never_create_second_dispatch_or_change_artifact",
     "T13": "store::tests::os_kill_after_dispatch_requires_query_and_holds_slot",
     "T18": "store::tests::t18_changed_adopted_file_needs_new_revision_and_independent_current_validation",
+    "T19": ["store::tests::t19_actual_defect_has_file_evidence_and_bounded_independently_verified_repair",
+            "store::tests::t19_clean_review_does_not_invent_three_findings_or_repeat_dispatch",
+            "store::tests::t19_pinned_no_progress_cap_stops_rework_before_mutation_and_survives_reopen",
+            "store::tests::t19_real_validation_resets_consecutive_guard_but_not_aggregate_revision_budget",
+            "store::tests::t19_normal_user_revisions_do_not_count_as_unverified_repairs",
+            "store::tests::t19_repair_cap_is_per_defect_node_and_cannot_reset_through_event_names",
+            "store::tests::t19_two_independent_defects_can_be_repaired_without_unrelated_rework",
+            "store::tests::t19_lost_artifact_can_be_repaired_at_original_path_without_invented_spec_change"],
+    "T22": ["t22_current_owner_consumes_knowledge_and_experience_after_reopen",
+            "t22_json_owner_or_token_fields_cannot_grant_authority",
+            "t22_revocation_denies_every_operation_including_historical_replays",
+            "t22_another_owner_sid_denies_open_and_all_live_operations",
+            "t22_scope_is_rechecked_after_store_open_before_queries_and_replays",
+            "t22_record_scope_change_denies_mutations_and_does_not_leak_query_content",
+            "t22_cross_project_input_and_relocated_database_are_rejected",
+            "t22_legacy_database_cannot_be_silently_claimed_or_migrated",
+            "t22_empty_or_unknown_owner_authorization_is_not_repaired",
+            "t22_transfer_scope_is_rechecked_before_new_intent_and_replay",
+            "t22_transfer_replay_validates_immutable_source_intent",
+            "t22_transfer_and_received_replays_recheck_both_open_store_owners"],
     "T23": "t23_retired_experience_never_reappears_after_query_or_reopen",
     "T24": ["governance::tests::source_license_admission_requires_explicit_policy_and_preserves_versions",
             "governance::tests::in_flight_release_is_pinned_while_new_source_version_is_staged",
@@ -31,6 +51,13 @@ SEMANTIC_CASES = {
     "T64": "t64_units_adopted_versions_current_hashes_and_explicit_rounding_are_separate",
 }
 SEMANTIC_PREREQUISITES = {
+    "T19": ["owned_schema6_artifact_migration_preserves_history_references_and_live_uniqueness",
+            "schema6_without_owner_or_with_revocation_is_not_migrated",
+            "schema6_migration_collision_and_broken_references_roll_back_without_mutation",
+            "owned_schema7_cannot_downgrade_to_bypass_migration_guards",
+            "schema6_unknown_artifact_columns_are_not_silently_dropped"],
+    "T22": ["local_identity::tests::t22_whoami_csv_accepts_only_one_valid_sid_without_trusting_username",
+            "local_identity::tests::t22_whoami_csv_rejects_malformed_or_multiple_identities"],
     "T11": ["store::tests::graph_cas_retains_unrelated_adoption_and_rejects_old_result",
             "store::tests::graph_revisions_cannot_reset_budget_or_repeat_no_progress"],
     "T12": ["store::tests::plan_replay_and_changed_payload_conflict",
@@ -253,8 +280,13 @@ def source_snapshot(root: Path = ROOT) -> dict[str, str]:
 
 
 def rust_cases_from_log(text: str) -> dict[str, str]:
-    return {name: "passed" if state == "ok" else "failed" for name, state in
-            re.findall(r"^test (\S+) \.\.\. (ok|FAILED)\s*$", text, re.MULTILINE)}
+    records = {}
+    for name, state in re.findall(r"^test (\S+) \.\.\. (ok|FAILED)\s*$", text, re.MULTILINE):
+        mapped = "passed" if state == "ok" else "failed"
+        if name in records and records[name] != mapped:
+            raise ValueError("Conflicting repeated Rust case outcomes")
+        records[name] = mapped
+    return records
 
 
 def python_cases_from_log(text: str) -> dict[str, str]:
@@ -452,7 +484,8 @@ def office_document_artifact_checks(root: Path) -> dict:
     return result
 
 
-def evaluate(root: Path, specs: dict, receipt: dict) -> dict:
+def evaluate(root: Path, specs: dict, receipt: dict, *, receipt_path: str = "outputs/p6/test-execution.json") -> dict:
+    confined_path(root, receipt_path)
     checks = {
         "spec_hash_current": receipt.get("acceptance_spec_sha256") == digest(root / "docs/acceptance-map.json"),
         "sources_current": receipt.get("source_hashes") == source_snapshot(root),
@@ -465,20 +498,22 @@ def evaluate(root: Path, specs: dict, receipt: dict) -> dict:
     }
     for section in ("rust", "python"):
         evidence = receipt.get(section, {})
-        relative = evidence.get("log_path")
-        if not isinstance(relative, str) or Path(relative).is_absolute() or ".." in Path(relative).parts or ":" in relative or "\\" in relative:
-            checks["logs_current"] = False
-            continue
-        path = root / relative
-        checks["logs_current"] &= path.is_file() and evidence.get("log_sha256") == digest(path)
-        if section == "rust" and path.is_file():
-            checks["rust_case_records_match_log"] = evidence.get("cases") == rust_cases_from_log(path.read_text(encoding="utf-8", errors="replace"))
-        if section == "python" and path.is_file():
-            try:
-                records = python_cases_from_log(path.read_text(encoding="utf-8", errors="replace"))
+        try:
+            path = confined_path(root, evidence.get("log_path"))
+            if not path.is_file():
+                checks["logs_current"] = False
+                continue
+            content = path.read_bytes()
+            checks["logs_current"] &= evidence.get("log_sha256") == hashlib.sha256(content).hexdigest()
+            text = content.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+            if section == "rust":
+                records = rust_cases_from_log(text)
+                checks["rust_case_records_match_log"] = evidence.get("cases") == records
+            else:
+                records = python_cases_from_log(text)
                 checks["python_case_records_match_log"] = bool(records) and evidence.get("cases") == records
-            except ValueError:
-                checks["python_case_records_match_log"] = False
+        except (OSError, ValueError):
+            checks["logs_current"] = False
     valid = all(checks.values())
     rust_cases = receipt.get("rust", {}).get("cases", {})
     office_checks = office_artifact_checks(root, receipt)
@@ -501,8 +536,10 @@ def evaluate(root: Path, specs: dict, receipt: dict) -> dict:
             row["test_cases"] = cases
             row["coverage"] = "Complete normal and negative deterministic local scenario; no model/professional/production admission claim."
             row["status"] = "passed" if valid and all(rust_cases.get(case) == "passed" for case in cases) else "failed_or_stale"
-            test_source = {"T11": "src/store_product_tests.rs", "T12": "src/store_product_tests.rs", "T13": "src/store_product_tests.rs", "T18": "src/store_product_tests.rs", "T23": "tests/p6_resource_acceptance.rs", "T24": "src/governance.rs", "T52": "tests/p6_catalog_registry.rs", "T53": "tests/p6_task_catalog.rs", "T64": "tests/p6_time_semantics.rs", "T77": "tests/p6_received_delta.rs", "T84": "tests/p6_received_delta.rs"}.get(identifier, "tests/p6_semantic_acceptance.rs")
+            test_source = {"T11": "src/store_product_tests.rs", "T12": "src/store_product_tests.rs", "T13": "src/store_product_tests.rs", "T18": "src/store_product_tests.rs", "T19": "src/store_product_tests.rs", "T22": "tests/p6_resource_acl.rs", "T23": "tests/p6_resource_acceptance.rs", "T24": "src/governance.rs", "T52": "tests/p6_catalog_registry.rs", "T53": "tests/p6_task_catalog.rs", "T64": "tests/p6_time_semantics.rs", "T77": "tests/p6_received_delta.rs", "T84": "tests/p6_received_delta.rs"}.get(identifier, "tests/p6_semantic_acceptance.rs")
             row["evidence_refs"] = ["outputs/p6/test-execution.json", test_source]
+            if identifier == "T22":
+                row["coverage"] = "Windows single-owner resource ACL and project scope are rechecked for live operations and replay, including transfer/received consumption. System whoami supplies the current token SID. No DACL changes, administrator tamper resistance, multi-tenant service or global promotion claim."
         elif identifier in SEMANTIC_PYTHON_CASES:
             cases = SEMANTIC_PYTHON_CASES[identifier]
             test_source = {"T21": "tools/test_experience_workflows.py", "T24": "tools/test_governance_release_binding.py",
@@ -656,11 +693,14 @@ def evaluate(root: Path, specs: dict, receipt: dict) -> dict:
         elif spec["execution_class"] == "actual_professional_artifact":
             row.update(status="not_run", reason="Full professional workflow/holdout implementation and current matched evidence are incomplete; this is not automatically an external blocker.",
                        missing_scope="internal_workflow_and_matched_artifact_evidence")
+        row["evidence_refs"] = [receipt_path if reference == "outputs/p6/test-execution.json" else reference
+                                for reference in row["evidence_refs"]]
         matrix.append(row)
     counts = Counter(row["status"] for row in matrix)
     required = [row for row in matrix if row["required_for_g6"]]
     return {
         "schema_version": 1, "release": "p6-acceptance-execution-1",
+        "execution_receipt": receipt_path,
         "acceptance_spec_sha256": digest(root / "docs/acceptance-map.json"),
         "checks": checks, "evidence_valid": valid, "matrix": matrix,
         "office_artifact_checks": office_checks,

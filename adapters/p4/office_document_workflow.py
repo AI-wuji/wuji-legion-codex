@@ -20,7 +20,7 @@ from adapters.p4 import officecli_adapter as office
 
 
 ROOT = Path(__file__).resolve().parents[2]
-DOCX_RENDERER = Path("C:/Users/Administrator/.codex/plugins/cache/openai-primary-runtime/documents/26.909.12148/skills/documents/render_docx.py")
+DOCX_RENDERER_ROOT = Path.home() / ".codex/plugins/cache/openai-primary-runtime/documents"
 MAX_DOCX_BYTES = 8 * 1024 * 1024
 MAX_XLSX_BYTES = 8 * 1024 * 1024
 CONTROL_CHARACTERS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
@@ -296,14 +296,29 @@ def inspect_xlsx(path: Path, request: dict[str, object]) -> dict[str, object]:
     return {"checks": checks, "passed": all(checks.values()), "grand_total": f"{total:.2f}", "cells": len(cells)}
 
 
+class DocxRenderUnavailable(FileNotFoundError):
+    def __init__(self, reason: str, message: str):
+        super().__init__(message)
+        self.reason = reason
+
+
+def _docx_renderer() -> Path:
+    candidates = [path for path in DOCX_RENDERER_ROOT.glob("*/skills/documents/render_docx.py")
+                  if path.is_file() and not path.is_symlink()]
+    if not candidates:
+        raise DocxRenderUnavailable("renderer_not_found", "Approved bundled DOCX renderer is unavailable")
+    if len(candidates) != 1:
+        raise DocxRenderUnavailable("renderer_selection_required", "Multiple bundled DOCX renderers require explicit runtime selection")
+    return candidates[0]
+
+
 def _run_render(path: Path, workspace: Path, receipt: dict[str, object]) -> dict[str, object]:
-    if not DOCX_RENDERER.is_file():
-        raise FileNotFoundError(str(DOCX_RENDERER))
+    renderer = _docx_renderer()
     render_dir = workspace / "docx-render-qa"
     if render_dir.exists():
         raise FileExistsError(str(render_dir))
     render_dir.mkdir()
-    command = [sys.executable, str(DOCX_RENDERER), str(path), "--output_dir", str(render_dir)]
+    command = [sys.executable, str(renderer), str(path), "--output_dir", str(render_dir)]
     environment = dict(os.environ)
     completed = subprocess.run(command, cwd=workspace, env=environment, capture_output=True, timeout=90,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
@@ -312,8 +327,8 @@ def _run_render(path: Path, workspace: Path, receipt: dict[str, object]) -> dict
     record = {"phase": "docx-render", "argv": command, "exit_code": completed.returncode,
               "stdout": completed.stdout.decode("utf-8", errors="replace"), "stderr": completed.stderr.decode("utf-8", errors="replace")}
     receipt.setdefault("commands", []).append(record)
-    if completed.returncode != 0 and "LibreOffice" in record["stderr"]:
-        raise FileNotFoundError(record["stderr"].strip())
+    if completed.returncode != 0 and "FileNotFoundError:" in record["stderr"] and "LibreOffice" in record["stderr"]:
+        raise DocxRenderUnavailable("libreoffice_not_found", record["stderr"].strip())
     if completed.returncode != 0:
         raise RuntimeError("DOCX renderer failed")
     pages = []
@@ -359,8 +374,8 @@ def run(workspace: Path, request: dict[str, object], output: Path | None = None)
             try:
                 receipt["render"] = _run_render(artifact_path, isolated, receipt)
                 receipt["checks"]["rendered_pages"] = bool(receipt["render"]["pages"])
-            except FileNotFoundError as error:
-                receipt["render"] = {"status": "blocked_external", "reason": "approved DOCX renderer could not find an allowed LibreOffice executable", "error": str(error)}
+            except DocxRenderUnavailable as error:
+                receipt["render"] = {"status": "blocked_external", "reason": error.reason, "error": str(error)}
                 receipt["failure"] = {"type": "render_unavailable", "message": str(error)}
                 receipt["checks"]["rendered_pages"] = False
         else:

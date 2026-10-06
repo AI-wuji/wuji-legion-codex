@@ -1,0 +1,685 @@
+{
+  "schema_version": 1,
+  "kind": "bounded_staff_delegation_manifest",
+  "state": "cold_recipe_catalog",
+  "authority": "Recipe selection and handoff shape only; no model execution or tool permission",
+  "catalog": "catalog/p3/experts.json",
+  "leader_family_count": 16,
+  "workflow_role_count": 18,
+  "recipe_count": 21,
+  "leader_family_ids": [
+    "lead.comfyui",
+    "lead.software",
+    "lead.bugfix",
+    "lead.research",
+    "lead.writing",
+    "lead.office",
+    "lead.data",
+    "lead.web",
+    "lead.image",
+    "lead.video",
+    "lead.audio",
+    "lead.business",
+    "lead.learning",
+    "lead.automation",
+    "lead.publish",
+    "lead.governance"
+  ],
+  "rules": {
+    "simple_tasks": "aji_direct",
+    "matching": "exact_structured_domain_or_intent",
+    "score": "domain=3; typed_intent=2; ties=selection_gap",
+    "unknown_match": "selection_gap",
+    "all_expert_fallback": false,
+    "expert_ownership": "shared_task_instance_only",
+    "return_contract": "expert_to_leader_to_staff_to_aji",
+    "selection_scope": "one_leader_per_explicit_subtask",
+    "expert_selection": "required_or_explicit_condition",
+    "unused_experts": "cold"
+  },
+  "expert_coverage": {
+    "source_role_count": 57,
+    "unbound_role_ids": [],
+    "meaning": "Every recorded cold role is referenceable by at least one bounded leader recipe; this does not activate or execute the role."
+  },
+  "recipes": [
+    {
+      "recipe_id": "meta-instruction-revision",
+      "domains": ["governance", "prompt_meta"],
+      "typed_intents": ["meta_instruction", "prompt_engineering", "instruction_revision"],
+      "leader": {
+        "id": "leader/prompt-governance",
+        "family_id": "lead.governance",
+        "kind": "delivery_recipe",
+        "responsibility": "组织元指令变更的需求拆解、影响审查与回交"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/method/requirement-decomposition",
+          "assignment": "把用户请求转换为可确认的目标、交付物和验收条件",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/governance/evolution-review",
+          "assignment": "检查指令变更的影响范围、消费者、回归与撤销闭合",
+          "selection": {"required": true}
+        }
+      ],
+      "acceptance_defaults": ["goal-explicit", "deliverables-explicit", "impact-and-reversal-identified"]
+    },
+    {
+      "recipe_id": "research-decision",
+      "domains": ["research"],
+      "typed_intents": ["research", "source_review", "technology_selection", "compatibility_analysis"],
+      "leader": {
+        "id": "leader/research-decision",
+        "family_id": "lead.research",
+        "kind": "delivery_recipe",
+        "responsibility": "组织研究问题、证据范围、反例和决策回交"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/research",
+          "assignment": "按问题、决策需要和约束形成研究决策与来源回交",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/method/knowledge-base-qa",
+          "selection": {"any_intents": ["knowledge_base_qa"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["primary-sources-or-known-gap", "counterevidence-addressed", "version-scope-stated"]
+    },
+    {
+      "recipe_id": "software-delivery",
+      "domains": ["software", "engineering"],
+      "typed_intents": ["code_change", "software_review", "implementation"],
+      "leader": {
+        "id": "leader/software-delivery",
+        "family_id": "lead.software",
+        "kind": "delivery_recipe",
+        "responsibility": "组织软件交付、实现与独立审查的输入输出和写集"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/leaf/software-reverse",
+          "assignment": "在有授权和真实输入时提取行为、协议与边界契约",
+          "selection": {"any_intents": ["behavior_analysis", "reverse_engineering"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/software-architecture",
+          "selection": {"any_intents": ["architecture_design", "module_design"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/selector/code-implementation",
+          "selection": {"any_intents": ["implementation", "code_change"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/python-engineer",
+          "selection": {"any_intents": ["python_implementation"], "any_languages": ["python"]}
+        },
+        {
+          "role_id": "p3/leaf/rust-engineer",
+          "selection": {"any_intents": ["rust_implementation"], "any_languages": ["rust"]}
+        },
+        {
+          "role_id": "p3/leaf/go-engineer",
+          "selection": {"any_intents": ["go_implementation"], "any_languages": ["go"]}
+        },
+        {
+          "role_id": "p3/leaf/cpp-engineer",
+          "selection": {"any_intents": ["cpp_implementation"], "any_languages": ["cpp"]}
+        },
+        {
+          "role_id": "p3/leaf/code-review",
+          "selection": {"required": true}
+        }
+      ],
+      "acceptance_defaults": ["scope-locked", "write-set-unique", "regression-or-review-evidence"]
+    },
+    {
+      "recipe_id": "bugfix-delivery",
+      "domains": ["bugfix", "engineering"],
+      "typed_intents": ["bug_fix", "root_cause", "regression_fix", "incident_diagnosis"],
+      "leader": {
+        "id": "lead.bugfix",
+        "family_id": "lead.bugfix",
+        "kind": "delivery_recipe",
+        "responsibility": "组织复现、根因定位、最小修复和回归交付"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/code-repair",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/incident-diagnosis",
+          "selection": {"any_intents": ["incident_diagnosis", "root_cause"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/code-review",
+          "selection": {"any_intents": ["code_review", "software_review", "bug_fix", "regression_fix"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/delivery-acceptance",
+          "selection": {"any_intents": ["delivery_acceptance"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["reproduction-or-known-gap", "root-cause-recorded", "regression-evidence"]
+    },
+    {
+      "recipe_id": "comfyui-delivery",
+      "domains": ["comfyui"],
+      "typed_intents": ["comfyui_analysis", "comfyui_workflow", "comfyui_node", "comfyui_fusion", "comfyui_packaging", "comfyui_verification"],
+      "leader": {
+        "id": "lead.comfyui",
+        "family_id": "lead.comfyui",
+        "kind": "delivery_recipe",
+        "responsibility": "组织ComfyUI行为分析、逆推、融合、节点实现、工作流与验收"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/ai-workflow-engineer",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/comfyui-reverse",
+          "selection": {"any_intents": ["comfyui_analysis", "comfyui_reverse_engineering"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/comfyui-workflow",
+          "selection": {"any_intents": ["comfyui_workflow"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/comfyui-python-node",
+          "selection": {"any_intents": [], "any_languages": ["python"]}
+        },
+        {
+          "role_id": "p3/leaf/comfyui-rust-extension",
+          "selection": {"any_intents": [], "any_languages": ["rust"]}
+        },
+        {
+          "role_id": "p3/leaf/comfyui-go-integration",
+          "selection": {"any_intents": [], "any_languages": ["go"]}
+        },
+        {
+          "role_id": "p3/leaf/comfyui-cpp-kernel",
+          "selection": {"any_intents": [], "any_languages": ["cpp"]}
+        },
+        {
+          "role_id": "p3/leaf/comfyui-packaging",
+          "selection": {"any_intents": ["comfyui_packaging"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/comfyui-debug-performance",
+          "selection": {"any_intents": ["comfyui_debug", "comfyui_performance"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/comfyui-test-verification",
+          "selection": {"any_intents": ["comfyui_verification"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/comfyui-distillation",
+          "selection": {"any_intents": ["comfyui_fusion", "comfyui_distillation"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["authorized-inputs", "actual-registry-or-known-gap", "workflow-and-runtime-evidence"]
+    },
+    {
+      "recipe_id": "office-delivery",
+      "domains": ["office", "documents"],
+      "typed_intents": ["document", "word", "spreadsheet", "presentation", "pdf", "office_render"],
+      "leader": {
+        "id": "lead.office",
+        "family_id": "lead.office",
+        "kind": "delivery_recipe",
+        "responsibility": "组织Word、Excel、PPT和PDF的内容、格式、渲染与交付"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/document-deck",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/data-analysis",
+          "selection": {"any_intents": ["data_analysis", "statistics"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/delivery-acceptance",
+          "selection": {"any_intents": ["delivery_acceptance"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["editable-source-preserved", "format-scope-stated", "render-or-known-gap"]
+    },
+    {
+      "recipe_id": "writing-delivery",
+      "domains": ["writing", "content"],
+      "typed_intents": ["article", "fiction", "copywriting", "scriptwriting", "translation", "structural_edit", "topic_selection"],
+      "leader": {
+        "id": "lead.writing",
+        "family_id": "lead.writing",
+        "kind": "delivery_recipe",
+        "responsibility": "组织事实或设定、结构、窄领域创作、编辑与交付"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/writing",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/screenwriter",
+          "selection": {"any_intents": ["scriptwriting"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/video-copywriter",
+          "selection": {"any_intents": ["video_copywriting"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/method/multi-platform-distribution",
+          "selection": {"any_intents": ["distribution", "platform_adaptation"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/method/topic-selection",
+          "selection": {"any_intents": ["topic_selection"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/method/comic-storyboard",
+          "selection": {"any_intents": ["comic_storyboard"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["brief-and-audience-locked", "facts-or-setting-scoped", "style-and-format-checked"]
+    },
+    {
+      "recipe_id": "web-frontend-delivery",
+      "domains": ["web", "frontend"],
+      "typed_intents": ["frontend", "webapp", "interface", "interaction", "browser_qa"],
+      "leader": {
+        "id": "lead.web",
+        "family_id": "lead.web",
+        "kind": "delivery_recipe",
+        "responsibility": "组织网站和界面的功能、交互、视觉、实现与实际检查"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/frontend-visual",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/code-review",
+          "selection": {"any_intents": ["code_review", "software_review"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/file-operations",
+          "selection": {"any_intents": ["file_operations"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["behavior-scope-locked", "actual-page-check", "write-set-unique"]
+    },
+    {
+      "recipe_id": "web-workbench-delivery",
+      "domains": ["workbench"],
+      "typed_intents": ["workbench", "dashboard_ui", "offline_export", "tool_interface"],
+      "leader": {
+        "id": "lead.web",
+        "family_id": "lead.web",
+        "kind": "delivery_recipe",
+        "responsibility": "组织工作台的功能、数据、离线能力、导出和界面验收"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/workbench-builder",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/workflow/frontend-visual",
+          "selection": {"any_intents": ["frontend", "interface", "interaction"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/workflow/dashboard-review",
+          "selection": {"any_intents": ["dashboard_review"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/file-operations",
+          "selection": {"any_intents": ["file_operations", "offline_export"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["functional-path-checked", "data-contract-stated", "offline-or-export-evidence"]
+    },
+    {
+      "recipe_id": "image-delivery",
+      "domains": ["image", "visual"],
+      "typed_intents": ["image_generation", "image_edit", "visual_asset", "style_direction"],
+      "leader": {
+        "id": "lead.image",
+        "family_id": "lead.image",
+        "kind": "delivery_recipe",
+        "responsibility": "组织视觉Brief、资产规格、生成或编辑、权利与检查"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/image-creation",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/art-director",
+          "selection": {"any_intents": ["style_direction", "art_direction"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["visual-brief-locked", "rights-and-inputs-stated", "artifact-review"]
+    },
+    {
+      "recipe_id": "video-production-delivery",
+      "domains": ["video"],
+      "typed_intents": ["video_production", "short_video", "film", "narrative_video"],
+      "leader": {
+        "id": "lead.video",
+        "family_id": "lead.video",
+        "kind": "delivery_recipe",
+        "responsibility": "组织情报、表达、节奏、分镜、素材、制作、声场和交付"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/video-production",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/workflow/studio-producer",
+          "selection": {"any_intents": ["studio_production", "video_preproduction"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/screenwriter",
+          "selection": {"any_intents": ["scriptwriting"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/visual-storyboard",
+          "selection": {"any_intents": ["visual_storyboard"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/art-director",
+          "selection": {"any_intents": ["style_direction", "creative_direction"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/media-quality-review",
+          "selection": {"any_intents": ["media_quality_review"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["story-and-shot-scope", "rights-and-source-lock", "timeline-or-known-gap"]
+    },
+    {
+      "recipe_id": "video-studio-delivery",
+      "domains": ["studio_video"],
+      "typed_intents": ["studio_production", "series_video", "video_preproduction", "creative_direction"],
+      "leader": {
+        "id": "lead.video",
+        "family_id": "lead.video",
+        "kind": "delivery_recipe",
+        "responsibility": "组织系列化视频前期、创作方向、分镜和制作计划"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/studio-producer",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/workflow/writing",
+          "selection": {"any_intents": ["copywriting", "structural_edit"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/screenwriter",
+          "selection": {"any_intents": ["scriptwriting"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/visual-storyboard",
+          "selection": {"any_intents": ["visual_storyboard"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/art-director",
+          "selection": {"any_intents": ["style_direction", "creative_direction"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["series-bible-or-brief", "creative-scope-locked", "production-handoff"]
+    },
+    {
+      "recipe_id": "video-post-production",
+      "domains": ["post_production"],
+      "typed_intents": ["post_production", "timeline_edit", "subtitle_timing", "color_finishing", "export_qa"],
+      "leader": {
+        "id": "lead.video",
+        "family_id": "lead.video",
+        "kind": "delivery_recipe",
+        "responsibility": "组织素材、时间线、字幕、调色、导出和交付检查"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/post-production",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/media-quality-review",
+          "selection": {"any_intents": ["media_quality_review", "export_qa"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/visual-storyboard",
+          "selection": {"any_intents": ["visual_storyboard"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["source-assets-locked", "timeline-and-export-scope", "delivery-review"]
+    },
+    {
+      "recipe_id": "audio-delivery",
+      "domains": ["audio", "sound"],
+      "typed_intents": ["voiceover", "music_production", "sound_design", "mix_mastering", "audio_alignment"],
+      "leader": {
+        "id": "lead.audio",
+        "family_id": "lead.audio",
+        "kind": "delivery_recipe",
+        "responsibility": "组织配音、音乐、声场、对白对齐、混音和母带交付"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/voice-audio",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/media-quality-review",
+          "selection": {"any_intents": ["media_quality_review"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["track-and-time-scope", "rights-and-source-lock", "mix-or-known-gap"]
+    },
+    {
+      "recipe_id": "business-delivery",
+      "domains": ["business"],
+      "typed_intents": ["requirement_analysis", "proposal", "quotation", "contract_risk", "delivery_management", "studio_positioning"],
+      "leader": {
+        "id": "lead.business",
+        "family_id": "lead.business",
+        "kind": "delivery_recipe",
+        "responsibility": "组织需求、定位、方案、报价、合同风险和交付管理"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/business-library",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/method/requirement-decomposition",
+          "selection": {"any_intents": ["requirement_analysis"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/studio-owner",
+          "selection": {"any_intents": ["studio_positioning"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/client-proposal",
+          "selection": {"any_intents": ["proposal", "quotation"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/contract-risk",
+          "selection": {"any_intents": ["contract_risk"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/delivery-acceptance",
+          "selection": {"any_intents": ["delivery_management", "delivery_acceptance"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["scope-and-assumptions", "commercial-risk-stated", "delivery-criteria-explicit"]
+    },
+    {
+      "recipe_id": "learning-delivery",
+      "domains": ["learning", "education"],
+      "typed_intents": ["course", "lesson", "exercise", "learning_review", "template_curation"],
+      "leader": {
+        "id": "lead.learning",
+        "family_id": "lead.learning",
+        "kind": "delivery_recipe",
+        "responsibility": "组织学习成果、课程设计、讲解、练习、模板和掌握度复核"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/learning-coach",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/course-design",
+          "selection": {"any_intents": ["course", "lesson"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/template-curator",
+          "selection": {"any_intents": ["template_curation"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/method/requirement-decomposition",
+          "selection": {"any_intents": ["requirement_analysis"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["learner-outcome-measurable", "materials-and-exercises-linked", "review-path-defined"]
+    },
+    {
+      "recipe_id": "automation-delivery",
+      "domains": ["automation"],
+      "typed_intents": ["automation", "workflow_design", "scheduled_action", "connector_integration"],
+      "leader": {
+        "id": "lead.automation",
+        "family_id": "lead.automation",
+        "kind": "delivery_recipe",
+        "responsibility": "组织触发、动作、权限、排程、取消和真实回执"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/automation-design",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/file-operations",
+          "selection": {"any_intents": ["file_operations"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["authorization-scoped", "trigger-and-cancel-defined", "actual-receipt-or-known-gap"]
+    },
+    {
+      "recipe_id": "publishing-operations",
+      "domains": ["content_operations"],
+      "typed_intents": ["content_operations", "distribution", "platform_adaptation", "content_review"],
+      "leader": {
+        "id": "lead.publish",
+        "family_id": "lead.publish",
+        "kind": "delivery_recipe",
+        "responsibility": "组织定稿物料、平台适配、运营建议与发布前核验"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/content-operations",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/method/multi-platform-distribution",
+          "selection": {"any_intents": ["distribution", "platform_adaptation"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/delivery-acceptance",
+          "selection": {"any_intents": ["content_review", "delivery_acceptance"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["final-materials-locked", "platform-scope-stated", "no-unauthorized-publish"]
+    },
+    {
+      "recipe_id": "publishing-delivery",
+      "domains": ["publish", "release"],
+      "typed_intents": ["publication_delivery", "release_package", "publishing_connector", "skill_packaging"],
+      "leader": {
+        "id": "lead.publish",
+        "family_id": "lead.publish",
+        "kind": "delivery_recipe",
+        "responsibility": "组织已定稿内容或Skill包的权限、草稿、发布核验和回执"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/publication-delivery",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/skill-packager",
+          "selection": {"any_intents": ["skill_packaging"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/leaf/delivery-acceptance",
+          "selection": {"any_intents": ["delivery_acceptance"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["authorization-explicit", "package-or-draft-reproducible", "publish-receipt-or-known-gap"]
+    },
+    {
+      "recipe_id": "data-delivery",
+      "domains": ["data", "analytics"],
+      "typed_intents": ["data_analysis", "statistics", "dashboard", "metric_definition", "business_review"],
+      "leader": {
+        "id": "lead.data",
+        "family_id": "lead.data",
+        "kind": "delivery_recipe",
+        "responsibility": "组织数据口径、计算、图表、看板和业务结论"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/workflow/dashboard-review",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/data-analysis",
+          "selection": {"any_intents": ["data_analysis", "statistics"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/workflow/business-library",
+          "selection": {"any_intents": ["business_review"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["data-scope-and-metric-lock", "calculation-traceable", "chart-or-conclusion-reviewed"]
+    },
+    {
+      "recipe_id": "governance-evolution",
+      "domains": ["governance", "evolution"],
+      "typed_intents": ["skill_evolution", "capability_intake", "fusion_review", "experience_curation", "release_audit"],
+      "leader": {
+        "id": "lead.governance",
+        "family_id": "lead.governance",
+        "kind": "delivery_recipe",
+        "responsibility": "组织来源、重叠、提案、回归、经验和发布审计"
+      },
+      "expert_refs": [
+        {
+          "role_id": "p3/governance/evolution-review",
+          "selection": {"required": true}
+        },
+        {
+          "role_id": "p3/leaf/skill-packager",
+          "selection": {"any_intents": ["skill_packaging"], "any_languages": []}
+        },
+        {
+          "role_id": "p3/method/knowledge-base-qa",
+          "selection": {"any_intents": ["knowledge_base_qa"], "any_languages": []}
+        }
+      ],
+      "acceptance_defaults": ["source-and-scope-bound", "regression-and-reversal", "release-state-honest"]
+    }
+  ]
+}

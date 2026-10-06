@@ -32,6 +32,7 @@ fn cli_help() -> Value {
             "plan-catalog-local <workspace> <catalog-root> <plan-json> <lock-json> <roots-json> confirm-isolated-catalog-task",
             "run-local <workspace> <task> <node> <relative-input> <relative-output>", "refresh <workspace>",
             "revise <workspace> <json> <expected-revision> <event-id>", "attempt <workspace> <attempt-id>",
+            "repair <workspace> <json> <expected-revision> <event-id>",
             "checkpoint <workspace> <task>", "checkpoint-inspect <workspace> <checkpoint-id>",
             "select <workspace> <index> <index-ref-json> <request-json>",
             "project <workspace> <index> <index-ref-json> <candidate-ref-json> <brief|overview|source> <byte-cap>",
@@ -228,6 +229,10 @@ fn run(arguments: &[String]) -> Result<Value> {
         ("revise", 5) => {
             let expected = arguments[3].parse::<i64>().map_err(|_| Error::new(ErrorKind::Shape,"expected graph revision must be integer"))?;
             Store::open_existing(Path::new(&arguments[1]))?.revise_local_plan(&read_json(&arguments[2])?,expected,&arguments[4])
+        }
+        ("repair", 5) => {
+            let expected = arguments[3].parse::<i64>().map_err(|_| Error::new(ErrorKind::Shape,"expected graph revision must be integer"))?;
+            Store::open_existing(Path::new(&arguments[1]))?.repair_local_plan(&read_json(&arguments[2])?,expected,&arguments[4])
         }
         ("attempt", 3) => Store::open_existing(Path::new(&arguments[1]))?.inspect_local_attempt(&arguments[2]),
         ("checkpoint", 3) => Store::open_existing(Path::new(&arguments[1]))?.checkpoint_local(&arguments[2]),

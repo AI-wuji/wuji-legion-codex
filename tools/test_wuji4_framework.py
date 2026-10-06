@@ -12,6 +12,42 @@ import wuji4 as framework
 
 
 class Wuji4FrameworkTests(unittest.TestCase):
+    def status_fixture(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        root = Path(temporary.name).resolve()
+        source = root / "legion/skills/wuji-legion-4-0"
+        home = root / "home"
+        installed = home / ".agents/skills/wuji-legion-codex-4-0"
+        agents = home / ".codex/AGENTS.md"
+        for name in framework.CORE_SKILL_FILES:
+            for base in (source, installed):
+                path = base / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(f"fixture core file: {name}\n".encode("utf-8"))
+        agents.parent.mkdir(parents=True)
+        agents.write_text("# 无极军团 4.0\n新对话默认遵守4.0入口。\n白帽是阿极的内置判断。\n", encoding="utf-8")
+        manifest = root / "legion/task-entry.json"
+        manifest.write_text(json.dumps({"schema_version": 1, "entry": "skills/wuji-legion-4-0/SKILL.md",
+                                        "routes": {}, "installed": False,
+                                        "automatic_discovery_enabled": False, "P7": False}), encoding="utf-8")
+        delegation = root / "delegation-manifest.json"
+        delegation.write_text("{}", encoding="utf-8")
+        for patcher in (
+            mock.patch.object(framework, "ROOT", root),
+            mock.patch.object(framework, "PACK", root / "legion"),
+            mock.patch.object(framework, "MANIFEST", manifest),
+            mock.patch.object(framework, "SOURCE_SKILL", source),
+            mock.patch.object(framework, "CONFIG", home / ".codex/config.toml"),
+            mock.patch.object(framework, "load_active", return_value={"version": "1.7", "sha256": "fixture"}),
+            mock.patch.object(framework.run_legion_task, "EXECUTABLE", root / "wuji4.exe"),
+            mock.patch.object(framework.run_legion_task, "DELEGATION_MANIFEST", delegation),
+            mock.patch.object(Path, "home", return_value=home),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        return source, installed, agents
+
     def test_office_failed_state_without_status_exits_nonzero_and_retains_receipt(self):
         failed = {"receipt": {"state": "failed_evidence_retained", "passed": False,
                               "errors": [{"stage": "create", "message": "failure retained"}]}, "P7": False}
@@ -64,17 +100,167 @@ class Wuji4FrameworkTests(unittest.TestCase):
             execute.assert_called_once_with("isolated-png-to-video", "adapters.p4.ffmpeg_workflow",
                                             "unused-workspace", None, "source.png")
 
-    def test_status_reports_aji_v17_uninstalled_policy_and_rust_sqlite_authority(self):
+    def test_status_separates_frozen_source_policy_from_matching_installed_core(self):
+        source, installed, agents = self.status_fixture()
         result = framework.status()
 
         self.assertEqual(result["communicator"], "aji")
         self.assertEqual(result["active_plan"]["version"], "1.7")
-        self.assertFalse(result["entry"]["installed"])
+        self.assertTrue(result["entry"]["installed"])
+        self.assertFalse(result["entry"]["source_policy"]["installed"])
+        self.assertFalse(result["entry"]["source_policy"]["automatic_discovery_enabled"])
+        self.assertFalse(result["entry"]["source_policy"]["P7"])
         self.assertFalse(result["entry"]["automatic_discovery_enabled"])
         self.assertFalse(result["entry"]["P7"])
+        self.assertTrue(result["runtime"]["global_installation"])
+        self.assertEqual(result["runtime"]["global_installation_basis"],
+                         "core_skill_file_set_and_byte_hash_match_only")
+        observed = result["entry"]["core_skill_observation"]
+        self.assertEqual(observed["state"], "source_match")
+        self.assertEqual(observed["path"], str(installed))
+        self.assertEqual(observed["source_path"], str(source))
+        self.assertEqual(set(observed["file_hashes"]), set(framework.CORE_SKILL_FILES))
+        for item in observed["file_hashes"].values():
+            self.assertEqual(item["source_sha256"], item["installed_sha256"])
+            self.assertTrue(item["matches"])
+        entry = result["entry"]["global_agents_observation"]
+        self.assertEqual(entry["path"], str(agents))
+        self.assertTrue(entry["default_entry_rule_present"])
+        self.assertTrue(entry["white_hat_rule_present"])
+        self.assertEqual(entry["new_chat_behavior"], "unverified")
+        self.assertFalse(entry["content_exported"])
+        self.assertFalse(result["protected_codex_configuration"]["content_read"])
+        self.assertIsNone(result["protected_codex_configuration"]["sha256"])
+        self.assertFalse(result["P7"])
         self.assertEqual(result["authority"], "existing Rust/SQLite workspace only; no second task database")
 
+    def test_status_missing_or_extra_core_files_do_not_count_as_installed(self):
+        _, installed, _ = self.status_fixture()
+        target = installed / "references/research.md"
+        content = target.read_bytes()
+        target.unlink()
+        result = framework.status()
+        self.assertFalse(result["entry"]["installed"])
+        self.assertFalse(result["runtime"]["global_installation"])
+        self.assertEqual(result["entry"]["core_skill_observation"]["missing_files"], ["references/research.md"])
+        target.write_bytes(content)
+        (installed / "extra.txt").write_bytes(b"extra")
+        result = framework.status()
+        self.assertFalse(result["entry"]["installed"])
+        self.assertEqual(result["entry"]["core_skill_observation"]["unexpected_files"], ["extra.txt"])
+        self.assertEqual(result["entry"]["core_skill_observation"]["state"], "source_mismatch")
+
+    def test_status_stale_core_bytes_do_not_count_as_installed(self):
+        _, installed, _ = self.status_fixture()
+        (installed / "SKILL.md").write_bytes(b"stale core")
+        result = framework.status()
+        self.assertFalse(result["entry"]["installed"])
+        observed = result["entry"]["core_skill_observation"]
+        self.assertEqual(observed["state"], "source_mismatch")
+        self.assertFalse(observed["file_hashes"]["SKILL.md"]["matches"])
+
+    def test_status_missing_installed_root_is_not_an_installation(self):
+        _, installed, _ = self.status_fixture()
+        installed.rename(installed.with_name("unrelated-core"))
+        result = framework.status()
+        self.assertFalse(result["entry"]["installed"])
+        self.assertEqual(result["entry"]["core_skill_observation"]["state"], "missing")
+
+    def test_status_unexpected_nested_directory_is_not_traversed_or_installed(self):
+        _, installed, _ = self.status_fixture()
+        (installed / "references/extra").mkdir()
+        result = framework.status()
+        self.assertFalse(result["entry"]["installed"])
+        self.assertEqual(result["entry"]["core_skill_observation"]["unexpected_files"], ["references/extra/"])
+
+    def test_status_source_file_set_mismatch_cannot_be_installed(self):
+        source, _, _ = self.status_fixture()
+        (source / "references/leader-routing.md").unlink()
+        result = framework.status()
+        self.assertFalse(result["entry"]["installed"])
+        self.assertEqual(result["entry"]["core_skill_observation"]["reason"], "source_file_set_mismatch")
+
+    def test_status_observation_permission_failure_is_unknown_not_installed(self):
+        _, installed, _ = self.status_fixture()
+        original = Path.iterdir
+
+        def denied(path):
+            if path == installed:
+                raise PermissionError("fixture permission failure")
+            return original(path)
+
+        with mock.patch.object(Path, "iterdir", denied):
+            result = framework.status()
+        self.assertFalse(result["entry"]["installed"])
+        self.assertEqual(result["entry"]["core_skill_observation"]["state"], "unknown")
+
+    def test_status_linked_core_path_is_rejected_without_reading_target(self):
+        _, installed, _ = self.status_fixture()
+        original = Path.lstat
+
+        def linked(path):
+            if path == installed.parent:
+                return types.SimpleNamespace(st_mode=0, st_file_attributes=0x400)
+            return original(path)
+
+        with mock.patch.object(Path, "lstat", linked), mock.patch.object(framework, "digest", wraps=framework.digest) as hashed:
+            result = framework.status()
+        self.assertFalse(result["entry"]["installed"])
+        self.assertEqual(result["entry"]["core_skill_observation"]["state"], "invalid_path")
+        self.assertFalse(any(call.args[0].is_relative_to(installed) for call in hashed.call_args_list))
+
+    def test_status_global_rule_observation_never_claims_new_chat_behavior(self):
+        _, _, agents = self.status_fixture()
+        agents.write_text("# 无极军团 4.0\n手动入口。\n", encoding="utf-8")
+        result = framework.status()
+        observed = result["entry"]["global_agents_observation"]
+        self.assertTrue(result["entry"]["installed"])
+        self.assertFalse(observed["default_entry_rule_present"])
+        self.assertFalse(observed["white_hat_rule_present"])
+        self.assertEqual(observed["new_chat_behavior"], "unverified")
+        agents.unlink()
+        observed = framework.status()["entry"]["global_agents_observation"]
+        self.assertEqual(observed["state"], "missing")
+        self.assertFalse(observed["default_entry_rule_present"])
+        agents.write_bytes(b"\xff")
+        observed = framework.status()["entry"]["global_agents_observation"]
+        self.assertEqual(observed["state"], "unknown")
+        self.assertIsNone(observed["default_entry_rule_present"])
+
+    def test_status_reads_only_declared_core_and_agents_not_configuration(self):
+        source, installed, agents = self.status_fixture()
+        allowed = {framework.MANIFEST, framework.run_legion_task.DELEGATION_MANIFEST, agents}
+        allowed.update(base / name for base in (source, installed) for name in framework.CORE_SKILL_FILES)
+        read_bytes = Path.read_bytes
+        read_text = Path.read_text
+        iterdir = Path.iterdir
+
+        def bounded_bytes(path):
+            self.assertIn(path, allowed)
+            return read_bytes(path)
+
+        def bounded_text(path, *args, **kwargs):
+            self.assertIn(path, allowed)
+            return read_text(path, *args, **kwargs)
+
+        def bounded_inventory(path):
+            self.assertIn(path, {source, source / "references", installed, installed / "references"})
+            return iterdir(path)
+
+        with mock.patch.object(Path, "read_bytes", bounded_bytes), mock.patch.object(
+                Path, "read_text", bounded_text), mock.patch.object(Path, "iterdir", bounded_inventory):
+            result = framework.status()
+        self.assertTrue(result["entry"]["installed"])
+        self.assertFalse(result["protected_codex_configuration"]["content_read"])
+
     def test_doctor_checks_project_pack_and_existing_isolated_rust_cli_without_config_write(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        config = Path(temporary.name) / "config.toml"
+        config.write_bytes(b"fixture configuration")
+        patcher = mock.patch.object(framework, "CONFIG", config)
+        patcher.start()
+        self.addCleanup(patcher.stop)
         before_content = framework.CONFIG.read_bytes()
         before_mtime = framework.CONFIG.stat().st_mtime_ns
 
@@ -103,6 +289,35 @@ class Wuji4FrameworkTests(unittest.TestCase):
         self.assertEqual(professional["context"][0], chat["context"][0])
         self.assertTrue(professional["context"][1]["path"].endswith("references/engineering.md"))
         self.assertFalse(professional["execution_authority"])
+
+    def test_delegate_command_exposes_staff_handoff_without_changing_codex_config(self):
+        request = {
+            "task_id": "cli-meta-route",
+            "goal": "检查元指令变更路径",
+            "domain": "prompt_meta",
+            "typed_intents": ["meta_instruction"],
+            "inputs": ["visible-agents-md"],
+            "deliverables": ["route-receipt"],
+            "acceptance_ids": ["goal-explicit"],
+        }
+        with tempfile.TemporaryDirectory(dir=framework.ROOT / ".dev" / "core-test-workspaces") as temporary:
+            request_path = Path(temporary) / "request.json"
+            request_path.write_text(json.dumps(request, ensure_ascii=False), encoding="utf-8")
+            config = Path(temporary) / "config.toml"
+            config.write_bytes(b"fixture configuration")
+            patcher = mock.patch.object(framework, "CONFIG", config)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+            before_content = framework.CONFIG.read_bytes()
+            arguments = ["wuji4.py", "delegate", str(request_path)]
+            output = io.StringIO()
+            with mock.patch.object(sys, "argv", arguments), redirect_stdout(output):
+                framework.main()
+            result = json.loads(output.getvalue())
+            self.assertEqual(result["staff_decision"], "recipe_selected")
+            self.assertEqual(result["return_path"], ["expert", "leader", "staff", "aji"])
+            self.assertFalse(result["runtime_admission"])
+            self.assertEqual(before_content, framework.CONFIG.read_bytes())
 
     def test_capabilities_reads_existing_tool_contracts_without_generic_dispatch(self):
         result = framework.capabilities()

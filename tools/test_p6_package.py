@@ -48,6 +48,21 @@ class P6PackageTests(unittest.TestCase):
                 "AGENTS.md",
                 "outputs/p7/global-entry-state-2026-10-05.json",
                 "outputs/p7/core-skill-install-record-2026-10-05.json",
+                "src/local_identity.rs",
+                "src/artifact_history_migration.sql",
+                "tests/p6_resource_acl.rs",
+                "tools/p6_acceptance.py",
+                "tools/refresh_continuation_report.py",
+                "tools/build_p6_evidence_crosswalk.py",
+                "tools/test_p6_evidence_crosswalk.py",
+                "outputs/p6/evidence-crosswalk.json",
+                "outputs/p6/remaining-work.json",
+                "docs/design-deltas/027-core-completion-rework-owner-evidence-2026-10-06.md",
+                "outputs/p6/continuation-2026-10-06/core-completion-execution.json",
+                "outputs/p6/continuation-2026-10-06/core-completion-rust.log",
+                "outputs/p6/continuation-2026-10-06/core-completion-python.log",
+                "outputs/p6/continuation-2026-10-06/remaining-48-execution.json",
+                "outputs/p6/continuation-2026-10-06/failed-missing-artifact-repair/core-completion-execution.json",
             ):
                 self.assertIn(f"p6/{path}", names)
             for entry in manifest["files"]:

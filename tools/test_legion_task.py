@@ -35,6 +35,127 @@ class LegionTaskTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             legion.route("all-experts")
 
+    def test_complex_delegation_builds_aji_staff_leader_expert_return_contract_without_execution(self):
+        result = legion.delegate({
+            "task_id": "meta-instruction-route",
+            "goal": "把元指令改得更稳定，并保留全局入口边界",
+            "domain": "governance",
+            "typed_intents": ["meta_instruction", "instruction_revision"],
+            "inputs": ["current-agents-md"],
+            "deliverables": ["revised-instruction-draft", "impact-summary"],
+            "acceptance_ids": ["goal-explicit", "impact-and-reversal-identified"],
+            "write_roots": [],
+            "constraints": ["do-not-change-codex-config"],
+        })
+        self.assertEqual(result["communicator"], "aji")
+        self.assertEqual(result["staff_decision"], "recipe_selected")
+        self.assertEqual(result["state"], "prepared_not_executed")
+        self.assertEqual(result["return_path"], ["expert", "leader", "staff", "aji"])
+        self.assertEqual(result["leader_recipe"]["id"], "leader/prompt-governance")
+        self.assertEqual(
+            {item["role_id"] for item in result["selected_expert_refs"]},
+            {"p3/method/requirement-decomposition", "p3/governance/evolution-review"},
+        )
+        self.assertEqual(result["actual_agents_started"], 0)
+        self.assertEqual(result["formal_experts_activated"], 0)
+        self.assertFalse(result["runtime_admission"])
+        self.assertFalse(result["model_generation_submitted"])
+        self.assertFalse(result["execution_authority"])
+        self.assertTrue(all("workbuddy" not in item["catalog_ref"].lower()
+                            for item in result["selected_expert_refs"]))
+
+    def test_simple_delegation_stays_with_aji_without_staff_graph(self):
+        result = legion.delegate({
+            "task_id": "simple-route",
+            "goal": "解释一个术语",
+            "domain": "general",
+            "typed_intents": ["explanation"],
+            "inputs": [],
+            "deliverables": ["short-answer"],
+            "acceptance_ids": ["direct-answer"],
+            "task_class": "simple",
+        })
+        self.assertEqual(result["operation"], "aji-direct")
+        self.assertEqual(result["return_path"], ["aji"])
+        self.assertFalse(result["staff_graph_required"])
+
+    def test_delegation_gap_does_not_fall_back_to_all_experts(self):
+        result = legion.delegate({
+            "task_id": "unknown-route",
+            "goal": "处理一个没有正式配方的领域任务",
+            "domain": "unmapped-domain",
+            "typed_intents": ["unmapped-intent"],
+            "inputs": [],
+            "deliverables": ["gap-report"],
+            "acceptance_ids": ["gap-explicit"],
+        })
+        self.assertEqual(result["state"], "selection_gap")
+        self.assertEqual(result["selected_expert_refs"], [])
+        self.assertTrue(result["staff_graph_required"])
+        self.assertIn("select one exact leader recipe for this subtask", result["not_done"])
+
+    def test_complete_cold_leader_catalog_routes_all_recorded_roles_without_runtime_activation(self):
+        manifest = json.loads((legion.DELEGATION_MANIFEST).read_text(encoding="utf-8"))
+        catalog = json.loads((legion.EXPERT_CATALOG).read_text(encoding="utf-8"))
+        referenced = {
+            reference if isinstance(reference, str) else reference["role_id"]
+            for recipe in manifest["recipes"]
+            for reference in recipe["expert_refs"]
+        }
+        self.assertEqual(21, len(manifest["recipes"]))
+        self.assertEqual(16, manifest["leader_family_count"])
+        self.assertEqual(57, len(referenced))
+        self.assertEqual({role["id"] for role in catalog["roles"]}, referenced)
+        for recipe in manifest["recipes"]:
+            result = legion.delegate({
+                "task_id": f"catalog-{recipe['recipe_id']}",
+                "goal": "验证负责人配方路由",
+                "domain": recipe["domains"][0],
+                "typed_intents": [recipe["typed_intents"][0]],
+                "inputs": ["bounded-input"],
+                "deliverables": ["bounded-receipt"],
+                "acceptance_ids": [],
+            })
+            self.assertEqual("recipe_selected", result["staff_decision"], recipe["recipe_id"])
+            self.assertEqual(recipe["recipe_id"], result["leader_recipe"]["recipe_id"])
+            self.assertFalse(result["runtime_admission"])
+            self.assertEqual(0, result["actual_agents_started"])
+            self.assertEqual(0, result["formal_experts_activated"])
+            self.assertFalse(result["model_generation_submitted"])
+            self.assertTrue(all(item["composition_dependencies"] for item in result["selected_expert_refs"]))
+
+    def test_shared_experts_can_be_reused_and_broad_leader_match_stays_selection_gap(self):
+        software = legion.delegate({
+            "task_id": "shared-software",
+            "goal": "实现一个有边界的软件变更",
+            "domain": "software",
+            "typed_intents": ["implementation"],
+            "deliverables": ["patch"],
+            "acceptance_ids": [],
+        })
+        bugfix = legion.delegate({
+            "task_id": "shared-bugfix",
+            "goal": "修复一个可复现故障",
+            "domain": "bugfix",
+            "typed_intents": ["bug_fix"],
+            "deliverables": ["patch"],
+            "acceptance_ids": [],
+        })
+        software_roles = {item["role_id"] for item in software["selected_expert_refs"]}
+        bugfix_roles = {item["role_id"] for item in bugfix["selected_expert_refs"]}
+        self.assertIn("p3/leaf/code-review", software_roles)
+        self.assertIn("p3/leaf/code-review", bugfix_roles)
+        broad = legion.delegate({
+            "task_id": "ambiguous-engineering",
+            "goal": "处理一个尚未明确类型的软件工作",
+            "domain": "engineering",
+            "typed_intents": [],
+            "deliverables": ["selection-gap"],
+            "acceptance_ids": [],
+        })
+        self.assertEqual("selection_gap", broad["state"])
+        self.assertEqual([], broad["selected_expert_refs"])
+
     def test_core_skill_is_the_only_legion_entry_without_a_legacy_runtime(self):
         core_skill = (legion.PACK / "skills/wuji-legion-4-0/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("name: wuji-legion-4-0", core_skill)
@@ -43,6 +164,143 @@ class LegionTaskTests(unittest.TestCase):
         self.assertIn("懒人行动", core_skill)
         self.assertNotIn("wuji-legion-codex-3-0", core_skill)
         self.assertNotIn("并列共存", core_skill)
+
+    def work_item(self, subtask_id, domain="software", intents=None, writes=None):
+        return {"subtask_id": subtask_id, "goal": "完成一个有明确边界的子任务", "domain": domain,
+                "typed_intents": intents if intents is not None else ["implementation"],
+                "deliverables": ["bounded-artifact"], "acceptance_ids": ["scope-locked"],
+                "write_roots": writes or [], "inputs": [], "constraints": []}
+
+    def test_composite_routes_two_leaders_with_conditional_experts_and_one_shared_budget(self):
+        software = self.work_item("code", writes=[".dev/route-contract/code"])
+        software["languages"] = ["python"]
+        instruction = self.work_item("instruction", "prompt_meta", ["instruction_revision"],
+                                     [".dev/route-contract/instruction.md"])
+        result = legion.delegate({"task_id": "composite", "goal": "分别改代码和元指令",
+                                  "inputs": ["shared-source"],
+                                  "constraints": ["do-not-change-codex-config"],
+                                  "write_roots": [".dev/route-contract"],
+                                  "subtasks": [software, instruction]})
+        self.assertEqual("recipes_selected", result["staff_decision"])
+        self.assertEqual("prepared_not_executed", result["state"])
+        self.assertEqual([["code", "instruction"]], result["parallel_preparation"]["groups"])
+        self.assertTrue(result["parallel_preparation"]["parallel_eligible"])
+        branches = {branch["subtask_id"]: branch for branch in result["branches"]}
+        self.assertEqual("software-delivery", branches["code"]["leader_recipe"]["recipe_id"])
+        self.assertEqual("meta-instruction-revision", branches["instruction"]["leader_recipe"]["recipe_id"])
+        self.assertEqual({"p3/selector/code-implementation", "p3/leaf/python-engineer", "p3/leaf/code-review"},
+                         {role["role_id"] for role in branches["code"]["selected_expert_refs"]})
+        cold = {role["role_id"] for role in branches["code"]["cold_expert_refs"]}
+        self.assertIn("p3/leaf/rust-engineer", cold)
+        self.assertIn("p3/leaf/software-reverse", cold)
+        for branch in result["branches"]:
+            self.assertIn("shared-source", branch["required_context"]["inputs"])
+            self.assertIn("do-not-change-codex-config", branch["required_context"]["constraints"])
+        self.assertEqual("all_leader_and_expert_instances", result["shared_budget"]["applies_to"])
+        self.assertEqual("unknown", result["shared_budget"]["effective_host_quota"])
+        self.assertEqual(0, result["actual_agents_started"])
+        self.assertEqual(0, result["formal_experts_activated"])
+        self.assertFalse(result["execution_authority"])
+
+    def test_dependency_and_canonical_write_conflicts_prevent_parallel_preparation(self):
+        first = self.work_item("first", writes=[".dev/route-contract/shared"])
+        second = self.work_item("second", writes=[".DEV/route-contract/temp/../SHARED/file.py"])
+        result = legion.delegate({"task_id": "write-conflict", "goal": "共享写集应串行", "subtasks": [first, second]})
+        self.assertFalse(result["parallel_preparation"]["parallel_eligible"])
+        self.assertEqual([["first"], ["second"]], result["parallel_preparation"]["groups"])
+        second["write_roots"] = [".dev/route-contract/other"]
+        second["depends_on"] = ["first"]
+        dependent = legion.delegate({"task_id": "dependency", "goal": "前置应保留", "subtasks": [second, first]})
+        self.assertEqual([["first"], ["second"]], dependent["parallel_preparation"]["groups"])
+
+    def test_selection_gap_blocks_only_affected_branch_and_its_dependents(self):
+        gap = self.work_item("gap", "unmapped-domain", ["unmapped-intent"])
+        downstream = self.work_item("downstream")
+        downstream["depends_on"] = ["gap"]
+        independent = self.work_item("independent")
+        result = legion.delegate({"task_id": "local-gap", "goal": "保留独立分支", "subtasks": [gap, downstream, independent]})
+        self.assertEqual("selection_gap", result["state"])
+        self.assertEqual([["independent"]], result["parallel_preparation"]["groups"])
+        self.assertEqual({"gap": ["gap"], "downstream": ["gap"]},
+                         result["parallel_preparation"]["blocked_branches"])
+        self.assertFalse(result["runtime_admission"])
+
+    def test_composite_rejects_invalid_dependencies_duplicate_ids_and_scope_expansion(self):
+        first = self.work_item("first", writes=[".dev/route-contract/first"])
+        second = self.work_item("second", writes=[".dev/route-contract/second"])
+        for dependencies, expected in ((["missing"], "dependencies"), (["second"], "self-reference")):
+            second["depends_on"] = dependencies
+            with self.subTest(dependencies=dependencies), self.assertRaisesRegex(ValueError, expected):
+                legion.delegate({"task_id": "invalid", "goal": "拒绝错误图", "subtasks": [first, second]})
+        second["depends_on"] = ["first"]
+        first["depends_on"] = ["second"]
+        with self.assertRaisesRegex(ValueError, "cycle"):
+            legion.delegate({"task_id": "cycle", "goal": "拒绝循环", "subtasks": [first, second]})
+        first["depends_on"] = []
+        second["depends_on"] = []
+        with self.assertRaisesRegex(ValueError, "unique"):
+            legion.delegate({"task_id": "duplicate", "goal": "拒绝重复ID", "subtasks": [first, first]})
+        with self.assertRaisesRegex(ValueError, "parent scope"):
+            legion.delegate({"task_id": "escape", "goal": "拒绝越界", "write_roots": [".dev/allowed"],
+                             "subtasks": [first]})
+
+    def test_shared_parallel_cap_is_bounded_and_does_not_claim_native_quota(self):
+        subtasks = [self.work_item(f"branch-{index}") for index in range(5)]
+        result = legion.delegate({"task_id": "shared-cap", "goal": "所有分支共享预算",
+                                  "max_parallel_instances": 2, "subtasks": subtasks})
+        self.assertTrue(all(len(group) <= 2 for group in result["parallel_preparation"]["groups"]))
+        self.assertFalse(result["shared_budget"]["native_admission"])
+        for cap in (0, 4, True, "2"):
+            with self.subTest(cap=cap), self.assertRaisesRegex(ValueError, "construction cap"):
+                legion.delegate({"task_id": "invalid-cap", "goal": "拒绝错误预算",
+                                 "max_parallel_instances": cap, "subtasks": subtasks})
+
+    def test_explicit_empty_parent_write_scope_cannot_be_expanded_by_subtask(self):
+        subtask = self.work_item("write", writes=[".dev/route-contract/output.md"])
+        request = {"task_id": "read-only-parent", "goal": "明确父级禁止写入",
+                   "write_roots": [], "subtasks": [subtask]}
+        with self.assertRaisesRegex(ValueError, "parent scope"):
+            legion.delegate(request)
+        request.pop("write_roots")
+        self.assertEqual("prepared_not_executed", legion.delegate(request)["state"])
+        request["write_roots"] = []
+        subtask["write_roots"] = []
+        self.assertEqual("prepared_not_executed", legion.delegate(request)["state"])
+
+    def test_expert_conditions_are_explicit_and_goal_text_does_not_activate_languages(self):
+        request = {"task_id": "conditions", "goal": "不要用Rust、Go、Cpp；只做当前代码审查",
+                   "domain": "software", "typed_intents": ["software_review"],
+                   "deliverables": ["review"], "acceptance_ids": []}
+        result = legion.delegate(request)
+        self.assertEqual({"p3/leaf/code-review"},
+                         {role["role_id"] for role in result["selected_expert_refs"]})
+        manifest = json.loads(legion.DELEGATION_MANIFEST.read_text(encoding="utf-8"))
+        for recipe in manifest["recipes"]:
+            for reference in recipe["expert_refs"]:
+                selection = reference["selection"]
+                task = {"typed_intents": selection.get("any_intents", []),
+                        "languages": selection.get("any_languages", [])}
+                self.assertTrue(legion._role_needed(reference, task)[0], reference["role_id"])
+        for invalid in ({}, {"required": 1}, {"any_intents": []}, {"all_experts": True}):
+            with self.subTest(selection=invalid), self.assertRaises(ValueError):
+                legion._selection_rule({"role_id": "p3/leaf/code-review", "selection": invalid})
+
+    def test_real_composite_cli_preserves_boundaries_without_native_execution(self):
+        request = {"task_id": "composite-cli", "goal": "有界多主帅CLI准备",
+                   "constraints": ["do-not-change-codex-config"],
+                   "subtasks": [self.work_item("instruction", "prompt_meta", ["meta_instruction"]),
+                                self.work_item("review", "software", ["software_review"])]}
+        path = self.root / "composite-request.json"
+        path.write_text(json.dumps(request, ensure_ascii=False), encoding="utf-8")
+        result = subprocess.run([sys.executable, str(execution_baseline.ROOT / "tools/wuji4.py"),
+                                 "delegate", str(path)], capture_output=True, encoding="utf-8", timeout=30,
+                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        self.assertEqual(0, result.returncode, result.stderr)
+        prepared = json.loads(result.stdout)
+        self.assertEqual("recipes_selected", prepared["staff_decision"])
+        self.assertEqual(2, len(prepared["branches"]))
+        self.assertFalse(prepared["model_generation_submitted"])
+        self.assertEqual(0, prepared["actual_agents_started"])
 
     def test_actual_thin_entry_writes_validates_summarizes_and_replays_without_second_invocation(self):
         (self.root / "source.txt").write_bytes("真实隔离军团任务，不是模型生成".encode("utf-8"))

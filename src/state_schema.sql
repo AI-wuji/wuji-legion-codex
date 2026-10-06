@@ -87,7 +87,7 @@ CREATE TABLE artifacts (
     task_id TEXT NOT NULL REFERENCES tasks(id),
     node_id TEXT NOT NULL,
     attempt_id TEXT NOT NULL UNIQUE REFERENCES attempts(id),
-    path TEXT NOT NULL UNIQUE,
+    path TEXT NOT NULL,
     sha256 TEXT NOT NULL,
     bytes INTEGER NOT NULL,
     revision INTEGER NOT NULL CHECK(revision>=1),
@@ -95,6 +95,7 @@ CREATE TABLE artifacts (
     state TEXT NOT NULL CHECK(state IN ('produced','validated','adopted','invalidated')),
     FOREIGN KEY(task_id,node_id) REFERENCES nodes(task_id,id)
 );
+CREATE UNIQUE INDEX live_artifact_path ON artifacts(path) WHERE state IN ('produced','validated','adopted');
 CREATE TABLE validations (
     id TEXT PRIMARY KEY,
     artifact_id TEXT NOT NULL REFERENCES artifacts(id),

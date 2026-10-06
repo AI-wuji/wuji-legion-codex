@@ -38,6 +38,8 @@ def main() -> None:
     baseline = load("docs/design-baseline-1.json")
     receipt = load("outputs/p6/test-execution.json")
     acceptance = evaluate(ROOT, load("docs/acceptance-map.json"), receipt)
+    from refresh_continuation_report import current_core_projection
+    core_projection = current_core_projection(ROOT)
     package = package_consistency(release_manifest)
     frozen = []
     for entry in baseline["files"]:
@@ -86,6 +88,7 @@ def main() -> None:
         },
         "test_counts": {"rust_passed": receipt["rust"]["tests_passed"], "python_run": receipt["python"]["tests_run"]},
         "configuration_protection": {
+            "scope": "historical_full_suite_receipt_not_current_core_supplement",
             "current_sha256": current_config_hash, "unchanged_during_this_run": config_preserved,
             "historical_expected_sha256": EXPECTED_CONFIG_HASH,
             "matches_historical_baseline": current_config_hash == EXPECTED_CONFIG_HASH,
@@ -99,6 +102,7 @@ def main() -> None:
             "full_capability_acceptance_is_separate": True,
             "peripheral_validation": "deferred_until_a_real_task_requires_it",
         },
+        "current_core_supplement": core_projection,
         "frozen_files": frozen, "blocked_tools": blocked_tools,
         "remaining_required_evidence": [
             "Matched professional image/video/audio holdouts and editable project workflows",
@@ -131,9 +135,12 @@ def main() -> None:
     report["passed"] = all(report["checks"].values()) and not blocked_tools
     if report["passed"]:
         report["status"] = "passed_p0_p6_not_installed"
+    elif core_projection["closeout"]["core_closeout_complete"]:
+        report["status"] = "current_core_complete_full_capability_acceptance_pending"
     (ROOT / "outputs/p6/full-audit-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(json.dumps({"status": report["status"], "passed": report["passed"], "checks": report["checks"], "acceptance": report["acceptance_matrix"]}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
     main()
+

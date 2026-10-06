@@ -170,6 +170,36 @@ class CoreCliTests(unittest.TestCase):
         self.call("--actor", "aji", expected_error="Shape")
         self.assertFalse(self.call("help")["P7_installed"])
 
+    def test_t19_actual_review_repair_revalidates_one_evidenced_defect_without_forced_count(self):
+        plan, _ = self.prepare()
+        self.call("run-local", self.workspace, "cli-task", "copy", "source.txt", "result.txt")
+        before = self.call("execution-summary", self.workspace, "cli-task")
+        self.assertEqual(before["result_state"], "completed_bounded_task")
+        (self.workspace / "result.txt").write_text("actual drift after acceptance", encoding="utf-8")
+        defective = self.call("execution-summary", self.workspace, "cli-task")
+        self.assertEqual(defective["result_state"], "incomplete")
+        self.assertEqual(len(defective["unmet_nodes"]), 1)
+        plan["metadata"]["revision"] = 2
+        plan["payload"]["version"] = "2"
+        plan["payload"]["nodes"][0]["revision"] = 2
+        plan["payload"]["nodes"][0]["write_roots"] = ["repaired.txt"]
+        proposal = self.seal(plan, "actual-repair.json")
+        revised = self.call("repair", self.workspace, proposal, 1, "one-observed-defect")
+        self.assertEqual(revised["affected_nodes"], ["copy"])
+        self.assertEqual(self.call("repair", self.workspace, proposal, 1, "one-observed-defect"), revised)
+        self.call("run-local", self.workspace, "cli-task", "copy", "source.txt", "repaired.txt")
+        repaired = self.call("execution-summary", self.workspace, "cli-task")
+        self.assertEqual(repaired["result_state"], "completed_bounded_task")
+        self.assertEqual(repaired["recorded_invocations"], 2)
+        self.assertEqual(repaired["unclosed_slots"], 0)
+        self.assertEqual((self.workspace / "repaired.txt").read_bytes(), (self.workspace / "source.txt").read_bytes())
+        self.assertEqual(self.call("task-status", self.workspace, "cli-task")["revisions_used"], 0)
+        plan["metadata"]["revision"] = 3
+        plan["payload"]["version"] = "3"
+        self.call("repair", self.workspace, self.seal(plan, "no-real-defect.json"), 2,
+                  "force-three-findings", expected_error="RevisionConflict")
+        self.assertEqual(self.call("execution-summary", self.workspace, "cli-task"), repaired)
+
     def test_cancel_is_revision_bound_and_preserves_files(self):
         self.prepare()
         self.call("cancel", self.workspace, "cli-task", 2, expected_error="RevisionConflict")

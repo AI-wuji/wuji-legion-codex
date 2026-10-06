@@ -5,7 +5,7 @@
     "plan": "E:/wuji-projects/wuji-legion-codex-4.0/docs/wuji-legion-4.0-execution-plan-v1.7-2026-10-04.md",
     "sha256": "e2566ae6327e72d62b0a56ea16ace83d1c4981aeb8223cbf50d1c957b658f824"
   },
-  "updated_at": "2026-10-05T18:15:16.682601+00:00",
+  "updated_at": "2026-10-06T14:01:13.7622231+00:00",
   "authority": "This file describes reviewed phase state, not any tool execution receipt.",
   "gates": {
     "G0": {
@@ -119,7 +119,8 @@
       "tests": "outputs/p5/governance-tests.log",
       "resident_service_count": 0,
       "runtime_admission": false,
-      "scope_note": "Isolated local persistence, task actions, transfers and exact dependencies are implemented. One exact local experience was reviewed, used in followup manifest regression and rejected after source change. Autonomous model evolution and public admission remain incomplete.",
+      "scope_note": "Isolated local persistence, task actions, transfers and exact dependencies are implemented. One exact local experience was reviewed, used in followup manifest regression and rejected after source change. Current supplementary T22 evidence passes Windows single-owner token SID/ACL and project-scope rechecks; multi-tenant authorization, complete DACL auditing and administrator/same-SID tamper resistance are not established. Autonomous model evolution and public admission remain incomplete.",
+      "current_local_acl_report": "outputs/p6/continuation-2026-10-06/core-completion-execution.json",
       "local_persistence_report": "outputs/p5/resource-persistence-report-2026-10-04.json",
       "deterministic_governance_core_passed": true,
       "implementation_delta": "docs/design-deltas/005-received-content-delta-2026-10-04.md",
@@ -152,10 +153,36 @@
         "passed_for_g6": 22,
         "g6_scenarios_passed": false
       },
-      "checks_authority": "outputs/p6/full-audit-report.json evaluated against current source/receipt/package"
+      "checks_authority": "outputs/p6/full-audit-report.json evaluated against current source/receipt/package",
+      "acceptance_summary_scope_note": "Historical formal 22 passed / 36 partial / 25 not_run / 9 blocked_external / 3 deferred_p7 ledger retained unchanged; supplementary current T19/T22 bounded local passes do not backfill these counts or establish full G6/P7 acceptance.",
+      "current_scoped_core_report": "outputs/p6/continuation-2026-10-06/core-completion-execution.json",
+      "current_scoped_core_closeout": "outputs/p6/continuation-2026-10-06/final-core-closeout.json"
     },
     "G7": {
-      "status": "not_authorized"
+      "status": "in_progress_full_scope",
+      "user_authorized_core_cutover": {
+        "date": "2026-10-05",
+        "scope": "Global 4.0-only entry, retirement of the 3.0 runtime mount, and no shutdown",
+        "report": "outputs/p7/global-4-only-cutover-2026-10-05.json"
+      },
+      "core_cutover_status": "global_entry_cutover_verified",
+      "current_core_skill_report": "outputs/p6/continuation-2026-10-06/core-completion-execution.json",
+      "current_core_skill_observation": {
+        "installed": true,
+        "state": "source_match",
+        "file_count": 7
+      },
+      "isolated_restore_report": "outputs/p6/continuation-2026-10-06/remaining-48-execution.json",
+      "isolated_restore_case_count": 4,
+      "isolated_restore_scope_note": "T44/T74 share four executed isolated inverse-patch cases: exact restoration, preservation of later non-target edits, target-config conflict refusal and Skill conflict refusal; both conflict cases wrote nothing. Synthetic TOML and public Skill copies only, not installed production recovery tooling.",
+      "production_restore_executed": false,
+      "full_acceptance_passed": false,
+      "required_followups": [
+        "Independent new-chat automatic entry, task-specific staffing and actual task actions",
+        "Explicitly requested production recovery, preservation of later user changes and concurrent-edit atomicity"
+      ],
+      "rollback_scope_note": "Restore only on an explicit user request; check current hashes, preserve later user changes and refuse target conflicts with zero writes. Do not automatically restore the retired 3.0 runtime.",
+      "scope_note": "Authorization, actual core cutover, current 7-file source/install match and isolated drills are bounded facts, not full G7 acceptance. Historical deferred_p7 counts remain frozen; P7:false denotes pending full acceptance, not blanket absence of authorization."
     }
   },
   "P7": false,

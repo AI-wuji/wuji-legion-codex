@@ -19,13 +19,13 @@ developer_instructions = "private content must not be emitted"
 max_concurrent_threads_per_session = 3
 [model_providers.custom]
 base_url = "https://private.example/secret-path?secret=true"
-credential_fixture = "redacted-test-value"
+api_key = "never-export-this-key"
 wire_api = "responses"
 ''', encoding="utf-8")
             with patch.object(h.shutil, "which", return_value=None):
                 value = h.probe(config)
             rendered = json.dumps(value)
-            self.assertNotIn("redacted-test-value", rendered)
+            self.assertNotIn("never-export-this-key", rendered)
             self.assertNotIn("private.example", rendered)
             self.assertNotIn("private content must not be emitted", rendered)
             self.assertEqual(value["configured_concurrency_cap"], 3)

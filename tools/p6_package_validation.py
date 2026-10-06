@@ -159,7 +159,9 @@ def package_consistency(root: Path, release_manifest: dict) -> dict[str, object]
                 expected = dict(release_manifest)
                 expected.pop("embedded_manifest")
                 expected["archive"] = dict(archive_declaration, sha256=None)
-                result["embedded_manifest_valid"] = embedded == expected
+                result["embedded_manifest_valid"] = (
+                    json.dumps(embedded, sort_keys=True) == json.dumps(expected, sort_keys=True)
+                )
                 if not result["embedded_manifest_valid"]:
                     return result
                 for entry in files:

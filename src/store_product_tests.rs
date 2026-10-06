@@ -129,6 +129,277 @@ fn old_attempt_keeps_immutable_path_reservation_after_revision() {
 }
 
 #[test]
+fn t19_actual_defect_has_file_evidence_and_bounded_independently_verified_repair() {
+    let root = workspace("t19-evidenced-repair");
+    let mut store = Store::open(&root).unwrap();
+    let blueprint = plan(&store,"task",&[("write","result.txt")],&[],1);
+    store.plan(&blueprint).unwrap();
+    let original = store.claim_local("task","write").unwrap();
+    store.write_local_file(&original,Path::new("result.txt"),b"original accepted result").unwrap();
+    store.verify_local_file(&original).unwrap();
+    store.close_local_handler(&original).unwrap();
+    fs::write(root.join("result.txt"),b"changed after acceptance").unwrap();
+    let defect_hash = strict_json::sha256(&fs::read(root.join("result.txt")).unwrap());
+    assert_eq!(store.verify_local_file(&original).unwrap_err().kind,ErrorKind::ValidationStale);
+    assert_eq!(store.execution_summary("task").unwrap()["result_state"],"incomplete");
+    assert_eq!(count(&store,"acceptance_links"),0);
+    let repaired = revision(&blueprint,&[("write","repaired.txt")],&["write"],2);
+    let result = store.repair_local_plan(&repaired,1,"actual-file-drift").unwrap();
+    assert_eq!(result["affected_nodes"],json!(["write"]));
+    assert_eq!(store.repair_local_plan(&repaired,1,"actual-file-drift").unwrap(),result);
+    assert_eq!(result["defect_nodes"],json!(["write"]));
+    assert_eq!(store.task_status("task").unwrap()["revisions_used"],0);
+    let current = store.claim_local("task","write").unwrap();
+    store.write_local_file(&current,Path::new("repaired.txt"),b"repaired accepted result").unwrap();
+    let checked = store.verify_local_file(&current).unwrap();
+    assert_eq!(checked["validator"],"local-file-validator");
+    assert_eq!(checked["professional_or_native_verified"],false);
+    store.close_local_handler(&current).unwrap();
+    assert_eq!(store.execution_summary("task").unwrap()["result_state"],"completed_bounded_task");
+    assert_eq!(strict_json::sha256(&fs::read(root.join("result.txt")).unwrap()),defect_hash);
+    assert_eq!(repaired["payload"]["budget"],blueprint["payload"]["budget"]);
+    assert_eq!(count(&store,"validations"),2);
+    assert_eq!(count(&store,"task_plans"),2);
+    drop(store);
+    let mut reopened = Store::open_existing(&root).unwrap();
+    assert_eq!(reopened.execution_summary("task").unwrap()["result_state"],"completed_bounded_task");
+    assert_eq!(reopened.status().unwrap()["open_slots"],0);
+}
+
+#[test]
+fn t19_clean_review_does_not_invent_three_findings_or_repeat_dispatch() {
+    let root = workspace("t19-no-manufactured-defects");
+    let mut store = Store::open(&root).unwrap();
+    let blueprint = plan(&store,"task",&[("write","result.txt")],&[],1);
+    store.plan(&blueprint).unwrap();
+    let claim = store.claim_local("task","write").unwrap();
+    store.write_local_file(&claim,Path::new("result.txt"),b"already satisfies the actual checks").unwrap();
+    store.verify_local_file(&claim).unwrap();
+    store.close_local_handler(&claim).unwrap();
+    let unchanged = revision(&blueprint,&[],&[],2);
+    assert_eq!(store.repair_local_plan(&unchanged,1,"force-three-findings").unwrap_err().kind,ErrorKind::RevisionConflict);
+    let manufactured = revision(&blueprint,&[("write","unneeded.txt")],&["write"],2);
+    assert_eq!(store.repair_local_plan(&manufactured,1,"invented-defect").unwrap_err().kind,ErrorKind::ValidationStale);
+    assert_eq!(store.task_status("task").unwrap()["revisions_used"],0);
+    assert_eq!(count(&store,"invocations"),1);
+    assert_eq!(count(&store,"task_plans"),1);
+    assert_eq!(store.execution_summary("task").unwrap()["result_state"],"completed_bounded_task");
+}
+
+#[test]
+fn t19_pinned_no_progress_cap_stops_rework_before_mutation_and_survives_reopen() {
+    let root = workspace("t19-no-progress-cap");
+    let mut store = Store::open(&root).unwrap();
+    let mut blueprint = plan(&store,"task",&[("write","first.txt")],&[],1);
+    blueprint["payload"]["budget"]["max_point_revisions"] = json!(8);
+    blueprint["payload"]["budget"]["max_no_progress"] = json!(1);
+    rehash(&mut blueprint);
+    store.plan(&blueprint).unwrap();
+    let claim = store.claim_local("task","write").unwrap();
+    store.write_local_file(&claim,Path::new("first.txt"),b"actual accepted result").unwrap();
+    store.verify_local_file(&claim).unwrap();
+    store.close_local_handler(&claim).unwrap();
+    fs::write(root.join("first.txt"),b"actual corrupt output").unwrap();
+    let second = revision(&blueprint,&[("write","second.txt")],&["write"],2);
+    store.repair_local_plan(&second,1,"first-repair").unwrap();
+    drop(store);
+    let mut reopened = Store::open_existing(&root).unwrap();
+    let third = revision(&second,&[("write","third.txt")],&["write"],3);
+    for event in ["next-repair","different-event-does-not-reset-budget"] {
+        assert_eq!(reopened.repair_local_plan(&third,2,event).unwrap_err().kind,ErrorKind::BudgetExhausted);
+    }
+    assert_eq!(reopened.task_status("task").unwrap()["graph_revision"],2);
+    assert_eq!(reopened.task_status("task").unwrap()["revisions_used"],0);
+    assert_eq!(count(&reopened,"task_plans"),2);
+    assert_eq!(count(&reopened,"attempts"),1);
+    assert!(!root.join("third.txt").exists());
+}
+
+#[test]
+fn t19_real_validation_resets_consecutive_guard_but_not_aggregate_revision_budget() {
+    let root = workspace("t19-progress-not-budget-reset");
+    let mut store = Store::open(&root).unwrap();
+    let mut blueprint = plan(&store,"task",&[("write","first.txt")],&[],1);
+    blueprint["payload"]["budget"]["max_no_progress"] = json!(1);
+    rehash(&mut blueprint);
+    store.plan(&blueprint).unwrap();
+    let original = store.claim_local("task","write").unwrap();
+    store.write_local_file(&original,Path::new("first.txt"),b"actual accepted result").unwrap();
+    store.verify_local_file(&original).unwrap();
+    store.close_local_handler(&original).unwrap();
+    fs::write(root.join("first.txt"),b"actual corrupt output").unwrap();
+    let second = revision(&blueprint,&[("write","second.txt")],&["write"],2);
+    store.repair_local_plan(&second,1,"first-repair").unwrap();
+    let claim = store.claim_local("task","write").unwrap();
+    store.write_local_file(&claim,Path::new("second.txt"),b"independently checked progress").unwrap();
+    store.verify_local_file(&claim).unwrap();
+    store.close_local_handler(&claim).unwrap();
+    fs::write(root.join("second.txt"),b"new actual corruption after verified progress").unwrap();
+    let third = revision(&second,&[("write","third.txt")],&["write"],3);
+    store.repair_local_plan(&third,2,"second-repair").unwrap();
+    let fourth = revision(&third,&[("write","fourth.txt")],&["write"],4);
+    assert_eq!(store.repair_local_plan(&fourth,3,"cannot-reset-total").unwrap_err().kind,ErrorKind::BudgetExhausted);
+    assert_eq!(store.task_status("task").unwrap()["revisions_used"],0);
+    assert_eq!(count(&store,"task_plans"),3);
+}
+
+#[test]
+fn t19_normal_user_revisions_do_not_count_as_unverified_repairs() {
+    let root = workspace("t19-normal-user-revisions");
+    let mut store = Store::open(&root).unwrap();
+    let mut blueprint = plan(&store,"task",&[("write","first.txt")],&[],1);
+    blueprint["payload"]["budget"]["max_point_revisions"] = json!(4);
+    blueprint["payload"]["budget"]["max_no_progress"] = json!(1);
+    rehash(&mut blueprint);
+    store.plan(&blueprint).unwrap();
+    let second = revision(&blueprint,&[("write","second.txt")],&["write"],2);
+    store.revise_local_plan(&second,1,"user-requirement-one").unwrap();
+    let third = revision(&second,&[("write","third.txt")],&["write"],3);
+    store.revise_local_plan(&third,2,"user-requirement-two").unwrap();
+    assert_eq!(store.task_status("task").unwrap()["revisions_used"],2);
+    assert_eq!(count(&store,"attempts"),0);
+    assert_eq!(count(&store,"task_plans"),3);
+}
+
+#[test]
+fn t19_repair_cap_is_per_defect_node_and_cannot_reset_through_event_names() {
+    let root = workspace("t19-per-node-repair-cap");
+    let mut store = Store::open(&root).unwrap();
+    let mut blueprint = plan(&store,"task",&[("first","first.txt"),("second","second.txt")],&[],2);
+    store.plan(&blueprint).unwrap();
+    for (node,path) in [("first","first.txt"),("second","second.txt")] {
+        let claim = store.claim_local("task",node).unwrap();
+        store.write_local_file(&claim,Path::new(path),b"verified initial result").unwrap();
+        store.verify_local_file(&claim).unwrap();
+        store.close_local_handler(&claim).unwrap();
+    }
+    for (index,node,old_path,new_path) in [(2,"first","first.txt","first-r1.txt"),(3,"second","second.txt","second-r1.txt"),(4,"first","first-r1.txt","first-r2.txt"),(5,"second","second-r1.txt","second-r2.txt")] {
+        fs::write(root.join(old_path),b"one actual defect").unwrap();
+        let proposal = revision(&blueprint,&[(node,new_path)],&[node],index);
+        let result = store.repair_local_plan(&proposal,index-1,&format!("defect-{index}")).unwrap();
+        assert_eq!(result["defect_nodes"],json!([node]));
+        let claim = store.claim_local("task",node).unwrap();
+        store.write_local_file(&claim,Path::new(new_path),b"independently revalidated repair").unwrap();
+        store.verify_local_file(&claim).unwrap();
+        store.close_local_handler(&claim).unwrap();
+        blueprint = proposal;
+    }
+    fs::write(root.join("first-r2.txt"),b"third defect for same node").unwrap();
+    let third = revision(&blueprint,&[("first","first-r3.txt")],&["first"],6);
+    assert_eq!(store.repair_local_plan(&third,5,"new-id-cannot-reset-node-cap").unwrap_err().kind,ErrorKind::BudgetExhausted);
+    assert_eq!(store.task_status("task").unwrap()["revisions_used"],0);
+    assert_eq!(store.task_status("task").unwrap()["retries_used"],4);
+    assert_eq!(count(&store,"task_plans"),5);
+    assert!(!root.join("first-r3.txt").exists());
+}
+
+#[test]
+fn t19_two_independent_defects_can_be_repaired_without_unrelated_rework() {
+    let root = workspace("t19-independent-defects");
+    let mut store = Store::open(&root).unwrap();
+    let blueprint = plan(&store,"task",&[("first","first.txt"),("second","second.txt")],&[],2);
+    store.plan(&blueprint).unwrap();
+    for (node,path) in [("first","first.txt"),("second","second.txt")] {
+        let claim = store.claim_local("task",node).unwrap();
+        store.write_local_file(&claim,Path::new(path),b"verified initial result").unwrap();
+        store.verify_local_file(&claim).unwrap();
+        store.close_local_handler(&claim).unwrap();
+        fs::write(root.join(path),b"independent actual corruption").unwrap();
+    }
+    let second = revision(&blueprint,&[("first","first-r1.txt")],&["first"],2);
+    let result = store.repair_local_plan(&second,1,"only-first-defect").unwrap();
+    assert_eq!(result["affected_nodes"],json!(["first"]));
+    assert_eq!(result["defect_nodes"],json!(["first"]));
+    let claim = store.claim_local("task","first").unwrap();
+    store.write_local_file(&claim,Path::new("first-r1.txt"),b"verified first repair").unwrap();
+    store.verify_local_file(&claim).unwrap();
+    store.close_local_handler(&claim).unwrap();
+    let summary = store.execution_summary("task").unwrap();
+    assert_eq!(summary["results"].as_array().unwrap().len(),1);
+    assert_eq!(summary["unmet_nodes"][0]["node"],"second");
+    assert_eq!(fs::read(root.join("second.txt")).unwrap(),b"independent actual corruption");
+    let third = revision(&second,&[("second","second-r1.txt")],&["second"],3);
+    let result = store.repair_local_plan(&third,2,"only-second-defect").unwrap();
+    assert_eq!(result["affected_nodes"],json!(["second"]));
+    let claim = store.claim_local("task","second").unwrap();
+    store.write_local_file(&claim,Path::new("second-r1.txt"),b"verified second repair").unwrap();
+    store.verify_local_file(&claim).unwrap();
+    store.close_local_handler(&claim).unwrap();
+    assert_eq!(store.execution_summary("task").unwrap()["result_state"],"completed_bounded_task");
+}
+
+#[test]
+fn t19_lost_artifact_can_be_repaired_at_original_path_without_invented_spec_change() {
+    let root = workspace("t19-lost-artifact");
+    let mut store = Store::open(&root).unwrap();
+    let blueprint = plan(&store,"task",&[("write","result.txt")],&[],1);
+    store.plan(&blueprint).unwrap();
+    let original = store.claim_local("task","write").unwrap();
+    store.write_local_file(&original,Path::new("result.txt"),b"original result").unwrap();
+    store.verify_local_file(&original).unwrap();
+    store.close_local_handler(&original).unwrap();
+    fs::remove_file(root.join("result.txt")).unwrap();
+    let proposal = revision(&blueprint,&[],&["write"],2);
+    let result = store.repair_local_plan(&proposal,1,"actual-missing-output").unwrap();
+    assert_eq!(result["defect_nodes"],json!(["write"]));
+    let claim = store.claim_local("task","write").unwrap();
+    store.write_local_file(&claim,Path::new("result.txt"),b"regenerated original result").unwrap();
+    store.verify_local_file(&claim).unwrap();
+    store.close_local_handler(&claim).unwrap();
+    assert_eq!(store.execution_summary("task").unwrap()["result_state"],"completed_bounded_task");
+    assert_eq!(count(&store,"validations"),2);
+    assert_eq!(count(&store,"artifacts"),2);
+    let history: (String,String,String) = store.connection.query_row("SELECT path,sha256,state FROM artifacts WHERE attempt_id=?1",[original.attempt_id()],|row|Ok((row.get(0)?,row.get(1)?,row.get(2)?))).unwrap();
+    assert_eq!(history,(store.workspace.resolve(Path::new("result.txt")).unwrap().to_string_lossy().into_owned(),strict_json::sha256(b"original result"),"invalidated".into()));
+    assert!(store.connection.execute("UPDATE artifacts SET state='adopted' WHERE attempt_id=?1",[original.attempt_id()]).is_err());
+    assert_eq!(fs::read(root.join("result.txt")).unwrap(),b"regenerated original result");
+    drop(store);
+    let mut reopened = Store::open_existing(&root).unwrap();
+    assert_eq!(reopened.execution_summary("task").unwrap()["result_state"],"completed_bounded_task");
+    assert_eq!(count(&reopened,"artifacts"),2);
+}
+
+#[cfg(windows)]
+#[test]
+fn t10_actual_windows_links_case_aliases_and_retargeted_paths_fail_closed() {
+    let root = workspace("t10-windows-boundary");
+    let outside = workspace("t10-separate-private-root");
+    fs::write(outside.join("private.txt"),b"must not be read from another project").unwrap();
+    let make_junction = |link: &Path| {
+        let created = std::process::Command::new("C:/Windows/System32/WindowsPowerShell/v1.0/powershell.exe")
+            .args(["-NoProfile","-NonInteractive","-Command","$ErrorActionPreference='Stop'; New-Item -ItemType Junction -Path $env:WUJI_TEST_LINK -Target $env:WUJI_TEST_TARGET | Out-Null"])
+            .env("WUJI_TEST_LINK",link).env("WUJI_TEST_TARGET",&outside).output().unwrap();
+        assert!(created.status.success(),"junction creation failed: {:?}",created);
+    };
+    make_junction(&root.join("escape"));
+    let mut store = Store::open(&root).unwrap();
+    assert_eq!(store.register_local_input("private",Path::new("escape/private.txt")).unwrap_err().kind,ErrorKind::PathDenied);
+    let escaped = plan(&store,"escape-task",&[("write","escape/result.txt")],&[],1);
+    assert_eq!(store.plan(&escaped).unwrap_err().kind,ErrorKind::PathDenied);
+    for path in [".WUJI4/state.sqlite",".CoDeX/config.toml",".AGENTS/skills/entry.md","output/../outside.txt"] {
+        let denied = plan(&store,"reserved",&[("write",path)],&[],1);
+        assert_eq!(store.plan(&denied).unwrap_err().kind,ErrorKind::PathDenied);
+    }
+    let aliases = plan(&store,"aliases",&[("first","Result.txt"),("second","result.TXT")],&[],2);
+    store.plan(&aliases).unwrap();
+    let first = store.claim_local("aliases","first").unwrap();
+    assert_eq!(store.claim_local("aliases","second").unwrap_err().kind,ErrorKind::OwnerConflict);
+    assert_eq!(count(&store,"attempts"),1);
+    store.close_local_handler(&first).unwrap();
+    fs::create_dir(root.join("retarget")).unwrap();
+    let retargeted = plan(&store,"retargeted",&[("write","retarget/result.txt")],&[],1);
+    store.plan(&retargeted).unwrap();
+    let claim = store.claim_local("retargeted","write").unwrap();
+    fs::remove_dir(root.join("retarget")).unwrap();
+    make_junction(&root.join("retarget"));
+    assert_eq!(store.write_local_file(&claim,Path::new("retarget/result.txt"),b"must not escape").unwrap_err().kind,ErrorKind::PathDenied);
+    assert!(!outside.join("result.txt").exists());
+    store.close_local_handler(&claim).unwrap();
+    assert_eq!(store.status().unwrap()["open_slots"],0);
+    assert_eq!(fs::read(outside.join("private.txt")).unwrap(),b"must not be read from another project");
+}
+
+#[test]
 fn checkpoint_is_durable_but_cannot_resolve_unknown_or_extend_lease() {
     let root = workspace("checkpoint");
     let mut store = Store::open(&root).unwrap();

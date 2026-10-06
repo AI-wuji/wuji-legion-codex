@@ -1,6 +1,6 @@
 # Global Entry and Lazy Scope Correction (2026-10-05)
 
-Historical checkpoint only. Its 3.0 coexistence statement is superseded by the explicitly authorized 4.0-only cutover in the private execution record; this note does not authorize restoring 3.0 or changing current configuration.
+Historical checkpoint only. Its 3.0 coexistence statement is superseded by the explicitly authorized 4.0-only cutover in `outputs/p7/global-4-only-cutover-2026-10-05.json`; this note does not authorize restoring 3.0 or changing current configuration.
 
 ## Root cause
 
@@ -8,16 +8,21 @@ The frozen acceptance ledger was being treated as a pre-build backlog. That made
 
 ## Correction
 
-- The default behavior for every new Codex conversation is provided by the user-level Codex AGENTS entry.
+- The default behavior for every new Codex conversation is provided by the user-level `C:\Users\Administrator\.codex\AGENTS.md`.
 - The 4.0 Skill remains a task capability package. It is discovered in the normal Skill catalog and is referenced only when the current task needs its narrow routing or guidance; no password, activation phrase or manual Skill selection is required.
 - Existing Skills, MCPs, native subagents, CLIs, APIs and professional project runtimes remain the first integration choice. No peripheral application is copied or rewritten without a concrete current-task consumer.
 - The 3.0 project and historical materials remain read-only, but its global runtime mount was explicitly retired. `config.toml`, model/provider/reasoning settings, credentials, plugins, audio devices and microphone paths remain protected except for the user-authorized entry-block cutover recorded in the current cutover receipt.
 
 ## Evidence
 
-The no-model prompt-input check was run in a fresh session context. Its model-visible input contained `agents_md.instructions` with the global title and the lazy-action rules. This verifies instruction injection for a new run; it does not claim hot reload of an already-open conversation.
+The no-model `codex debug prompt-input` check was run for a new session context from `C:\Users\Administrator`. Its model-visible input contained `agents_md.instructions` with the global title and the lazy-action rules. This verifies instruction injection for a new run; it does not claim hot reload of an already-open conversation.
 
-Local machine hashes and protected configuration details are intentionally omitted from the public repository; they remain in private audit records.
+Current content hashes:
+
+- Global entry: `C:\Users\Administrator\.codex\AGENTS.md` — `2DA4A5D047CF907392C51DF99C4B80E08256BB7DE70E0AAF928FCFD7DECF734B`.
+- 4.0 source and installed Skill: `07AEBEA36B307FAB5C62726436A53F7CA55EA281BE1BE8F8E400E209D69DFE02`.
+- Existing 3.0 Skill: `482F2BACD49B1DF22EE5159223CFB3994EA506BD948757B83A2195740148E131`.
+- Protected Codex config: `AE731FB7853BE02673402466840BAC5E25ED2CA7DC45A042C01EF6A5E4582146`.
 
 ## Acceptance boundary
 

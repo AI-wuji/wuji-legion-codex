@@ -24,6 +24,12 @@ $python = 'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/de
 
 `doctor`只读检查当前项目；`status`不会启动模型或常驻服务；`route`只加载请求类别的指引。通过后再调用`run-copy`或既有专业工具。本轮已在 `.dev/legion-task-workspaces/framework-smoke` 实际完成一条文件任务。详细边界见 `docs/design-deltas/011-framework-shell-2026-10-04.md`。
 
+### 当前本地缺陷返工
+
+已有Rust/SQLite有界任务的`revise`用于明确用户计划变更，`repair`用于已有真实文件/输入失效证据的局部返工。`repair <workspace> <sealed-plan.json> <expected-revision> <event-id>`只接受当前未解决失效节点及其依赖后继，不接受JSON自称“发现问题”来授权返工，也不能借改节点ID、事件ID或预算绕过单节点修订与无进展上限。正常用户改版不会被无进展返工计数误伤。执行后仍须实际写入、独立验证和关闭；命令准备成功不表示任务完成。
+
+丢失且已失效的产物可以在原路径重新生成，保留原产物和验证历史；活动产物路径仍唯一，磁盘上已有文件仍拒绝覆盖。工作区数据库当前版本为7：只有已有可信SID绑定的版本6，才能经显式初始化入口`init`（`Store::open`）在事务内升级产物历史索引；观察入口`Store::open_existing`不迁移。未绑定、撤销、未知列/索引或坏外键拒绝升级，不静默认领owner，不改旧库字节，也不重写旧任务的固定程序引用。
+
 ## 框架接入的专业有界任务
 
 OfficeCLI 文本 PPTX 链已接入框架，可在新的独立工作区运行：

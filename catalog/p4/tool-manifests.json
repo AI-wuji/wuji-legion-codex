@@ -113,7 +113,7 @@
       "workflow_entrypoint": "tools/wuji4.py run-video",
       "workflow_evidence": "outputs/p4/video-framework-workflow-evidence.json",
       "reviewed_binding": {
-        "revision": 2,
+        "revision": 3,
         "identity": {
           "server": "local-process",
           "tool": "video-render/png-to-mp4",
@@ -145,7 +145,7 @@
         "implementation_hashes": {
           "adapters/p4/ffmpeg_workflow.py": "9f0bd9476624da97db9e7a9dc5fcd49adf3e3fe2e98e76652ab4b97989e0b523",
           "adapters/p4/media_workflow.py": "d44a10202d5aebf44cb810b4ef67be9ebf48c35870a91e152dfc1b0575ba67ee",
-          "tools/wuji4.py": "01ccf81ac0920f2d5284cc8fdb38472bd90e8c145cad1e23e7e922d0089be510"
+          "tools/wuji4.py": "aa4d0f00bad26c31de3a65c9568175ee34d120978d040fb9228350dcfc2790d7"
         }
       },
       "action_contract": {
