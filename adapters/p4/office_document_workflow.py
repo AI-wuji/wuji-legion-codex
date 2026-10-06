@@ -14,6 +14,7 @@ import zipfile
 import xml.etree.ElementTree as ET
 
 from docx import Document
+from docx.shared import RGBColor
 from PIL import Image
 
 from adapters.p4 import officecli_adapter as office
@@ -21,6 +22,7 @@ from adapters.p4 import officecli_adapter as office
 
 ROOT = Path(__file__).resolve().parents[2]
 DOCX_RENDERER_ROOT = Path.home() / ".codex/plugins/cache/openai-primary-runtime/documents"
+LIBREOFFICE_PROGRAM = Path("C:/Program Files/LibreOffice/program")
 MAX_DOCX_BYTES = 8 * 1024 * 1024
 MAX_XLSX_BYTES = 8 * 1024 * 1024
 CONTROL_CHARACTERS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
@@ -151,6 +153,25 @@ def _formula(parent: ET.Element, reference: str, expression: str, cached: Decima
     formula.text = expression
     value_element = ET.SubElement(cell, _qname(OFFICE_NAMESPACE, "v"))
     value_element.text = str(cached)
+
+
+def _write_docx(path: Path, request: dict[str, object]) -> None:
+    document = Document()
+    document.core_properties.title = str(request["title"])
+    title_style = document.styles["Title"]
+    title_style.font.color.rgb = RGBColor(0, 0, 0)
+    title_style.font.underline = False
+    color = title_style.element.find(f"{_qname(WORD_NAMESPACE, 'rPr')}/{_qname(WORD_NAMESPACE, 'color')}")
+    for attribute in ("themeColor", "themeTint", "themeShade"):
+        color.attrib.pop(_qname(WORD_NAMESPACE, attribute), None)
+    properties = title_style.element.find(_qname(WORD_NAMESPACE, "pPr"))
+    if properties is not None:
+        for border in properties.findall(_qname(WORD_NAMESPACE, "pBdr")):
+            properties.remove(border)
+    document.add_paragraph(str(request["title"]), style="Title")
+    for paragraph in request["paragraphs"]:
+        document.add_paragraph(str(paragraph), style="Normal")
+    document.save(path)
 
 
 def _write_xlsx(path: Path, request: dict[str, object]) -> dict[str, object]:
@@ -312,6 +333,15 @@ def _docx_renderer() -> Path:
     return candidates[0]
 
 
+def _render_environment() -> dict[str, str]:
+    environment = dict(os.environ)
+    if sys.platform == "win32" and shutil.which("soffice.exe", path=environment.get("PATH", "")) is None:
+        executable = LIBREOFFICE_PROGRAM / "soffice.exe"
+        if executable.is_file() and not executable.is_symlink():
+            environment["PATH"] = os.pathsep.join([str(LIBREOFFICE_PROGRAM), environment.get("PATH", "")])
+    return environment
+
+
 def _run_render(path: Path, workspace: Path, receipt: dict[str, object]) -> dict[str, object]:
     renderer = _docx_renderer()
     render_dir = workspace / "docx-render-qa"
@@ -319,7 +349,7 @@ def _run_render(path: Path, workspace: Path, receipt: dict[str, object]) -> dict
         raise FileExistsError(str(render_dir))
     render_dir.mkdir()
     command = [sys.executable, str(renderer), str(path), "--output_dir", str(render_dir)]
-    environment = dict(os.environ)
+    environment = _render_environment()
     completed = subprocess.run(command, cwd=workspace, env=environment, capture_output=True, timeout=90,
                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     if len(completed.stdout) + len(completed.stderr) > 256 * 1024:
@@ -358,12 +388,7 @@ def run(workspace: Path, request: dict[str, object], output: Path | None = None)
         receipt["tool"] = {"version": office.PINNED_VERSION, "binary": str(adapter.binary), "binary_sha256": digest(adapter.binary)}
         artifact_path = _artifact_path(isolated, str(request["kind"]))
         if request["kind"] == "word":
-            document = Document()
-            document.core_properties.title = str(request["title"])
-            document.add_paragraph(str(request["title"]), style="Title")
-            for paragraph in request["paragraphs"]:
-                document.add_paragraph(str(paragraph), style="Normal")
-            document.save(artifact_path)
+            _write_docx(artifact_path, request)
             inspected = inspect_docx(artifact_path, request)
             receipt["checks"].update(inspected["checks"])
             receipt["artifacts"]["office_file"] = {"path": str(artifact_path), "bytes": artifact_path.stat().st_size, "sha256": digest(artifact_path), "kind": str(request["kind"])}

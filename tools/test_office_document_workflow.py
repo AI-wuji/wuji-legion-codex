@@ -6,6 +6,8 @@ from unittest import mock
 import zipfile
 import xml.etree.ElementTree as ET
 
+from docx import Document
+
 from adapters.p4 import office_document_workflow as workflow
 from adapters.p4.office_document_workflow import run, validate_request
 
@@ -14,6 +16,89 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class OfficeDocumentWorkflowTests(unittest.TestCase):
+    def test_renderer_finds_standard_install_only_in_child_environment(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / ".dev/core-test-workspaces") as temporary:
+            program = Path(temporary)
+            (program / "soffice.exe").write_bytes(b"unexecuted fixture")
+            with mock.patch.object(workflow, "LIBREOFFICE_PROGRAM", program), mock.patch.object(
+                    workflow.sys, "platform", "win32"), mock.patch.dict(
+                    workflow.os.environ, {"PATH": "existing-path"}, clear=True), mock.patch.object(
+                    workflow.shutil, "which", return_value=None) as find:
+                environment = workflow._render_environment()
+                self.assertEqual(environment["PATH"], str(program) + workflow.os.pathsep + "existing-path")
+                self.assertEqual(dict(workflow.os.environ), {"PATH": "existing-path"})
+                find.assert_called_once_with("soffice.exe", path="existing-path")
+
+    def test_renderer_preserves_existing_path_and_does_not_invent_missing_install(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / ".dev/core-test-workspaces") as temporary:
+            with mock.patch.object(workflow, "LIBREOFFICE_PROGRAM", Path(temporary)), mock.patch.object(
+                    workflow.sys, "platform", "win32"), mock.patch.dict(
+                    workflow.os.environ, {"PATH": "existing-path"}, clear=True):
+                for located in (None, "already-selected/soffice.exe"):
+                    with self.subTest(located=located), mock.patch.object(workflow.shutil, "which", return_value=located):
+                        self.assertEqual(workflow._render_environment(), {"PATH": "existing-path"})
+                        self.assertEqual(dict(workflow.os.environ), {"PATH": "existing-path"})
+
+    def test_offline_docx_preserves_black_undecorated_title_and_native_content(self):
+        request = validate_request({
+            "schema_version": 1,
+            "kind": "word",
+            "title": "\u65e0\u6781\u519b\u56e2 4.0 & <QA> \"Title\"",
+            "paragraphs": [
+                "\u963f\u6781\u662f\u552f\u4e00\u6c9f\u901a\u5165\u53e3 & <A> \"quoted\" 'text'.",
+                "  \u6b63\u6587 <B> & \u4e2d\u6587\u3002  ",
+            ],
+        })
+        with tempfile.TemporaryDirectory(prefix="offline-docx-", dir=ROOT / ".dev/core-test-workspaces") as temporary:
+            path = Path(temporary) / "title-regression.docx"
+            with (
+                mock.patch.object(workflow.office, "OfficeCliAdapter", side_effect=AssertionError("OfficeCLI is forbidden")) as office_adapter,
+                mock.patch.object(workflow, "_run_render", side_effect=AssertionError("Rendering is forbidden")) as render,
+                mock.patch.object(workflow.subprocess, "run", side_effect=AssertionError("Subprocesses are forbidden")) as subprocess_run,
+                mock.patch.object(workflow.subprocess, "Popen", side_effect=AssertionError("Subprocesses are forbidden")) as subprocess_popen,
+            ):
+                workflow._write_docx(path, request)
+            office_adapter.assert_not_called()
+            render.assert_not_called()
+            subprocess_run.assert_not_called()
+            subprocess_popen.assert_not_called()
+
+            document = Document(path)
+            self.assertEqual([paragraph.text for paragraph in document.paragraphs], [request["title"], *request["paragraphs"]])
+            self.assertEqual(document.core_properties.title, request["title"])
+            self.assertEqual(document.paragraphs[0].style.style_id, "Title")
+            self.assertEqual(document.styles["Title"].name, "Title")
+            self.assertEqual(str(document.styles["Title"].font.color.rgb), "000000")
+            self.assertIs(document.styles["Title"].font.underline, False)
+            for paragraph in document.paragraphs[1:]:
+                self.assertEqual(paragraph.style.style_id, "Normal")
+
+            namespace = {"word": workflow.WORD_NAMESPACE}
+            value_attribute = f"{{{workflow.WORD_NAMESPACE}}}val"
+            with zipfile.ZipFile(path) as archive:
+                styles = ET.fromstring(archive.read("word/styles.xml"))
+                body = ET.fromstring(archive.read("word/document.xml"))
+                properties = ET.fromstring(archive.read("docProps/core.xml"))
+            title_style = styles.find("word:style[@word:styleId='Title']", namespace)
+            title_paragraph = body.find("word:body/word:p", namespace)
+            self.assertIsNotNone(title_style)
+            self.assertIsNotNone(title_paragraph)
+            color = title_style.find("word:rPr/word:color", namespace)
+            self.assertIsNotNone(color)
+            self.assertEqual(color.attrib, {value_attribute: "000000"})
+            self.assertEqual(title_paragraph.find("word:pPr/word:pStyle", namespace).get(value_attribute), "Title")
+            for source in (title_style, title_paragraph):
+                with self.subTest(element=source.tag):
+                    self.assertEqual(source.findall(".//word:pBdr", namespace), [])
+                    for color in source.findall(".//word:color", namespace):
+                        self.assertEqual(color.attrib, {value_attribute: "000000"})
+                    for underline in source.findall(".//word:u", namespace):
+                        self.assertEqual(underline.get(value_attribute), "none")
+            self.assertEqual(properties.findtext("{http://purl.org/dc/elements/1.1/}title"), request["title"])
+            inspected = workflow.inspect_docx(path, request)
+            self.assertTrue(inspected["passed"], inspected)
+            self.assertEqual(inspected["paragraphs"], [request["title"], *request["paragraphs"]])
+
     def test_sheet_title_uses_black_bold_font_without_changing_header_contrast(self):
         with tempfile.TemporaryDirectory(dir=ROOT / ".dev/core-test-workspaces") as temporary:
             path = Path(temporary) / "title-contrast.xlsx"

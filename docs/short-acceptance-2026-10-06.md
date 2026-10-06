@@ -33,6 +33,13 @@
 
 后续不自动重启本轮 Office 转换、渲染或重算探针，不以打印机未开为由连接设备、安装驱动或修改设置；无依赖的离线工作继续。
 
+## 后续无打印机短项
+
+- 修复 DOCX 生成器：显式移除默认 Title 样式的主题蓝色、底部边框及下划线，保留可编辑 Title/Normal 结构；增加标准 LibreOffice 安装目录的**进程级**渲染器路径发现，不修改全局 PATH。9 项不启动 Office 的定向回归通过。
+- 复核当前视频消费者的绑定漂移：旧历史源码哈希无法从发布克隆恢复，因此不伪造历史链；以当前源码建立 `video-render` revision 4，只改当前 `tools/wuji4.py` 哈希和 revision，接口、身份及其他源锁不变。
+- 在独立工作区实际执行现有本地 FFmpeg：版本检查、PNG→H.264 MP4 编码和独立解码均退出 0；解码确认 8 帧、1 秒，配置哈希前后相同，未调用 ComfyUI、网络、音频设备或打印机。结果不是专业视频质量验收。
+- 相关回执：`.dev/quick-closeout-20261007/video-current-review.json`、`.dev/legion-task-workspaces/quick-video-current-20261007/video-workflow-current.json`。临时视频、日志和本地研究证据不上传公开仓库。
+
 ## 仍保留的范围
 
 正式 `outputs/p6/acceptance-execution.json`、活动 v1.7 方案、全局 `AGENTS.md` 和 `config.toml` 的 SHA256 均保持不变；T01—T04 的新证据另记，不倒填历史 22/36/25/9/3，也不宣称全部 95 项通过。此前“保持 25 项排除”的记录属于上一检查点；本次只按最新授权补 T01—T04，不批量解禁其余专业、MCP、媒体或宿主检查。T40/T55 和 T29 的完整要求仍未通过，不因安装一个依赖晋升全部来源准入。
