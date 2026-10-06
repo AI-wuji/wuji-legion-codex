@@ -12,6 +12,7 @@ from p6_package_validation import confined_path
 
 ROOT = Path(__file__).resolve().parents[1]
 SEMANTIC_CASES = {
+    "T10": "store::tests::t10_actual_windows_links_case_aliases_and_retargeted_paths_fail_closed",
     "T11": "store::tests::t11_full_local_revision_revalidates_only_affected_chain_and_preserves_history",
     "T12": "store::tests::t12_full_local_repeated_events_never_create_second_dispatch_or_change_artifact",
     "T13": "store::tests::os_kill_after_dispatch_requires_query_and_holds_slot",
@@ -51,6 +52,8 @@ SEMANTIC_CASES = {
     "T64": "t64_units_adopted_versions_current_hashes_and_explicit_rounding_are_separate",
 }
 SEMANTIC_PREREQUISITES = {
+    "T10": ["store::tests::parent_path_and_unassigned_output_rejected",
+            "store::tests::conflicting_writes_have_no_second_attempt"],
     "T19": ["owned_schema6_artifact_migration_preserves_history_references_and_live_uniqueness",
             "schema6_without_owner_or_with_revocation_is_not_migrated",
             "schema6_migration_collision_and_broken_references_roll_back_without_mutation",
@@ -81,6 +84,7 @@ SEMANTIC_PREREQUISITES = {
 }
 
 SEMANTIC_PYTHON_CASES = {
+    "T20": ["test_evidence_budget_cli.EvidenceBudgetCliTests.test_t70_actual_large_json_copy_and_paged_readback_preserve_errors_and_not_fee_limits"],
     "T21": ["test_experience_workflows.ExperienceWorkflowTests.test_t21_reviewed_exact_experience_drives_related_task_and_rejects_stale_or_universal"],
     "T70": ["test_evidence_budget_cli.EvidenceBudgetCliTests.test_t70_actual_large_json_copy_and_paged_readback_preserve_errors_and_not_fee_limits"],
     "T05": ["test_selector_workflows.SelectorWorkflowTests.test_t05_actual_subset_selection_provides_needed_source_and_excludes_unrelated_bodies"],
@@ -105,13 +109,11 @@ SUPPORTING_CASES = {
     "T06": ["selector::tests::ambiguous_selection_and_candidate_overflow_are_not_confidence"],
     "T08": ["store::tests::independent_file_reservations_do_not_conflict"],
     "T09": ["store::tests::two_os_processes_have_one_claim_winner"],
-    "T10": ["store::tests::parent_path_and_unassigned_output_rejected", "store::tests::conflicting_writes_have_no_second_attempt"],
     "T11": ["store::tests::graph_cas_retains_unrelated_adoption_and_rejects_old_result"],
     "T12": ["store::tests::repeated_write_replays_without_redispatch_and_changed_payload_conflicts"],
     "T13": ["store::tests::os_kill_after_dispatch_requires_query_and_holds_slot"],
     "T14": ["store::tests::expired_lease_does_not_write_or_release_slot"],
     "T18": ["store::tests::changed_output_invalidates_validation"],
-    "T20": ["composer::tests::conflicts_and_required_weakening_fail_independently"],
     "T45": ["composer::tests::deterministic_diamond_and_all_source_paths"],
     "T50": ["store::tests::user_authority_json_does_not_grant_permission"],
     "T07": ["shared_exact_expert_has_distinct_instances_and_never_reports_started_agents"],
@@ -539,11 +541,14 @@ def evaluate(root: Path, specs: dict, receipt: dict, *, receipt_path: str = "out
             row["status"] = "passed" if valid and all(rust_cases.get(case) == "passed" for case in cases) else "failed_or_stale"
             test_source = {"T11": "src/store_product_tests.rs", "T12": "src/store_product_tests.rs", "T13": "src/store_product_tests.rs", "T18": "src/store_product_tests.rs", "T19": "src/store_product_tests.rs", "T22": "tests/p6_resource_acl.rs", "T23": "tests/p6_resource_acceptance.rs", "T24": "src/governance.rs", "T52": "tests/p6_catalog_registry.rs", "T53": "tests/p6_task_catalog.rs", "T64": "tests/p6_time_semantics.rs", "T77": "tests/p6_received_delta.rs", "T84": "tests/p6_received_delta.rs"}.get(identifier, "tests/p6_semantic_acceptance.rs")
             row["evidence_refs"] = ["outputs/p6/test-execution.json", test_source]
-            if identifier == "T22":
+            if identifier == "T10":
+                row["coverage"] = "Complete normal and negative Windows deterministic local path scenario: canonicalization, write locking, link escapes, case aliases and retargeting after claim; no native/model or professional admission claim."
+                row["evidence_refs"] = ["outputs/p6/test-execution.json", "src/store_product_tests.rs", "src/store.rs", "src/policy.rs"]
+            elif identifier == "T22":
                 row["coverage"] = "Windows single-owner resource ACL and project scope are rechecked for live operations and replay, including transfer/received consumption. System whoami supplies the current token SID. No DACL changes, administrator tamper resistance, multi-tenant service or global promotion claim."
         elif identifier in SEMANTIC_PYTHON_CASES:
             cases = SEMANTIC_PYTHON_CASES[identifier]
-            test_source = {"T21": "tools/test_experience_workflows.py", "T24": "tools/test_governance_release_binding.py",
+            test_source = {"T20": "tools/test_evidence_budget_cli.py", "T21": "tools/test_experience_workflows.py", "T24": "tools/test_governance_release_binding.py",
                            "T70": "tools/test_evidence_budget_cli.py",
                            "T71": "tools/test_evidence_budget_cli.py",
                            "T85": "tools/test_p4_tool_binding.py"}.get(identifier, "tools/test_selector_workflows.py")

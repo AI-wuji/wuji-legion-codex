@@ -21,14 +21,14 @@ class P6AcceptanceTests(unittest.TestCase):
         (self.root / "docs").mkdir()
         (self.root / "outputs/p6").mkdir(parents=True)
         self.specs = {"tests": [self.spec(identifier) for identifier in (*SEMANTIC_CASES, *SEMANTIC_PYTHON_CASES)] +
-                      [self.spec("T20"), self.spec("T95", kind="actual_professional_artifact"),
+                      [self.spec("T08"), self.spec("T95", kind="actual_professional_artifact"),
                        self.spec("T43", gate="G7"), self.spec("T44", gate="G7"), self.spec("T74", gate="G7")]}
         (self.root / "docs/acceptance-map.json").write_text(json.dumps(self.specs), encoding="utf-8")
-        names = [name for identifier in SEMANTIC_CASES for name in semantic_cases(identifier)] + SUPPORTING_CASES["T20"]
+        names = list(dict.fromkeys([name for identifier in SEMANTIC_CASES for name in semantic_cases(identifier)] + SUPPORTING_CASES["T08"]))
         rust = self.root / "outputs/p6/rust.log"
         rust.write_text("\n".join(f"test {name} ... ok" for name in names) + "\n", encoding="utf-8")
         python = self.root / "outputs/p6/python.log"
-        python_names = ["unit_test.Fake.test_one", *[name for cases in SEMANTIC_PYTHON_CASES.values() for name in cases]]
+        python_names = list(dict.fromkeys(["unit_test.Fake.test_one", *[name for cases in SEMANTIC_PYTHON_CASES.values() for name in cases]]))
         python.write_text("\n".join(f"{name.rsplit('.', 1)[-1]} ({name}) ... ok" for name in python_names) + "\n", encoding="utf-8")
         snapshot = source_snapshot(self.root)
         self.receipt = {
@@ -72,6 +72,128 @@ class P6AcceptanceTests(unittest.TestCase):
                                     for child in node.body)
                             for node in tree.body
                         ))
+
+    def test_t10_maps_to_complete_actual_normal_and_negative_cases(self):
+        self.assertEqual(
+            SEMANTIC_CASES.get("T10"),
+            "store::tests::t10_actual_windows_links_case_aliases_and_retargeted_paths_fail_closed",
+        )
+        self.assertEqual(semantic_cases("T10"), [
+            "store::tests::t10_actual_windows_links_case_aliases_and_retargeted_paths_fail_closed",
+            "store::tests::parent_path_and_unassigned_output_rejected",
+            "store::tests::conflicting_writes_have_no_second_attempt",
+        ])
+        self.assertNotIn("T10", SUPPORTING_CASES)
+        report = self.report()
+        row = next(row for row in report["matrix"] if row["id"] == "T10")
+        self.assertEqual(row["status"], "passed")
+        self.assertIn("Windows", row["coverage"])
+        self.assertIn("src/store_product_tests.rs", row["evidence_refs"])
+
+    def test_t20_maps_to_complete_actual_normal_and_negative_cases(self):
+        self.assertEqual(
+            SEMANTIC_PYTHON_CASES.get("T20"),
+            ["test_evidence_budget_cli.EvidenceBudgetCliTests.test_t70_actual_large_json_copy_and_paged_readback_preserve_errors_and_not_fee_limits"],
+        )
+        self.assertNotIn("T20", SUPPORTING_CASES)
+        report = self.report()
+        row = next(row for row in report["matrix"] if row["id"] == "T20")
+        self.assertEqual(row["status"], "passed")
+        self.assertIn("Complete normal and negative", row["coverage"])
+        self.assertIn("tools/test_evidence_budget_cli.py", row["evidence_refs"])
+
+    def test_t10_and_t20_missing_actual_records_fail_closed(self):
+        cases = [("T10", "rust", case) for case in semantic_cases("T10")] + [
+            ("T20", "python", case) for case in SEMANTIC_PYTHON_CASES["T20"]
+        ]
+        for identifier, section, case in cases:
+            with self.subTest(identifier=identifier):
+                receipt = json.loads(json.dumps(self.receipt))
+                del receipt[section]["cases"][case]
+                log_path = self.root / receipt[section]["log_path"]
+                original = log_path.read_text(encoding="utf-8")
+                log_path.write_text(
+                    "\n".join(line for line in original.splitlines() if case not in line) + "\n",
+                    encoding="utf-8",
+                )
+                receipt[section]["log_sha256"] = digest(log_path)
+                report = evaluate(self.root, self.specs, receipt)
+                self.assertTrue(report["evidence_valid"])
+                row = next(row for row in report["matrix"] if row["id"] == identifier)
+                self.assertEqual(row["status"], "failed_or_stale")
+                log_path.write_text(original, encoding="utf-8")
+
+    def test_t20_composer_support_does_not_replace_actual_readback(self):
+        actual = SEMANTIC_PYTHON_CASES["T20"][0]
+        del self.receipt["python"]["cases"][actual]
+        python_log = self.root / self.receipt["python"]["log_path"]
+        python_log.write_text(
+            "\n".join(line for line in python_log.read_text(encoding="utf-8").splitlines() if actual not in line) + "\n",
+            encoding="utf-8",
+        )
+        self.receipt["python"]["log_sha256"] = digest(python_log)
+        component = "composer::tests::conflicts_and_required_weakening_fail_independently"
+        self.receipt["rust"]["cases"][component] = "passed"
+        rust_log = self.root / self.receipt["rust"]["log_path"]
+        rust_log.write_text(rust_log.read_text(encoding="utf-8") + f"test {component} ... ok\n", encoding="utf-8")
+        self.receipt["rust"]["log_sha256"] = digest(rust_log)
+        report = self.report()
+        self.assertTrue(report["evidence_valid"])
+        row = next(row for row in report["matrix"] if row["id"] == "T20")
+        self.assertEqual(row["status"], "failed_or_stale")
+        self.assertEqual(row["test_cases"], [actual])
+
+    def test_t10_and_t20_failed_actual_cases_override_success_flags(self):
+        cases = [("T10", "rust", case) for case in semantic_cases("T10")] + [
+            ("T20", "python", case) for case in SEMANTIC_PYTHON_CASES["T20"]
+        ]
+        for identifier, section, case in cases:
+            with self.subTest(identifier=identifier, case=case):
+                receipt = json.loads(json.dumps(self.receipt))
+                receipt[section]["cases"][case] = "failed"
+                log_path = self.root / receipt[section]["log_path"]
+                original = log_path.read_text(encoding="utf-8")
+                if section == "rust":
+                    passing = f"test {case} ... ok"
+                    failed = f"test {case} ... FAILED"
+                else:
+                    passing = f"{case.rsplit('.', 1)[-1]} ({case}) ... ok"
+                    failed = f"{case.rsplit('.', 1)[-1]} ({case}) ... FAIL"
+                log_path.write_text(original.replace(passing, failed), encoding="utf-8")
+                receipt[section]["log_sha256"] = digest(log_path)
+                report = evaluate(self.root, self.specs, receipt)
+                self.assertTrue(report["evidence_valid"])
+                row = next(row for row in report["matrix"] if row["id"] == identifier)
+                self.assertEqual(row["status"], "failed_or_stale")
+                log_path.write_text(original, encoding="utf-8")
+
+    def test_t10_and_t20_reject_stale_sources_and_changed_or_missing_logs(self):
+        for change in ("sources", "rust", "python"):
+            with self.subTest(change=change):
+                receipt = json.loads(json.dumps(self.receipt))
+                if change == "sources":
+                    receipt["source_hashes"]["stale.rs"] = "0" * 64
+                    receipt["source_hashes_after"] = dict(receipt["source_hashes"])
+                    report = evaluate(self.root, self.specs, receipt)
+                else:
+                    log_path = self.root / receipt[change]["log_path"]
+                    original = log_path.read_bytes()
+                    log_path.write_bytes(b"changed execution evidence")
+                    report = evaluate(self.root, self.specs, receipt)
+                    log_path.write_bytes(original)
+                self.assertFalse(report["evidence_valid"])
+                for identifier in ("T10", "T20"):
+                    row = next(row for row in report["matrix"] if row["id"] == identifier)
+                    self.assertEqual(row["status"], "failed_or_stale")
+        for section in ("rust", "python"):
+            with self.subTest(missing=section):
+                receipt = json.loads(json.dumps(self.receipt))
+                receipt[section]["log_path"] = f"outputs/p6/missing-{section}.log"
+                report = evaluate(self.root, self.specs, receipt)
+                self.assertFalse(report["evidence_valid"])
+                for identifier in ("T10", "T20"):
+                    row = next(row for row in report["matrix"] if row["id"] == identifier)
+                    self.assertEqual(row["status"], "failed_or_stale")
 
     def test_execution_receipt_reference_cannot_escape_the_project(self):
         for relative in ("../private.json", "C:/private.json", "/private.json", "outputs\\private.json"):
