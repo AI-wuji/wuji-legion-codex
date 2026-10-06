@@ -1,5 +1,6 @@
 import copy
 import unittest
+from unittest.mock import patch
 
 from native_host_session import ObservationTimeout
 from native_task_driver import MODEL, RETURN_KEYS, run_task
@@ -167,6 +168,55 @@ class NativeTaskDriverTests(unittest.TestCase):
         session = FakeSession([started(), item_event, event, closed()])
         result = run_task(session, {}, {"effort": "high"}, timeout=1, close_timeout=1)
         self.assertEqual("same", result["generated_text"])
+
+    def test_conflicting_turn_ids_cannot_claim_foreign_completion(self):
+        foreign = completed("foreign", text="foreign-text")
+        foreign["params"]["turnId"] = "turn-1"
+        session = FakeSession([started(), foreign, completed(text="owned-text"), closed()])
+
+        result = run_task(session, {}, {"effort": "high"}, timeout=1, close_timeout=1)
+
+        self.assertEqual("completed", result["status"])
+        self.assertEqual("owned-text", result["generated_text"])
+        self.assertNotIn("foreign", repr(result["observations"]))
+        self.assertEqual(1, len(session.closed))
+
+    def test_foreign_notifications_cannot_extend_observation_deadline(self):
+        clock = [0.0]
+        session = FakeSession([started("foreign"), completed(text="late-text"), closed()])
+        next_event = session.next_event
+
+        def advance_clock(thread_id, timeout=30):
+            event = next_event(thread_id, timeout=timeout)
+            clock[0] = 2.0
+            return event
+
+        with patch("native_task_driver.time.monotonic", side_effect=lambda: clock[0]), patch.object(
+            session, "next_event", side_effect=advance_clock
+        ):
+            result = run_task(session, {}, {"effort": "high"}, timeout=1, close_timeout=1)
+
+        self.assertEqual("unknown", result["status"])
+        self.assertEqual("turn/observation", result["failure_phase"])
+        self.assertEqual("", result["generated_text"])
+        self.assertEqual(1, len(session.event_calls))
+        self.assertFalse(result["thread_closed_observed"])
+        self.assertFalse(any(call[0] == "request" and call[2] == "thread/unsubscribe" for call in session.calls))
+        self.assertEqual(1, len(session.closed))
+
+    def test_completed_output_survives_close_timeout_without_claiming_release(self):
+        session = FakeSession([started(), item("first"), completed(text="second")])
+
+        result = run_task(session, {}, {"effort": "high"}, timeout=1, close_timeout=1)
+
+        self.assertEqual("unknown", result["status"])
+        self.assertEqual("thread/closed", result["failure_phase"])
+        self.assertEqual("first\nsecond", result["generated_text"])
+        self.assertFalse(result["thread_closed_observed"])
+        self.assertFalse(result["runtime_admission"])
+        self.assertFalse(result["store_admission"])
+        self.assertEqual(1, len(session.closed))
+        self.assertEqual(1, len([call for call in session.calls if call[0] == "request" and call[2] == "turn/start"]))
 
 
 if __name__ == "__main__":

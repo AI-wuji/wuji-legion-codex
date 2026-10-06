@@ -324,6 +324,13 @@ def _test_cases():
             False,
         ),
         (
+            "newly_ready_nodes_are_sorted",
+            ["a", "z", "b"],
+            [("a", "b")],
+            ["a", "b", "z"],
+            False,
+        ),
+        (
             "duplicate_edges_deduplicated",
             ["a", "b"],
             [("a", "b"), ("a", "b")],

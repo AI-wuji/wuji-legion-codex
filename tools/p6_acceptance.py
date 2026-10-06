@@ -142,7 +142,8 @@ SUPPORTING_PYTHON_CASES = {
         "test_ffmpeg_workflow.FfmpegWorkflowTests.test_binding_changed_during_real_encoding_revokes_completion",
     ],
     "T42": [
-        "test_wuji4_framework.Wuji4FrameworkTests.test_status_reports_aji_v17_uninstalled_policy_and_rust_sqlite_authority",
+        "test_wuji4_framework.Wuji4FrameworkTests.test_status_separates_frozen_source_policy_from_matching_installed_core",
+        "test_wuji4_framework.Wuji4FrameworkTests.test_status_stale_core_bytes_do_not_count_as_installed",
         "test_p6_package.P6PackageTests.test_manifest_files_are_hash_bound_inside_archive",
         "test_p6_package.P6PackageTests.test_external_sidecar_hash_matches_archive",
     ],
@@ -154,7 +155,7 @@ SUPPORTING_PYTHON_CASES = {
     "T93": [
         "test_execution_baseline.ExecutionBaselineTests.test_current_production_map_keeps_all_95_and_only_three_p7_scenarios",
         "test_execution_baseline.ExecutionBaselineTests.test_removed_scope_other_frozen_override_and_p7_expansion_are_rejected",
-        "test_wuji4_framework.Wuji4FrameworkTests.test_status_reports_aji_v17_uninstalled_policy_and_rust_sqlite_authority",
+        "test_wuji4_framework.Wuji4FrameworkTests.test_status_global_rule_observation_never_claims_new_chat_behavior",
     ],
     "T94": [
         "test_p6_package_validation.PackageValidationTests.test_valid_archive_and_source_closure",
@@ -168,7 +169,7 @@ SUPPORTING_PYTHON_CASES = {
         "test_wuji4_framework.Wuji4FrameworkTests.test_capabilities_reads_existing_tool_contracts_without_generic_dispatch",
     ],
     "T65": [
-        "test_wuji4_framework.Wuji4FrameworkTests.test_status_reports_aji_v17_uninstalled_policy_and_rust_sqlite_authority",
+        "test_wuji4_framework.Wuji4FrameworkTests.test_status_reads_only_declared_core_and_agents_not_configuration",
         "test_wuji4_framework.Wuji4FrameworkTests.test_route_loads_only_needed_chat_or_professional_context",
         "test_wuji4_framework.Wuji4FrameworkTests.test_capabilities_reads_existing_tool_contracts_without_generic_dispatch",
         "test_wuji4_framework.Wuji4FrameworkTests.test_run_copy_requires_confirmation_and_delegates_existing_workspace",
@@ -186,7 +187,7 @@ SUPPORTING_PYTHON_CASES = {
     "T92": [
         "test_host_probe.HostProbeTests.test_secrets_urls_and_instructions_not_emitted",
         "test_host_probe.HostProbeTests.test_missing_config_is_unknown_not_auth_failure",
-        "test_wuji4_framework.Wuji4FrameworkTests.test_status_reports_aji_v17_uninstalled_policy_and_rust_sqlite_authority",
+        "test_wuji4_framework.Wuji4FrameworkTests.test_status_global_rule_observation_never_claims_new_chat_behavior",
     ],
     "T75": [
         "test_document_audit.DocumentAuditTests.test_coverage_requires_fresh_explicit_notes_and_image",

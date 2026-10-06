@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import tempfile
 import unittest
+from unittest import mock
 import zipfile
 from pathlib import Path
+
+import package_p6
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +21,31 @@ def sha256_bytes(value: bytes) -> str:
 
 
 class P6PackageTests(unittest.TestCase):
+    def test_new_archive_identity_does_not_inherit_historical_full_audit_success(self) -> None:
+        with tempfile.TemporaryDirectory(dir=ROOT / ".dev") as temporary:
+            root = Path(temporary).resolve()
+            audit = root / "outputs/p6/full-audit-report.json"
+            manifest = root / "outputs/p6/release-manifest.json"
+            package = root / "outputs/p6/package.zip"
+            audit.parent.mkdir(parents=True)
+            (root / ".dev").mkdir()
+            previous_bytes = json.dumps({"passed": True, "checks": {"historical_only": True},
+                                         "archive_attestation": {"external_to_archive": True}}).encode("utf-8")
+            audit.write_bytes(previous_bytes)
+            manifest.write_bytes(b"current sidecar")
+            package.write_bytes(b"current archive")
+            with mock.patch.object(package_p6, "ROOT", root), mock.patch.object(
+                    package_p6, "AUDIT_REPORT_PATH", audit), mock.patch.object(
+                    package_p6, "MANIFEST_PATH", manifest), mock.patch.object(
+                    package_p6, "PACKAGE_PATH", package):
+                package_p6.update_external_archive_attestation(package_p6.sha256(package), package_p6.sha256(manifest))
+            current = json.loads(audit.read_text(encoding="utf-8"))
+            self.assertFalse(current["passed"])
+            self.assertFalse(current["full_audit_reexecuted"])
+            self.assertNotIn("checks", current)
+            self.assertEqual((root / current["historical_audit"]["path"]).read_bytes(), previous_bytes)
+            self.assertEqual(current["historical_audit"]["sha256"], sha256_bytes(previous_bytes))
+
     def test_final_audit_attests_exact_current_archive_without_being_inside_it(self) -> None:
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
         self.assertIn("outputs/p6/full-audit-report.json", manifest["external_archive_attestations"])

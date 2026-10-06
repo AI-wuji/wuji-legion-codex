@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import hashlib
 import json
 import shutil
@@ -13,6 +14,7 @@ from p6_package_validation import EXTERNAL_ARCHIVE_ATTESTATIONS, confined_path, 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST_PATH = ROOT / "outputs/p6/release-manifest.json"
 PACKAGE_PATH = ROOT / "outputs/p6/wuji-legion-4.0-p6-package.zip"
+AUDIT_REPORT_PATH = ROOT / "outputs/p6/full-audit-report.json"
 STAGING_PATH = ROOT / "release/p6"
 SOURCE_PATH_MIGRATIONS = {
     "docs/design-deltas/026-budget-semantics-and-gpt-6.1-sol-context-correction-2026-10-06.md":
@@ -64,6 +66,10 @@ def manifest_files() -> list[dict[str, object]]:
         "tools/p6_acceptance.py",
         "tools/test_p6_acceptance.py",
         "tools/run_p6_regressions.py",
+        "tools/run_audit_tests.py",
+        "tools/test_regression_scope.py",
+        "docs/current-acceptance-status-2026-10-07.md",
+        "docs/core-only-closeout-2026-10-07.md",
         "tools/test_cli_help.py",
         "outputs/p6/test-execution.json",
         "outputs/p6/acceptance-execution.json",
@@ -205,6 +211,39 @@ def write_json(path: Path, value: dict[str, object]) -> None:
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def update_external_archive_attestation(archive_hash: str, manifest_hash: str) -> None:
+    previous_bytes = AUDIT_REPORT_PATH.read_bytes()
+    previous = strict_json(previous_bytes.decode("utf-8"))
+    attestation = previous.get("archive_attestation")
+    if not isinstance(attestation, dict) or attestation.get("external_to_archive") is not True:
+        raise ValueError("External archive attestation is missing or not external")
+    if sha256(PACKAGE_PATH) != archive_hash or sha256(MANIFEST_PATH) != manifest_hash:
+        raise ValueError("Archive or sidecar changed before external attestation")
+    previous_hash = hashlib.sha256(previous_bytes).hexdigest()
+    history = confined_path(ROOT, f".dev/package-attestations/{previous_hash}.json")
+    history.parent.mkdir(parents=True, exist_ok=True)
+    if history.exists() and history.read_bytes() != previous_bytes:
+        raise ValueError("Historical audit preservation conflicts")
+    history.write_bytes(previous_bytes)
+    report = {
+        "schema_version": 1, "kind": "external_archive_identity_only",
+        "observed_at": datetime.now(timezone.utc).isoformat(),
+        "status": "archive_identity_checked_full_acceptance_pending",
+        "full_audit_reexecuted": False, "passed": False,
+        "historical_audit": {"path": history.relative_to(ROOT).as_posix(), "sha256": previous_hash},
+        "archive_attestation": {
+            "external_to_archive": True,
+            "archive_path": PACKAGE_PATH.relative_to(ROOT).as_posix(),
+            "declared_archive_sha256": archive_hash,
+            "observed_archive_sha256": archive_hash,
+            "sidecar_path": MANIFEST_PATH.relative_to(ROOT).as_posix(),
+            "sidecar_sha256": manifest_hash,
+            "audit_does_not_mutate_declared_archive_files": True,
+        },
+    }
+    write_json(AUDIT_REPORT_PATH, report)
+
+
 def write_deterministic_zip(stage: Path) -> None:
     PACKAGE_PATH.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(PACKAGE_PATH, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
@@ -254,6 +293,7 @@ def main() -> None:
     if not consistency["passed"]:
         raise ValueError(f"New package consistency failed: {consistency}")
     write_json(MANIFEST_PATH, external)
+    update_external_archive_attestation(archive_hash, sha256(MANIFEST_PATH))
 
     STAGING_PATH.mkdir(parents=True, exist_ok=True)
     for relative in EXTERNAL_ARCHIVE_ATTESTATIONS:

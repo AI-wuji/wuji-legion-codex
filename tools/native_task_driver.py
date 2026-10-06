@@ -78,9 +78,13 @@ def _event_turn_id(event):
     if not isinstance(params, dict):
         return None
     direct = params.get("turnId")
-    if isinstance(direct, str) and direct:
-        return direct
     turn = params.get("turn")
+    if "turnId" in params:
+        if not isinstance(direct, str) or not direct:
+            return None
+        if isinstance(turn, dict) and "id" in turn and turn["id"] != direct:
+            return None
+        return direct
     if isinstance(turn, dict):
         value = turn.get("id")
         if isinstance(value, str) and value:
@@ -171,7 +175,10 @@ def _valid_event(event, method, thread_id, turn_id=None):
 
 
 def _remaining(deadline):
-    return max(0.001, deadline - time.monotonic())
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise ObservationTimeout("Observation timed out; bounded unknown")
+    return remaining
 
 
 def _next_event(session, thread_id, timeout):
@@ -277,13 +284,13 @@ def run_task(session, thread_params, turn_params, timeout=180, close_timeout=90)
                         result["observations"].append(copy.deepcopy(event))
                         _append_agent_message_texts(event, messages, seen_item_ids)
 
+        result["generated_text"] = "\n".join(messages)
         phase = "thread/unsubscribe"
         owned_session.request(3, "thread/unsubscribe", {"threadId": thread_id}, timeout=timeout)
         phase = "thread/closed"
         closed = _next_closed(owned_session, thread_id, float(close_timeout))
         result["observations"].append(copy.deepcopy(closed))
         result["thread_closed_observed"] = True
-        result["generated_text"] = "\n".join(messages)
         result["status"] = "rerouted" if rerouted else completed_status
     except ObservationTimeout as error:
         result["status"] = "unknown"

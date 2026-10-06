@@ -62,6 +62,18 @@ class NativeDagValidatorTests(unittest.TestCase):
         self.assertTrue(report["passed"], report)
         self.assertTrue(all(test["passed"] for test in report["tests"]))
 
+    def test_fifo_queue_cannot_pass_deterministic_dependency_ordering(self):
+        source = VALID_SOURCE.replace("                ready = sorted(ready)", "                pass")
+        self.assertNotEqual(source, VALID_SOURCE)
+
+        report = run_validation(source)
+
+        self.assert_report_shape(report)
+        self.assertFalse(report["passed"], report)
+        self.assertIn(
+            {"name": "newly_ready_nodes_are_sorted", "passed": False}, report["tests"]
+        )
+
     def test_policy_rejects_import_eval_open_dunder_and_attributes(self):
         sources = [
             "import os\n\ndef topological_order(nodes, edges):\n    return []\n",
@@ -112,17 +124,13 @@ def topological_order(nodes, edges):
         self.assertIn("AST node limit", " ".join(report["errors"]))
 
     def test_cli_emits_json_only_and_returns_zero_when_validation_fails(self):
-        source_path = Path(__file__).with_name("_native_dag_cli_fixture.py")
-        source_path.write_text("def topological_order(nodes, edges):\n    return []\n", encoding="utf-8")
-        try:
-            completed = subprocess.run(
-                [sys.executable, "-B", str(Path(__file__).with_name("native_dag_validator.py")), str(source_path)],
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-        finally:
-            source_path.unlink(missing_ok=True)
+        source_path = Path(__file__).with_name("native_dag_validator.py")
+        completed = subprocess.run(
+            [sys.executable, "-B", str(source_path), str(source_path)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
         self.assertEqual(completed.returncode, 0)
         self.assertEqual(completed.stderr, "")
         report = json.loads(completed.stdout)

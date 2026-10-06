@@ -51,7 +51,7 @@ class WhitehatEntryTextContractTests(unittest.TestCase):
         self.assert_contract(
             minimal, r"原目标|原定目标|原始目标", "既有", "有效授权范围", r"持续|继续"
         )
-        self.assert_contract(minimal, "用户", "取消", "替换", "改目标")
+        self.assert_contract(minimal, "明确", "取消", "替换", r"(?:更新|改)目标")
         self.assert_contract(minimal, "完成", "收口", r"不.*(?:追加|无限)")
         experts = self.source_section("SKILL.md", "专家通路")
         self.assert_contract(experts, "专家", r"未用|未使用|不用", "冷态")

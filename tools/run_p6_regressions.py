@@ -9,6 +9,7 @@ import sys
 import unittest
 
 from p6_acceptance import ROOT, digest, rust_cases_from_log, source_snapshot
+from run_audit_tests import arguments, build_suite
 
 
 class RecordedResult(unittest.TextTestResult):
@@ -40,6 +41,7 @@ def config_observation() -> dict:
 
 
 def main() -> None:
+    options = arguments()
     started = datetime.now(timezone.utc).isoformat()
     before = source_snapshot()
     configuration_before = config_observation()
@@ -59,7 +61,7 @@ def main() -> None:
     rust_text = rust_log.decode("utf-8", errors="replace")
     cases = rust_cases_from_log(rust_text)
     python_path = logs / "python-tool-tests.log"
-    suite = unittest.defaultTestLoader.discover(str(ROOT / "tools"), pattern="test_*.py")
+    suite = build_suite(options.include_software_tests)
     with python_path.open("w", encoding="utf-8") as stream:
         result = unittest.TextTestRunner(stream=stream, verbosity=2, resultclass=RecordedResult).run(suite)
     after = source_snapshot()
@@ -75,6 +77,7 @@ def main() -> None:
                  "tests_passed": sum(value == "passed" for value in cases.values()),
                  "log_path": rust_path.relative_to(ROOT).as_posix(), "log_sha256": digest(rust_path)},
         "python": {"exit_code": 0 if result.wasSuccessful() else 1, "passed": result.wasSuccessful(),
+                   "software_tests_requested": options.include_software_tests,
                    "tests_run": result.testsRun, "cases": result.cases,
                    "skipped": len(result.skipped), "log_path": python_path.relative_to(ROOT).as_posix(),
                    "log_sha256": digest(python_path)},

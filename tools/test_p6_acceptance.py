@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import json
 from pathlib import Path
 import tempfile
@@ -56,6 +57,21 @@ class P6AcceptanceTests(unittest.TestCase):
             row = next(row for row in report["matrix"] if row["id"] == identifier)
             self.assertIn(relative, row["evidence_refs"])
             self.assertNotIn("outputs/p6/test-execution.json", row["evidence_refs"])
+
+    def test_python_evidence_references_resolve_without_importing_software_tests(self):
+        for mapping in (SEMANTIC_PYTHON_CASES, SUPPORTING_PYTHON_CASES):
+            for identifier, cases in mapping.items():
+                for case in cases:
+                    with self.subTest(identifier=identifier, case=case):
+                        module, class_name, method = case.rsplit(".", 2)
+                        path = ROOT / "tools" / f"{module}.py"
+                        tree = ast.parse(path.read_text(encoding="utf-8"))
+                        self.assertTrue(any(
+                            isinstance(node, ast.ClassDef) and node.name == class_name
+                            and any(isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name == method
+                                    for child in node.body)
+                            for node in tree.body
+                        ))
 
     def test_execution_receipt_reference_cannot_escape_the_project(self):
         for relative in ("../private.json", "C:/private.json", "/private.json", "outputs\\private.json"):

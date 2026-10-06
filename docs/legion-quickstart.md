@@ -32,6 +32,8 @@ $python = 'C:/Users/Administrator/.cache/codex-runtimes/codex-primary-runtime/de
 
 ## 框架接入的专业有界任务
 
+当前用户要求只修核心，不运行下面的专业软件命令；以下保留为按需接口文档，不是本轮执行清单。开发者运行 `python tools/run_audit_tests.py` 或 `python tools/run_p6_regressions.py` 时默认只加载显式核心测试；`--include-software-tests` 会扩大至软件测试，须有相应任务授权，本次不使用。
+
 OfficeCLI 文本 PPTX 链已接入框架，可在新的独立工作区运行：
 
 ```powershell
