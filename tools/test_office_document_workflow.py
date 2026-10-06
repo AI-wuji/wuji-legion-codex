@@ -3,6 +3,8 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest import mock
+import zipfile
+import xml.etree.ElementTree as ET
 
 from adapters.p4 import office_document_workflow as workflow
 from adapters.p4.office_document_workflow import run, validate_request
@@ -12,6 +14,29 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class OfficeDocumentWorkflowTests(unittest.TestCase):
+    def test_sheet_title_uses_black_bold_font_without_changing_header_contrast(self):
+        with tempfile.TemporaryDirectory(dir=ROOT / ".dev/core-test-workspaces") as temporary:
+            path = Path(temporary) / "title-contrast.xlsx"
+            request = validate_request({"schema_version": 1, "kind": "sheet", "title": "Project Costs", "rows": [
+                {"label": "Research", "quantity": 2, "unit_price": "120.50"},
+            ]})
+            workflow._write_xlsx(path, request)
+            with zipfile.ZipFile(path) as archive:
+                namespace = {"sheet": workflow.OFFICE_NAMESPACE}
+                sheet = ET.fromstring(archive.read("xl/worksheets/sheet1.xml"))
+                styles = ET.fromstring(archive.read("xl/styles.xml"))
+            fonts = styles.find("sheet:fonts", namespace)
+            formats = styles.find("sheet:cellXfs", namespace)
+            for reference, expected_color, expected_fill in (("A1", "FF000000", "0"), ("A3", "FFFFFFFF", "2")):
+                with self.subTest(cell=reference):
+                    cell = sheet.find(f".//sheet:c[@r='{reference}']", namespace)
+                    cell_format = formats[int(cell.get("s"))]
+                    font = fonts[int(cell_format.get("fontId"))]
+                    self.assertEqual(font.find("sheet:color", namespace).get("rgb"), expected_color)
+                    self.assertIsNotNone(font.find("sheet:b", namespace))
+                    self.assertEqual(cell_format.get("fillId"), expected_fill)
+            self.assertTrue(workflow.inspect_xlsx(path, request)["passed"])
+
     def test_renderer_uses_unique_installed_bundle_not_retired_version(self):
         with tempfile.TemporaryDirectory(dir=ROOT / ".dev/core-test-workspaces") as temporary:
             root = Path(temporary)
