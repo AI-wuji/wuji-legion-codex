@@ -38,7 +38,23 @@ wire_api = "responses"
                 value = h.probe(Path(folder) / "missing.toml")
             self.assertEqual(value["config"]["status"], "missing")
             self.assertFalse(value["third_party_request_verified"])
-            self.assertEqual(value["requested_policy"]["model"], "gpt-6.1-sol")
+            self.assertEqual(value["requested_policy"]["baseline_model"], "inherit_current_conversation_selection")
+            self.assertFalse(value["requested_policy"]["failure_fallback_chain"])
+
+
+    def test_disk_model_is_not_current_conversation_baseline(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config = Path(folder) / "config.toml"
+            config.write_text('model = "some-other-model"\nmodel_reasoning_effort = "none"\n', encoding="utf-8")
+            with patch.object(h.shutil, "which", return_value=None):
+                value = h.probe(config)
+            self.assertEqual(value["config"]["model"], "some-other-model")
+            self.assertEqual(value["config"]["model_reasoning_effort"], "none")
+            self.assertEqual(value["requested_policy"]["baseline_effort"], "inherit_current_conversation_selection")
+            self.assertEqual(value["requested_policy"]["upgrade_efforts"], ["high", "xhigh"])
+            self.assertFalse(value["requested_policy"]["automatic_downgrade"])
+            self.assertEqual(value["effective_model"], "unknown")
+            self.assertTrue(value["mount_proposal"]["baseline_handoff_required_for_independent_worker"])
 
 
 if __name__ == "__main__":

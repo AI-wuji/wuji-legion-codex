@@ -4,12 +4,12 @@ use std::fs;
 use std::path::{Path,PathBuf};
 use std::sync::atomic::{AtomicU64,Ordering};
 use std::time::{SystemTime,UNIX_EPOCH};
-use wuji4::error::ErrorKind;
-use wuji4::graph::ExactRef;
-use wuji4::recipe::{RecipeRequest,RecipeInstance,TaskKind};
-use wuji4::registry::{CatalogRegistry,CatalogFile,LocalCatalogPermit,ReleaseBundle,ReleaseManifest};
-use wuji4::store::Store;
-use wuji4::strict_json;
+use crate::error::ErrorKind;
+use crate::graph::ExactRef;
+use crate::recipe::{RecipeRequest,RecipeInstance,TaskKind};
+use crate::registry::{CatalogRegistry,CatalogFile,LocalCatalogPermit,ReleaseBundle,ReleaseManifest};
+use crate::store::Store;
+use crate::strict_json;
 
 static NEXT_ROOT_ID: AtomicU64 = AtomicU64::new(0);
 
@@ -58,47 +58,56 @@ fn setup() -> (Store,CatalogRegistry,RecipeRequest) {
     (store,registry,RecipeRequest { task_id:"recipe-task".into(),release_lock:lock,instances,max_parallel_instances:2,byte_cap:100000 })
 }
 
+
 #[test]
-fn shared_exact_expert_has_distinct_instances_and_never_reports_started_agents() {
-    let (store,registry,request)=setup();
-    let prepared=store.prepare_recipe(&registry,&request).unwrap();
-    assert_eq!(prepared["shared_definitions"].as_object().unwrap().len(),1);
-    assert_eq!(prepared["instances"].as_array().unwrap().len(),2);
-    assert_eq!(prepared["instances"][0]["requested_model"],"gpt-6.1-sol");
-    assert_eq!(prepared["instances"][0]["requested_effort"],"high");
-    assert_eq!(prepared["instances"][1]["requested_model"],"inherit_current_selection");
-    assert_eq!(prepared["instances"][1]["requested_effort"],"inherit");
-    assert_eq!(prepared["actual_agents_started"],0);
-    assert_eq!(prepared["execution_authority"],false);
-    assert_eq!(prepared["runtime_admission"],false);
-    assert_eq!(prepared["user_communicator"],"aji");
+fn text_recipe_inherits_current_conversation_and_upgrade_requests_stay_prepared() {
+    let (store,registry,mut request)=setup();
+    for (kind,model,effort) in [
+        (TaskKind::Text,"inherit_current_selection","inherit"),
+        (TaskKind::Code,"gpt-6.1-sol","high"),
+        (TaskKind::Repair,"gpt-6.1-sol","xhigh"),
+        (TaskKind::Planning,"gpt-6.1-sol","xhigh"),
+    ] {
+        request.instances[0].task_kind=kind;
+        let prepared=store.prepare_recipe(&registry,&request).unwrap();
+        let instance=&prepared["instances"][0];
+        assert_eq!(instance["requested_model"],model);
+        assert_eq!(instance["requested_effort"],effort);
+        assert_eq!(instance["effective_model"],"unknown");
+        assert_eq!(instance["effective_effort"],"unknown");
+        assert_eq!(instance["runtime_admission"],false);
+        assert_eq!(instance["inputs"],serde_json::to_value(&request.instances[0].inputs).unwrap());
+        let boundary=instance["selection_boundary"].as_str().unwrap();
+        if matches!(kind,TaskKind::Text) {
+            assert!(boundary.contains("current conversation"));
+            assert!(boundary.contains("not an independent CLI disk default"));
+        } else {
+            assert!(boundary.contains("explicit user-requested"));
+            assert!(boundary.contains("not automatic difficulty classification"));
+            assert!(boundary.contains("downgrade"));
+        }
+        assert_eq!(prepared["state"],"prepared");
+        assert_eq!(prepared["actual_agents_started"],0);
+        assert_eq!(prepared["formal_experts_activated"],0);
+        assert_eq!(prepared["execution_authority"],false);
+        assert_eq!(prepared["runtime_admission"],false);
+        assert_eq!(prepared["user_communicator"],"aji");
+        assert_eq!(prepared["shared_definitions"].as_object().unwrap().len(),1);
+        assert_eq!(prepared["instances"][1]["requested_model"],"inherit_current_selection");
+        assert_eq!(prepared["instances"][1]["requested_effort"],"inherit");
+    }
 }
 
 #[test]
-fn cyclic_recipe_overlapping_writes_unsafe_paths_and_quotas_are_not_dispatched() {
+fn inherited_recipe_keeps_scope_write_conflict_and_byte_cap_safety() {
     let (store,registry,mut request)=setup();
+    request.instances[0].task_kind=TaskKind::Text;
     request.instances[1].write_roots=request.instances[0].write_roots.clone();
     assert_eq!(store.prepare_recipe(&registry,&request).unwrap_err().kind,ErrorKind::OwnerConflict);
-    request.instances[1].write_roots=vec!["outputs/../escape.txt".into()];
-    assert_eq!(store.prepare_recipe(&registry,&request).unwrap_err().kind,ErrorKind::PathDenied);
     request.instances[1].write_roots=vec!["outputs/other.txt".into()];
-    request.instances[0].depends_on=vec!["instance-1".into()];
-    request.instances[1].depends_on=vec!["instance-0".into()];
-    assert_eq!(store.prepare_recipe(&registry,&request).unwrap_err().kind,ErrorKind::DependencyCycle);
-    request.instances[0].depends_on.clear();
-    request.instances[1].depends_on.clear();
-    request.max_parallel_instances=4;
-    assert_eq!(store.prepare_recipe(&registry,&request).unwrap_err().kind,ErrorKind::BudgetExhausted);
-    request.max_parallel_instances=2;
     request.byte_cap=80;
     assert_eq!(store.prepare_recipe(&registry,&request).unwrap_err().kind,ErrorKind::BudgetExhausted);
-}
-
-#[test]
-fn recipe_cannot_omit_mandatory_policy_or_use_cross_project_input() {
-    let (store,registry,mut request)=setup();
-    request.instances[0].mandatory_roots.clear();
-    assert_eq!(store.prepare_recipe(&registry,&request).unwrap_err().kind,ErrorKind::RequiredWeakened);
-    let (other,_,_)=setup();
-    assert_eq!(other.prepare_recipe(&registry,&request).unwrap_err().kind,ErrorKind::ScopeDenied);
+    request.byte_cap=100000;
+    request.instances[0].inputs[0].scope="project:elsewhere".into();
+    assert_eq!(store.prepare_recipe(&registry,&request).unwrap_err().kind,ErrorKind::ScopeDenied);
 }

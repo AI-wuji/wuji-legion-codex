@@ -253,7 +253,7 @@ fn run(arguments: &[String]) -> Result<Value> {
             let expected = arguments[3].parse::<i64>().map_err(|_| Error::new(ErrorKind::Shape,"expected graph revision must be integer"))?;
             Store::open_existing(Path::new(&arguments[1]))?.cancel_local_task(&arguments[2],expected)
         }
-        ("host-status", 1) => Ok(json!({"requested_model":"gpt-6.1-sol","requested_efforts":{"text":"medium","code":"high","repair_or_planning":"xhigh"},"effective_model":"unknown","effective_effort":"unknown","effective_quota":"unknown","fee_precondition":"unknown","admission":"blocked-no-generation-submitted","native_host_verified":false})),
+        ("host-status", 1) => Ok(json!({"model_policy":"current_selection_baseline_upgrade_only","requested_model":"inherit_current_selection","requested_efforts":{"text":"inherit_current_selection","code":"high","repair_or_planning":"xhigh"},"upgrade_model":"gpt-6.1-sol","automatic_downgrade":false,"failure_fallback_chain":false,"effective_model":"unknown","effective_effort":"unknown","effective_quota":"unknown","fee_precondition":"unknown","admission":"blocked-no-generation-submitted","native_host_verified":false})),
         _ => Err(Error::new(ErrorKind::Shape, "unsupported command or argument count; use help")),
     }
 }

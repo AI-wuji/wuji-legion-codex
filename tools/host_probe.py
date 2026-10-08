@@ -35,8 +35,14 @@ def cli_metadata(path: str, args: list[str]) -> dict:
 
 def probe(config_path: Path = CONFIG) -> dict:
     result = {"schema_version": 1, "observed_at": stamp(), "host_kind": "local-codex-desktop",
-              "requested_policy": {"model": "gpt-6.1-sol", "text": "medium", "code": "high",
-                                   "bugfix": "xhigh", "planning": "xhigh"},
+              "requested_policy": {
+                  "mode": "current_selection_baseline_upgrade_only",
+                  "baseline_model": "inherit_current_conversation_selection",
+                  "baseline_effort": "inherit_current_conversation_selection",
+                  "upgrade_model": "gpt-6.1-sol", "upgrade_efforts": ["high", "xhigh"],
+                  "automatic_downgrade": False, "failure_fallback_chain": False,
+                  "restore_baseline_after_upgrade": True,
+              },
               "effective_model": "unknown", "effective_effort": "unknown",
               "third_party_request_verified": False, "native_spawn_verified": False,
               "close_and_quota_release_verified": False, "production_changed": False,
@@ -85,16 +91,18 @@ def probe(config_path: Path = CONFIG) -> dict:
         result["codex_root_help"] = cli_metadata(codex, ["--help"])
         result["codex_exec_help"] = cli_metadata(codex, ["exec", "--help"])
     result["mount_proposal"] = {
-        "kind": "per_invocation_cli_overrides",
+        "kind": "explicit_upgrade_overrides_not_automatic_routing",
+        "baseline": "current_conversation_selection_not_disk_defaults",
         "model_flag": ["--model", "gpt-6.1-sol"],
         "effort_config_key": "model_reasoning_effort",
-        "efforts": ["medium", "high", "xhigh"],
+        "efforts": ["high", "xhigh"],
+        "baseline_handoff_required_for_independent_worker": True,
         "legacy_profiles_required": False,
         "writes_user_config": False,
         "help_observed_not_request_verified": True,
         "verification_gate": "G2",
     }
-    result["unknowns"] = ["provider model alias/effective model and medium/high/xhigh request results",
+    result["unknowns"] = ["current conversation baseline model/effort and explicit high/xhigh upgrade results",
                           "effective agent quota/current occupied slots/close release",
                           "current CLI profile layer vs legacy profiles table effectiveness",
                           "source-level 3.0 install conflict and P7 field-level restore map",

@@ -67,7 +67,10 @@ fn declaration(host: &str, model: &str) -> Value {
 }
 
 fn assert_configuration_is_not_effective(observation: &Value) {
-    assert_eq!(observation["requested_model"], "gpt-6.1-sol");
+    assert_eq!(observation["requested_model"], "inherit_current_selection");
+    assert_eq!(observation["upgrade_model"], "gpt-6.1-sol");
+    assert_eq!(observation["automatic_downgrade"], false);
+    assert_eq!(observation["failure_fallback_chain"], false);
     assert_eq!(observation["configured_state"], "configured_only");
     assert_eq!(
         observation["observed"]["kind"],

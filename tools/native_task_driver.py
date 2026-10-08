@@ -8,8 +8,8 @@ except ImportError:
     from .native_host_session import ObservationTimeout, SessionError
 
 
+# Explicit upgrade target retained for compatibility, not a default model.
 MODEL = "gpt-6.1-sol"
-EFFORTS = frozenset({"medium", "high", "xhigh"})
 RETURN_KEYS = frozenset({
     "thread_id",
     "turn_id",
@@ -55,6 +55,12 @@ def _rpc_observation(request_id, result):
             "request_id_known": True,
         },
     }
+
+
+def _nonempty_string(value, label):
+    if not isinstance(value, str) or not value.strip():
+        raise SessionError(f"{label} must be a non-empty string")
+    return value
 
 
 def _thread_id(result):
@@ -218,12 +224,12 @@ def run_task(session, thread_params, turn_params, timeout=180, close_timeout=90)
             raise SessionError("thread_params and turn_params must be dictionaries")
         thread_request = copy.deepcopy(thread_params)
         turn_request = copy.deepcopy(turn_params)
-        if "effort" in turn_request and turn_request["effort"] not in EFFORTS:
-            raise SessionError("turn effort must be medium, high, or xhigh")
-        if "model" in thread_request and thread_request["model"] != MODEL:
-            raise SessionError("thread declaration model mismatches pinned request")
-        if "model" in turn_request and turn_request["model"] != MODEL:
-            raise SessionError("turn request model mismatches pinned request")
+        # Validate shape only; supported models/efforts belong to the host.
+        # Never replace an effort or retry with an alternate model.
+        for label, request in (("thread", thread_request), ("turn", turn_request)):
+            for key in ("model", "effort"):
+                if key in request:
+                    _nonempty_string(request[key], f"{label} {key}")
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not math.isfinite(timeout) or timeout <= 0:
             raise SessionError("Positive timeout required")
         if isinstance(close_timeout, bool) or not isinstance(close_timeout, (int, float)) or not math.isfinite(close_timeout) or close_timeout <= 0:
@@ -238,18 +244,22 @@ def run_task(session, thread_params, turn_params, timeout=180, close_timeout=90)
         owned_session.notify("initialized", {})
 
         thread_request["ephemeral"] = True
-        thread_request["model"] = MODEL
+        # Omitted model/effort are left to the host configuration.
         phase = "thread/start"
         thread_result = owned_session.request(1, "thread/start", thread_request, timeout=timeout)
         result["observations"].append(_rpc_observation(1, thread_result))
-        declared_model = thread_result.get("model")
-        if declared_model != MODEL:
+        if not isinstance(thread_result, dict):
+            raise SessionError("thread/start result must be an object")
+        declared_model = _nonempty_string(thread_result.get("model"), "thread/start declaration model")
+        if "model" in thread_request and declared_model != thread_request["model"]:
             raise SessionError("thread/start declaration model mismatches request")
         result["thread_id"] = _thread_id(thread_result)
         thread_id = result["thread_id"]
 
         turn_request["threadId"] = thread_id
-        turn_request["model"] = MODEL
+        # Bind an omitted turn model to the thread declaration, not backend proof.
+        # An explicit turn override is preserved. Omitted effort stays omitted.
+        turn_request.setdefault("model", declared_model)
         phase = "turn/start"
         turn_result = owned_session.request(2, "turn/start", turn_request, timeout=timeout)
         result["observations"].append(_rpc_observation(2, turn_result))

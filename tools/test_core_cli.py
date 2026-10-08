@@ -117,7 +117,10 @@ class CoreCliTests(unittest.TestCase):
         plan["payload"]["nodes"][0]["execution_form"] = "model"
         self.call("plan", self.workspace, self.seal(plan), expected_error="HostUnknown")
         status = self.call("host-status")
-        self.assertEqual(status["requested_model"], "gpt-6.1-sol")
+        self.assertEqual(status["requested_model"], "inherit_current_selection")
+        self.assertEqual(status["upgrade_model"], "gpt-6.1-sol")
+        self.assertFalse(status["automatic_downgrade"])
+        self.assertFalse(status["failure_fallback_chain"])
         self.assertEqual(status["effective_model"], "unknown")
         self.assertEqual(status["fee_precondition"], "unknown")
         self.assertFalse(status["native_host_verified"])

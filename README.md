@@ -105,6 +105,16 @@ flowchart LR
 
 项目内 tools/wuji4.py 是开发期的有界辅助入口，提供状态、诊断、按需路由和受控本地任务链；它不是新的常驻宿主或通用调度器。
 
+## 模型基准与按需升级
+
+- 用户在当前项目对话中最后明确选定的 `model + effort` 保存为“默认基线”；普通任务始终沿用该基线，不强制 Sol medium、不降到 DeepSeek、不建备用链。用户明确换模型或 effort 时，才更新默认基线。
+- 难题处理只做临时升档：按需要请求 `gpt-6.1-sol high`，特别复杂或反复定位无进展时请求 `xhigh`，不要求默认基线先失败；当前已是 Sol high/xhigh 且满足所需档位时不重复切换，也不把 xhigh 降为 high。难题完成后，普通任务必须恢复到进入难题前保存的默认基线；临时升档不修改默认基线。
+- 升级和回基准只通过现有宿主原生显式调用/委派能力执行；主对话不能切换时说明边界，不以文字要求、改配置或委派冒充主对话已切换。
+- `requested`（请求）、`configured`（登记配置）、`observed`（实际观察）、`effective`（可信证据确认的生效值）分开；不可核验的值为 `unknown`。失败不盲重试、不串备用 provider、不默认付费。
+- 保留可见历史、工具真实回执、产物路径/hash 和副作用状态；不覆盖失败或把未知提交当未提交。本规则不证明自动换模已实现或已实测，也不改变其他安全、权限和专业验收边界。
+
+本次行为规则及原生执行边界见 `docs/design-deltas/028-current-selection-baseline-and-upgrade-only-2026-10-08.md`；不是自动换模实测结论。
+
 ## 当前状态
 
 4.0 核心入口已有装备记录；最新仅核心修复及实际检查见 `docs/core-only-closeout-2026-10-07.md`，早期回执保留其检查点范围，不能称全部能力完成：
@@ -137,6 +147,7 @@ flowchart LR
 - 4.0 执行方案 v1.7：docs/wuji-legion-4.0-execution-plan-v1.7-2026-10-04.md
 - 快速开始与边界：docs/legion-quickstart.md
 - 当前执行边界：docs/goal-execution-boundaries-2026-10-05.md
+- 模型基准与按需升级修订：docs/design-deltas/028-current-selection-baseline-and-upgrade-only-2026-10-08.md
 - 预算语义修订：docs/design-deltas/026-budget-semantics-and-gpt-6.1-sol-context-correction-2026-10-05.md
 - 研究先行 ADR：docs/adr/001-research-before-experiment.md
 - 进度记录：docs/progress.md

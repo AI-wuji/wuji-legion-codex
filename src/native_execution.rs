@@ -229,7 +229,14 @@ impl Store {
         self.plan_internal(envelope, Some(permit))
     }
 
+    /// Execute an explicitly user-requested Sol high/xhigh upgrade target in an isolated host.
+    /// This API does not classify task difficulty, know the current conversation selection,
+    /// or authorize downgrading it. Text inheritance requires a trusted baseline handoff
+    /// and is rejected before evidence refresh, claims, writes or host startup.
     pub fn run_native_development(&mut self, permit: &NativeDevelopmentPermit, paths: &NativeDriverPaths, task: &str, node: &str, kind: InvocationKind) -> Result<Value> {
+        if kind == InvocationKind::Text {
+            return Err(Error::new(ErrorKind::HostUnknown, "Text inheritance requires a trusted current-conversation model/effort baseline handoff; this independent CLI host cannot know it; no disk-default or Sol medium fallback, no side effects or host startup"));
+        }
         permit.check_scope(&self.workspace, &self.scope)?;
         self.refresh_local_evidence()?;
         let plan: String = self.connection.query_row("SELECT envelope_json FROM task_plans WHERE task_id=?1 AND graph_revision=(SELECT graph_revision FROM tasks WHERE id=?1 AND scope=?2)", params![task,self.scope], |row| row.get(0))?;
@@ -375,5 +382,49 @@ impl Store {
         event_insert(&transaction, &format!("native-accept:{}:{}",artifacts[0].0,artifacts[1].0), task, &strict_json::digest(&receipt)?, &receipt)?;
         transaction.commit()?;
         Ok(receipt)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn text_execution_fails_closed_before_refresh_claims_or_host_startup() {
+        let stamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos();
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join(".dev/core-test-workspaces")
+            .join(format!("native-text-rejected-{}-{stamp}", std::process::id()));
+        fs::create_dir_all(&root).unwrap();
+        let mut store = Store::open(&root).unwrap();
+        let permit = NativeDevelopmentPermit::confirm_isolated_no_added_fee(&root, "confirm-isolated-no-added-fee").unwrap();
+        fs::write(root.join("input.txt"), b"registered original").unwrap();
+        store.register_native_input(&permit, "user/input", Path::new("input.txt")).unwrap();
+        // A refresh would invalidate this registered evidence. Text must reject before it.
+        fs::write(root.join("input.txt"), b"changed after registration").unwrap();
+        let before: i64 = store.connection.query_row("SELECT total_changes()", [], |row| row.get(0)).unwrap();
+        let database = root.join(".wuji4/state.sqlite");
+        let before_database = fs::read(&database).unwrap();
+        // Intentionally missing executables/catalog: no process is started by this test.
+        let paths = NativeDriverPaths {
+            python: root.join("must-not-start-python.exe"),
+            codex: root.join("must-not-start-codex.exe"),
+            catalog: root.join("must-not-read-catalog.json"),
+        };
+        let error = store.run_native_development(&permit, &paths, "unplanned-task", "unplanned-node", InvocationKind::Text).unwrap_err();
+        assert_eq!(error.kind, ErrorKind::HostUnknown);
+        assert!(error.detail.contains("trusted current-conversation model/effort baseline handoff"));
+        assert!(error.detail.contains("no disk-default or Sol medium fallback"));
+        let after: i64 = store.connection.query_row("SELECT total_changes()", [], |row| row.get(0)).unwrap();
+        assert_eq!(before, after, "no evidence refresh, claims or DB changes");
+        assert_eq!(fs::read(&database).unwrap(), before_database);
+        assert_eq!(fs::read(root.join("input.txt")).unwrap(), b"changed after registration");
+        for table in ["tasks", "attempts", "invocations", "slots", "artifacts"] {
+            let count: i64 = store.connection.query_row(&format!("SELECT count(*) FROM {table}"), [], |row| row.get(0)).unwrap();
+            assert_eq!(count, 0, "Text must not allocate or dispatch: {table}");
+        }
+        assert!(!paths.python.exists());
+        assert!(!paths.codex.exists());
+        assert!(!paths.catalog.exists());
     }
 }

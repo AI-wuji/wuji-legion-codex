@@ -167,7 +167,12 @@ impl Store {
             "source_ref": reference,
             "host_schema_fingerprint": host_schema_fingerprint,
             "fingerprint_kind": "declaration_host_schema_and_exact_source_not_active_host_identity",
-            "requested_model": "gpt-6.1-sol",
+            "model_policy": "current_selection_baseline_upgrade_only",
+            "requested_model": "inherit_current_selection",
+            "upgrade_model": "gpt-6.1-sol",
+            "upgrade_efforts": ["high", "xhigh"],
+            "automatic_downgrade": false,
+            "failure_fallback_chain": false,
             "configured_state": "configured_only",
             "configured": declaration,
             "observed": {

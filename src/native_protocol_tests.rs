@@ -30,9 +30,9 @@ fn assert_error(root: &Path, envelope: &mut Value, expected: ErrorKind) {
 }
 
 #[test]
-fn pinned_model_and_three_effort_requests_do_not_use_fallback() {
+fn text_inherits_and_explicit_upgrade_requests_do_not_use_fallback() {
     assert_eq!(REQUESTED_MODEL, "gpt-6.1-sol");
-    for (kind, effort) in [(InvocationKind::Text,"medium"),(InvocationKind::Code,"high"),(InvocationKind::Repair,"xhigh"),(InvocationKind::Planning,"xhigh")] { assert_eq!(kind.requested_effort(), effort); }
+    for (kind, effort) in [(InvocationKind::Text,"inherit"),(InvocationKind::Code,"high"),(InvocationKind::Repair,"xhigh"),(InvocationKind::Planning,"xhigh")] { assert_eq!(kind.requested_effort(), effort); }
     for forbidden in ["gpt-6.1-sol", "auto", "low", "gpt-5.5"] { assert_eq!(InvocationKind::parse(forbidden).unwrap_err().kind, ErrorKind::Shape); }
 }
 
@@ -66,7 +66,7 @@ fn native_candidate_is_deterministic_read_only_and_cannot_dispatch() {
     assert!(!root.join("engineering-result.txt").exists());
     assert!(!root.join(".wuji4").exists());
     assert_eq!(prepare(&root,&envelope,"engineering",InvocationKind::Repair).unwrap().report()["requested_effort"], "xhigh");
-    assert_eq!(prepare(&root,&envelope,"engineering",InvocationKind::Text).err().unwrap().kind, ErrorKind::Reference);
+
 }
 
 #[test]
@@ -135,4 +135,76 @@ fn hard_byte_budget_rejects_without_silent_truncation() {
     let (root, mut envelope) = fixture();
     envelope["payload"]["budget"]["hard_bytes_limit"] = 1.into();
     assert_error(&root,&mut envelope,ErrorKind::BudgetExhausted);
+}
+
+#[test]
+fn text_preparation_omits_model_and_effort_without_claiming_effective_inheritance() {
+    let (root, envelope) = fixture();
+    let prepared = prepare(&root, &envelope, "engineering", InvocationKind::Text).unwrap();
+    let report = prepared.report();
+    assert_eq!(report, prepare(&root, &envelope, "engineering", InvocationKind::Text).unwrap().report());
+    assert_eq!(report["requested_model"], "inherit_current_selection");
+    assert_eq!(report["requested_effort"], "inherit");
+    for message in ["thread_start", "turn_start_unbound"] {
+        let params = report["candidate_messages"][message]["params"].as_object().unwrap();
+        assert!(!params.contains_key("model"));
+        assert!(!params.contains_key("effort"));
+        assert!(!params.contains_key("config"));
+        assert_eq!(params["approvalPolicy"], "never");
+    }
+    assert_eq!(report["candidate_messages"]["thread_start"]["params"]["sandbox"], "read-only");
+    assert_eq!(report["candidate_messages"]["turn_start_unbound"]["params"]["sandboxPolicy"]["networkAccess"], false);
+    let expected_hash = strict_json::digest(&json!({
+        "thread": report["candidate_messages"]["thread_start"],
+        "turn": report["candidate_messages"]["turn_start_unbound"]
+    })).unwrap();
+    assert_eq!(report["request_template_hash"], expected_hash);
+    assert_eq!(report["role_ref"], envelope["payload"]["nodes"][0]["role_ref"]);
+    assert_eq!(report["plan_object_hash"], strict_json::object_digest(&envelope).unwrap());
+    assert_eq!(report["state"], "prepared");
+    assert_eq!(report["runtime_admission"], false);
+    assert_eq!(report["dispatchable"], false);
+    assert_eq!(report["generation_submitted"], false);
+    assert_eq!(report["effective"]["model"], "unknown");
+    assert_eq!(report["effective"]["effort"], "unknown");
+    let boundary = report["selection_boundary"].as_str().unwrap();
+    assert!(boundary.contains("current conversation"));
+    assert!(boundary.contains("not an independent CLI disk default"));
+    assert_eq!(prepared.ensure_dispatchable().unwrap_err().kind, ErrorKind::HostUnknown);
+    assert!(!root.join("engineering-result.txt").exists());
+    assert!(!root.join(".wuji4").exists());
+}
+
+#[test]
+fn explicit_upgrade_preparations_preserve_high_and_xhigh_without_claiming_selection() {
+    let (root, envelope) = fixture();
+    for (kind, effort) in [(InvocationKind::Code, "high"), (InvocationKind::Repair, "xhigh"), (InvocationKind::Planning, "xhigh")] {
+        let prepared = prepare(&root, &envelope, "engineering", kind).unwrap();
+        let report = prepared.report();
+        assert_eq!(report["requested_model"], REQUESTED_MODEL);
+        assert_eq!(report["requested_effort"], effort);
+        assert_eq!(report["candidate_messages"]["thread_start"]["params"]["model"], REQUESTED_MODEL);
+        assert_eq!(report["candidate_messages"]["turn_start_unbound"]["params"]["model"], REQUESTED_MODEL);
+        assert_eq!(report["candidate_messages"]["turn_start_unbound"]["params"]["effort"], effort);
+        assert_eq!(report["effective"]["model"], "unknown");
+        assert_eq!(report["effective"]["effort"], "unknown");
+        let boundary = report["selection_boundary"].as_str().unwrap();
+        assert!(boundary.contains("explicit user-requested"));
+        assert!(boundary.contains("not automatic difficulty classification"));
+        assert!(boundary.contains("downgrade"));
+        assert_eq!(prepared.ensure_dispatchable().unwrap_err().kind, ErrorKind::HostUnknown);
+    }
+}
+
+#[test]
+fn text_preparation_keeps_scope_budget_and_validator_role_boundaries() {
+    let (root, mut envelope) = fixture();
+    assert_eq!(prepare(&root, &envelope, "validation", InvocationKind::Text).err().unwrap().kind, ErrorKind::Reference);
+    envelope["payload"]["nodes"][0]["inputs"][0]["scope"] = "project:elsewhere".into();
+    seal(&mut envelope);
+    assert_eq!(prepare(&root, &envelope, "engineering", InvocationKind::Text).err().unwrap().kind, ErrorKind::ScopeDenied);
+    let (root, mut envelope) = fixture();
+    envelope["payload"]["budget"]["hard_bytes_limit"] = 1.into();
+    seal(&mut envelope);
+    assert_eq!(prepare(&root, &envelope, "engineering", InvocationKind::Text).err().unwrap().kind, ErrorKind::BudgetExhausted);
 }

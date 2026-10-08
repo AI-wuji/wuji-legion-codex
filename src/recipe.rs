@@ -1,6 +1,7 @@
 use crate::error::{Error,ErrorKind,Result};
 use crate::graph::{Edge,ExactRef,dependency_order};
 use crate::policy::Workspace;
+use crate::native_protocol::InvocationKind;
 use crate::registry::{CatalogRegistry,ReleaseLock};
 use crate::resources::registered_evidence;
 use crate::store::Store;
@@ -15,8 +16,11 @@ use std::path::Path;
 pub enum TaskKind { Text,Code,Repair,Planning }
 
 impl TaskKind {
-    fn effort(self) -> &'static str {
-        match self { Self::Text=>"medium",Self::Code=>"high",Self::Repair|Self::Planning=>"xhigh" }
+    fn invocation_kind(self) -> InvocationKind {
+        match self {
+            Self::Text => InvocationKind::Text, Self::Code => InvocationKind::Code,
+            Self::Repair => InvocationKind::Repair, Self::Planning => InvocationKind::Planning,
+        }
     }
 }
 
@@ -103,7 +107,9 @@ impl Store {
             shared.entry(definition_key.clone()).or_insert(json!({"reference":instance.definition_ref,"compiled_contract":contract}));
             instances.push(json!({"instance_id":instance.instance_id,"owner":instance.owner,"shared_definition_key":definition_key,
                 "inputs":instance.inputs,"depends_on":instance.depends_on,"acceptance_ids":instance.acceptance_ids,
-                "write_roots":instance.write_roots,"requested_model":"gpt-6.1-sol","requested_effort":instance.task_kind.effort(),
+                "write_roots":instance.write_roots,"requested_model":instance.task_kind.invocation_kind().requested_model(),
+                "requested_effort":instance.task_kind.invocation_kind().requested_effort(),
+                "selection_boundary":instance.task_kind.invocation_kind().selection_boundary(),
                 "effective_model":"unknown","effective_effort":"unknown","runtime_admission":false}));
         }
         let result=json!({"state":"prepared","task_id":request.task_id,"project_scope":self.scope,"release_lock":request.release_lock,
@@ -114,3 +120,7 @@ impl Store {
         Ok(result)
     }
 }
+
+#[cfg(test)]
+#[path = "recipe_tests.rs"]
+mod tests;

@@ -24,8 +24,19 @@ impl InvocationKind {
         }
     }
 
+    pub fn requested_model(self) -> &'static str {
+        match self { Self::Text => "inherit_current_selection", _ => REQUESTED_MODEL }
+    }
+
+    pub fn selection_boundary(self) -> &'static str {
+        match self {
+            Self::Text => "Prepared inheritance of the current conversation model and effort only; not an independent CLI disk default or an effective selection. A separate host requires a trusted current-conversation baseline handoff.",
+            _ => "Prepared explicit user-requested Sol high/xhigh upgrade target only; not automatic difficulty classification, an effective selection or authorization to downgrade the current conversation model or effort.",
+        }
+    }
+
     pub fn requested_effort(self) -> &'static str {
-        match self { Self::Text => "medium", Self::Code => "high", Self::Repair | Self::Planning => "xhigh" }
+        match self { Self::Text => "inherit", Self::Code => "high", Self::Repair | Self::Planning => "xhigh" }
     }
 }
 
@@ -150,21 +161,30 @@ pub fn prepare(approved_root: &Path, envelope: &Value, node_id: &str, kind: Invo
         if node.id == node_id { selected = Some((node, role)); }
     }
     let (node, role) = selected.ok_or_else(|| Error::new(ErrorKind::Reference, "requested node not in proposal"))?;
-    if kind == InvocationKind::Text || (role["kind"] == "validation" && kind != InvocationKind::Code) {
-        return Err(Error::new(ErrorKind::Reference, "simple text stays with Aji; code validator uses the code preset; no expert expansion"));
+    if role["kind"] == "validation" && kind != InvocationKind::Code {
+        return Err(Error::new(ErrorKind::Reference, "code validator uses the explicit code upgrade request; no expert expansion"));
     }
     let cwd = workspace.root().to_str().ok_or_else(|| Error::new(ErrorKind::PathDenied, "native cwd must be Unicode"))?;
     let instructions = format!("P2 preparation only. You must not dispatch other agents, install, publish, pay, change Codex/plugins/audio, widen the file scope or grant yourself authority. Research existing applicable evidence first. Aji is the sole user communicator. Return version-bound proposals and real evidence gaps; never claim host close from task completion. Independent acceptance is required. Role candidate: {}", String::from_utf8(strict_json::canonical(&role)?).map_err(|_| Error::new(ErrorKind::Shape, "canonical UTF-8"))?);
     let task = json!({"workflow_id":workflow.workflow_id,"graph_revision":envelope["metadata"]["revision"],"node":node,"input_ref_status":"declared_not_verified_or_adopted_by_preparation","file_scope_status":"proposed_not_authorized"});
-    let thread = json!({"method":"thread/start","id":1,"params":{"model":REQUESTED_MODEL,"cwd":cwd,"approvalPolicy":"never","sandbox":"read-only","ephemeral":true,"developerInstructions":instructions}});
-    let turn = json!({"method":"turn/start","id":2,"params":{"threadId":UNBOUND_THREAD,"model":REQUESTED_MODEL,"effort":kind.requested_effort(),"cwd":cwd,"approvalPolicy":"never","sandboxPolicy":{"type":"readOnly","networkAccess":false},"input":[{"type":"text","text":String::from_utf8(strict_json::canonical(&task)?).map_err(|_| Error::new(ErrorKind::Shape, "canonical UTF-8"))?}]}});
+    let mut thread = json!({"method":"thread/start","id":1,"params":{"model":REQUESTED_MODEL,"cwd":cwd,"approvalPolicy":"never","sandbox":"read-only","ephemeral":true,"developerInstructions":instructions}});
+    let mut turn = json!({"method":"turn/start","id":2,"params":{"threadId":UNBOUND_THREAD,"model":REQUESTED_MODEL,"effort":kind.requested_effort(),"cwd":cwd,"approvalPolicy":"never","sandboxPolicy":{"type":"readOnly","networkAccess":false},"input":[{"type":"text","text":String::from_utf8(strict_json::canonical(&task)?).map_err(|_| Error::new(ErrorKind::Shape, "canonical UTF-8"))?}]}});
+    if kind == InvocationKind::Text {
+        // Omission is a prepared inheritance contract, not proof of a new host's baseline.
+        for message in [&mut thread, &mut turn] {
+            let params = message["params"].as_object_mut().unwrap();
+            params.remove("model");
+            params.remove("effort");
+        }
+    }
     let request_hash = strict_json::digest(&json!({"thread":thread,"turn":turn}))?;
     let report = json!({
         "state":"prepared","runtime_admission":false,"dispatchable":false,"generation_submitted":false,
         "scope":scope,"preparation_release":PREPARATION_RELEASE,
         "workflow_id":workflow.workflow_id,"node_id":node.id,"node_revision":node.revision,
         "graph_revision":envelope["metadata"]["revision"],"plan_object_hash":strict_json::object_digest(envelope)?,
-        "role_ref":node.role_ref,"requested_model":REQUESTED_MODEL,"requested_effort":kind.requested_effort(),
+        "role_ref":node.role_ref,"requested_model":kind.requested_model(),"requested_effort":kind.requested_effort(),
+        "selection_boundary":kind.selection_boundary(),
         "request_template_hash":request_hash,"thread_binding":"unbound_requires_trusted_transport",
         "transport":"codex-app-server-0.160.0-stdio-candidate-no-process-started",
         "candidate_messages":{"thread_start":thread,"turn_start_unbound":turn},

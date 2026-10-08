@@ -1,6 +1,6 @@
 # 4.0 架构与契约设计 baseline-1
 
-P1 baseline-1设计已冻结。文件完整性和G1审查见docs/design-baseline-1.json及outputs/p1/g1-review-2026-10-03.json；设计冻结不代表运行实现、专业效果或宿主验证已通过。
+P1 baseline-1设计已冻结。历史文件完整性和G1审查见docs/design-baseline-1.json及outputs/p1/g1-review-2026-10-03.json；设计冻结不代表运行实现、专业效果或宿主验证已通过。2026-10-08用户明确授权本次模型策略修订，仅替换下文模型请求规则，增量见docs/design-deltas/028-current-selection-baseline-and-upgrade-only-2026-10-08.md；原冻结hash和验收状态不改、不冒充当前文件hash。
 
 ## 唯一执行主链
 
@@ -44,7 +44,13 @@ secret/token/原始私聊不入图、契约和日志。凭据使用宿主不透�
 
 ## 模型/预算与宿主
 
-requested_model固定gpt-6.1-sol：text medium，code high，repair/planning xhigh。请求字段与effective/observed分开；不可见值unknown。档位不可用不静默降档/换模。CLI挂载点只证明请求形状，实际provider/免费范围/费用前置未通过时禁止提交生成。当前已有配置cap3/depth1是configured，不是有效硬限；策略cap2、压力cap1亦只是工程策略。
+- 用户在当前项目对话中最后明确选定的 `model + effort` 保存为“默认基线”；普通任务始终沿用该基线，不强制 Sol medium、不降到 DeepSeek、不建备用链。用户明确换模型或 effort 时，才更新默认基线。
+- 难题处理只做临时升档：按需要请求 `gpt-6.1-sol high`，特别复杂或反复定位无进展时请求 `xhigh`，不要求默认基线先失败；当前已是 Sol high/xhigh 且满足所需档位时不重复切换，也不把 xhigh 降为 high。难题完成后，普通任务必须恢复到进入难题前保存的默认基线；临时升档不修改默认基线。
+- 升级和回基准只通过现有宿主原生显式调用/委派能力执行；主对话不能切换时说明边界，不以文字要求、改配置或委派冒充主对话已切换。
+- `requested`（请求）、`configured`（登记配置）、`observed`（实际观察）、`effective`（可信证据确认的生效值）分开；不可核验的值为 `unknown`。失败不盲重试、不串备用 provider、不默认付费。
+- 保留可见历史、工具真实回执、产物路径/hash 和副作用状态；不覆盖失败或把未知提交当未提交。本规则不证明自动换模已实现或已实测，也不改变其他安全、权限和专业验收边界。
+
+CLI挂载点只证明请求形状，实际provider/免费范围/费用前置未通过时禁止提交生成。当前已有配置cap3/depth1是configured，不是有效硬限；策略cap2、压力cap1亦只是工程策略。
 
 native admission=min(策略、可信当前宿主空闲额度、工作负载预算)；余量unknown时不新spawn，保留prepared/blocked，不把CLI子进程当已释放原生槽位。角色图不等于spawn深度，按允许额度扁平派发；所有角色共享同一个任务额度。业务succeeded不释放host_slot，completed-open/closing/release_unverified仍占槽，仅受信关闭语义或可信后续观察能归还。
 
